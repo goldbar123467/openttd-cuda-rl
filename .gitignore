@@ -1,0 +1,11 @@
+openttd-build/
+
+.env
+.env.*
+!.env.example
+.hf_home/
+.cache/
+__pycache__/
+*.py[cod]
+
+.DS_Store
