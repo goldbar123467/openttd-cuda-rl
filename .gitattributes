@@ -1,2 +1,6 @@
 # Raw oracle evidence is content-addressed and must retain producer bytes exactly.
 evidence/p0/** -whitespace
+# Unified diffs encode context with a leading space. Preserve patch bytes and
+# validate the applied source tree instead of interpreting diff framing as
+# source indentation.
+oracle/**/*.patch -whitespace

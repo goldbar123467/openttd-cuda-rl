@@ -1,0 +1,8 @@
+P0 fixture: pre-town pools towns=0 industries=0 companies=0
+P0 fixture: industry id=0 type=0 tile=1736 x=8 y=27 w=3 h=3 produced=1 accepted=255 layout=2
+P0 fixture: industry id=0 occupied_tiles=1736,1737,1738,1800,1801,1802,1864,1865,1866
+P0 fixture: industry id=1 type=1 tile=1777 x=49 y=27 w=3 h=3 produced=255 accepted=1 layout=2
+P0 fixture: industry id=1 occupied_tiles=1778,1779,1841,1842,1843,1905,1906,1907
+P0 fixture: map=64x64 company=0 money=10000000 engine123=true tick=0 calendar_date=712223 calendar_fract=0 economy_date=712223 economy_fract=0 random=5b969220:7657b27e interactive=49524631:49524631
+P0 fixture: wrote /workspace/p002-builder-release/run-a/fixture.sav
+P0 fixture: wrote /workspace/p002-builder-release/run-a/fixture.sav.mapplanes.bin (4096 tiles, 12 bytes/tile; type,height,m1,m2le,m3,m4,m5,m6,m7,m8le)

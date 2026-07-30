@@ -1,0 +1,310 @@
+{
+  "$schema": "../../manifests/schema/fixture.schema.json",
+  "schema_version": 1,
+  "schema_sha256": "be4323a12f1c4e5a851293378cc4b1b481f9355fa27419c35e33682c30a059bc",
+  "manifest_kind": "road-freight-fixture-contract",
+  "fixture_id": "road_freight_v1",
+  "review_status": "PORT002A_FROZEN",
+  "source_identity": {
+    "repository": "https://github.com/OpenTTD/OpenTTD.git",
+    "commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86",
+    "creation_executable": {
+      "state": "verified",
+      "sha256": "a0f3536b011fcb1af21341c4893c5efefb1b12db1fc0bfb5678edfbfdbc2c3e7",
+      "size_bytes": 405127064
+    }
+  },
+  "fixture_bytes": {
+    "state": "frozen",
+    "relative_path": "fixture.sav",
+    "sha256": "74c9be53902598061e1e82835c394a37b77bfc71c818de1df8456cdfc2804d20",
+    "size_bytes": 10008
+  },
+  "creation": {
+    "method": "disposable-pinned-native-fixture-builder",
+    "generation_seed": 1380341297,
+    "interactive_random_seed": 1230128689,
+    "savegame_id": "50304649585455524553415645494431",
+    "pre_save_state": {
+      "tick": 0,
+      "calendar_date": 712223,
+      "calendar_fract": 0,
+      "economy_date": 712223,
+      "economy_fract": 0,
+      "state_rng": [1536594464, 1985458814],
+      "interactive_rng": [1230128689, 1230128689]
+    },
+    "native_operation_log": [
+      "Generate GWM_EMPTY temperate world at 64 by 64 with seed 0x52465631 and start date 1950-01-01.",
+      "Found one native town needed for original-industry placement, then clear its houses and roads through native commands while retaining the town object.",
+      "Create human CompanyID 0 without a custom company or president string, then perform the declared creation-only balance operation setting money to 10000000 and current_loan to 0; this operation is absent from replay.",
+      "Create IndustryID 0 as original Coal Mine type 0 with runtime selected_layout raw value 2 anchored at tile (8,27).",
+      "Create IndustryID 1 as original Power Station type 1 with runtime selected_layout raw value 2 anchored at tile (49,27).",
+      "Save before any road, stop, depot, vehicle, order, or replay command exists.",
+      "Repeat the settings-aligned release save from an independent pinned-worktree builder run and require byte-identical 10008-byte output with SHA-256 74c9be53902598061e1e82835c394a37b77bfc71c818de1df8456cdfc2804d20."
+    ],
+    "release_runs": [
+      {
+        "id": "run-a",
+        "log_name": "run-a/creation.stderr.log",
+        "log_sha256": "ffe1a275e60ba7e934e8e34cad2426160514de914120be6a6ce961efba631d35",
+        "log_size_bytes": 831,
+        "fixture_sha256": "74c9be53902598061e1e82835c394a37b77bfc71c818de1df8456cdfc2804d20",
+        "map_planes_sha256": "5a933bc43d59c05b0d8fda519aec0aafa71b16d50a03aea83aefade7a57c9dd6"
+      },
+      {
+        "id": "run-b",
+        "log_name": "run-b/creation.stderr.log",
+        "log_sha256": "91ec618ac40c71faa8403430d8995ec7b6b7ba4e330346268d4e374e9e1a64f1",
+        "log_size_bytes": 831,
+        "fixture_sha256": "74c9be53902598061e1e82835c394a37b77bfc71c818de1df8456cdfc2804d20",
+        "map_planes_sha256": "5a933bc43d59c05b0d8fda519aec0aafa71b16d50a03aea83aefade7a57c9dd6"
+      }
+    ],
+    "post_freeze_mutation_allowed": false
+  },
+  "world": {
+    "map": {
+      "width": 64,
+      "height": 64,
+      "source": "GWM_EMPTY",
+      "generator_version_commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86",
+      "map_planes": {
+        "state": "verified",
+        "format": "tile-index-order:type,height,m1,m2le,m3,m4,m5,m6,m7,m8le",
+        "tile_count": 4096,
+        "bytes_per_tile": 12,
+        "size_bytes": 49152,
+        "sha256": "5a933bc43d59c05b0d8fda519aec0aafa71b16d50a03aea83aefade7a57c9dd6",
+        "two_run_equal": true
+      }
+    },
+    "climate": "temperate",
+    "start_date": {
+      "year": 1950,
+      "month": 1,
+      "day": 1
+    },
+    "network_game": false,
+    "terrain_branches": {
+      "bridge": false,
+      "tunnel": false,
+      "rail_crossing": false,
+      "water_crossing": false,
+      "one_way_road": false,
+      "tram": false,
+      "slope": false
+    }
+  },
+  "initial_boundary": {
+    "state": "pending-port003-projection",
+    "declared_boundary": "after-load-before-first-scripted-command",
+    "required_projection": [
+      "tick",
+      "calendar-date",
+      "economy-date",
+      "calendar-timer",
+      "economy-timer",
+      "state-rng-0",
+      "state-rng-1",
+      "interactive-rng-0",
+      "interactive-rng-1"
+    ]
+  },
+  "content": {
+    "profile": "opengfx-8.0",
+    "profile_manifest_sha256": "61d0f02035e134b27f26ddf59d5440ac1df8200ddc408cf26dfe9eb6f3f5672f",
+    "installed_tar_sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c",
+    "newgrfs": [],
+    "game_script": null,
+    "ai_scripts": []
+  },
+  "normalized_settings": {
+    "relative_path": "settings.normalized.json",
+    "sha256": "90fa5bf0df898c9ac60dbf8b9bf8db605cc2fbb13815ea1d69e99c0fbb95a595",
+    "authoritative_identity_sha256": "be3de184c442dc9944131622218eca8c22cfbcb7947c14c8a2c36e973d7ff80d",
+    "schema_identity": "openttd-p0-settings-v1"
+  },
+  "towns": [
+    {
+      "id": 0,
+      "tile": [32, 16],
+      "tile_index": 1056,
+      "name_policy": "fixed-non-personal-fixture-string",
+      "name": "P0 Fixture Town",
+      "population": 0,
+      "house_count": 0,
+      "road_tile_count": 0,
+      "growing": false,
+      "growth_rate": "TOWN_GROWTH_RATE_NONE"
+    }
+  ],
+  "companies": [
+    {
+      "id": 0,
+      "kind": "human",
+      "name_policy": "generated-default-no-custom-string",
+      "opening_balance": 10000000,
+      "opening_loan": 0,
+      "cheat_state": false
+    }
+  ],
+  "industries": [
+    {
+      "role": "producer",
+      "id": 0,
+      "type_id": 0,
+      "type": "coal-mine",
+      "selected_layout": 2,
+      "anchor": [8, 27],
+      "footprint": {"width": 3, "height": 3},
+      "tiles": [[8, 27], [9, 27], [10, 27], [8, 28], [9, 28], [10, 28], [8, 29], [9, 29], [10, 29]],
+      "tile_indices": [1736, 1737, 1738, 1800, 1801, 1802, 1864, 1865, 1866],
+      "produces": ["coal"],
+      "accepts": []
+    },
+    {
+      "role": "acceptor",
+      "id": 1,
+      "type_id": 1,
+      "type": "power-station",
+      "selected_layout": 2,
+      "anchor": [49, 27],
+      "footprint": {"width": 3, "height": 3},
+      "tiles": [[50, 27], [51, 27], [49, 28], [50, 28], [51, 28], [49, 29], [50, 29], [51, 29]],
+      "tile_indices": [1778, 1779, 1841, 1842, 1843, 1905, 1906, 1907],
+      "produces": [],
+      "accepts": ["coal"]
+    }
+  ],
+  "cargo": {
+    "id": 1,
+    "type": "coal",
+    "label": "COAL",
+    "classes": ["bulk", "non-potable"],
+    "producer_rate": 15,
+    "acceptance_units": 8
+  },
+  "vehicle_engine": {
+    "global_engine_id": 123,
+    "road_engine_id": 7,
+    "name": "Balogh Coal Truck",
+    "cargo": "coal",
+    "capacity": 20,
+    "available_from_year": 1935,
+    "available_through_year": 1990,
+    "articulated": false
+  },
+  "coordinate_plan": {
+    "road_segments": [
+      {
+        "id": "road-west",
+        "from": [10, 31],
+        "to": [12, 31],
+        "road_type": "ROADTYPE_ROAD",
+        "forbidden_branches": {"bridge": false, "tunnel": false, "rail_crossing": false, "water_crossing": false, "one_way": false, "tram": false, "slope": false}
+      },
+      {
+        "id": "road-middle",
+        "from": [12, 31],
+        "to": [48, 31],
+        "road_type": "ROADTYPE_ROAD",
+        "forbidden_branches": {"bridge": false, "tunnel": false, "rail_crossing": false, "water_crossing": false, "one_way": false, "tram": false, "slope": false}
+      },
+      {
+        "id": "road-east",
+        "from": [48, 31],
+        "to": [52, 31],
+        "road_type": "ROADTYPE_ROAD",
+        "forbidden_branches": {"bridge": false, "tunnel": false, "rail_crossing": false, "water_crossing": false, "one_way": false, "tram": false, "slope": false}
+      }
+    ],
+    "pickup_stop": {
+      "tile": [12, 30],
+      "direction": {"source_type": "DiagDirection", "source_symbol": "DiagDirection::SE", "raw_u8": 1},
+      "road_access": [12, 31],
+      "station_kind": "truck-bay",
+      "drive_through": false
+    },
+    "delivery_stop": {
+      "tile": [48, 30],
+      "direction": {"source_type": "DiagDirection", "source_symbol": "DiagDirection::SE", "raw_u8": 1},
+      "road_access": [48, 31],
+      "station_kind": "truck-bay",
+      "drive_through": false
+    },
+    "depot": {
+      "tile": [9, 31],
+      "direction": {"source_type": "DiagDirection", "source_symbol": "DiagDirection::SW", "raw_u8": 2},
+      "road_access": [10, 31]
+    },
+    "vehicle_spawn_route": [[9, 31], [10, 31], [11, 31], [12, 31]],
+    "catchment_radius": 4
+  },
+  "command_plan": {
+    "dispatcher_policy": "pinned-native-command-dispatcher-only",
+    "schedule_boundary": "after-load-before-first-simulation-tick",
+    "expected_command_count": 10,
+    "actions": [
+      {"sequence": 1, "id": "road-west", "native_command": "Commands::BuildRoadLong", "intent": "Build ROADTYPE_ROAD from (10,31) through the pickup junction (12,31)."},
+      {"sequence": 2, "id": "road-middle", "native_command": "Commands::BuildRoadLong", "intent": "Build ROADTYPE_ROAD from pickup junction (12,31) through delivery junction (48,31)."},
+      {"sequence": 3, "id": "road-east", "native_command": "Commands::BuildRoadLong", "intent": "Build ROADTYPE_ROAD from delivery junction (48,31) to (52,31)."},
+      {"sequence": 4, "id": "depot", "native_command": "Commands::BuildRoadDepot", "intent": "Build the road depot at (9,31) with DiagDirection::SW raw u8 2, connected to (10,31)."},
+      {"sequence": 5, "id": "pickup-stop", "native_command": "Commands::BuildRoadStop", "intent": "Build the non-drive-through pickup truck bay at (12,30) with DiagDirection::SE raw u8 1."},
+      {"sequence": 6, "id": "delivery-stop", "native_command": "Commands::BuildRoadStop", "intent": "Build the non-drive-through delivery truck bay at (48,30) with DiagDirection::SE raw u8 1."},
+      {"sequence": 7, "id": "purchase-vehicle", "native_command": "Commands::BuildVehicle", "intent": "Purchase global EngineID 123 in the depot and retain its returned VehicleID."},
+      {"sequence": 8, "id": "pickup-order", "native_command": "Commands::InsertOrder", "intent": "Insert pickup station order at position 0 with full-load-any."},
+      {"sequence": 9, "id": "delivery-order", "native_command": "Commands::InsertOrder", "intent": "Insert delivery station order at position 1 with unload-if-accepted."},
+      {"sequence": 10, "id": "start-vehicle", "native_command": "Commands::StartStopVehicle", "intent": "Start the purchased vehicle after both orders exist."}
+    ],
+    "order_sequence": [
+      {"position": 0, "station_role": "pickup", "mode": "full-load-any"},
+      {"position": 1, "station_role": "delivery", "mode": "unload-if-accepted"}
+    ]
+  },
+  "funding_proof": {
+    "state": "pending-native-command-costs",
+    "opening_balance": 10000000,
+    "safety_margin_policy": "at-least-25-percent-of-opening-balance",
+    "blocking_reason": "The native dispatcher must record every tested and executed command cost before sufficiency can be asserted."
+  },
+  "milestones": {
+    "state": "pending-native-replay",
+    "required_events": ["first-cargo-capture", "first-loading", "first-accepted-delivery", "first-payment"]
+  },
+  "source_evidence": [
+    "openttd-upstream/src/genworld.h:30",
+    "openttd-upstream/src/genworld.cpp:106-110",
+    "openttd-upstream/src/table/build_industry.h:25-109",
+    "openttd-upstream/src/table/build_industry.h:1149-1168",
+    "openttd-upstream/src/table/cargo_const.h:59",
+    "openttd-upstream/src/table/engines.h:226",
+    "openttd-upstream/src/table/engines.h:682",
+    "openttd-upstream/src/station_type.h:122-130",
+    "openttd-upstream/src/company_cmd.cpp:647-665",
+    "openttd-upstream/src/core/random_func.cpp:42-68",
+    "openttd-upstream/src/direction_type.h:83-90",
+    "openttd-upstream/src/map.cpp:141-146",
+    "openttd-upstream/src/road_cmd.cpp:1137",
+    "openttd-upstream/src/station_cmd.cpp:2072"
+  ],
+  "known_unreachable_subsystems": [
+    "aircraft",
+    "bridges",
+    "disasters",
+    "GameScript",
+    "NewGRF callbacks",
+    "networking",
+    "rail vehicles and infrastructure",
+    "ships and water routes",
+    "sloped-road movement",
+    "tram infrastructure",
+    "tunnels",
+    "vehicle articulation"
+  ],
+  "closure_blockers": [
+    "PORT002B requires PORT003 to prove two independent loads have equal initial projections, timers, and both RNG states.",
+    "Native replay must prove exact command costs/funding, the ten-command route, capture, loading, accepted delivery, and exact payment boundaries.",
+    "The authoritative replay must prove an isolated home directory performs no undeclared configuration or content reads."
+  ]
+}
