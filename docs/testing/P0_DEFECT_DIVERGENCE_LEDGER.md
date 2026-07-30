@@ -21,6 +21,10 @@ threshold and must explain the source-backed reason for rejection.
 
 ## Current view
 
-No entries have been registered yet. This is a diagnostic statement, not a P0
-completion claim. The local-release gate recomputes the machine ledger counts and
-requires zero nonclosed defects and divergences before a final `PASS`.
+| ID | Discovery | Earliest location | Status | Impact |
+|---|---|---|---|---|
+| `DEF-P0-0001` | `TEST-STATIC-SCAN-BUILD-001` | `parity/src/tape_reader.c:1013` | `DIAGNOSED` | Dead assignment fails the zero-finding static gate and obscures cleanup ownership. |
+| `DEF-P0-0002` | `TEST-STATIC-SCAN-BUILD-001` | `parity/tools/tape_main.c:718` | `DIAGNOSED` | Filter parsing does not express a provable nonnull guard for `end_filter`. |
+
+The local-release gate recomputes machine counts and requires zero nonclosed
+defects and divergences before a final `PASS`.

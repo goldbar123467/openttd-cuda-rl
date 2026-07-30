@@ -79,7 +79,7 @@ class DefectLedgerContractTest(unittest.TestCase):
             "status": "OPEN",
         }
 
-    def test_empty_canonical_ledger_validates(self) -> None:
+    def test_canonical_ledger_validates(self) -> None:
         validator.validate(SCHEMA_PATH, LEDGER_PATH)
 
     def test_open_counts_are_recomputed(self) -> None:

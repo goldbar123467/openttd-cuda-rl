@@ -4,14 +4,123 @@
   "schema_sha256": "50050fa28f95e80ca998c9ef3679ff6bc15b73ef2dad063594a0190ee40e93c3",
   "ledger_kind": "p0-defect-divergence-ledger",
   "scope": "PORT-001-through-PORT-005",
-  "entries": [],
+  "entries": [
+    {
+      "id": "DEF-P0-0001",
+      "kind": "DEFECT",
+      "discovery_date_diagnostic": "2026-07-30",
+      "discovering_test_id": "TEST-STATIC-SCAN-BUILD-001",
+      "source_identity": {
+        "outer_commit": "1523d860b207877e92a0682519cc3ba6b9bc88f6",
+        "submodule_commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86"
+      },
+      "build_identity": {
+        "profile": "focused-development",
+        "executable": {
+          "sha256": "d8aa599aacd24ea61c3a13de385e43cd4beefdd6ce8e5d0bae3dacc0b9575dfa",
+          "size_bytes": 331376
+        }
+      },
+      "fixture_identity": {
+        "sha256": "74c9be53902598061e1e82835c394a37b77bfc71c818de1df8456cdfc2804d20",
+        "size_bytes": 10008
+      },
+      "command_input_identity": {
+        "sha256": "6d7deeed77500feb85c4ae6c6ffe6ea6c3a9001382581fa2a36addc0ed2d216d",
+        "size_bytes": 1484
+      },
+      "earliest_boundary": {
+        "record_sequence": 0,
+        "tick": 0,
+        "boundary_kind": "tooling"
+      },
+      "location": {
+        "subsystem": "parity/src/tape_reader.c:1013"
+      },
+      "expected_value": "zero Clang Static Analyzer findings",
+      "observed_value": "deadcode.DeadStores: the final assignment directory = -1 is never read",
+      "minimized_reproducer": {
+        "relative_path": "scripts/ci/p0_static.sh",
+        "sha256": "5ae8e94f87efc7a0b45bea4f55ed19d9a111bb9624b50bf30e423128d2af504e",
+        "size_bytes": 5084,
+        "rerun_argv": [
+          "./scripts/ci/p0_static.sh",
+          "--artifact-root",
+          "/absolute/generated/root",
+          "--tools-python",
+          "/absolute/hash-locked/python"
+        ]
+      },
+      "impact": "The static-analysis release gate fails; the assignment also obscures cleanup ownership review.",
+      "root_cause": "The directory descriptor is invalidated after its final close even though control returns immediately.",
+      "owner": "PORT-004 tape tooling",
+      "fix_revision": null,
+      "regression_test": null,
+      "closure_evidence": [],
+      "status": "DIAGNOSED"
+    },
+    {
+      "id": "DEF-P0-0002",
+      "kind": "DEFECT",
+      "discovery_date_diagnostic": "2026-07-30",
+      "discovering_test_id": "TEST-STATIC-SCAN-BUILD-001",
+      "source_identity": {
+        "outer_commit": "1523d860b207877e92a0682519cc3ba6b9bc88f6",
+        "submodule_commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86"
+      },
+      "build_identity": {
+        "profile": "focused-development",
+        "executable": {
+          "sha256": "d8aa599aacd24ea61c3a13de385e43cd4beefdd6ce8e5d0bae3dacc0b9575dfa",
+          "size_bytes": 331376
+        }
+      },
+      "fixture_identity": {
+        "sha256": "74c9be53902598061e1e82835c394a37b77bfc71c818de1df8456cdfc2804d20",
+        "size_bytes": 10008
+      },
+      "command_input_identity": {
+        "sha256": "6d7deeed77500feb85c4ae6c6ffe6ea6c3a9001382581fa2a36addc0ed2d216d",
+        "size_bytes": 1484
+      },
+      "earliest_boundary": {
+        "record_sequence": 0,
+        "tick": 0,
+        "boundary_kind": "tooling"
+      },
+      "location": {
+        "subsystem": "parity/tools/tape_main.c:718"
+      },
+      "expected_value": "the dump field filter parser proves end_filter nonnull before dereference",
+      "observed_value": "core.NullDereference: analyzer path reaches *end_filter while end_filter retains its null initializer",
+      "minimized_reproducer": {
+        "relative_path": "scripts/ci/p0_static.sh",
+        "sha256": "5ae8e94f87efc7a0b45bea4f55ed19d9a111bb9624b50bf30e423128d2af504e",
+        "size_bytes": 5084,
+        "rerun_argv": [
+          "./scripts/ci/p0_static.sh",
+          "--artifact-root",
+          "/absolute/generated/root",
+          "--tools-python",
+          "/absolute/hash-locked/python"
+        ]
+      },
+      "impact": "The static-analysis release gate fails and the duplicated predicate makes parser safety harder to audit.",
+      "root_cause": "Parsing is guarded by one strcmp call while dereference is guarded by a repeated strcmp expression; the proof is not represented by one explicit parse-state branch.",
+      "owner": "PORT-004 tape CLI",
+      "fix_revision": null,
+      "regression_test": null,
+      "closure_evidence": [],
+      "status": "DIAGNOSED"
+    }
+  ],
   "open_counts": {
-    "defects": 0,
+    "defects": 2,
     "divergences": 0,
-    "total_nonclosed": 0
+    "total_nonclosed": 2
   },
   "diagnostics": {
     "last_reviewed_date": "2026-07-30",
-    "review_note": "No formal P0 defect or oracle-divergence entry has been registered; this does not assert gate closure."
+    "review_note": "Two PORT-004 static-analysis defects are diagnosed and awaiting a fix plus dependent gate evidence."
   }
 }
