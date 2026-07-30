@@ -47,6 +47,9 @@ def create_fixture(
         encoding="utf-8",
     )
     (root / "contract-tests/p001-contract.log").write_text("randomized repeated suite PASS\n", encoding="utf-8")
+    (root / "logs").mkdir(parents=True)
+    (root / "logs/port001-gate.log").write_text("RUNNING\n", encoding="utf-8")
+    write_json(root / "results/port001-gate.json", {"status": "RUNNING"})
     write_json(root / "results/port001-host-profile.json", {"status": "PASS", "checked_tools": [], "checked_packages": []})
     for role in ("run-a", "run-b"):
         run = root / role
@@ -247,6 +250,25 @@ def main() -> int:
                 raise SystemExit(f"portable baseline/schema validation failed: {baseline_name}\n{validation.stderr}")
         if sha256_file(root / "profile/requirements-p0.txt") != sha256_file(repository / "tools/requirements-p0.txt"):
             raise SystemExit("portable requirements lock digest differs from the repository lock")
+
+        raw_index = json.loads((root / "comparison/port001-raw-artifact-index.json").read_text(encoding="utf-8"))
+        indexed_paths = {item["path"] for item in raw_index["artifacts"]}
+        forbidden_mutable = {
+            "logs/port001-comparator.stderr.log",
+            "logs/port001-comparator.stdout.log",
+            "logs/port001-gate.log",
+            "results/port001-gate.json",
+        }
+        if indexed_paths & forbidden_mutable or set(raw_index["excluded_downstream_mutable_roles"]) != forbidden_mutable:
+            raise SystemExit("raw artifact index did not exclude exactly the downstream-mutable gate/comparator roles")
+        for item in raw_index["artifacts"]:
+            indexed_path = root / item["path"]
+            if (
+                not indexed_path.is_file()
+                or indexed_path.stat().st_size != item["size_bytes"]
+                or sha256_file(indexed_path) != item["sha256"]
+            ):
+                raise SystemExit(f"raw artifact index contains a stale or missing entry: {item['path']}")
 
         gate_path = root / "comparison/port001-gate-result.json"
         valid_gate = json.loads(gate_path.read_text(encoding="utf-8"))

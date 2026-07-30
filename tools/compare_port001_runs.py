@@ -363,11 +363,17 @@ def write_raw_artifact_index(artifact_root: pathlib.Path, comparison_root: pathl
             roots.append(artifact_root / role / subdirectory)
     records = []
     seen: set[pathlib.Path] = set()
+    downstream_mutable = {
+        artifact_root / "logs/port001-gate.log",
+        artifact_root / "results/port001-gate.json",
+    }
     for root in roots:
         if not root.is_dir():
             continue
         for path in sorted(root.rglob("*")):
             if not path.is_file() or path.is_symlink() or path in seen:
+                continue
+            if path in downstream_mutable:
                 continue
             if path.parent == artifact_root / "logs" and path.name.startswith("port001-comparator."):
                 continue
@@ -389,7 +395,21 @@ def write_raw_artifact_index(artifact_root: pathlib.Path, comparison_root: pathl
                 }
             )
     output = comparison_root / "port001-raw-artifact-index.json"
-    write_canonical(output, {"artifacts": records, "root_role": "$ARTIFACT_ROOT", "schema_version": 1})
+    write_canonical(
+        output,
+        {
+            "artifacts": records,
+            "excluded_downstream_mutable_roles": [
+                "logs/port001-comparator.stderr.log",
+                "logs/port001-comparator.stdout.log",
+                "logs/port001-gate.log",
+                "results/port001-gate.json",
+            ],
+            "index_scope": "immutable pre-decision inputs and binary-inspection outputs",
+            "root_role": "$ARTIFACT_ROOT",
+            "schema_version": 1,
+        },
+    )
     return output
 
 
