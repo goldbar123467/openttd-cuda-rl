@@ -389,8 +389,12 @@ class Harness:
         subpath = outer / "openttd-upstream"
         sub_added = False
         try:
-            shutil.copytree(self.runner, outer / "oracle/runner")
-            shutil.copytree(self.manifests, outer / "oracle/manifests")
+            # A pre-PORT001 lineage worktree did not contain these files, while
+            # a clean checkout of the committed milestone does. Overlay the
+            # live test inputs in both cases so the same mutation fixtures run
+            # before and after the harness itself becomes tracked.
+            shutil.copytree(self.runner, outer / "oracle/runner", dirs_exist_ok=True)
+            shutil.copytree(self.manifests, outer / "oracle/manifests", dirs_exist_ok=True)
             (outer / "tools").mkdir(parents=True, exist_ok=True)
             shutil.copy2(self.repository / "tools/verify_host_profile.py", outer / "tools/verify_host_profile.py")
             if with_submodule:
