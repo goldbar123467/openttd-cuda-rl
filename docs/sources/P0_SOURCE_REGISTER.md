@@ -1,0 +1,99 @@
+# P0 Source Register
+
+## Register policy
+
+Access date for all initial entries is 2026-07-30. Exact-commit OpenTTD URLs and
+the local pinned submodule are behavioral authority. URLs to current branches are
+never substituted. Every additionally reached helper, table, cache, timer, pool,
+or content source is added before its behavior is represented in a schema or test.
+
+| ID | Source and location | Version or commit | Relevant subject | Governs |
+|---|---|---|---|---|
+| `AUTH-001` | `OPENTTD_P0_ORACLE_CONTRACT_AGENT_PROMPT.md` | SHA-256 `8421e6555d9c6f6671862261096010f5c25e23349adb947ba9ab22af5b2c67f2` | Complete P0 execution contract | all P0 files and gates |
+| `AUTH-002` | `NEXT_STAGES_IMPLEMENTATION_HANDOFF.md` | SHA-256 `663096b12c8e53b2fce550161385fdb67f25404d47262acf4f0f23d5209834e0` | Approved direction, authority order, next stages | ADRs 0001-0006; all ports |
+| `AUTH-003` | `OpenTTD_CUDA_RL_REVERSE_ENGINEERING_REPORT.md` | SHA-256 `534a835e4ad788833f629d82fc8690302bd8d65050e3644081e129a746ec6443` | Consolidated reverse engineering | fixture, projection, parity decisions |
+| `AUTH-004` | `research-notes/00-repository-metadata.md` | SHA-256 `72ba9a77626613d2bda8896b47ebd1660432a515dee9929aa85296e5fe142bb9` | Repository identity | ADR 0001; source manifest |
+| `AUTH-005` | `research-notes/01-repository-build.md` | SHA-256 `73b7f787434cc90656b3c1e3ba4c7e03f46e89af8324a31ceb6c9412b5ca47ed` | Build graph, dependencies, tests | ADR 0002; PORT-001 runners/manifests |
+| `AUTH-006` | `research-notes/02-docs-legal.md` | SHA-256 `25ee61ea6e1fe94b5f7de44a4253e62150fd2c8935b7664fa0e3b5f5f73ad265` | GPL, assets, contribution policy | ADRs 0001 and 0006; licenses/provenance |
+| `AUTH-007` | `research-notes/03-gameplay-sim-path.md` | SHA-256 `64bf11ea8e6cab6e6ca46eb13658284a213f2d325d480d123c8621ceaf1a307f` | Commands, clocks, cargo, economy, YAPF | ADRs 0003 and 0005; instrumentation/fields |
+| `AUTH-008` | `research-notes/04-end-to-end-workflow.md` | SHA-256 `ae9fc8b73797016f48c77b7f9278636508112bd0fdbc6b6a78d1612b904fbd82` | Construction-to-delivery/save flow | fixture and continuation tests |
+| `AUTH-009` | `research-notes/05-clean-room-cuda-mvp.md` | SHA-256 `ed8ce7c2609e273a5ea5fdae61df71e979c398ba6b8c547f4a395f9c40468553` | Historical optional plumbing; not fidelity proof | forbidden-scope boundary only |
+| `AUTH-010` | `research-notes/06-ui-persistence-render.md` | SHA-256 `bfaa434fc96c8e4a87f29099007c82abb9308eb7cce4d266dc29a027a9ab6d91` | Command/UI boundary, save, rendering, assets | fixture input boundary; forbidden UI state |
+| `AUTH-011` | `research-notes/07-build-verification.md` | SHA-256 `6feb6b7f611b38f8e3aed1cbf6e658c69125c22c8312a752c242939d730be93e` | Earlier build and OpenGFX evidence | PORT-001 hypotheses to reverify |
+| `AUTH-012` | `research-notes/08-mvp-product-audit.md` | SHA-256 `f03f8a9ed537e3367628d9d1ccf37c0f7f02da3dd1467fff78627e4e8665f182` | Scope audit and parity corrections | all scope and projection decisions |
+| `AUTH-013` | `research-notes/09-verification-audit.md` | SHA-256 `0a51f7818e51e5e0e83026cde1137cf5127b4ce924454a51de4a974c81cb98d6` | Independent audit selecting exact-port direction | authority hierarchy and gate strictness |
+| `AUTH-014` | `research-notes/10-netherite-reference.md` | SHA-256 `c2555b640971115608cbeeb8b0cde833c84ab1a6f96f65dc7e8a5648a505c93b` | Testing methodology lessons only | test strategy; never behavioral proof |
+
+## Pinned OpenTTD starting anchors
+
+All entries below use commit `29f808ef0022064e6d9a83c8476d1e0f4686af86`
+and local root `openttd-upstream/`. The repository tree is also available at the
+[exact commit](https://github.com/OpenTTD/OpenTTD/tree/29f808ef0022064e6d9a83c8476d1e0f4686af86).
+
+| ID | Exact source | Relevant subject | Initial governed artifacts |
+|---|---|---|---|
+| `OTTD-001` | [`src/openttd.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/openttd.cpp) | main loop, game load/start, tick dispatch | instrumentation patches 0002, 0004, 0007 |
+| `OTTD-002` | [`src/command_func.h`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/command_func.h) | command declarations and dispatch interfaces | command registry; patch 0003 |
+| `OTTD-003` | [`src/command.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/command.cpp) | command test/execute machinery and results | command registry; patch 0003; comparator fields |
+| `OTTD-004` | [`src/road_gui.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/road_gui.cpp) | normal road command origins | fixture command mapping only; GUI excluded from authority |
+| `OTTD-005` | [`src/road_cmd.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/road_cmd.cpp) | road construction/removal and tile behavior | ADR 0003; command/field registries; patches 0003-0006 |
+| `OTTD-006` | [`src/station_cmd.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/station_cmd.cpp) | road-stop construction and station behavior | fixture, command registry, pool projection |
+| `OTTD-007` | [`src/station_base.h`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/station_base.h) | station pool and cargo state | field registry; patch 0005/0006 |
+| `OTTD-008` | [`src/vehicle_cmd.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/vehicle_cmd.cpp) | vehicle construction, sale, start/stop, service | fixture commands; vehicle projection |
+| `OTTD-009` | [`src/roadveh_cmd.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/roadveh_cmd.cpp) | road-vehicle ticks, movement, loading | field registry; patches 0005/0006; continuation |
+| `OTTD-010` | [`src/order_cmd.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/order_cmd.cpp) | order mutation and validation | fixture commands; order pool projection |
+| `OTTD-011` | [`src/pathfinder/yapf/yapf_road.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/pathfinder/yapf/yapf_road.cpp) | road route choice and cache interactions | route diagnostics; cache classification |
+| `OTTD-012` | [`src/economy.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/economy.cpp) | delivery, payment, company ledger | ledger and cargo fields; continuation evidence |
+| `OTTD-013` | [`src/saveload/saveload.cpp`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/src/saveload/saveload.cpp) | save/load boundaries and compatibility | fixture identity; cache/continuation tests |
+| `OTTD-014` | [`COMPILING.md`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/COMPILING.md) | supported build procedure and dependencies | ADR 0002; reference runners |
+| `OTTD-015` | [`CODINGSTYLE.md`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/CODINGSTYLE.md) | upstream C++ conventions | instrumentation patches |
+| `OTTD-016` | [`CONTRIBUTING.md`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/CONTRIBUTING.md) | contribution and AI policy | ADR 0001; publication gate |
+| `OTTD-017` | [`COPYING.md`](https://github.com/OpenTTD/OpenTTD/blob/29f808ef0022064e6d9a83c8476d1e0f4686af86/COPYING.md) | GPL terms and notices | ADR 0001; `LICENSES/` |
+
+The reached-source section is intentionally append-only during implementation.
+Initial anchors do not claim projection completeness.
+
+## Content and licensing sources
+
+| ID | Source | Version | Relevant subject | Governs |
+|---|---|---|---|---|
+| `CONTENT-001` | [OpenGFX releases](https://www.openttd.org/downloads/opengfx-releases/latest) | OpenGFX 8.0; archive SHA-256 `43a0c1dabf39cb865394f3a6cc36d4da5c10ecfaaf55652043104806810903be` | verified base graphics acquisition and installed profile | OpenGFX manifest, acquisition runner, fixture identity |
+| `LICENSE-001` | [SPDX GPL-2.0-only](https://spdx.org/licenses/GPL-2.0-only.html) | SPDX license list entry accessed 2026-07-30 | license identifier and text reference | ADR 0001, license scan, notices |
+
+## Build, representation, and integrity specifications
+
+| ID | Source | Version | Relevant subject | Governs |
+|---|---|---|---|---|
+| `BUILD-001` | [CMake manual](https://cmake.org/cmake/help/v3.28/) | 3.28 | configuration and build behavior | CMake files and ADR 0002 |
+| `BUILD-002` | [CMake Presets manual](https://cmake.org/cmake/help/v3.28/manual/cmake-presets.7.html) | 3.28 | supported preset schema and inheritance | `CMakePresets.json` |
+| `BUILD-003` | [CTest manual](https://cmake.org/cmake/help/v3.28/manual/ctest.1.html) and [testing guide](https://cmake.org/cmake/help/v3.28/guide/tutorial/Testing%20and%20CTest.html) | 3.28 | inventory, JUnit, timeouts, no-tests error | test runners and CI |
+| `BUILD-004` | [Git submodule documentation](https://git-scm.com/docs/git-submodule) | installed Git documentation | pinned submodule initialization and verification | preflight and worktree runners |
+| `DATA-001` | [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12) | 2020-12 | manifest and registry validation | all JSON schemas/loaders |
+| `DATA-002` | [RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785) | RFC 8785 | canonical JSON identity bytes | canonical JSON adapter and manifests |
+| `DATA-003` | [NIST FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/upd1/final) | FIPS 180-4 | SHA-256 definition | vetted SHA-256 adapter and digest tools |
+| `DATA-004` | [ISO C17 committee draft N2176](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2176.pdf) | N2176 | C17 language contract | all `parity/` native code |
+| `DATA-005` | [`SOURCE_DATE_EPOCH`](https://reproducible-builds.org/docs/source-date-epoch/) | specification accessed 2026-07-30 | reproducible timestamp environment | ADR 0002 and build runners |
+| `DATA-006` | [SLSA provenance model](https://slsa.dev/provenance/v1) | v1 | evidence statement vocabulary, without level claim | evidence schema and ADR 0006 |
+
+## Analysis and testing sources
+
+| ID | Source | Version or publication | Relevant subject | Governs |
+|---|---|---|---|---|
+| `TEST-001` | [AddressSanitizer](https://clang.llvm.org/docs/AddressSanitizer.html) | installed/pinned Clang version recorded in toolchain manifest | memory-safety instrumentation | sanitizer CMake and CI |
+| `TEST-002` | [UndefinedBehaviorSanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html) | installed/pinned Clang version recorded in toolchain manifest | undefined-behavior instrumentation | sanitizer CMake and CI |
+| `TEST-003` | [libFuzzer](https://llvm.org/docs/LibFuzzer.html) and [SanitizerCoverage](https://clang.llvm.org/docs/SanitizerCoverage.html) | installed/pinned LLVM version | coverage-guided fuzzing | fuzz targets and campaigns |
+| `TEST-004` | [Clang-Tidy](https://clang.llvm.org/extra/clang-tidy/) and [Clang Static Analyzer](https://clang.llvm.org/docs/analyzer/user-docs/) | installed/pinned LLVM version | static analysis | `p0_static.sh` and CI |
+| `TEST-005` | [ShellCheck](https://github.com/koalaman/shellcheck) | installed package version recorded in dependency manifest | shell analysis | every P0 Bash script |
+| `TEST-006` | William M. McKeeman, [Differential Testing for Software](https://www.cs.tufts.edu/comp/150FP/archive/bill-mckeeman/DifferentailTesting.pdf) | 1998 | independent differential comparison | decoder/comparator test strategy |
+| `TEST-007` | Andreas Zeller and Ralf Hildebrandt, [Simplifying and Isolating Failure-Inducing Input](https://doi.org/10.1109/32.988498) | 2002 | delta-debugging/minimization | valid-prefix minimizer strategy |
+| `TEST-008` | [SQLite testing strategy](https://sqlite.org/testing.html) and [quality-management plan](https://sqlite.org/qmplan.html) | accessed 2026-07-30 | adversarial, independent, traceable testing | test strategy, evidence, mutation plan |
+
+## Reached-source expansion rule
+
+Before a new OpenTTD behavior is encoded, its call path is traced to all reached
+tile procedures, map accessors, pools and allocation helpers, timer classes,
+settings, caches, cargo packets, company/accounting code, engine/industry/content
+tables, and helper templates. Each reached file receives a stable `OTTD-R-*` entry
+with exact-commit URL, relevant symbols or lines, fields governed, tests governed,
+and the patch that observes it. A missing reached source is a traceability failure,
+not an invitation to infer behavior.

@@ -9,3 +9,12 @@ __pycache__/
 *.py[cod]
 
 .DS_Store
+.ipynb_checkpoints/
+
+# P0 generated artifacts must not be committed. Compact, reviewed evidence lives
+# under evidence/p0 instead.
+.p0-artifacts/
+build-p0-*/
+install-p0-*/
+*.profraw
+*.profdata
