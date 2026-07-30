@@ -1,0 +1,17 @@
+{
+  "$schema": "../../oracle/manifests/schema/defect-divergence-ledger.schema.json",
+  "schema_version": 1,
+  "schema_sha256": "50050fa28f95e80ca998c9ef3679ff6bc15b73ef2dad063594a0190ee40e93c3",
+  "ledger_kind": "p0-defect-divergence-ledger",
+  "scope": "PORT-001-through-PORT-005",
+  "entries": [],
+  "open_counts": {
+    "defects": 0,
+    "divergences": 0,
+    "total_nonclosed": 0
+  },
+  "diagnostics": {
+    "last_reviewed_date": "2026-07-30",
+    "review_note": "No formal P0 defect or oracle-divergence entry has been registered; this does not assert gate closure."
+  }
+}

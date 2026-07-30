@@ -160,6 +160,33 @@ def semantic_validate(schema_path: Path, instance: Any) -> None:
             unexpected = sorted(set(check_ids) - PORT001_MANDATORY_CHECK_IDS)
             raise ValueError(f"PORT-001 PASS gate check set is not exact: missing={missing}, unexpected={unexpected}")
 
+    if schema_path.name == "defect-divergence-ledger.schema.json":
+        entries = instance.get("entries")
+        open_counts = instance.get("open_counts")
+        if not isinstance(entries, list) or not isinstance(open_counts, dict):
+            raise ValueError("defect/divergence ledger collections are malformed")
+        entry_ids = [entry.get("id") for entry in entries if isinstance(entry, dict)]
+        if len(entry_ids) != len(entries) or len(entry_ids) != len(set(entry_ids)):
+            raise ValueError("defect/divergence ledger IDs must be unique strings")
+        nonclosed = {"OPEN", "DIAGNOSED", "FIXED_PENDING_GATE"}
+        defects = sum(
+            entry.get("kind") == "DEFECT" and entry.get("status") in nonclosed
+            for entry in entries
+        )
+        divergences = sum(
+            entry.get("kind") == "DIVERGENCE" and entry.get("status") in nonclosed
+            for entry in entries
+        )
+        expected_counts = {
+            "defects": defects,
+            "divergences": divergences,
+            "total_nonclosed": defects + divergences,
+        }
+        if open_counts != expected_counts:
+            raise ValueError(
+                f"defect/divergence open counts disagree with entries: expected {expected_counts}, got {open_counts}",
+            )
+
 
 def validate(schema_path: Path, instance_path: Path, profile_lock_path: Path | None = None) -> tuple[Any, bytes]:
     schema = load_strict_json(schema_path)

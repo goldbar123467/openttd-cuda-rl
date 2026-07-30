@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/oracle/manifests/schema/defect-divergence-ledger.schema.json",
+  "title": "OpenTTD P0 append-only defect and divergence ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "ledger_kind",
+    "scope",
+    "entries",
+    "open_counts",
+    "diagnostics"
+  ],
+  "properties": {
+    "$schema": { "const": "../../oracle/manifests/schema/defect-divergence-ledger.schema.json" },
+    "schema_version": { "const": 1 },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "ledger_kind": { "const": "p0-defect-divergence-ledger" },
+    "scope": { "const": "PORT-001-through-PORT-005" },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "open_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defects", "divergences", "total_nonclosed"],
+      "properties": {
+        "defects": { "type": "integer", "minimum": 0 },
+        "divergences": { "type": "integer", "minimum": 0 },
+        "total_nonclosed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["last_reviewed_date", "review_note"],
+      "properties": {
+        "last_reviewed_date": { "type": "string", "format": "date" },
+        "review_note": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "git_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "size_bytes"],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "reproducer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relative_path", "sha256", "size_bytes", "rerun_argv"],
+      "properties": {
+        "relative_path": { "$ref": "#/$defs/relative_path" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "rerun_argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "closure_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relative_path", "sha256", "size_bytes"],
+      "properties": {
+        "relative_path": { "$ref": "#/$defs/relative_path" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "discovery_date_diagnostic",
+        "discovering_test_id",
+        "source_identity",
+        "build_identity",
+        "fixture_identity",
+        "command_input_identity",
+        "earliest_boundary",
+        "location",
+        "expected_value",
+        "observed_value",
+        "minimized_reproducer",
+        "impact",
+        "root_cause",
+        "owner",
+        "fix_revision",
+        "regression_test",
+        "closure_evidence",
+        "status"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^(DEF|DIV)-P0-[0-9]{4}$" },
+        "kind": { "type": "string", "enum": ["DEFECT", "DIVERGENCE"] },
+        "discovery_date_diagnostic": { "type": "string", "format": "date" },
+        "discovering_test_id": { "type": "string", "pattern": "^[A-Z0-9][A-Z0-9_.-]+$" },
+        "source_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outer_commit", "submodule_commit"],
+          "properties": {
+            "outer_commit": { "$ref": "#/$defs/git_commit" },
+            "submodule_commit": { "const": "29f808ef0022064e6d9a83c8476d1e0f4686af86" }
+          }
+        },
+        "build_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["profile", "executable"],
+          "properties": {
+            "profile": { "type": "string", "enum": ["local-release", "ci-smoke", "focused-development"] },
+            "executable": { "$ref": "#/$defs/identity" }
+          }
+        },
+        "fixture_identity": { "$ref": "#/$defs/identity" },
+        "command_input_identity": { "$ref": "#/$defs/identity" },
+        "earliest_boundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["record_sequence", "tick", "boundary_kind"],
+          "properties": {
+            "record_sequence": { "type": "integer", "minimum": 0 },
+            "tick": { "type": "integer", "minimum": 0 },
+            "boundary_kind": {
+              "type": "string",
+              "enum": ["identity", "command-test", "command-execute", "post-command", "post-tick", "checkpoint", "terminal", "tooling"]
+            }
+          }
+        },
+        "location": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["field_id"],
+              "properties": { "field_id": { "type": "integer", "minimum": 1, "maximum": 4294967295 } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["subsystem"],
+              "properties": { "subsystem": { "type": "string", "minLength": 1 } }
+            }
+          ]
+        },
+        "expected_value": {},
+        "observed_value": {},
+        "minimized_reproducer": { "$ref": "#/$defs/reproducer" },
+        "impact": { "type": "string", "minLength": 1 },
+        "root_cause": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "fix_revision": { "oneOf": [{ "$ref": "#/$defs/git_commit" }, { "type": "null" }] },
+        "regression_test": { "type": ["string", "null"], "minLength": 1 },
+        "closure_evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/closure_artifact" }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["OPEN", "DIAGNOSED", "FIXED_PENDING_GATE", "CLOSED", "REJECTED_NOT_A_DEFECT"]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "DEFECT" } }, "required": ["kind"] },
+          "then": { "properties": { "id": { "pattern": "^DEF-P0-[0-9]{4}$" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "DIVERGENCE" } }, "required": ["kind"] },
+          "then": { "properties": { "id": { "pattern": "^DIV-P0-[0-9]{4}$" } } }
+        },
+        {
+          "if": { "properties": { "status": { "enum": ["CLOSED", "REJECTED_NOT_A_DEFECT"] } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "fix_revision": { "$ref": "#/$defs/git_commit" },
+              "regression_test": { "type": "string", "minLength": 1 },
+              "closure_evidence": { "minItems": 1 }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
