@@ -118,6 +118,9 @@ reuse --suppress-deprecation lint \
 "${P0_REPOSITORY_ROOT}/scripts/ci/p005_schema_tests.sh" \
     --tools-python "${tools_python}" \
     >"${artifact_root}/field-schema-validation.log"
+"${P0_REPOSITORY_ROOT}/scripts/ci/p0_traceability.sh" \
+    --tools-python "${tools_python}" \
+    >"${artifact_root}/traceability-validation.log" 2>&1
 
 after_status=$(git -C "${P0_REPOSITORY_ROOT}" status --porcelain=v1 --untracked-files=all)
 [[ "${before_status}" == "${after_status}" ]] || p0_die 'static checks changed the source worktree' 70
