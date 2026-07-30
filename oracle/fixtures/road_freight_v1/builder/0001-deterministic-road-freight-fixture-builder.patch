@@ -4,8 +4,8 @@ Date: Thu, 30 Jul 2026 00:00:00 +0000
 Subject: [PATCH] P0 fixture builder: create deterministic road freight save
 
 ---
- src/openttd.cpp | 214 +++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 213 insertions(+), 1 deletion(-)
+ src/openttd.cpp | 215 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 214 insertions(+), 1 deletion(-)
 
 diff --git a/src/openttd.cpp b/src/openttd.cpp
 index 7325b4c..e7ca4d9 100644
@@ -31,7 +31,7 @@ index 7325b4c..e7ca4d9 100644
  
  #include "table/strings.h"
  
-@@ -111,6 +117,202 @@ bool _save_config = false;
+@@ -111,6 +117,203 @@ bool _save_config = false;
  bool _request_newgrf_scan = false;
  NewGRFScanCallback *_request_newgrf_scan_callback = nullptr;
  
@@ -83,6 +83,7 @@ index 7325b4c..e7ca4d9 100644
 +	_settings_newgame.vehicle.road_side = RoadVehicleDrivingSide::Right;
 +	_settings_newgame.vehicle.max_roadveh = 1;
 +	_settings_newgame.vehicle.never_expire_vehicles = false;
++	_settings_newgame.vehicle.smoke_amount = 2;
 +	_settings_newgame.station.modified_catchment = false;
 +	_settings_newgame.station.serve_neutral_industries = true;
 +	_settings_newgame.station.station_spread = 12;

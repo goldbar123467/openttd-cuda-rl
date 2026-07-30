@@ -104,6 +104,7 @@ SETTING_TYPES: dict[str, tuple[str, str]] = {
     "vehicle.roadveh_slope_steepness": ("integer", "behavior"),
     "vehicle.servint_ispercent": ("boolean", "behavior"),
     "vehicle.servint_roadveh": ("integer", "behavior"),
+    "vehicle.smoke_amount": ("integer", "behavior"),
 }
 
 

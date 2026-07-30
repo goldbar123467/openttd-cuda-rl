@@ -142,6 +142,14 @@ class RegistryTest(unittest.TestCase):
             if field["cache_classification"] == "authoritative_cache":
                 self.assertNotEqual(field["cache_invalidation_trigger"], "not_applicable")
 
+    def test_P005_SRC_comment_or_nonfirst_locator_is_rejected(self) -> None:
+        mutant = copy.deepcopy(self.registry)
+        field = mutant["fields"][0]
+        field["source_file"] = "src/core/kdtree.hpp"
+        field["source_symbol"] = "Kdtree"
+        field["source_line_diagnostic"] = 405  # Documentation comment, not code.
+        self.assert_registry_rejected(mutant)
+
     def test_P005_generated_C17_registry_agrees(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "check.c"
@@ -225,12 +233,57 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(self.by_path["station.goods.entry_count"]["shape"], "scalar")
         self.assertEqual(self.by_path["engine.road_engine_ids"]["count_source_field"], "engine.road_engine_count")
         self.assertEqual(self.by_path["industry.item.accepted_history_presence"]["count_source_field"], "industry.accepted_slot_count")
-        for prefix in ("company", "industry", "station", "road_stop", "vehicle", "order_list", "cargo_packet", "town", "depot", "engine", "cargo_payment", "subsidy", "linkgraph"):
+        for prefix in ("company", "industry", "station", "road_stop", "vehicle", "order_list", "cargo_packet", "town", "depot", "engine", "cargo_payment", "subsidy", "linkgraph", "linkgraph_job"):
             bitmap = self.by_path[f"{prefix}.pool.occupancy_bitmap"]
             self.assertEqual(bitmap["value_type"], "u64")
             self.assertEqual(bitmap["shape"], "dynamic_array")
             self.assertEqual(bitmap["count_source_field"], f"{prefix}.pool.bitmap_word_count")
             self.assertEqual(self.by_path[f"{prefix}.pool.native_free_list"]["classification"], "out_of_scope_unreachable")
+
+    def test_reached_state_families_and_native_metadata_regressions(self) -> None:
+        expected_authoritative = {
+            "settings.vehicle.smoke_amount",
+            "map.animated_tiles",
+            "industry.builder.wanted_industries",
+            "industry.builder.wait_counts",
+            "effect_vehicle.item.ids",
+            "effect_vehicle.item.current_sprite_id",
+            "station.goods.packet_map_next_hop_keys",
+            "station.item.industries_near_distances",
+            "road_stop.item.entries_present",
+            "order_list.order_offsets",
+            "cache.town_kdtree.node_elements",
+            "cache.station_kdtree.free_indices",
+            "linkgraph.schedule_graph_ids",
+            "linkgraph_job.item.settings.recalc_interval",
+            "linkgraph_job.graph.edge_travel_time_sums",
+        }
+        for path in expected_authoritative:
+            with self.subTest(path=path):
+                self.assertEqual(self.by_path[path]["classification"], "authoritative_full")
+
+        for prefix in ("cache.town_kdtree", "cache.station_kdtree"):
+            self.assertEqual(self.by_path[f"{prefix}.node_left_indices"]["null_sentinel"], 0xFFFFFFFFFFFFFFFF)
+            self.assertEqual(self.by_path[f"{prefix}.node_right_indices"]["null_sentinel"], 0xFFFFFFFFFFFFFFFF)
+            self.assertEqual(self.by_path[f"{prefix}.root_index"]["null_sentinel"], 0xFFFFFFFFFFFFFFFF)
+            self.assertEqual(self.by_path[f"{prefix}.free_indices"]["canonical_element_order"],
+                             "native free_list order from front to back; the last element is reused first")
+
+        self.assertEqual(self.by_path["linkgraph.node.edge_destination"]["width_bits"], 16)
+        self.assertEqual(self.by_path["linkgraph.node.edge_destination"]["null_sentinel"], 0xFFFF)
+        self.assertEqual(self.by_path["linkgraph_job.graph.edge_destination_nodes"]["null_sentinel"], 0xFFFF)
+        self.assertEqual(self.by_path["linkgraph_job.graph.node_tiles"]["null_sentinel"], 0xFFFFFFFF)
+        self.assertEqual(self.by_path["linkgraph_job.item.graph.cargo_type"]["source_symbol"], "CargoType cargo = INVALID_CARGO;")
+        self.assertEqual(self.by_path["linkgraph_job.item.graph.cargo_type"]["null_sentinel"], 0xFF)
+        self.assertEqual(self.by_path["linkgraph_job.item.join_date"]["null_sentinel"], -1)
+        self.assertEqual(self.by_path["linkgraph_job.graph.node_supply"]["maximum_capacity"], 128)
+        self.assertEqual(self.by_path["linkgraph_job.graph.edge_capacities"]["maximum_capacity"], 256)
+
+        self.assertEqual(self.by_path["station.item.string_id"]["width_bits"], 32)
+        self.assertEqual(self.by_path["vehicle.item.status"]["width_bits"], 8)
+        self.assertEqual(self.by_path["vehicle.item.waiting_random_triggers"]["width_bits"], 8)
+        self.assertEqual(self.by_path["engine.item.flags"]["width_bits"], 8)
+        self.assertEqual(self.by_path["linkgraph.item.edge_travel_times"]["width_bits"], 64)
 
     def test_offset_projection_mutants(self) -> None:
         base = self.make_projection()
@@ -284,7 +337,7 @@ class RegistryTest(unittest.TestCase):
         self.assertIn("interactive=49524631:49524631", log)
 
         settings_path = ROOT / "oracle/fixtures/road_freight_v1/settings.normalized.json"
-        self.assertEqual(hashlib.sha256(settings_path.read_bytes()).hexdigest(), "d0822a7643be7ae9189194d5dbafa61418a939b7a49064b528244e9c8046d9a2")
+        self.assertEqual(hashlib.sha256(settings_path.read_bytes()).hexdigest(), "6def2c6df29992747165e3b2c090561893d0fe4d3a80c5833f871b3ed7e584f2")
         settings = json.loads(settings_path.read_text(encoding="utf-8"))
         behavior = {entry["id"]: int(entry["value"]) if isinstance(entry["value"], bool) else entry["value"] for entry in settings["settings"] if entry["authority"] == "behavior"}
         global_registry = {field["path"][len("settings."):]: field["sample_logical_value"] for field in self.registry["fields"] if field["path"].startswith("settings.") and field["field_id"] != 2099}
@@ -292,8 +345,8 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(self.by_path["company.item.settings.vehicle.servint_ispercent"]["sample_logical_value"][0], behavior["vehicle.servint_ispercent"])
         self.assertEqual(self.by_path["company.item.settings.vehicle.servint_roadveh"]["sample_logical_value"][0], behavior["vehicle.servint_roadveh"])
         manifest = json.loads((ROOT / "oracle/fixtures/road_freight_v1/fixture.manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["normalized_settings"]["sha256"], "d0822a7643be7ae9189194d5dbafa61418a939b7a49064b528244e9c8046d9a2")
-        self.assertEqual(manifest["normalized_settings"]["authoritative_identity_sha256"], "c3ef97e6421b4dbdd06e7f44c33feeb33dd7be7ae74699a43558ff142232a91c")
+        self.assertEqual(manifest["normalized_settings"]["sha256"], "6def2c6df29992747165e3b2c090561893d0fe4d3a80c5833f871b3ed7e584f2")
+        self.assertEqual(manifest["normalized_settings"]["authoritative_identity_sha256"], "fc5667d5b48a1ee760649150762ebae2f7dd43f0ed185b5671a1d632b8f7651c")
 
 
 class InvariantTest(unittest.TestCase):
