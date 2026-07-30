@@ -211,15 +211,17 @@ uses stable internal identifiers, explicit scalar/enum values, pinned-source
 anchors, and a behavior/non-authoritative classification. It includes map,
 climate, date, frozen economy, inflation, industry production scale, manual
 cargo distribution, vehicle availability and breakdowns, acceleration,
-servicing, catchment, construction/vehicle costs, loan/interest, disasters,
-competitors, town growth, maintenance, autosave, pause behavior, timekeeping,
-AI multiplayer behavior, and load cadence.
+servicing, catchment, construction legality, construction/vehicle costs,
+road-vehicle queueing and every reached YAPF road penalty, loan/interest,
+disasters, competitors, town growth, maintenance, LinkGraph scheduling and
+cargo-class distribution, autosave, pause behavior, timekeeping, AI multiplayer
+behavior, and load cadence.
 
-The authoritative settings identity excludes only two source-proven client
-controls: autosave interval and pause-on-newgame. Both are still frozen for
-isolated replay, and a user configuration override of either is a preflight
-failure. Locale, timezone, comments, GUI layout, recent-file history, and user
-paths are not exporter inputs.
+The authoritative settings identity excludes only three source-proven client
+controls: autosave interval, autosave-on-exit, and pause-on-newgame. All three
+remain frozen for isolated replay, and a user configuration override of any is
+a preflight failure. Locale, timezone, comments, GUI layout, recent-file
+history, and user paths are not exporter inputs.
 
 Content is exactly the committed `opengfx-8.0` baseline profile, including
 installed tar SHA-256
