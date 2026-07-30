@@ -99,10 +99,29 @@ tool displays shifted diagnostic line numbers.
 | `OTTD-R-036` | `src/pathfinder/yapf/yapf_road.cpp:338-405` | road path-vector construction | route diagnostics and road-path cache policy |
 | `OTTD-R-037` | `src/tests/CMakeLists.txt:1-23`; `cmake/scripts/Regression.cmake:17-127` | native unit inventory and saved-fixture/null-driver regression pattern | PORT-001 inventory and oracle integration tests |
 | `OTTD-R-038` | `docs/debugging_desyncs.md:3-25`; `docs/desync.md:20-69,140-151` | command recording, deterministic model and cache-debug guidance | nonperturbation and cache validation strategy |
+| `OTTD-R-039` | `src/settings_type.h:84-716` | native difficulty, economy, vehicle, pathfinder, station-catchment and company-service settings | registry `2000`-`2065`, `2099`, `4024`-`4025`, `4060`-`4063`; patches 0005-0006 |
+| `OTTD-R-040` | `src/economy_type.h:45-195` | stored `Economy`, `Price`, `Prices` and runtime inflation/payment inputs | registry `1040`-`1048`, `4009`; patches 0005-0006 |
+| `OTTD-R-041` | `src/cargotype.h:85-107,190-200` | `CargoSpec` initial/current payment and fixed cargo-type cardinality | registry `1052`-`1053`, `6060`; patches 0005-0006 |
+| `OTTD-R-042` | `src/depot_base.h:20-26` | depot identity, tile, town association, town counter and construction date | registry `12110`-`12114`; patches 0005-0006 |
+| `OTTD-R-043` | `src/engine_base.h:28-70` | engine class/type discriminator, availability, lifecycle, reliability, preview and company mask | registry `12207`-`12208`, `12210`-`12228`; patches 0005-0006 |
+| `OTTD-R-044` | `src/engine_type.h:75-225` | complete `EngineInfo` and road-only `RoadVehicleInfo` properties | registry `12240`-`12254`, `12270`-`12281`; patches 0005-0006 |
+| `OTTD-R-045` | `src/subsidy_base.h:22-28` | subsidy cargo, remaining duration, award state, source and destination | registry `12410`-`12417`; patches 0005-0006 |
+| `OTTD-R-046` | `src/linkgraph/linkgraph.h:21-201` | graph/node/edge storage, cargo, station, capacity, usage and timestamps | registry `12505`-`12517`, `12520`-`12526`, `12530`; source-backed unreachable proofs under frozen manual distribution; patches 0005-0006 |
+| `OTTD-R-047` | `src/linkgraph/linkgraphschedule.h:23-58` | scheduled graph order and running-job ownership/order | registry `12527`-`12528`; source-backed unreachable proofs; patches 0005-0006 |
+| `OTTD-R-048` | `src/linkgraph/linkgraphjob.h:20-33` | link-graph job pool and job identity | registry `12529`; source-backed unreachable proof; patches 0005-0006 |
+| `OTTD-R-049` | `src/roadstop_base.h:21-74` | road-stop identity, tile, status, linked order, bay length and occupancy | registry `6110`-`6117`; patches 0005-0006 |
+| `OTTD-R-050` | `src/base_consist.h:17-51` | current-order timing, lateness, timetable/unbunching state, flags and service interval | registry `7160`-`7169`; patches 0005-0006 |
+| `OTTD-R-051` | `src/ground_vehicle.hpp:28-77` | ground-vehicle physics caches, flags, compatibility and display-only last speed | registry `7090`-`7099`, `7110`-`7111`; patches 0005-0006 |
+| `OTTD-R-052` | `src/vehicle_type.h:42-53` | native `BaseVehicle` type discriminator | registry `7051`; patches 0005-0006 |
+| `OTTD-R-053` | `src/town_type.h:110-125` | transported-stat old/new maxima and actual values | registry `12070`-`12073`; patches 0005-0006 |
+| `OTTD-R-054` | `src/base_station_base.h:19-20,31-87`; `src/station_base.h:144-561` | complete base-station owner/lifecycle/cache state, `GoodsEntry`, packet ownership, flows and nested share maps | registry `6010`-`6017`, `6030`-`6094`, `6200`-`6232`; patches 0005-0006 |
+| `OTTD-R-055` | `src/company_base.h:23-148` | complete infrastructure arrays, independent unit/group generators, history and allocation-controlling company state | registry `4010`-`4023`, `4030`-`4056`, `4070`-`4087`; patches 0005-0006 |
 
-The register does not yet claim that every future projection field has been
-reached. PORT-005 closes that claim through the independent source-owner and
-continuation review passes, with any additional paths appended here.
+For the frozen PORT-005 registry, every `source_file` value is now represented by
+an initial or reached entry above. This closes source-file registration only for
+registry v1 at the pinned commit; completeness still depends on the independent
+source-owner and continuation review recorded in the PORT-005 matrix. A new field,
+source pin, setting scope or reachable subsystem must append a new reached entry.
 
 ## Content and licensing sources
 

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/schema/field-registry-v1.json",
+  "title": "OpenTTD P0 authoritative field registry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "registry_major",
+    "registry_minor",
+    "source_commit",
+    "tape_projection_version",
+    "canonicalization",
+    "field_id_zero_reserved",
+    "published_ids_never_reused",
+    "complete_projection_rule",
+    "stable_reference_rule",
+    "fields"
+  ],
+  "properties": {
+    "$schema": {"const": "field-schema.schema.json"},
+    "schema_version": {"const": "openttd-p0-fields-v1"},
+    "schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "registry_major": {"const": 1},
+    "registry_minor": {"type": "integer", "minimum": 0, "maximum": 65535},
+    "source_commit": {"const": "29f808ef0022064e6d9a83c8476d1e0f4686af86"},
+    "tape_projection_version": {"const": 1},
+    "canonicalization": {"const": "RFC8785 restricted-to-I-JSON-integers-no-floats"},
+    "field_id_zero_reserved": {"const": true},
+    "published_ids_never_reused": {"const": true},
+    "complete_projection_rule": {"type": "string", "minLength": 20},
+    "stable_reference_rule": {"type": "string", "minLength": 20},
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/field"}
+    }
+  },
+  "$defs": {
+    "nonempty": {"type": "string", "minLength": 1},
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field_id", "path", "description", "classification", "value_type",
+        "tape_value_type_id", "width_bits", "signedness", "endianness", "shape",
+        "fixed_count", "count_source_field", "maximum_capacity",
+        "canonical_element_order", "owner_type", "owner_stable_id_rule",
+        "lifecycle_start", "lifecycle_end", "sampling_boundary",
+        "serialization_rule", "comparison_rule", "source_commit", "source_file",
+        "source_symbol", "native_member_expression", "source_line_diagnostic", "reached_call_path",
+        "future_influence_rationale", "cache_classification",
+        "cache_invalidation_trigger", "deterministic_rebuild_procedure",
+        "fixture_reachability_status", "sample_logical_value", "sample_scope",
+        "sample_encoded_hex", "sample_origin", "null_sentinel", "enum_encoding_rule",
+        "consumed_by_simulation", "cache_evidence_sha256", "unit_test_id", "review_status"
+        , "offset_target_count_field"
+      ],
+      "properties": {
+        "field_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "path": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*$"},
+        "description": {"type": "string", "minLength": 12},
+        "classification": {"enum": ["authoritative_full", "authoritative_periodic", "derived_rebuild", "diagnostic", "out_of_scope_unreachable"]},
+        "value_type": {"enum": ["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "bytes", "stable_id", "bitset", "diagnostic_utf8"]},
+        "tape_value_type_id": {"type": "integer", "minimum": 1, "maximum": 12},
+        "width_bits": {"type": ["integer", "null"]},
+        "signedness": {"type": ["string", "null"], "enum": ["unsigned", "signed", null]},
+        "endianness": {"enum": ["little", "not_applicable"]},
+        "shape": {"enum": ["scalar", "fixed_array", "dynamic_array", "bitset"]},
+        "fixed_count": {"type": ["integer", "null"], "minimum": 1},
+        "count_source_field": {"type": ["string", "null"]},
+        "offset_target_count_field": {"type": ["string", "null"]},
+        "maximum_capacity": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "canonical_element_order": {"$ref": "#/$defs/nonempty"},
+        "owner_type": {"$ref": "#/$defs/nonempty"},
+        "owner_stable_id_rule": {"type": "string", "minLength": 8},
+        "lifecycle_start": {"$ref": "#/$defs/nonempty"},
+        "lifecycle_end": {"$ref": "#/$defs/nonempty"},
+        "sampling_boundary": {"type": "string", "minLength": 20},
+        "serialization_rule": {"type": "string", "minLength": 20},
+        "comparison_rule": {"type": "string", "minLength": 20},
+        "source_commit": {"const": "29f808ef0022064e6d9a83c8476d1e0f4686af86"},
+        "source_file": {"type": "string", "pattern": "^src/.+"},
+        "source_symbol": {"$ref": "#/$defs/nonempty"},
+        "native_member_expression": {"$ref": "#/$defs/nonempty"},
+        "source_line_diagnostic": {"type": "integer", "minimum": 1},
+        "reached_call_path": {"type": "string", "minLength": 8},
+        "future_influence_rationale": {"type": "string", "minLength": 24},
+        "cache_classification": {"enum": ["not_cache", "authoritative_cache", "derived_rebuild", "diagnostic_cache", "unreachable_cache"]},
+        "cache_invalidation_trigger": {"$ref": "#/$defs/nonempty"},
+        "deterministic_rebuild_procedure": {"$ref": "#/$defs/nonempty"},
+        "fixture_reachability_status": {"$ref": "#/$defs/nonempty"},
+        "sample_logical_value": {
+          "oneOf": [
+            {"type": "integer"},
+            {"type": "string"},
+            {"type": "array", "minItems": 1, "items": {"oneOf": [{"type": "integer"}, {"type": "string"}]}}
+          ]
+        },
+        "sample_scope": {"enum": ["complete_value", "one_element"]},
+        "sample_encoded_hex": {"type": "string", "pattern": "^(?:[0-9a-f]{2})*$"},
+        "sample_origin": {"type": "string", "minLength": 12},
+        "null_sentinel": {"type": ["integer", "string", "null"]},
+        "enum_encoding_rule": {"type": "string", "minLength": 8},
+        "consumed_by_simulation": {"type": "boolean"},
+        "cache_evidence_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "unit_test_id": {"type": "string", "pattern": "^P005-FIELD-[0-9]{5}$"},
+        "review_status": {"const": "reviewed_source_owner_and_continuation"}
+      }
+    }
+  }
+}
