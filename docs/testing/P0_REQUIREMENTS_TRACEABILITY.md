@@ -21,13 +21,13 @@ to `PASS` only after its referenced gate runs successfully.
 | `G0-004` | Verify the exact pinned, clean submodule | ADR 0001 | `evidence/p0/gate0/preflight.md` | PASS |
 | `G0-005` | Inspect visibility without changing it | ADR 0001 | `evidence/p0/gate0/preflight.md` | PASS |
 | `G0-006` | Inspect tracked, untracked, and ignored content for credentials and generated artifacts | `.gitignore`; publication policy | `evidence/p0/gate0/preflight.md` | PASS |
-| `G0-007` | Work on the dedicated non-main P0 branch | ADR 0001 | branch name and pushed-commit proof | IN PROGRESS |
+| `G0-007` | Work on the dedicated non-main P0 branch | ADR 0001 | `evidence/p0/gate0/push-proof.md` | PASS |
 | `G0-008` | Document public GPL treatment and upstream AI-contribution prohibition | ADR 0001 | ADR review and staged-content check | PASS |
 | `G0-009` | Define supported and forbidden P0 scope | scope documents | scope review | PASS |
 | `G0-010` | Create the initial requirements matrix and source register | this file; source register | tracked files | PASS |
 | `G0-011` | Preserve credential-safe preflight outputs | evidence policy | `evidence/p0/gate0/preflight.md` | PASS |
-| `G0-012` | Commit and push Gate 0 before instrumentation | atomic Git milestone | pushed-commit proof | IN PROGRESS |
-| `G0-013` | Stage no scalar, CUDA, viewer, or other later-phase implementation | forbidden-scope policy | staged diff review | IN PROGRESS |
+| `G0-012` | Commit and push Gate 0 before instrumentation | atomic Git milestone | `evidence/p0/gate0/push-proof.md` | PASS |
+| `G0-013` | Stage no scalar, CUDA, viewer, or other later-phase implementation | forbidden-scope policy | `evidence/p0/gate0/push-proof.md` | PASS |
 
 ## Port exit-gate matrix
 

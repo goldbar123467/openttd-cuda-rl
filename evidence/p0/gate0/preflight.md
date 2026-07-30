@@ -118,7 +118,6 @@ matched value.
 ## Gate 0 disposition
 
 All read-only preflight, authority, publication, scope, and branch-isolation checks
-passed. Gate 0 remains `IN PROGRESS` until the reviewed documentation commit is
-pushed to the user-controlled remote and its remote commit is verified. No
-source-derived instrumentation or later-phase implementation began before that
-push.
+passed. The reviewed documentation commit was pushed and independently resolved
+from the remote as recorded in `push-proof.md`; Gate 0 is `PASS`. No source-derived
+instrumentation or later-phase implementation began before that push.
