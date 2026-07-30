@@ -217,6 +217,14 @@ disasters, competitors, town growth, maintenance, LinkGraph scheduling and
 cargo-class distribution, autosave, pause behavior, timekeeping, AI multiplayer
 behavior, and load cadence.
 
+The LinkGraph table expresses recalculation defaults as 8 and 32 days. The
+fixture is created from an empty isolated configuration, so the pinned
+configuration compatibility path at `src/settings.cpp:1427-1429` converts
+those values to runtime seconds using `CalendarTime::SECONDS_PER_DAY == 2`.
+The frozen runtime values are therefore 16 and 64. A native post-load console
+probe confirmed both values from the committed save; the setting identity
+records runtime state rather than merely copying table defaults.
+
 The authoritative settings identity excludes only three source-proven client
 controls: autosave interval, autosave-on-exit, and pause-on-newgame. All three
 remain frozen for isolated replay, and a user configuration override of any is

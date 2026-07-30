@@ -8,9 +8,9 @@ Committed artifacts:
 
 - `settings.normalized.json` is canonical JSON for the exact first-fixture
   setting inventory. Its document SHA-256 is
-  `900e841dfa042109a151261cf5cbbd0b1a1d28750c18120877df6eac017f626b`;
+  `d0822a7643be7ae9189194d5dbafa61418a939b7a49064b528244e9c8046d9a2`;
   its behavior-only identity is
-  `2eb84e267e88936b19f9cfa5369396a3ef2b4b8f1f0912df3bc5422b6f211c5d`.
+  `c3ef97e6421b4dbdd06e7f44c33feeb33dd7be7ae74699a43558ff142232a91c`.
 - `fixture.manifest.json` is the strict PORT002A manifest. It binds the source,
   builder executable, map planes, objects, coordinates, content, normalized
   settings, save bytes, and ten-command plan while retaining explicit PORT002B

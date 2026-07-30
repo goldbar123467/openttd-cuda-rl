@@ -121,8 +121,8 @@
   },
   "normalized_settings": {
     "relative_path": "settings.normalized.json",
-    "sha256": "900e841dfa042109a151261cf5cbbd0b1a1d28750c18120877df6eac017f626b",
-    "authoritative_identity_sha256": "2eb84e267e88936b19f9cfa5369396a3ef2b4b8f1f0912df3bc5422b6f211c5d",
+    "sha256": "d0822a7643be7ae9189194d5dbafa61418a939b7a49064b528244e9c8046d9a2",
+    "authoritative_identity_sha256": "c3ef97e6421b4dbdd06e7f44c33feeb33dd7be7ae74699a43558ff142232a91c",
     "schema_identity": "openttd-p0-settings-v1"
   },
   "towns": [
