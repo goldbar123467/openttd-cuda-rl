@@ -116,13 +116,48 @@ multipliers, and cargo initial/current payment rates. The computed industry
 increment, Price table, and current cargo payments remain
 `authoritative_cache`; content identity plus settings is not a rebuild proof.
 
-The fixture fixes all cargo-distribution modes to manual and the validated
-command corpus cannot change them. LinkGraph pool occupancy is still emitted
-as a full zero-state assertion. Detailed node/edge families, schedule order,
-running-job order, and LinkGraphJob pool are explicit
-`out_of_scope_unreachable` source entries. If later scope permits non-manual
-distribution, that proof expires; every BaseNode/BaseEdge member plus schedule
-and job continuation state must be added before publishing a new version.
+Manual cargo distribution does not make LinkGraphs unreachable. Native
+`UpdateStationWaiting` still creates graph components and queues them, and a
+component with two nodes can spawn a `LinkGraphJob`. The registry therefore
+projects exact LinkGraph pool allocation state, every `BaseNode` and
+`BaseEdge` member, node/edge offsets, schedule and running-list order, and the
+LinkGraphJob pool. For each job it projects the immutable copied graph, all ten
+copied `LinkGraphSettings` members, and `join_date` in typed job-ID order.
+
+The worker thread's `NodeAnnotation`, `Path`, demand, edge-flow, and FlowStat
+scratch is not read while the job is active: doing so would race the worker and
+violate the instrumentation contract. This scratch is intentionally absent
+from native `LGRJ` persistence. `GetLinkGraphJobDesc` saves the immutable copied
+graph, copied settings, graph identity, and join date; after load,
+`AfterLoadLinkGraphs` calls `SpawnAll` and recomputes the worker result. The
+atomic completion/abort hints and `std::thread` object are likewise omitted by
+native persistence. They affect wall-clock readiness, not deterministic game
+state: when a due result is unfinished, production waits before joining it.
+P0 keeps the native thread path unchanged and projects only immutable job data;
+it does not join, force synchronous execution, or read mutable annotations. The
+P0 continuation campaign must exercise an actual queued/running job across two
+independent loads and 10,000 ticks and require exact `_pause_mode`, schedule,
+running-list, command, and full-projection equality. Any host-scheduling-induced
+pause difference is a hard determinism failure, not a tolerated timestamp.
+
+Tape-v1 field byte/count limits are narrower than the theoretical Cartesian
+product of every native LinkGraphJob slot and every NodeID. P0's immutable job
+columns therefore use an explicit scope bound derived from this fixture and
+command corpus: at most 64 simultaneous cargo-component jobs, two station nodes
+per component (128 flattened nodes), and two directed links per component with
+headroom to 256 flattened edges. Owner/node offset arrays are bounded at 65 and
+129. The declared commands cannot create a third station. Exceeding any bound
+is a hard unsupported-scope error before a record is written; values are never
+truncated or silently split.
+
+Reached scheduler and effect families are also explicit. `_industry_builder`
+keeps `wanted_inds` plus 240 entries of probability/minimum/target/wait state;
+the daily callback consults them before RNG and construction branches.
+`_animated_tiles` preserves native vector order because the tick loop and
+swap-with-back removal make order behaviorally relevant. Road smoke and the
+power-station chimney create persistent EffectVehicles in the shared Vehicle
+pool, so their stable IDs, animation state, current sprite, and the reached
+`vehicle.smoke_amount` setting are authoritative.
 
 ## Read-only projection adapters
 
@@ -136,7 +171,9 @@ For example, Town and station resolved-name getters are prohibited because they
 fill display caches. CargoPacket private fields and Order private members require
 narrow const reads. `RoadVehicle::path` is read directly as ordered `(trackdir,
 tile)` elements. `RoadVehPathCache` has no topology revision member, so v1 does
-not invent one.
+not invent one. The private Town and Station K-d trees use narrow const views of
+their raw node vectors and free-list vectors plus direct root/imbalance reads.
+The adapter never calls `Build`, `Rebuild`, `Insert`, `Remove`, or a lookup.
 
 ## Cache classification protocol
 
@@ -146,7 +183,15 @@ payment, timer, tie-breaking, or RNG paths are `authoritative_full`. This includ
 Town cache data, company infrastructure/unit allocation, industry nearby
 stations, station catchment/nearby/trigger state, GoodsEntry cargo/flow state,
 Vehicle/GroundVehicle caches, vehicle cargo-list caches, `OrderList` duration and
-count caches, and `RoadVehicle::path`.
+count caches, `RoadVehicle::path`, and the reached Town/Station K-d trees.
+
+Both K-d trees are authoritative caches in v1. Exact state means every node
+vector slot (including dead slots), each element and left/right index, exact
+free-list order, raw `root`, and `unbalanced`. The free list is LIFO and changes
+future node reuse; topology changes range traversal; `unbalanced` selects a
+future rebuild. `Kdtree::Clear` and an empty `Build` do not reset `root`, so an
+empty tree may retain an ignored stale raw root. The projection preserves that
+value rather than normalizing it to `SIZE_MAX`.
 
 To propose `derived_rebuild`, a future change must:
 
@@ -194,9 +239,10 @@ Any divergence invalidates a `derived_rebuild` proposal.
 ## Source-anchor standard
 
 Every entry names the pin, source-relative file, literal declaration/definition
-symbol, diagnostic line and reached call path. The validator checks the file at
-the pinned checkout and requires the symbol on the recorded line. Lines may be
-regenerated only from the same pin; a different commit is a schema failure.
+symbol, diagnostic line and reached call path. Generation and validation strip
+block and line comments, require the symbol at the reviewed first code locator,
+and reject a line that points to a comment or a different occurrence. Lines may
+be regenerated only from the same pin; a different commit is a schema failure.
 Research notes are navigation aids, never sole behavioral authority.
 
 ## Review signoff

@@ -138,20 +138,20 @@ def pool_meta(start: int, prefix: str, capacity: int, pool_symbol: str, reached:
     owner = f"{prefix}_pool"
     rule = "pool identity is the typed numeric slot index; pointer values are forbidden"
     rows = [
-        ("occupied_count", "u32", "items", 0, "Number of occupied typed pool slots."),
-        ("first_free", "u32", "first_free", 0, "Lowest slot from which native allocation scans for a free entry."),
-        ("first_unused", "u32", "first_unused", 0, "Exclusive high-water slot; all higher slots are unallocated."),
+        ("occupied_count", "u32", "size_t items", 0, "Number of occupied typed pool slots."),
+        ("first_free", "u32", "size_t first_free", 0, "Lowest slot from which native allocation scans for a free entry."),
+        ("first_unused", "u32", "size_t first_unused", 0, "Exclusive high-water slot; all higher slots are unallocated."),
     ]
     scalar_group(start, f"{prefix}.pool", source, owner, rule, rows,
                  f"The {pool_symbol} allocation cursor is continuation state.",
                  f"{pool_symbol} -> Pool::Allocate -> authoritative boundary adapter")
     word_count_id = 12531 if prefix == "linkgraph" else start + 5
-    field(word_count_id, f"{prefix}.pool.bitmap_word_count", "u32", source, "used_bitmap",
+    field(word_count_id, f"{prefix}.pool.bitmap_word_count", "u32", source, "std::vector<BitmapStorage> used_bitmap",
           "Exact native used_bitmap vector word count.",
           "Vector length and trailing or padding words alter FindFirstFree scanning and cannot be inferred from occupied logical slots.",
           owner=owner, owner_rule=rule, sample=0,
           reached_path=f"{pool_symbol} -> Pool::FindFirstFree -> authoritative boundary adapter")
-    field(start + 3, f"{prefix}.pool.occupancy_bitmap", "u64", source, "used_bitmap",
+    field(start + 3, f"{prefix}.pool.occupancy_bitmap", "u64", source, "std::vector<BitmapStorage> used_bitmap",
           "Exact native used_bitmap words, including trailing words and high padding bits.",
           "Pool iteration, validity and exact ID allocation depend on the frozen x86-64 BitmapStorage word sequence and vector length.",
           owner=owner, owner_rule=rule, shape="dynamic_array", fixed_count=None,
@@ -210,6 +210,74 @@ for item in FIELDS:
     if item["field_id"] in {1012, 1013, 1014}:
         item["classification"] = "diagnostic"
         item["future_influence_rationale"] = "This semantic callback-phase diagnostic is derived from persistent clocks and static timer registration; it is not native stored continuation state."
+
+# The town and station spatial K-d trees are reached gameplay indices.  They
+# are deliberately authoritative in v1: native insertion/removal and range
+# traversal depend on exact node shape, free-slot stack order, root and the
+# rebalance counter.  Rebuilding merely from pool membership is not accepted
+# as equivalent without the two-load and 10,000-tick experiment required by
+# the contract.
+def kdtree_fields(start: int, prefix: str, owner: str, reached_path: str) -> None:
+    source = "src/core/kdtree.hpp"
+    invalid_index = 0xFFFFFFFFFFFFFFFF
+    common = {
+        "owner": owner,
+        "owner_rule": f"singleton {prefix}; node/free-list positions are zero-based native vector indices",
+        "cache": "authoritative_cache",
+        "invalidation": "Kdtree::Build, Insert, Remove, Clear, and Rebuild mutate nodes, free_list, root, or unbalanced",
+        "rebuild": "not_applicable; v1 serializes the reached cache exactly and makes no derived-rebuild claim",
+        "reached_path": reached_path,
+    }
+    field(start, f"cache.{prefix}.node_count", "u64", source, "std::vector<node> nodes;",
+          "Exact native node-vector size, including reusable dead slots.",
+          "The vector size bounds child indices and determines whether AddNode appends after the free-slot stack is exhausted.",
+          sample=0, **common)
+    field(start + 1, f"cache.{prefix}.free_count", "u64", source, "std::vector<size_t> free_list;",
+          "Exact native free-list vector size.",
+          "Kdtree::Count and AddNode depend on this size, and the vector contents form a LIFO reuse stack.",
+          sample=0, **common)
+    field(start + 2, f"cache.{prefix}.node_elements", "stable_id", source, "T      element;",
+          "Element stored in every native node-vector slot, including dead slots.",
+          "Live element placement controls split comparisons and traversal order; dead slots are retained so the exact native vector state is explicit.",
+          shape="dynamic_array", fixed_count=None, count_source=f"cache.{prefix}.node_count", maximum_capacity=64000,
+          order="native nodes vector index ascending", sample=[0], sample_scope="one_element", **common)
+    field(start + 3, f"cache.{prefix}.node_left_indices", "u64", source, "size_t left;",
+          "Left-child index of every native node-vector slot; SIZE_MAX means absent.",
+          "Tree shape changes traversal and rebuild behavior, so child indices are continuation state.",
+          shape="dynamic_array", fixed_count=None, count_source=f"cache.{prefix}.node_count", maximum_capacity=64000,
+          order="native nodes vector index ascending", sample=[invalid_index], sample_scope="one_element", **common)
+    field(start + 4, f"cache.{prefix}.node_right_indices", "u64", source, "size_t right;",
+          "Right-child index of every native node-vector slot; SIZE_MAX means absent.",
+          "Tree shape changes traversal and rebuild behavior, so child indices are continuation state.",
+          shape="dynamic_array", fixed_count=None, count_source=f"cache.{prefix}.node_count", maximum_capacity=64000,
+          order="native nodes vector index ascending", sample=[invalid_index], sample_scope="one_element", **common)
+    field(start + 5, f"cache.{prefix}.free_indices", "u64", source, "std::vector<size_t> free_list;",
+          "Exact free node indices in native vector order.",
+          "AddNode pops the back of this vector; preserving only the free set would change future slot reuse and tree shape.",
+          shape="dynamic_array", fixed_count=None, count_source=f"cache.{prefix}.free_count", maximum_capacity=64000,
+          order="native free_list order from front to back; the last element is reused first", sample=[0], sample_scope="one_element", **common)
+    field(start + 6, f"cache.{prefix}.root_index", "u64", source, "size_t root;",
+          "Exact raw native root node index; SIZE_MAX is the constructor value, while Clear or an empty Build may retain an ignored stale index.",
+          "Non-empty lookup, insertion, removal, and invariant traversal begin from this index; preserving the raw value also avoids inventing normalization not present in pinned source.",
+          sample=invalid_index, **common)
+    field(start + 7, f"cache.{prefix}.unbalanced_count", "u64", source, "size_t unbalanced;",
+          "Exact native approximate imbalance counter.",
+          "Kdtree::IsUnbalanced uses this counter to decide whether the next insertion or removal rebuilds the tree.",
+          sample=0, **common)
+
+
+kdtree_fields(
+    10030,
+    "town_kdtree",
+    "TownKdtree _town_kdtree",
+    "fixture town construction/load -> RebuildTownKdtree; station construction -> ClosestTownFromTile -> TownKdtree::FindNearest",
+)
+kdtree_fields(
+    10040,
+    "station_kdtree",
+    "StationKdtree _station_kdtree",
+    "fixture load -> RebuildStationKdtree; road-stop station creation/move -> StationKdtree::Insert/Remove and area queries",
+)
 field(1015, "time.calendar_year", "i32", "src/timer/timer_game_calendar.cpp", "TimerGameCalendar::Year TimerGameCalendar::year",
       "Stored calendar year.", "Native callbacks and age logic read the stored calendar year directly.", sample=1950,
       reached_path="TimerGameCalendar::SetDate/Elapsed -> calendar callbacks")
@@ -388,6 +456,11 @@ field(2099, "settings.native_revision_counter", "u8", "src/settings_type.h", "st
       owner="GameSettings", owner_rule="singleton game settings", sample=0,
       classification="out_of_scope_unreachable", reached="unreachable_absent-from-pinned-GameSettings-storage",
       reached_path="GameSettings source-owner member review")
+field(2098, "settings.vehicle.smoke_amount", "u8", "src/settings_type.h", "uint8_t smoke_amount",
+      "Gameplay smoke/effect spawn intensity.",
+      "RoadVehController calls ShowVisualEffect; this setting controls gameplay RNG draws and EffectVehicle allocation in the shared VehiclePool.",
+      owner="GameSettings", owner_rule="singleton game settings", sample=2,
+      reached_path="RoadVehController -> Vehicle::ShowVisualEffect -> Chance16/CreateEffectVehicleRel")
 
 # Map dimensions and every native plane, not semantic reconstruction.
 scalar_group(3000, "map", "src/map.cpp", "map", "singleton map", [
@@ -409,6 +482,18 @@ for off, (name, typ, symbol, sample) in enumerate([
           owner="map_tile", owner_rule="TileIndex in range 0..map.size-1", shape="fixed_array",
           fixed_count=4096, maximum_capacity=4096, order="TileIndex ascending 0 through 4095",
           sample=[sample], sample_scope="one_element", reached_path="Tile accessor -> native tile procedure -> authoritative boundary adapter")
+field(3020, "map.animated_tile_count", "u32", "src/animated_tile.cpp", "std::vector<TileIndex> _animated_tiles",
+      "Exact number of entries in the saved animated-tile vector.",
+      "The tick loop iterates this native vector, and swap-with-back removal makes its size and order persistent continuation state.",
+      owner="animated_tile_registry", owner_rule="singleton native vector", sample=0,
+      reached_path="industry creation -> AddAnimatedTile -> AnimateAnimatedTiles")
+field(3021, "map.animated_tiles", "u32", "src/animated_tile.cpp", "std::vector<TileIndex> _animated_tiles",
+      "Animated TileIndices in exact native vector order.",
+      "AnimateAnimatedTiles processes this order each tick; map bits do not recover swap-with-back vector order or resulting callback/RNG order.",
+      owner="animated_tile_registry", owner_rule="singleton native vector",
+      shape="dynamic_array", fixed_count=None, count_source="map.animated_tile_count", maximum_capacity=4096,
+      order="native _animated_tiles vector index ascending", sample=[0], sample_scope="one_element",
+      reached_path="StateGameLoop -> AnimateAnimatedTiles -> industry/effect animation callbacks")
 field(3099, "map.native_revision_counter", "u8", "src/map_func.h", "struct Map",
       "Proof entry for a native map revision counter.",
       "Pinned Map has dimensions, mask, land count and native tile arrays but no persistent mutation revision; raw planes and authoritative caches are projected.",
@@ -424,7 +509,7 @@ field(4009, "company.ledger.expense_cell_count", "u32", "src/economy_type.h", "E
       owner="company_pool", owner_rule="singleton typed pool", sample=0,
       reached_path="Company::yearly_expenses -> ExpensesType canonical order")
 scalar_group(4010, "company.item", "src/company_base.h", "Company", "CompanyID numeric pool slot", [
-    ("id", "stable_id", "struct Company", 0, "Typed company pool ID."),
+    ("id", "stable_id", "struct Company : CompanyProperties", 0, "Typed company pool ID."),
     ("money", "i64", "Money money", 10000000, "Company money balance."),
     ("money_fraction", "u8", "money_fraction", 0, "Sub-money accounting fraction."),
     ("current_loan", "i64", "current_loan", 0, "Outstanding loan."),
@@ -545,6 +630,24 @@ field(5052, "industry.item.accepted_history_presence", "u8", "src/industry.h", "
       "An absent history and an allocated all-zero history are distinct native allocation/lifecycle states.",
       owner="Industry::AcceptedCargo", owner_rule="IndustryID then accepted-slot ordinal", sample=0,
       reached_path="Industry::AcceptedCargo::GetOrCreateHistory -> monthly production/delivery history")
+field(5073, "industry.builder.wanted_industries", "u32", "src/industry.h", "uint32_t wanted_inds",
+      "Saved fixed-point number of industries wanted by the native industry scheduler.",
+      "The daily industry callback compares this value before a gameplay RNG branch and possible industry construction.",
+      owner="IndustryBuildData", owner_rule="singleton _industry_builder", sample=0,
+      reached_path="economy industry daily timer -> _industry_builder.wanted_inds -> Chance16/TryBuildNewIndustry")
+for field_id, suffix, value_type, symbol, description in [
+    (5074, "probabilities", "u32", "uint32_t probability", "Relative native construction probability by IndustryType."),
+    (5075, "minimum_numbers", "u8", "uint8_t   min_number", "Minimum desired native industry count by IndustryType."),
+    (5076, "target_counts", "u16", "uint16_t target_count", "Target native industry count by IndustryType."),
+    (5077, "maximum_waits", "u16", "uint16_t max_wait", "Initial scheduler wait by IndustryType."),
+    (5078, "wait_counts", "u16", "uint16_t wait_count", "Current scheduler wait counter by IndustryType."),
+]:
+    field(field_id, f"industry.builder.{suffix}", value_type, "src/industry.h", symbol,
+          description, "IndustryBuildData::TryBuildNewIndustry reads this saved array; it can alter RNG selection, construction, and subsequent production state.",
+          owner="IndustryBuildData", owner_rule="singleton _industry_builder; element key is numeric IndustryType",
+          shape="fixed_array", fixed_count=240, maximum_capacity=240,
+          order="IndustryType numeric value 0 through NUM_INDUSTRYTYPES-1", sample=[0], sample_scope="one_element",
+          reached_path="economy industry daily timer -> IndustryBuildData::TryBuildNewIndustry")
 
 # Station, road stop, and goods.
 pool_meta(6000, "station", 64000, "_station_pool")
@@ -582,17 +685,27 @@ scalar_group(6039, "station.item", "src/station_base.h", "Station", "StationID n
 scalar_group(6044, "station.item", "src/base_station_base.h", "BaseStation", "StationID numeric pool slot", [
     ("custom_roadstop_random_bits", "u8", "custom_roadstop_tile_data", 0, "Custom road-stop random bits by stored tile record."),
     ("custom_roadstop_animation_frames", "u8", "custom_roadstop_tile_data", 0, "Custom road-stop animation frames by stored tile record."),
-    ("string_id", "u16", "StringID string_id", 65535, "Default station-name StringID, retained because future station-name allocation observes it."),
+    ("string_id", "u32", "StringID string_id", 4294967295, "Default station-name StringID, retained because future station-name allocation observes it."),
     ("tile_waiting_trigger_tiles", "u32", "tile_waiting_random_triggers", 0, "Tile keys of per-tile waiting random-trigger records."),
     ("tile_waiting_trigger_values", "u8", "tile_waiting_random_triggers", 0, "Trigger masks paired with per-tile trigger keys."),
 ], "Base-station custom tile and trigger records preserve exact native order and future naming state.",
 "BaseStation trigger/spec state -> station processing -> authoritative boundary adapter")
+field(6049, "station.item.industries_near_distances", "u32", "src/station_base.h", "uint distance",
+      "Cached squared distance paired with every nearby-industry reference.",
+      "IndustryListEntry ordering is (distance, IndustryID), and delivery consumes that exact order; IDs alone do not preserve the authoritative cache.",
+      owner="Station", owner_rule="StationID then native IndustryListEntry order",
+      shape="dynamic_array", fixed_count=None, count_source="station.nearby_industry_ref_count",
+      maximum_capacity=409600000, order="StationID ascending, then native (distance, IndustryID) order",
+      sample=[0], sample_scope="one_element", cache="authoritative_cache",
+      invalidation="station catchment or nearby-industry membership/distance change",
+      rebuild="not claimed; field remains authoritative_full until clear/rebuild plus two-load 10000-tick continuation evidence passes",
+      reached_path="Station::AddIndustryToDeliver -> IndustryListEntry ordering -> DeliverGoodsToIndustry")
 scalar_group(6050, "station.item", "src/base_station_base.h", "BaseStation", "StationID numeric pool slot", [
     ("station_rect_left", "i32", "StationRect rect", 0, "Cached station rectangle left boundary."),
     ("station_rect_top", "i32", "StationRect rect", 0, "Cached station rectangle top boundary."),
     ("station_rect_right", "i32", "StationRect rect", 0, "Cached station rectangle right boundary."),
     ("station_rect_bottom", "i32", "StationRect rect", 0, "Cached station rectangle bottom boundary."),
-    ("waiting_random_triggers", "u16", "waiting_random_triggers", 0, "Pending station random triggers."),
+    ("waiting_random_triggers", "u8", "StationRandomTriggers waiting_random_triggers", 0, "Pending station random triggers."),
     ("cached_animation_triggers", "u16", "cached_anim_triggers", 0, "Cached station animation triggers."),
     ("cached_roadstop_animation_triggers", "u16", "cached_roadstop_anim_triggers", 0, "Cached road-stop animation triggers."),
     ("cached_cargo_triggers", "u64", "cached_cargo_triggers", 0, "Cached station cargo trigger mask."),
@@ -600,6 +713,17 @@ scalar_group(6050, "station.item", "src/base_station_base.h", "BaseStation", "St
     ("custom_roadstop_tiles", "u32", "custom_roadstop_tile_data", 0, "Custom road-stop tile keys in native vector order."),
 ], "Station rectangles, triggers and custom tile state can affect catchment, animation callbacks and cargo processing.",
 "AfterStationTileSetChange -> station trigger processing -> LoadUnloadVehicle")
+for field_id, suffix, value_type, symbol, source_file, sample, description in [
+    (6081, "catchment_base_tile", "u32", "TileIndex tile", "src/tilearea_type.h", 4294967295, "Base tile of the authoritative catchment bitmap area."),
+    (6082, "catchment_width", "u16", "uint16_t w", "src/tilearea_type.h", 0, "Width of the authoritative catchment bitmap area."),
+    (6083, "catchment_height", "u16", "uint16_t h", "src/tilearea_type.h", 0, "Height of the authoritative catchment bitmap area."),
+]:
+    field(field_id, f"station.item.{suffix}", value_type, source_file, symbol, description,
+          "BitmapTileArea::Index, HasTile, and iteration consume the inherited tile/width/height together with the data bits; the bit vector alone is ambiguous.",
+          owner="Station", owner_rule="StationID numeric pool slot", sample=sample,
+          cache="authoritative_cache", invalidation="station catchment initialization/reset/recompute",
+          rebuild="not claimed; field remains authoritative_full until clear/rebuild plus two-load 10000-tick continuation evidence passes",
+          reached_path="Station::catchment_tiles -> BitmapTileArea::Index/HasTile/iterator -> cargo capture")
 for item in FIELDS:
     if item["path"].startswith("station.item.") and any(token in item["path"] for token in ("catchment", "industries_near", "station_rect", "cached_")):
         item["cache_classification"] = "authoritative_cache"
@@ -617,6 +741,11 @@ scalar_group(6110, "road_stop.item", "src/roadstop_base.h", "RoadStop", "RoadSto
     ("west_occupied", "u16", "uint16_t occupied", 0, "West drive-through occupied length."),
 ], "Road-stop occupancy and linked order affect entry, queueing, allocation and YAPF penalties.",
 "RoadStop::Enter/Leave -> RoadVehController -> authoritative boundary adapter")
+field(6118, "road_stop.item.entries_present", "u8", "src/roadstop_base.h", "Entries *entries = nullptr",
+      "Presence of the optional drive-through entry-state allocation.",
+      "Bay stops have a null entries pointer, while drive-through stops may contain an allocated all-zero Entries object; presence is native lifecycle state.",
+      owner="RoadStop", owner_rule="RoadStopID numeric pool slot", sample=0,
+      reached_path="RoadStop::MakeDriveThrough/ClearDriveThrough -> GetEntry -> RoadStop::Enter/Leave")
 scalar_group(6200, "station.goods", "src/station_base.h", "GoodsEntry", "(StationID, CargoType) lexicographic", [
     ("status", "u8", "States status", 0, "Cargo acceptance/rating state bits."),
     ("time_since_pickup", "u8", "time_since_pickup", 255, "Rating intervals since vehicle pickup attempt."),
@@ -625,7 +754,7 @@ scalar_group(6200, "station.goods", "src/station_base.h", "GoodsEntry", "(Statio
     ("last_age", "u8", "last_age", 255, "Last loading vehicle age for rating."),
     ("amount_fraction", "u8", "amount_fract", 0, "Fractional station cargo production amount."),
     ("max_waiting", "u32", "max_waiting_cargo", 0, "Maximum source cargo waiting network-wide."),
-    ("linkgraph_node", "u32", "NodeID node", 4294967295, "LinkGraph node ID."),
+    ("linkgraph_node", "u16", "NodeID node", 65535, "LinkGraph node ID."),
     ("linkgraph_id", "stable_id", "LinkGraphID link_graph", 4294967295, "Associated LinkGraph stable ID."),
     ("packet_ids", "stable_id", "StationCargoList cargo", 0, "Waiting packet IDs preserving native container order."),
     ("flow_origin_station_ids", "stable_id", "FlowStatMap flows", 0, "Flow origin StationIDs in each GoodsEntry map's key order."),
@@ -638,6 +767,15 @@ scalar_group(6211, "station.goods", "src/station_base.h", "GoodsEntry", "(Statio
     ("flow_share_via_station_id", "stable_id", "SharesMap shares", 0, "Via StationID paired with each cumulative flow-share key."),
 ], "Optional-data presence and exact FlowStat map storage affect allocation lifetime and RNG-based next-hop selection.",
 "GoodsEntry::HasData/GetVia -> FlowStat::GetVia -> StationCargoList")
+field(6215, "station.goods.packet_map_next_hop_keys", "stable_id", "src/cargopacket.h", "Tcont packets{}",
+      "Next-hop StationID map key paired with each stored station cargo packet reference.",
+      "StationCargoList::Append stores the caller-supplied next hop as the multimap key independently of CargoPacket::next_hop; loading uses equal_range and iterator keys.",
+      owner="GoodsEntry", owner_rule="(StationID, CargoType), then native StationCargoPacketMap iteration order",
+      shape="dynamic_array", fixed_count=None, count_source="station.goods.packet_ref_count",
+      maximum_capacity=16773120,
+      order="GoodsEntry owner order, then native map key order with equivalent-key insertion order",
+      sample=[65535], sample_scope="one_element",
+      reached_path="MoveGoodsToStation -> StationCargoList::Append(cp,next) -> StationCargoList::Load/equal_range")
 scalar_group(6230, "station.goods", "src/cargopacket.h", "StationCargoList", "(StationID, CargoType) lexicographic", [
     ("cached_count", "u32", "uint count", 0, "Cached unreserved cargo-unit count."),
     ("cached_periods_in_transit", "u64", "cargo_periods_in_transit", 0, "Cached sum of cargo transit periods."),
@@ -664,9 +802,9 @@ for field_id, path, symbol, description in [
           reached_path="fixture content identity -> validated command kinds -> excluded station family source review")
 
 # Vehicles and road controller.
-pool_meta(7000, "vehicle", 1048575, "_vehicle_pool")
+pool_meta(7000, "vehicle", 0xFF000, "_vehicle_pool")
 scalar_group(7010, "vehicle.item", "src/vehicle_base.h", "Vehicle", "VehicleID numeric pool slot", [
-    ("id", "stable_id", "struct Vehicle", 0, "Typed vehicle pool ID."),
+    ("id", "stable_id", "struct Vehicle : VehiclePool", 0, "Typed vehicle pool ID."),
     ("subtype", "u8", "uint8_t subtype", 0, "Native vehicle subtype flags."),
     ("engine_id", "stable_id", "EngineID engine_type", 123, "Engine stable ID."),
     ("owner", "u8", "Owner owner", 0, "Vehicle owner."),
@@ -681,7 +819,7 @@ scalar_group(7010, "vehicle.item", "src/vehicle_base.h", "Vehicle", "VehicleID n
     ("acceleration", "u8", "acceleration", 0, "Acceleration state."),
     ("progress", "u8", "uint8_t progress", 0, "Within-tile movement progress."),
     ("motion_counter", "u32", "motion_counter", 0, "Movement/sound cadence counter."),
-    ("status", "u16", "VehStates vehstatus", 0, "Stopped, hidden, crashed and related state bits."),
+    ("status", "u8", "VehStates vehstatus", 0, "Stopped, hidden, crashed and related state bits."),
     ("last_station_visited", "stable_id", "last_station_visited", 4294967295, "Last visited station stable ID."),
     ("last_loading_station", "stable_id", "last_loading_station", 4294967295, "Last station eligible for loading."),
     ("last_loading_tick", "u64", "last_loading_tick", 0, "Tick of last eligible loading stop."),
@@ -714,16 +852,45 @@ field(7051, "vehicle.item.vehicle_type", "u8", "src/vehicle_type.h", "VehicleTyp
       "Pool occupancy and subclass-derived counts cannot replace the stored discriminator used by iteration and command dispatch.",
       owner="Vehicle", owner_rule="VehicleID numeric pool slot", sample=1,
       reached_path="Vehicle::type -> Vehicle::Tick/command dispatch -> authoritative boundary adapter")
+field(7052, "effect_vehicle.item.count", "u32", "src/effectvehicle_base.h", "struct EffectVehicle final :",
+      "Number of occupied Vehicle pool slots whose native type is Effect.",
+      "EffectVehicles share VehiclePool allocation and free slots with road vehicles, so subclass columns require an explicit filtered count.",
+      owner="vehicle_pool", owner_rule="singleton typed pool", sample=0,
+      reached_path="CreateEffectVehicleRel/CreateChimneySmoke -> Vehicle::Iterate type filter Effect")
+field(7053, "effect_vehicle.item.ids", "stable_id", "src/effectvehicle_base.h", "struct EffectVehicle final :",
+      "Stable VehicleIDs of occupied EffectVehicles.",
+      "The discriminator maps subclass behavior columns to shared VehiclePool slots and preserves allocation/freeing effects on future IDs.",
+      owner="EffectVehicle", owner_rule="VehicleID numeric pool slot filtered by native type Effect",
+      shape="dynamic_array", fixed_count=None, count_source="effect_vehicle.item.count", maximum_capacity=0xFF000,
+      order="VehicleID ascending among occupied vehicles whose type is Effect", sample=[0], sample_scope="one_element",
+      reached_path="EffectVehicle::Iterate -> EffectVehicle::Tick -> shared VehiclePool")
+for field_id, suffix, value_type, symbol, description in [
+    (7054, "animation_state", "u16", "uint16_t animation_state", "Effect animation state controlling behavior and lifetime."),
+    (7055, "animation_substate", "u8", "uint8_t animation_substate", "Effect animation substate timing counter."),
+]:
+    field(field_id, f"effect_vehicle.item.{suffix}", value_type, "src/effectvehicle_base.h", symbol,
+          description, "EffectVehicle::Tick branches on this value; transition/deletion timing changes shared VehiclePool reuse.",
+          owner="EffectVehicle", owner_rule="VehicleID numeric pool slot filtered by native type Effect",
+          shape="dynamic_array", fixed_count=None, count_source="effect_vehicle.item.count", maximum_capacity=0xFF000,
+          order="effect VehicleID ascending", sample=[0], sample_scope="one_element",
+          reached_path="EffectVehicle::Tick -> type handler -> delete/free shared Vehicle slot")
+field(7056, "effect_vehicle.item.current_sprite_id", "u32", "src/vehicle_base.h", "std::array<PalSpriteID, 8> seq",
+      "Current first sprite ID used as EffectVehicle behavior state.",
+      "Chimney and diesel handlers call IncrementSprite and branch on sprite_seq.seq[0].sprite; it is not display-only for EffectVehicles.",
+      owner="EffectVehicle", owner_rule="VehicleID numeric pool slot filtered by native type Effect",
+      shape="dynamic_array", fixed_count=None, count_source="effect_vehicle.item.count", maximum_capacity=0xFF000,
+      order="effect VehicleID ascending", sample=[0], sample_scope="one_element",
+      reached_path="EffectVehicle::Tick -> IncrementSprite -> MutableSpriteCache::sprite_seq")
 scalar_group(7120, "vehicle.item", "src/vehicle_base.h", "Vehicle", "VehicleID numeric pool slot", [
     ("cargo_payment_id", "stable_id", "CargoPayment *cargo_payment", 4294967295, "Active staged CargoPayment stable ID."),
     ("profit_last_year", "i64", "profit_last_year", 0, "Vehicle prior-year profit in fixed-point units."),
-    ("unit_number", "u32", "UnitID unitnumber", 0, "Company-visible vehicle unit ID."),
+    ("unit_number", "u16", "UnitID unitnumber", 0, "Company-visible vehicle unit ID."),
     ("maximum_age", "i32", "Date max_age", 0, "Maximum vehicle calendar age."),
     ("last_service_calendar_date", "i32", "date_of_last_service_newgrf", 712223, "Last service calendar date."),
     ("reliability_speed_decrease", "u16", "reliability_spd_dec", 0, "Vehicle reliability decay speed."),
     ("breakdowns_since_service", "u8", "breakdowns_since_last_service", 0, "Breakdowns since last service."),
     ("breakdown_chance", "u8", "breakdown_chance", 0, "Current native breakdown chance."),
-    ("waiting_random_triggers", "u16", "waiting_random_triggers", 0, "Pending vehicle random triggers."),
+    ("waiting_random_triggers", "u8", "waiting_random_triggers", 0, "Pending vehicle random triggers."),
     ("cargo_subtype", "u8", "cargo_subtype", 0, "Vehicle cargo subtype."),
     ("refit_capacity", "u16", "refit_cap", 0, "Capacity remaining from prior refit."),
     ("trip_occupancy", "i8", "trip_occupancy", 0, "Current-trip occupancy statistic."),
@@ -743,11 +910,11 @@ scalar_group(7140, "vehicle.item.current_order", "src/order_base.h", "Order", "V
 scalar_group(7160, "vehicle.item.order_progress", "src/base_consist.h", "BaseConsist", "VehicleID numeric pool slot", [
     ("current_order_time", "i32", "current_order_time", 0, "Ticks elapsed in current order."),
     ("lateness_counter", "i32", "lateness_counter", 0, "Timetable lateness/earliness."),
-    ("timetable_start", "i64", "timetable_start", 0, "Absolute timetable start tick."),
+    ("timetable_start", "u64", "timetable_start", 0, "Absolute timetable start tick."),
     ("unbunching_last_departure", "u64", "depot_unbunching_last_departure", 0, "Last unbunching-depot departure tick."),
     ("unbunching_next_departure", "u64", "depot_unbunching_next_departure", 0, "Next unbunching-depot departure tick."),
     ("round_trip_time", "i32", "round_trip_time", 0, "Measured order-list round trip time."),
-    ("vehicle_flags", "u16", "vehicle_flags", 0, "Base-consist service/timetable flags."),
+    ("vehicle_flags", "u16", "VehicleFlags vehicle_flags", 0, "Base-consist service/timetable flags."),
     ("service_interval", "u16", "service_interval", 0, "Per-vehicle service interval."),
     ("real_order_index", "u8", "cur_real_order_index", 0, "Current explicit order ordinal."),
     ("implicit_order_index", "u8", "cur_implicit_order_index", 0, "Current implicit order ordinal."),
@@ -807,9 +974,16 @@ field(7069, "road_vehicle.item.count", "u32", "src/vehicle_base.h", "VehicleType
       "Road-vehicle column counts must not be inferred from total Vehicle occupancy when other native vehicle types exist.",
       owner="vehicle_pool", owner_rule="singleton typed pool", sample=0,
       reached_path="Vehicle::Iterate -> type filter Road -> authoritative boundary adapter")
+field(7068, "road_vehicle.item.ids", "stable_id", "src/roadveh.h", "struct RoadVehicle final :",
+      "Stable VehicleIDs of occupied RoadVehicles.",
+      "The discriminator maps road/ground subclass columns to shared VehiclePool slots when EffectVehicles are present.",
+      owner="RoadVehicle", owner_rule="VehicleID numeric pool slot filtered by native type Road",
+      shape="dynamic_array", fixed_count=None, count_source="road_vehicle.item.count", maximum_capacity=0xFF000,
+      order="VehicleID ascending among occupied vehicles whose type is Road", sample=[0], sample_scope="one_element",
+      reached_path="Vehicle::Iterate -> native type Road -> RoadVehicle controller/cache projection")
 scalar_group(7090, "vehicle.item.cache", "src/ground_vehicle.hpp", "GroundVehicleCache", "VehicleID numeric pool slot", [
     ("weight", "u32", "cached_weight", 0, "Cached consist weight."),
-    ("slope_resistance", "u32", "cached_slope_resistance", 0, "Cached slope resistance."),
+    ("slope_resistance", "u32", "uint32_t cached_slope_resistance", 0, "Cached slope resistance."),
     ("maximum_tractive_effort", "u32", "cached_max_te", 0, "Cached maximum tractive effort."),
     ("axle_resistance", "u16", "cached_axle_resistance", 0, "Cached axle resistance."),
     ("maximum_track_speed", "u16", "cached_max_track_speed", 0, "Cached road-type speed limit."),
@@ -839,11 +1013,11 @@ field(7111, "vehicle.item.cache.last_display_speed", "u16", "src/ground_vehicle.
       reached_path="GroundVehicle::UpdateSpeed -> display dirty check -> GUI consumer")
 field(7112, "vehicle.item.cache.visual_effect", "u8", "src/vehicle_base.h", "uint8_t cached_vis_effect",
       "Cached vehicle visual-effect selector.",
-      "Pinned consumers use the selector for sprite effects only; it is excluded from command, movement, cargo and accounting continuation.",
+      "Vehicle::ShowVisualEffect consumes this cache in gameplay, may draw gameplay RNG, and allocates EffectVehicles in the shared VehiclePool.",
       owner="VehicleCache", owner_rule="VehicleID numeric pool slot", sample=0,
-      classification="diagnostic", cache="diagnostic_cache", invalidation="vehicle property or visual callback change",
-      rebuild="normal visual-effect property query; never called by authoritative projection",
-      reached_path="Vehicle visual effect query -> sprite/effect rendering consumer")
+      cache="authoritative_cache", invalidation="vehicle property, consist, or visual callback change",
+      rebuild="not claimed; field remains authoritative_full until clear/rebuild plus two-load 10000-tick continuation evidence passes",
+      reached_path="RoadVehController -> Vehicle::ShowVisualEffect -> Chance16/CreateEffectVehicleRel")
 for item in FIELDS:
     if item["path"].startswith("vehicle.item.cache.") and item["classification"] == "authoritative_full":
         item["cache_classification"] = "authoritative_cache"
@@ -858,8 +1032,8 @@ scalar_group(8010, "order_list.item", "src/order_base.h", "OrderList", "OrderLis
     ("shared_vehicle_count", "u32", "num_vehicles", 0, "Vehicles sharing this list."),
     ("first_shared_vehicle_id", "stable_id", "Vehicle *first_shared", 4294967295, "First sharing vehicle stable ID."),
     ("order_count", "u32", "std::vector<Order> orders", 0, "Order vector count."),
-    ("timetable_duration", "u64", "timetable_duration", 0, "Cached total timetabled duration."),
-    ("total_duration", "u64", "total_duration", 0, "Cached total order duration."),
+    ("timetable_duration", "i32", "timetable_duration", 0, "Cached total timetabled duration."),
+    ("total_duration", "i32", "total_duration", 0, "Cached total order duration."),
 ], "Order vector membership and duration caches drive order advancement and timing.",
 "InsertOrder -> OrderList::RecalculateTimetableDuration -> ProcessOrders")
 for item in FIELDS:
@@ -892,19 +1066,19 @@ scalar_group(8040, "order.item", "src/order_base.h", "Order", "(OrderListID, zer
 # Cargo packet identity, provenance and list/cache state.
 pool_meta(9000, "cargo_packet", 16773120, "_cargopacket_pool", reached="reachable_after_industry_production")
 scalar_group(9010, "cargo_packet.item", "src/cargopacket.h", "CargoPacket", "CargoPacketID numeric pool slot", [
-    ("id", "stable_id", "struct CargoPacket", 0, "Typed cargo packet pool ID."),
+    ("id", "stable_id", "struct CargoPacket : CargoPacketPool", 0, "Typed cargo packet pool ID."),
     ("count", "u16", "uint16_t count", 0, "Cargo units in packet."),
     ("periods_in_transit", "u16", "periods_in_transit", 0, "Cargo age periods."),
     ("feeder_share", "i64", "Money feeder_share", 0, "Accumulated feeder share."),
     ("source_tile", "u32", "TileIndex source_xy", 4294967295, "Cargo origin/loading tile."),
     ("travelled_x", "i16", "Coord2D<int16_t> travelled", 0, "Signed travelled X vector."),
     ("travelled_y", "i16", "Coord2D<int16_t> travelled", 0, "Signed travelled Y vector."),
-    ("source_id", "u32", "Source source", 0, "Cargo source numeric ID."),
+    ("source_id", "u16", "Source source", 0, "Cargo source numeric ID."),
     ("source_type", "u8", "Source source", 1, "Cargo source type."),
     ("first_station_id", "stable_id", "first_station", 4294967295, "First station stable ID."),
     ("next_hop_station_id", "stable_id", "next_hop", 4294967295, "Next-hop station stable ID."),
     ("container_kind", "u8", "StationCargoList", 0, "Owning station/vehicle container discriminator."),
-    ("container_id", "stable_id", "VehicleCargoList", 0, "Owning station or vehicle stable ID."),
+    ("container_id", "stable_id", "Tcont packets{}", 0, "Owning station or vehicle stable ID."),
     ("container_ordinal", "u32", "CargoPacketList", 0, "Packet order within owner container."),
 ], "Packet amount alone is insufficient; provenance, age, ownership and exact list order determine payment and merge behavior.",
 "CargoPacket::Split/Merge -> StationCargoList/VehicleCargoList -> DeliverGoods")
@@ -952,7 +1126,7 @@ field(10020, "route.native_topology_revision_counter", "u8", "src/roadveh.h", "u
 
 # Cross-family diagnostics make conservation, native cost category and callback
 # order directly explainable. They never substitute for the complete fields.
-scalar_group(11000, "diagnostic.cargo", "src/economy.cpp", "DeliverGoods", "singleton boundary diagnostic", [
+scalar_group(11000, "diagnostic.cargo", "src/economy.cpp", "static Money DeliverGoods(", "singleton boundary diagnostic", [
     ("produced_units", "u64", "DeliverGoods", 0, "Cumulative cargo units produced during the run."),
     ("station_units", "u64", "DeliverGoods", 0, "Cargo units currently in station containers."),
     ("vehicle_units", "u64", "DeliverGoods", 0, "Cargo units currently in vehicle containers."),
@@ -973,19 +1147,28 @@ for item in FIELDS:
 # Scope-correcting continuation pools found by the independent audit.
 pool_meta(12000, "town", 64000, "_town_pool")
 scalar_group(12010, "town.item", "src/town.h", "Town", "TownID numeric pool slot", [
-    ("id", "stable_id", "struct Town", 0, "Typed town pool ID."),
+    ("id", "stable_id", "struct Town : TownPool", 0, "Typed town pool ID."),
     ("anchor_tile", "u32", "TileIndex xy", 1056, "Town anchor tile."),
     ("population", "u32", "population", 0, "Town population."),
     ("house_count", "u32", "num_houses", 0, "Town house count."),
-    ("growth_rate", "u16", "growth_rate", 0, "Town growth interval."),
+    ("growth_rate", "u16", "uint16_t growth_rate", 0, "Town growth interval."),
     ("growth_counter", "u16", "grow_counter", 0, "Town growth countdown."),
     ("flags", "u8", "TownFlags flags", 0, "Native town flags."),
-    ("ratings", "i16", "ratings", 0, "Company authority ratings."),
+    ("ratings", "i16", "TypedIndexContainer<std::array<int16_t, MAX_COMPANIES>, CompanyID> ratings", 0, "Company authority ratings."),
     ("supplied_slot_owner_count", "u32", "SuppliedCargoes supplied", 0, "Produced-cargo slot count for each town owner."),
-    ("zone_radius_squared", "u32", "squared_town_zone_radius", 0, "Cached squared authority-zone radii."),
-    ("building_counts", "u16", "building_counts", 0, "Cached native building counts by house type."),
+    ("zone_radius_squared", "u32", "std::array<uint32_t, NUM_HOUSE_ZONES> squared_town_zone_radius", 0, "Cached squared authority-zone radii."),
+    ("building_id_counts", "u16", "std::vector<T> id_count", 0, "Cached native building counts indexed by HouseID."),
 ], "The fixture retains TownID 0; town counters, ratings and production can influence road construction, commands and cargo.",
 "Town::Tick -> TownActions -> GenerateTownCargo")
+field(12021, "town.item.building_class_counts", "u16", "src/town.h", "std::vector<T> class_count",
+      "Cached native building counts indexed by HouseClassID.",
+      "House class and house ID counts are independent native vectors; either can affect subsequent town generation and callbacks.",
+      owner="Town", owner_rule="TownID then HouseClassID vector index", sample=[0], sample_scope="one_element",
+      shape="dynamic_array", fixed_count=None, count_source="town.building_class_count_total",
+      maximum_capacity=1073741824, order="TownID ascending, then native class_count index ascending",
+      cache="authoritative_cache", invalidation="house construction/removal or after-load town rebuild",
+      rebuild="not claimed; field remains authoritative_full until clear/rebuild plus two-load 10000-tick continuation evidence passes",
+      reached_path="TownCache::building_counts.class_count -> house/town callbacks")
 scalar_group(12030, "town.item", "src/town.h", "Town", "TownID numeric pool slot", [
     ("subsidy_role_mask", "u8", "part_of_subsidy", 0, "Cached source/destination subsidy-role mask."),
     ("name_grfid", "u32", "townnamegrfid", 0, "Town-name generator GRF identifier."),
@@ -1044,7 +1227,7 @@ field(12063, "town.item.accepted_slot_owner_count", "u32", "src/town.h", "Accept
       owner="Town", owner_rule="TownID numeric pool slot", sample=0,
       reached_path="Town::accepted -> Town::NewMonth -> authoritative boundary adapter")
 for item in FIELDS:
-    if item["path"] in {"town.item.population", "town.item.house_count", "town.item.zone_radius_squared", "town.item.building_counts"}:
+    if item["path"] in {"town.item.population", "town.item.house_count", "town.item.zone_radius_squared", "town.item.building_id_counts", "town.item.building_class_counts"}:
         item["cache_classification"] = "authoritative_cache"
         item["cache_invalidation_trigger"] = "house construction/removal, town radius update, or after-load town rebuild"
         item["deterministic_rebuild_procedure"] = "not claimed; field remains authoritative_full until clear/rebuild plus two-load 10000-tick continuation evidence passes"
@@ -1057,14 +1240,14 @@ scalar_group(12110, "depot.item", "src/depot_base.h", "Depot", "DepotID numeric 
     ("build_date", "i32", "build_date", 712223, "Depot construction date."),
 ], "Depot allocation and identity affect vehicle construction, servicing and routing.",
 "CmdBuildRoadDepot -> Depot::Depot -> CmdBuildVehicle")
-pool_meta(12200, "engine", 65535, "_engine_pool")
+pool_meta(12200, "engine", 64000, "_engine_pool")
 scalar_group(12210, "engine.item", "src/engine_base.h", "Engine", "EngineID numeric pool slot", [
-    ("id", "stable_id", "class Engine", 123, "Typed engine pool ID."),
+    ("id", "stable_id", "class Engine : public EnginePool", 123, "Typed engine pool ID."),
     ("company_available_mask", "u16", "company_avail", 1, "Company availability mask."),
     ("intro_date", "i32", "intro_date", 0, "Engine introduction date."),
     ("age_months", "i32", "int32_t age", 0, "Engine age in months."),
     ("reliability", "u16", "uint16_t reliability", 0, "Current engine reliability."),
-    ("flags", "u16", "EngineFlags flags", 0, "Engine availability and preview flags."),
+    ("flags", "u8", "EngineFlags flags", 0, "Engine availability and preview flags."),
     ("preview_company", "u8", "preview_company", 255, "Company receiving preview."),
     ("preview_wait", "u8", "preview_wait", 0, "Preview timeout."),
     ("vehicle_type", "u8", "VehicleType type", 1, "Engine vehicle type."),
@@ -1120,10 +1303,10 @@ field(12208, "engine.road_engine_ids", "stable_id", "src/engine_base.h", "Vehicl
       "EngineIDs whose native Engine::type is Road.",
       "The explicit discriminator column maps sparse road-engine property columns back to stable EngineIDs.",
       owner="engine_pool", owner_rule="EngineID numeric pool slot filtered by native type Road",
-      shape="dynamic_array", fixed_count=None, count_source="engine.road_engine_count", maximum_capacity=65535,
+      shape="dynamic_array", fixed_count=None, count_source="engine.road_engine_count", maximum_capacity=64000,
       order="EngineID ascending among occupied engines whose type is Road", sample=[0], sample_scope="one_element",
       reached_path="Engine::Iterate -> Engine::type filter Road -> road property projection")
-pool_meta(12300, "cargo_payment", 1048575, "_cargo_payment_pool", reached="reachable_during_unloading")
+pool_meta(12300, "cargo_payment", 0xFF000, "_cargo_payment_pool", reached="reachable_during_unloading")
 scalar_group(12310, "cargo_payment.item", "src/economy_base.h", "CargoPayment", "CargoPaymentID numeric pool slot", [
     ("id", "stable_id", "struct CargoPayment", 0, "Typed CargoPayment pool ID."),
     ("current_station_id", "stable_id", "current_station", 65535, "Current unloading station stable ID."),
@@ -1133,12 +1316,12 @@ scalar_group(12310, "cargo_payment.item", "src/economy_base.h", "CargoPayment", 
     ("visual_transfer", "i64", "visual_transfer", 0, "Accumulated transfer value."),
 ], "CargoPayment survives staged unload operations and its accumulators affect exact company and vehicle ledger updates.",
 "Vehicle::BeginLoading -> CargoPayment::PayFinalDelivery -> Vehicle::EndLoading")
-pool_meta(12400, "subsidy", 65535, "_subsidy_pool", reached="reachable_if_native_subsidy_state_exists")
+pool_meta(12400, "subsidy", 256, "_subsidy_pool", reached="reachable_if_native_subsidy_state_exists")
 scalar_group(12410, "subsidy.item", "src/subsidy_base.h", "Subsidy", "SubsidyID numeric pool slot", [
     ("id", "stable_id", "struct Subsidy", 0, "Typed subsidy pool ID."),
     ("cargo_type", "u8", "CargoType cargo_type", 0, "Subsidized cargo type."),
     ("remaining", "u16", "remaining", 0, "Subsidy lifetime counter."),
-    ("awarded_company", "u8", "awarded", 255, "Awarded company ID."),
+    ("awarded_company", "u8", "CompanyID awarded", 255, "Awarded company ID."),
     ("source_id", "u16", "Source src", 0, "Subsidy source ID."),
     ("source_type", "u8", "Source src", 0, "Subsidy source type discriminator."),
     ("destination_id", "u16", "Source dst", 0, "Subsidy destination ID."),
@@ -1147,14 +1330,14 @@ scalar_group(12410, "subsidy.item", "src/subsidy_base.h", "Subsidy", "SubsidyID 
 "SubsidyMonthlyLoop -> CheckSubsidised -> DeliverGoods")
 pool_meta(12500, "linkgraph", 65535, "_link_graph_pool", reached="manual_distribution_normally_empty_but_state_must_be_verified")
 scalar_group(12510, "linkgraph.item", "src/linkgraph/linkgraph.h", "LinkGraph", "LinkGraphID numeric pool slot", [
-    ("id", "stable_id", "class LinkGraph", 0, "Typed LinkGraph pool ID."),
+    ("id", "stable_id", "class LinkGraph : public LinkGraphPool", 0, "Typed LinkGraph pool ID."),
     ("last_compression", "i32", "last_compression", 0, "Last compression economy date."),
-    ("cargo_type", "u8", "CargoType cargo", 0, "Graph cargo type."),
+    ("cargo_type", "u8", "CargoType cargo = INVALID_CARGO;", 0, "Graph cargo type."),
     ("node_count", "u32", "nodes", 0, "Graph node count."),
     ("node_station_ids", "stable_id", "StationID station", 0, "Node station IDs in node-index order."),
     ("edge_capacities", "u32", "capacity", 0, "Edge capacity values in canonical matrix order."),
     ("edge_usages", "u32", "usage", 0, "Edge usage values in canonical matrix order."),
-    ("edge_travel_times", "u32", "travel_time_sum", 0, "Edge travel-time accumulators."),
+    ("edge_travel_times", "u64", "uint64_t travel_time_sum", 0, "Edge travel-time accumulators."),
 ], "If any graph exists, its node/edge state can alter packet next-hop assignment and subsequent cargo flow.",
 "LinkGraphSchedule::SpawnNext -> LinkGraphJob -> GoodsEntry::flows")
 
@@ -1167,9 +1350,10 @@ for args in [
     (4072, "company.history.entry_count", "src/company_base.h", "old_economy", "Flattened company/quarter history entry count."),
     (4073, "company.history.delivered_cargo_cell_count", "src/company_base.h", "old_economy", "Flattened company/quarter/cargo delivered-history cell count."),
     (4074, "company.road_unit_word_count_total", "src/company_base.h", "used_bitmap", "Total stored words across road FreeUnitIDGenerator vectors."),
-    (4075, "company.owner_offset_count", "src/company_base.h", "struct Company", "Company owner-offset count, occupied companies plus one."),
+    (4075, "company.owner_offset_count", "src/company_base.h", "struct Company : CompanyProperties", "Company owner-offset count, occupied companies plus one."),
     (4076, "company.ledger.rail_infrastructure_cell_count", "src/company_base.h", "rail{}", "Flattened company/rail-type infrastructure cell count."),
     (4077, "company.group_unit_word_count_total", "src/company_base.h", "FreeUnitIDGenerator freegroups", "Total stored words across group FreeUnitIDGenerator vectors."),
+    (8020, "order.owner_offset_count", "src/order_base.h", "std::vector<Order> orders", "OrderList owner-offset count, occupied lists plus one."),
     (5060, "industry.produced_slot_count", "src/industry.h", "ProducedCargoes produced", "Total produced-cargo slots across industries."),
     (5061, "industry.accepted_slot_count", "src/industry.h", "AcceptedCargoes accepted", "Total accepted-cargo slots across industries."),
     (5062, "industry.produced_history_cell_count", "src/industry.h", "HistoryData<ProducedHistory>", "Flattened produced history cell count."),
@@ -1185,29 +1369,37 @@ for args in [
     (6064, "station.custom_roadstop_tile_count", "src/base_station_base.h", "custom_roadstop_tile_data", "Total custom road-stop tile records."),
     (6065, "station.owner_offset_count", "src/station_base.h", "struct Station", "Station owner-offset count, occupied stations plus one."),
     (6066, "station.tile_waiting_trigger_record_count", "src/base_station_base.h", "tile_waiting_random_triggers", "Total per-tile waiting-trigger records."),
+    (6120, "road_stop.entries_count", "src/roadstop_base.h", "Entries *entries = nullptr", "Number of RoadStops with allocated drive-through Entries storage."),
+    (6121, "road_stop.owner_offset_count", "src/roadstop_base.h", "struct RoadStop : RoadStopPool", "RoadStop owner-offset count, occupied RoadStops plus one."),
     (6071, "station.goods.packet_ref_count", "src/station_base.h", "StationCargoList cargo", "Total packet references across GoodsEntry cargo maps."),
     (6072, "station.goods.flow_owner_count", "src/station_base.h", "FlowStatMap flows", "Total FlowStat owners across GoodsEntry flow maps."),
     (6073, "station.goods.flow_share_count", "src/station_base.h", "SharesMap shares", "Total cumulative flow-share pairs across FlowStat owners."),
     (6074, "station.goods.owner_offset_count", "src/station_base.h", "std::array<GoodsEntry, NUM_CARGO> goods", "GoodsEntry owner-offset count, entries plus one."),
     (6075, "station.goods.flow_owner_offset_count", "src/station_base.h", "FlowStatMap flows", "FlowStat share-offset count, flow owners plus one."),
     (7200, "vehicle.cargo_packet_ref_count", "src/vehicle_base.h", "VehicleCargoList cargo", "Total vehicle cargo-packet references."),
-    (7201, "vehicle.owner_offset_count", "src/vehicle_base.h", "struct Vehicle", "Vehicle owner-offset count, occupied vehicles plus one."),
+    (7201, "vehicle.owner_offset_count", "src/vehicle_base.h", "struct Vehicle : VehiclePool", "Vehicle owner-offset count, occupied vehicles plus one."),
     (7202, "road_vehicle.path_element_count", "src/roadveh.h", "RoadVehPathCache path", "Total cached road path elements."),
-    (7203, "road_vehicle.owner_offset_count", "src/roadveh.h", "struct RoadVehicle", "Road-vehicle owner-offset count, road vehicles plus one."),
+    (7203, "road_vehicle.owner_offset_count", "src/roadveh.h", "struct RoadVehicle final :", "Road-vehicle owner-offset count, road vehicles plus one."),
     (12080, "town.supplied_slot_count", "src/town.h", "SuppliedCargoes supplied", "Total town supplied-cargo slots."),
     (12081, "town.accepted_slot_count", "src/town.h", "AcceptedCargoes accepted", "Total town accepted-cargo slots."),
     (12082, "town.supplied_history_cell_count", "src/town.h", "HistoryData<SuppliedHistory>", "Flattened town supplied-history cell count."),
-    (12083, "town.rating_cell_count", "src/town.h", "ratings{}", "Flattened TownID/CompanyID rating cell count."),
+    (12083, "town.rating_cell_count", "src/town.h", "CompanyID> ratings{}", "Flattened TownID/CompanyID rating cell count."),
     (12084, "town.nearby_station_ref_count", "src/town.h", "StationList stations_near", "Total town nearby-station references."),
-    (12085, "town.owner_offset_count", "src/town.h", "struct Town", "Town owner-offset count, occupied towns plus one."),
+    (12085, "town.owner_offset_count", "src/town.h", "struct Town : TownPool", "Town owner-offset count, occupied towns plus one."),
     (12092, "town.supplied_history_offset_count", "src/town.h", "SuppliedCargoes supplied", "Supplied-history offset count, supplied slots plus one."),
     (12093, "town.accepted_history_offset_count", "src/town.h", "AcceptedCargoes accepted", "Accepted-history offset count, accepted slots plus one."),
     (12094, "town.accepted_history_cell_count", "src/town.h", "HistoryData<AcceptedHistory>", "Flattened town accepted-history cell count."),
+    (12022, "town.zone_radius_cell_count", "src/town.h", "std::array<uint32_t, NUM_HOUSE_ZONES> squared_town_zone_radius", "Flattened TownID/house-zone radius cell count."),
+    (12023, "town.building_id_count_total", "src/town.h", "std::vector<T> id_count", "Total stored building ID count cells across towns."),
+    (12024, "town.building_class_count_total", "src/town.h", "std::vector<T> class_count", "Total stored building class count cells across towns."),
+    (12027, "town.acceptance_effect_cell_count", "src/town.h", "EnumIndexArray<uint32_t, TownAcceptanceEffect", "Flattened TownID/TownAcceptanceEffect cell count."),
     (12207, "engine.road_engine_count", "src/engine_base.h", "VehicleType type", "Count of occupied road-engine entries."),
-    (12505, "linkgraph.node_count_total", "src/linkgraph/linkgraph.h", "nodes", "Total LinkGraph nodes."),
-    (12506, "linkgraph.edge_count_total", "src/linkgraph/linkgraph.h", "edges", "Total canonical LinkGraph edges."),
-    (12507, "linkgraph.owner_offset_count", "src/linkgraph/linkgraph.h", "class LinkGraph", "LinkGraph owner-offset count, occupied graphs plus one."),
-    (12530, "linkgraph.node_offset_count", "src/linkgraph/linkgraph.h", "nodes", "LinkGraph edge-offset count, flattened nodes plus one."),
+    (12505, "linkgraph.node_count_total", "src/linkgraph/linkgraph.h", "NodeVector nodes{}", "Total LinkGraph nodes."),
+    (12506, "linkgraph.edge_count_total", "src/linkgraph/linkgraph.h", "std::vector<BaseEdge> edges", "Total canonical LinkGraph edges."),
+    (12507, "linkgraph.owner_offset_count", "src/linkgraph/linkgraph.h", "class LinkGraph :", "LinkGraph owner-offset count, occupied graphs plus one."),
+    (12530, "linkgraph.node_offset_count", "src/linkgraph/linkgraph.h", "NodeVector nodes{}", "LinkGraph edge-offset count, flattened nodes plus one."),
+    (12532, "linkgraph.schedule_count", "src/linkgraph/linkgraphschedule.h", "GraphList schedule", "Number of queued LinkGraphs in exact schedule order."),
+    (12533, "linkgraph.running_job_count", "src/linkgraph/linkgraphschedule.h", "JobList running", "Number of LinkGraphJobs in exact running-list order."),
 ]:
     field(args[0], args[1], "u32", args[2], args[3], args[4],
           "This explicit aggregate count makes the flattened canonical field representation uniquely decodable.",
@@ -1254,57 +1446,157 @@ for args in [
     (6078, "station.goods.packet_offsets", "src/station_base.h", "StationCargoList cargo", "station.goods.owner_offset_count", 4096001, "Per-GoodsEntry packet-reference offsets.", "station.goods.packet_ref_count"),
     (6079, "station.goods.flow_owner_offsets", "src/station_base.h", "FlowStatMap flows", "station.goods.owner_offset_count", 4096001, "Per-GoodsEntry FlowStat-owner offsets.", "station.goods.flow_owner_count"),
     (6080, "station.goods.flow_share_offsets", "src/station_base.h", "SharesMap shares", "station.goods.flow_owner_offset_count", 409600001, "Per-FlowStat cumulative-share offsets.", "station.goods.flow_share_count"),
-    (7204, "vehicle.cargo_packet_offsets", "src/vehicle_base.h", "VehicleCargoList cargo", "vehicle.owner_offset_count", 1048576, "Per-vehicle cargo-packet offsets.", "vehicle.cargo_packet_ref_count"),
-    (7205, "road_vehicle.path_offsets", "src/roadveh.h", "RoadVehPathCache path", "road_vehicle.owner_offset_count", 1048576, "Per-road-vehicle path offsets.", "road_vehicle.path_element_count"),
+    (6122, "road_stop.entries_offsets", "src/roadstop_base.h", "Entries *entries = nullptr", "road_stop.owner_offset_count", 64001, "Per-RoadStop optional Entries offsets.", "road_stop.entries_count"),
+    (7204, "vehicle.cargo_packet_offsets", "src/vehicle_base.h", "VehicleCargoList cargo", "vehicle.owner_offset_count", 1044481, "Per-vehicle cargo-packet offsets.", "vehicle.cargo_packet_ref_count"),
+    (7205, "road_vehicle.path_offsets", "src/roadveh.h", "RoadVehPathCache path", "road_vehicle.owner_offset_count", 1044481, "Per-road-vehicle path offsets.", "road_vehicle.path_element_count"),
+    (8021, "order_list.order_offsets", "src/order_base.h", "std::vector<Order> orders", "order.owner_offset_count", 64001, "Per-OrderList order-vector offsets.", "order.item.count"),
     (12086, "town.supplied_slot_offsets", "src/town.h", "SuppliedCargoes supplied", "town.owner_offset_count", 64001, "Per-town supplied-slot offsets.", "town.supplied_slot_count"),
     (12087, "town.accepted_slot_offsets", "src/town.h", "AcceptedCargoes accepted", "town.owner_offset_count", 64001, "Per-town accepted-slot offsets.", "town.accepted_slot_count"),
     (12088, "town.supplied_history_offsets", "src/town.h", "SuppliedCargoes supplied", "town.supplied_history_offset_count", 4096001, "Per-supplied-slot history offsets.", "town.supplied_history_cell_count"),
     (12089, "town.accepted_history_offsets", "src/town.h", "AcceptedCargoes accepted", "town.accepted_history_offset_count", 4096001, "Per-accepted-slot history offsets.", "town.accepted_history_cell_count"),
-    (12090, "town.rating_offsets", "src/town.h", "ratings{}", "town.owner_offset_count", 64001, "Per-town authority-rating offsets.", "town.rating_cell_count"),
+    (12090, "town.rating_offsets", "src/town.h", "CompanyID> ratings{}", "town.owner_offset_count", 64001, "Per-town authority-rating offsets.", "town.rating_cell_count"),
     (12091, "town.nearby_station_offsets", "src/town.h", "StationList stations_near", "town.owner_offset_count", 64001, "Per-town nearby-station offsets.", "town.nearby_station_ref_count"),
-    (12508, "linkgraph.node_offsets", "src/linkgraph/linkgraph.h", "nodes", "linkgraph.owner_offset_count", 65536, "Per-LinkGraph node offsets.", "linkgraph.node_count_total"),
-    (12509, "linkgraph.edge_offsets", "src/linkgraph/linkgraph.h", "edges", "linkgraph.node_offset_count", 4194241, "Per-LinkGraph-node edge offsets.", "linkgraph.edge_count_total"),
+    (12025, "town.building_id_count_offsets", "src/town.h", "std::vector<T> id_count", "town.owner_offset_count", 64001, "Per-town building ID count-vector offsets.", "town.building_id_count_total"),
+    (12026, "town.building_class_count_offsets", "src/town.h", "std::vector<T> class_count", "town.owner_offset_count", 64001, "Per-town building class count-vector offsets.", "town.building_class_count_total"),
+    (12508, "linkgraph.node_offsets", "src/linkgraph/linkgraph.h", "NodeVector nodes{}", "linkgraph.owner_offset_count", 65536, "Per-LinkGraph node offsets.", "linkgraph.node_count_total"),
+    (12509, "linkgraph.edge_offsets", "src/linkgraph/linkgraph.h", "std::vector<BaseEdge> edges", "linkgraph.node_offset_count", 4194241, "Per-LinkGraph-node edge offsets.", "linkgraph.edge_count_total"),
 ]:
     offset_field(*args)
 
-# Cargo distribution is fixed to manual in the fixture's authoritative
-# settings and the command corpus cannot change it. Keep pool occupancy as a
-# full zero-state assertion, but source-record every detailed family as
-# unreachable instead of pretending a partial LinkGraph projection is enough.
-scalar_group(12520, "linkgraph.unreachable", "src/linkgraph/linkgraph.h", "LinkGraph", "manual-distribution fixture exclusion", [
+# LinkGraphs are allocated and queued by UpdateStationWaiting even under manual
+# distribution.  Preserve every node/edge column and schedule identity.
+scalar_group(12520, "linkgraph.node", "src/linkgraph/linkgraph.h", "LinkGraph::BaseNode/BaseEdge", "LinkGraphID then NodeID/edge ordinal", [
     ("node_supply", "u32", "uint supply", 0, "BaseNode supply family."),
     ("node_demand", "u32", "uint demand", 0, "BaseNode demand family."),
     ("node_tile", "u32", "TileIndex xy", 0, "BaseNode tile family."),
     ("node_last_update", "i32", "TimerGameEconomy::Date last_update", 0, "BaseNode last-update family."),
-    ("edge_destination", "u32", "NodeID dest_node", 0, "BaseEdge destination-node family."),
+    ("edge_destination", "u16", "NodeID dest_node", 0, "BaseEdge destination-node family."),
     ("edge_last_unrestricted", "i32", "last_unrestricted_update", 0, "BaseEdge unrestricted-update family."),
     ("edge_last_restricted", "i32", "last_restricted_update", 0, "BaseEdge restricted-update family."),
 ], "These source owners are behaviorally complete only if LinkGraph allocation becomes reachable.",
-"manual cargo-distribution setting -> LinkGraph allocation guard -> excluded graph family")
-field(12527, "linkgraph.unreachable.schedule_order", "u8", "src/linkgraph/linkgraphschedule.h", "GraphList schedule",
-      "LinkGraph schedule queue identity and order family.",
-      "Manual cargo distribution prevents graph enqueue and job creation, so the queue is source-proven unreachable for the declared fixture.",
-      owner="LinkGraphSchedule", owner_rule="singleton schedule queue", sample=0,
-      reached_path="manual cargo-distribution setting -> SpawnNext guard -> schedule remains empty")
-field(12528, "linkgraph.unreachable.running_job_order", "u8", "src/linkgraph/linkgraphschedule.h", "JobList running",
-      "LinkGraph running-job identity and order family.",
-      "No graph can be scheduled under the manual distribution profile, so no asynchronous running job can exist.",
-      owner="LinkGraphSchedule", owner_rule="singleton running-job queue", sample=0,
-      reached_path="empty schedule -> SpawnNext returns -> running list remains empty")
-field(12529, "linkgraph.unreachable.job_pool", "u8", "src/linkgraph/linkgraphjob.h", "LinkGraphJobPool _link_graph_job_pool",
-      "LinkGraphJob pool state family.",
-      "Manual cargo distribution and the empty schedule prevent allocation of any LinkGraphJob pool item.",
-      owner="LinkGraphJobPool", owner_rule="typed numeric LinkGraphJobID pool slot", sample=0,
-      reached_path="manual distribution -> no schedule item -> LinkGraphJob::Create excluded")
-for item in FIELDS:
-    if (item["path"].startswith("linkgraph.item.") or item["path"].startswith("linkgraph.unreachable.") or
-            item["path"] in {"linkgraph.node_count_total", "linkgraph.edge_count_total", "linkgraph.owner_offset_count",
-                             "linkgraph.node_offsets", "linkgraph.edge_offsets"}):
-        item["classification"] = "out_of_scope_unreachable"
-        item["fixture_reachability_status"] = "unreachable-by-manual-cargo-distribution-settings-and-command-corpus"
-        item["cache_classification"] = "not_cache"
-        item["cache_invalidation_trigger"] = "not_applicable"
-        item["deterministic_rebuild_procedure"] = "not_applicable"
+"UpdateStationWaiting -> LinkGraph allocation/AddNode -> LinkGraphSchedule::Queue/SpawnNext")
+field(12527, "linkgraph.schedule_graph_ids", "stable_id", "src/linkgraph/linkgraphschedule.h", "GraphList schedule",
+      "Queued LinkGraphIDs in exact native list order.",
+      "SpawnNext rotates and selects this list; membership and order alter which graph is processed next.",
+      owner="LinkGraphSchedule", owner_rule="singleton schedule queue",
+      shape="dynamic_array", fixed_count=None, count_source="linkgraph.schedule_count", maximum_capacity=65535,
+      order="native GraphList order from front to back", sample=[0], sample_scope="one_element",
+      reached_path="UpdateStationWaiting -> LinkGraphSchedule::Queue -> SpawnNext")
+field(12528, "linkgraph.running_job_ids", "stable_id", "src/linkgraph/linkgraphschedule.h", "JobList running",
+      "Running LinkGraphJobIDs in exact native list order.",
+      "JoinNext consumes the list front, so identity and order control when completed results enter gameplay state.",
+      owner="LinkGraphSchedule", owner_rule="singleton running-job queue",
+      shape="dynamic_array", fixed_count=None, count_source="linkgraph.running_job_count", maximum_capacity=65535,
+      order="native JobList order from front to back", sample=[0], sample_scope="one_element",
+      reached_path="LinkGraphSchedule::SpawnNext -> running.push_back -> JoinNext")
+field(12529, "linkgraph_job.pool.occupied_count", "u32", "src/core/pool_type.hpp", "size_t items",
+      "Number of occupied LinkGraphJob pool slots.",
+      "A spawned job is persistent continuation state until JoinNext; the exact pool allocation state is authoritative.",
+      owner="linkgraph_job_pool", owner_rule="typed numeric LinkGraphJobID pool slot", sample=0,
+      reached_path="LinkGraphSchedule::SpawnNext -> LinkGraphJob::Create -> JoinNext")
+for field_id, suffix, symbol, value_type, shape, count_source, maximum, description in [
+    (12540, "first_free", "size_t first_free", "u32", "scalar", None, 1, "Lowest LinkGraphJob slot from which allocation scans."),
+    (12541, "first_unused", "size_t first_unused", "u32", "scalar", None, 1, "Exclusive LinkGraphJob pool high-water slot."),
+    (12542, "occupancy_bitmap", "std::vector<BitmapStorage> used_bitmap", "u64", "dynamic_array", "linkgraph_job.pool.bitmap_word_count", 1024, "Exact LinkGraphJob pool used-bitmap words."),
+    (12544, "bitmap_word_count", "std::vector<BitmapStorage> used_bitmap", "u32", "scalar", None, 1, "Exact LinkGraphJob used-bitmap word count."),
+]:
+    field(field_id, f"linkgraph_job.pool.{suffix}", value_type, "src/core/pool_type.hpp", symbol,
+          description, "LinkGraphJob allocation and iteration depend on exact pool cursor and bitmap state.",
+          owner="linkgraph_job_pool", owner_rule="typed numeric LinkGraphJobID pool slot",
+          shape=shape, fixed_count=1 if shape == "scalar" else None, count_source=count_source,
+          maximum_capacity=maximum, order="single value" if shape == "scalar" else "native used_bitmap word index ascending",
+          sample=0 if shape == "scalar" else [0], sample_scope="complete_value" if shape == "scalar" else "one_element",
+          reached_path="LinkGraphSchedule::SpawnNext -> LinkGraphJobPool allocation/iteration")
+field(12543, "linkgraph_job.pool.native_free_list", "u32", "src/core/pool_type.hpp", "size_t first_free",
+      "Proof entry for a separate LinkGraphJob free-list.",
+      "Pinned PoolBase stores only first_free, first_unused, and used_bitmap; no separate free-list order exists.",
+      owner="linkgraph_job_pool", owner_rule="typed numeric LinkGraphJobID pool slot", sample=0,
+      classification="out_of_scope_unreachable", reached="unreachable_absent-from-pinned-PoolBase-storage",
+      reached_path="Pool::Allocate source review")
+
+# Running LinkGraphJobs are native continuation state even with manual cargo
+# distribution: graphs are still created/queued, and jobs are spawned as soon
+# as a component has at least two nodes.  The copied graph and copied settings
+# are immutable after spawn and are exactly the inputs native save/load keeps
+# before restarting the deterministic worker calculation.
+for field_id, path, source_file, source_symbol, description in [
+    (12545, "linkgraph_job.owner_offset_count", "src/linkgraph/linkgraphjob.h", "class LinkGraphJob :", "LinkGraphJob owner-offset count, occupied jobs plus one."),
+    (12546, "linkgraph_job.graph_node_count_total", "src/linkgraph/linkgraph.h", "NodeVector nodes{}", "Total copied-graph nodes across LinkGraphJobs."),
+    (12547, "linkgraph_job.graph_node_offset_count", "src/linkgraph/linkgraph.h", "NodeVector nodes{}", "Copied-graph edge-offset count, total copied nodes plus one."),
+    (12548, "linkgraph_job.graph_edge_count_total", "src/linkgraph/linkgraph.h", "std::vector<BaseEdge> edges", "Total copied-graph edges across LinkGraphJobs."),
+]:
+    field(field_id, path, "u32", source_file, source_symbol, description,
+          "This explicit aggregate count makes the immutable per-job graph projection uniquely decodable.",
+          owner="projection_structure", owner_rule="singleton complete projection", sample=1 if path.endswith("offset_count") else 0,
+          reached_path="LinkGraphJob::Iterate -> immutable copied graph sizes -> read-only projection adapter")
+
+field(12549, "linkgraph_job.item.ids", "stable_id", "src/linkgraph/linkgraphjob.h", "class LinkGraphJob :",
+      "Occupied LinkGraphJobIDs in typed pool-slot order.",
+      "The stable ID binds each immutable job input and schedule reference to its exact native pool slot.",
+      owner="LinkGraphJob", owner_rule="typed numeric LinkGraphJobID pool slot",
+      shape="dynamic_array", fixed_count=None, count_source="linkgraph_job.pool.occupied_count", maximum_capacity=64,
+      order="occupied LinkGraphJobID ascending", sample=[0], sample_scope="one_element",
+      reached_path="LinkGraphSchedule::SpawnNext -> LinkGraphJob::Create -> LinkGraphJob::Iterate")
+
+for field_id, suffix, value_type, source_symbol, sample, description in [
+    (12550, "join_date", "i32", "TimerGameEconomy::Date join_date", 0, "Economy date on which this job must be joined."),
+    (12551, "copied_graph_id", "stable_id", "const LinkGraph link_graph", 0, "Original LinkGraphID copied into this job."),
+    (12554, "settings.recalc_time", "u16", "uint16_t recalc_time", 32, "Copied link-graph recalculation duration setting."),
+    (12555, "settings.recalc_interval", "u16", "uint16_t recalc_interval", 16, "Copied link-graph scheduling interval setting."),
+    (12556, "settings.distribution_pax", "u8", "DistributionType distribution_pax", 0, "Copied passenger distribution mode."),
+    (12557, "settings.distribution_mail", "u8", "DistributionType distribution_mail", 0, "Copied mail distribution mode."),
+    (12558, "settings.distribution_armoured", "u8", "DistributionType distribution_armoured", 0, "Copied armoured-cargo distribution mode."),
+    (12559, "settings.distribution_default", "u8", "DistributionType distribution_default", 0, "Copied default cargo distribution mode."),
+    (12560, "settings.accuracy", "u8", "uint8_t accuracy", 16, "Copied link-graph calculation accuracy."),
+    (12561, "settings.demand_size", "u8", "uint8_t demand_size", 100, "Copied supply-size demand weight."),
+    (12562, "settings.demand_distance", "u8", "uint8_t demand_distance", 100, "Copied distance demand weight."),
+    (12563, "settings.short_path_saturation", "u8", "uint8_t short_path_saturation", 80, "Copied short-path saturation threshold."),
+    (12564, "graph.cargo_type", "u8", "CargoType cargo = INVALID_CARGO;", 0, "Cargo type of the immutable copied graph."),
+    (12565, "graph.last_compression", "i32", "TimerGameEconomy::Date last_compression", 0, "Last-compression date of the immutable copied graph."),
+    (12566, "graph.node_counts", "u32", "NodeVector nodes{}", 0, "Node count of each immutable copied graph."),
+]:
+    source_file = "src/linkgraph/linkgraphjob.h" if field_id <= 12551 else ("src/settings_type.h" if field_id <= 12563 else "src/linkgraph/linkgraph.h")
+    field(field_id, f"linkgraph_job.item.{suffix}", value_type, source_file, source_symbol,
+          description,
+          "Native job scheduling, deterministic recomputation, and eventual JoinNext output depend on this value.",
+          owner="LinkGraphJob", owner_rule="typed numeric LinkGraphJobID pool slot", sample=[sample],
+          shape="dynamic_array", fixed_count=None, count_source="linkgraph_job.pool.occupied_count", maximum_capacity=64,
+          order="occupied LinkGraphJobID ascending", sample_scope="one_element",
+          reached_path="LinkGraphSchedule::SpawnNext -> LinkGraphJob copy -> native save/load restart or JoinNext")
+
+for field_id, path, count_source, maximum, source_symbol, description, target in [
+    (12567, "linkgraph_job.graph_node_offsets", "linkgraph_job.owner_offset_count", 65, "NodeVector nodes{}", "Per-job copied-graph node offsets.", "linkgraph_job.graph_node_count_total"),
+    (12568, "linkgraph_job.graph_edge_offsets", "linkgraph_job.graph_node_offset_count", 129, "std::vector<BaseEdge> edges", "Per-copied-node edge offsets.", "linkgraph_job.graph_edge_count_total"),
+]:
+    field(field_id, path, "u32", "src/linkgraph/linkgraph.h", source_symbol, description,
+          "Offsets preserve exact empty and non-empty nested boundaries in the immutable copied job graph.",
+          owner="projection_structure", owner_rule="LinkGraphJobID then native node ordinal",
+          shape="dynamic_array", fixed_count=None, count_source=count_source, maximum_capacity=maximum,
+          order="stable owner order; offset zero first; final offset equals aggregate count",
+          sample=[0], sample_scope="one_element",
+          reached_path="LinkGraphJob::Iterate -> immutable Graph() -> prefix-sum projection adapter")
+    FIELDS[-1]["offset_target_count_field"] = target
+
+for field_id, suffix, value_type, source_symbol, count_source, maximum, description in [
+    (12569, "graph.node_supply", "u32", "uint supply", "linkgraph_job.graph_node_count_total", 128, "Copied BaseNode supply."),
+    (12570, "graph.node_demand", "u32", "uint demand", "linkgraph_job.graph_node_count_total", 128, "Copied BaseNode demand."),
+    (12571, "graph.node_station_ids", "stable_id", "StationID station", "linkgraph_job.graph_node_count_total", 128, "Copied BaseNode station IDs."),
+    (12572, "graph.node_tiles", "u32", "TileIndex xy", "linkgraph_job.graph_node_count_total", 128, "Copied BaseNode tiles."),
+    (12573, "graph.node_last_updates", "i32", "TimerGameEconomy::Date last_update", "linkgraph_job.graph_node_count_total", 128, "Copied BaseNode last-update dates."),
+    (12574, "graph.edge_capacities", "u32", "uint capacity", "linkgraph_job.graph_edge_count_total", 256, "Copied BaseEdge capacities."),
+    (12575, "graph.edge_usages", "u32", "uint usage", "linkgraph_job.graph_edge_count_total", 256, "Copied BaseEdge usages."),
+    (12576, "graph.edge_travel_time_sums", "u64", "uint64_t travel_time_sum", "linkgraph_job.graph_edge_count_total", 256, "Copied BaseEdge accumulated travel times."),
+    (12577, "graph.edge_last_unrestricted_updates", "i32", "last_unrestricted_update", "linkgraph_job.graph_edge_count_total", 256, "Copied BaseEdge unrestricted-update dates."),
+    (12578, "graph.edge_last_restricted_updates", "i32", "last_restricted_update", "linkgraph_job.graph_edge_count_total", 256, "Copied BaseEdge restricted-update dates."),
+    (12579, "graph.edge_destination_nodes", "u16", "NodeID dest_node", "linkgraph_job.graph_edge_count_total", 256, "Copied BaseEdge destination NodeIDs."),
+]:
+    field(field_id, f"linkgraph_job.{suffix}", value_type, "src/linkgraph/linkgraph.h", source_symbol,
+          description,
+          "This immutable copied value is a direct deterministic input to LinkGraphSchedule::Run and eventual committed flow state.",
+          owner="LinkGraphJob copied LinkGraph", owner_rule="LinkGraphJobID, then NodeID, then native sorted edge ordinal",
+          shape="dynamic_array", fixed_count=None, count_source=count_source, maximum_capacity=maximum,
+          order="LinkGraphJobID ascending, NodeID ascending, then native BaseEdge order", sample=[0], sample_scope="one_element",
+          reached_path="LinkGraphJob constructor copy -> worker Init/handlers -> JoinNext")
 
 def column(path: str, count_source: str, maximum: int, order: str = "stable owner ID ascending") -> None:
     item = next(value for value in FIELDS if value["path"] == path)
@@ -1324,16 +1616,16 @@ PREFIX_COLUMNS = {
     "station.item.": ("station.pool.occupied_count", 64000),
     "road_stop.item.": ("road_stop.pool.occupied_count", 64000),
     "station.goods.": ("station.goods.entry_count", 4096000),
-    "vehicle.item.": ("vehicle.pool.occupied_count", 1048575),
-    "road_vehicle.item.": ("road_vehicle.item.count", 1048575),
+    "vehicle.item.": ("vehicle.pool.occupied_count", 0xFF000),
+    "road_vehicle.item.": ("road_vehicle.item.count", 0xFF000),
     "order_list.item.": ("order_list.pool.occupied_count", 64000),
     "order.item.": ("order.item.count", 16320000),
     "cargo_packet.item.": ("cargo_packet.pool.occupied_count", 16773120),
     "town.item.": ("town.pool.occupied_count", 64000),
     "depot.item.": ("depot.pool.occupied_count", 64000),
-    "engine.item.": ("engine.pool.occupied_count", 65535),
-    "cargo_payment.item.": ("cargo_payment.pool.occupied_count", 1048575),
-    "subsidy.item.": ("subsidy.pool.occupied_count", 65535),
+    "engine.item.": ("engine.pool.occupied_count", 64000),
+    "cargo_payment.item.": ("cargo_payment.pool.occupied_count", 0xFF000),
+    "subsidy.item.": ("subsidy.pool.occupied_count", 256),
     "linkgraph.item.": ("linkgraph.pool.occupied_count", 65535),
 }
 AGGREGATE_SCALARS = {
@@ -1375,21 +1667,38 @@ NESTED_COUNTS = {
     "industry.item.accepted_history_waiting": ("industry.accepted_history_cell_count", 6400000),
     "industry.item.accepted_history_presence": ("industry.accepted_slot_count", 256000),
     "industry.item.nearby_station_ids": ("industry.nearby_station_ref_count", 409600000),
-    "station.item.loading_vehicle_ids": ("station.loading_vehicle_ref_count", 1048575),
+    "station.item.loading_vehicle_ids": ("station.loading_vehicle_ref_count", 0xFF000),
     "station.item.industries_near_ids": ("station.nearby_industry_ref_count", 409600000),
+    "station.item.industries_near_distances": ("station.nearby_industry_ref_count", 409600000),
     "station.item.custom_roadstop_tiles": ("station.custom_roadstop_tile_count", 4096000),
     "station.item.custom_roadstop_random_bits": ("station.custom_roadstop_tile_count", 4096000),
     "station.item.custom_roadstop_animation_frames": ("station.custom_roadstop_tile_count", 4096000),
     "station.item.tile_waiting_trigger_tiles": ("station.tile_waiting_trigger_record_count", 4096000),
     "station.item.tile_waiting_trigger_values": ("station.tile_waiting_trigger_record_count", 4096000),
     "station.goods.packet_ids": ("station.goods.packet_ref_count", 16773120),
+    "station.goods.packet_map_next_hop_keys": ("station.goods.packet_ref_count", 16773120),
     "station.goods.flow_origin_station_ids": ("station.goods.flow_owner_count", 409600000),
     "station.goods.flow_unrestricted": ("station.goods.flow_owner_count", 409600000),
     "station.goods.flow_share_cumulative_key": ("station.goods.flow_share_count", 1073741824),
     "station.goods.flow_share_via_station_id": ("station.goods.flow_share_count", 1073741824),
+    "road_stop.item.east_length": ("road_stop.entries_count", 64000),
+    "road_stop.item.east_occupied": ("road_stop.entries_count", 64000),
+    "road_stop.item.west_length": ("road_stop.entries_count", 64000),
+    "road_stop.item.west_occupied": ("road_stop.entries_count", 64000),
     "vehicle.item.cargo_packet_ids": ("vehicle.cargo_packet_ref_count", 16773120),
     "road_vehicle.item.path_trackdirs": ("road_vehicle.path_element_count", 67108800),
     "road_vehicle.item.path_tiles": ("road_vehicle.path_element_count", 67108800),
+    "vehicle.item.cache.weight": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.slope_resistance": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.maximum_tractive_effort": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.axle_resistance": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.maximum_track_speed": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.power": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.air_drag": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.total_length": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.first_engine_id": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.cache.vehicle_length": ("road_vehicle.item.count", 0xFF000),
+    "vehicle.item.ground_vehicle_flags": ("road_vehicle.item.count", 0xFF000),
     "town.item.ratings": ("town.rating_cell_count", 960000),
     "town.item.unwanted_months": ("town.rating_cell_count", 960000),
     "town.item.supplied_cargo_type": ("town.supplied_slot_count", 4096000),
@@ -1397,23 +1706,38 @@ NESTED_COUNTS = {
     "town.item.supplied_transported": ("town.supplied_history_cell_count", 102400000),
     "town.item.accepted_cargo_type": ("town.accepted_slot_count", 4096000),
     "town.item.accepted_amount": ("town.accepted_history_cell_count", 102400000),
+    "town.item.zone_radius_squared": ("town.zone_radius_cell_count", 320000),
+    "town.item.building_id_counts": ("town.building_id_count_total", 1073741824),
+    "town.item.building_class_counts": ("town.building_class_count_total", 1073741824),
+    "town.item.growth_goal": ("town.acceptance_effect_cell_count", 384000),
+    "town.item.received_old_max": ("town.acceptance_effect_cell_count", 384000),
+    "town.item.received_new_max": ("town.acceptance_effect_cell_count", 384000),
+    "town.item.received_old_actual": ("town.acceptance_effect_cell_count", 384000),
+    "town.item.received_new_actual": ("town.acceptance_effect_cell_count", 384000),
     "town.item.nearby_station_ids": ("town.nearby_station_ref_count", 409600000),
-    "engine.item.road.image_index": ("engine.road_engine_count", 65535),
-    "engine.item.road.cost_factor": ("engine.road_engine_count", 65535),
-    "engine.item.road.running_cost": ("engine.road_engine_count", 65535),
-    "engine.item.road.running_cost_class": ("engine.road_engine_count", 65535),
-    "engine.item.road.maximum_speed": ("engine.road_engine_count", 65535),
-    "engine.item.road.capacity": ("engine.road_engine_count", 65535),
-    "engine.item.road.weight_quarter_tonnes": ("engine.road_engine_count", 65535),
-    "engine.item.road.power_tens_hp": ("engine.road_engine_count", 65535),
-    "engine.item.road.tractive_effort": ("engine.road_engine_count", 65535),
-    "engine.item.road.air_drag": ("engine.road_engine_count", 65535),
-    "engine.item.road.shorten_factor": ("engine.road_engine_count", 65535),
-    "engine.item.road.road_type": ("engine.road_engine_count", 65535),
+    "engine.item.road.image_index": ("engine.road_engine_count", 64000),
+    "engine.item.road.cost_factor": ("engine.road_engine_count", 64000),
+    "engine.item.road.running_cost": ("engine.road_engine_count", 64000),
+    "engine.item.road.running_cost_class": ("engine.road_engine_count", 64000),
+    "engine.item.road.maximum_speed": ("engine.road_engine_count", 64000),
+    "engine.item.road.capacity": ("engine.road_engine_count", 64000),
+    "engine.item.road.weight_quarter_tonnes": ("engine.road_engine_count", 64000),
+    "engine.item.road.power_tens_hp": ("engine.road_engine_count", 64000),
+    "engine.item.road.tractive_effort": ("engine.road_engine_count", 64000),
+    "engine.item.road.air_drag": ("engine.road_engine_count", 64000),
+    "engine.item.road.shorten_factor": ("engine.road_engine_count", 64000),
+    "engine.item.road.road_type": ("engine.road_engine_count", 64000),
     "linkgraph.item.node_station_ids": ("linkgraph.node_count_total", 4194240),
     "linkgraph.item.edge_capacities": ("linkgraph.edge_count_total", 1073741824),
     "linkgraph.item.edge_usages": ("linkgraph.edge_count_total", 1073741824),
     "linkgraph.item.edge_travel_times": ("linkgraph.edge_count_total", 1073741824),
+    "linkgraph.node.node_supply": ("linkgraph.node_count_total", 4194240),
+    "linkgraph.node.node_demand": ("linkgraph.node_count_total", 4194240),
+    "linkgraph.node.node_tile": ("linkgraph.node_count_total", 4194240),
+    "linkgraph.node.node_last_update": ("linkgraph.node_count_total", 4194240),
+    "linkgraph.node.edge_destination": ("linkgraph.edge_count_total", 1073741824),
+    "linkgraph.node.edge_last_unrestricted": ("linkgraph.edge_count_total", 1073741824),
+    "linkgraph.node.edge_last_restricted": ("linkgraph.edge_count_total", 1073741824),
 }
 for path, (count_source, maximum) in NESTED_COUNTS.items():
     column(path, count_source, maximum, "stable owner ID ascending, then native nested ordinal ascending")
@@ -1434,7 +1758,9 @@ for item in FIELDS:
     if item["value_type"] != "stable_id":
         continue
     path = item["path"]
-    if (path in {"vehicle.item.id", "cargo_packet.item.id", "cargo_payment.item.id",
+    if (path in {"vehicle.item.id", "cargo_packet.item.id", "cargo_payment.item.id", "vehicle.item.cargo_payment_id",
+                 "road_vehicle.item.ids", "effect_vehicle.item.ids",
+                 "town.item.newgrf_persistent_storage_ids",
                  "vehicle.item.cargo_packet_ids", "station.goods.packet_ids"} or
             any(token in path for token in ("vehicle_id", "next_vehicle_id", "next_shared_vehicle_id", "tile_hash_next_id", "container_id"))):
         item["width_bits"] = 32
@@ -1447,13 +1773,64 @@ for item in FIELDS:
     item["sample_logical_value"] = [min(int(value), max_value) for value in values] if isinstance(item["sample_logical_value"], list) else min(int(values[0]), max_value)
 
 
+def stable_id_null_sentinel(path: str, width_bits: int) -> int:
+    """Return the pinned semantic invalid value, not the storage-width maximum."""
+    cargo_packet_refs = {
+        "cargo_packet.item.id",
+        "station.goods.packet_ids",
+        "vehicle.item.cargo_packet_ids",
+    }
+    cargo_payment_refs = {
+        "cargo_payment.item.id",
+        "vehicle.item.cargo_payment_id",
+        "town.item.newgrf_persistent_storage_ids",
+    }
+    vehicle_refs = {
+        "vehicle.item.id",
+        "station.item.loading_vehicle_ids",
+        "vehicle.item.next_vehicle_id",
+        "vehicle.item.next_shared_vehicle_id",
+        "vehicle.item.tile_hash_next_id",
+        "order_list.item.first_shared_vehicle_id",
+        "cargo_payment.item.vehicle_id",
+        "road_vehicle.item.ids",
+        "effect_vehicle.item.ids",
+    }
+    if path in cargo_packet_refs:
+        return 0xFFFFFF
+    if path in cargo_payment_refs or path in vehicle_refs:
+        return 0xFFFFF
+    if width_bits == 8:
+        return 0xFF
+    if width_bits == 16:
+        return 0xFFFF
+    # Tagged projection-only union IDs use an explicit U32 null outside all
+    # currently valid owner domains; this is not claimed to be a native PoolID.
+    return 0xFFFFFFFF
+
+
 def source_line(source_file: str, symbol: str) -> int:
     path = UPSTREAM / source_file
     lines = path.read_text(encoding="utf-8", errors="strict").splitlines()
+    in_block_comment = False
     for number, line in enumerate(lines, 1):
-        if symbol in line:
+        code = line
+        if in_block_comment:
+            if "*/" not in code:
+                continue
+            code = code.split("*/", 1)[1]
+            in_block_comment = False
+        while "/*" in code:
+            before, after = code.split("/*", 1)
+            if "*/" not in after:
+                code = before
+                in_block_comment = True
+                break
+            code = before + after.split("*/", 1)[1]
+        code = code.split("//", 1)[0]
+        if symbol in code:
             return number
-    raise SystemExit(f"source symbol not found: {source_file}: {symbol!r}")
+    raise SystemExit(f"source declaration/definition locator not found outside comments: {source_file}: {symbol!r}")
 
 
 def encode_sample(entry: dict[str, Any]) -> str:
@@ -1489,9 +1866,9 @@ def expand() -> dict[str, Any]:
             "town.item.population": "Town::cache.population",
             "town.item.house_count": "Town::cache.num_houses",
             "town.item.zone_radius_squared": "Town::cache.squared_town_zone_radius",
-            "town.item.building_counts": "Town::cache.building_counts",
+            "town.item.building_id_counts": "Town::cache.building_counts.id_count",
+            "town.item.building_class_counts": "Town::cache.building_counts.class_count",
         }.get(item["path"], item["source_symbol"])
-        item["sample_encoded_hex"] = encode_sample(item)
         item["sample_origin"] = "hand-reviewed canonical type example"
         if item["path"].startswith("rng."):
             item["sample_origin"] = "fixture builder pre-save observation; post-load equality remains a PORT-003 projection gate"
@@ -1499,9 +1876,33 @@ def expand() -> dict[str, Any]:
         item["review_status"] = "reviewed_source_owner_and_continuation"
         item["null_sentinel"] = None
         if item["value_type"] == "stable_id":
-            item["null_sentinel"] = (1 << int(item["width_bits"])) - 1
+            item["null_sentinel"] = stable_id_null_sentinel(item["path"], int(item["width_bits"]))
+            values = item["sample_logical_value"] if isinstance(item["sample_logical_value"], list) else [item["sample_logical_value"]]
+            storage_max = (1 << int(item["width_bits"])) - 1
+            remapped = [item["null_sentinel"] if int(value) == storage_max else int(value) for value in values]
+            item["sample_logical_value"] = remapped if isinstance(item["sample_logical_value"], list) else remapped[0]
         elif item["path"].endswith("tile") or item["path"].endswith("_tile"):
             item["null_sentinel"] = 4294967295
+        if item["value_type"] == "u8" and "CargoType" in item["source_symbol"]:
+            item["null_sentinel"] = 0xFF
+        if item["value_type"] == "u16" and "NodeID" in item["source_symbol"]:
+            item["null_sentinel"] = 0xFFFF
+        if item["value_type"] == "i32" and "Date" in item["source_symbol"]:
+            item["null_sentinel"] = -1
+        if item["path"] in {
+            "linkgraph_job.graph.node_tiles",
+        }:
+            item["null_sentinel"] = 0xFFFFFFFF
+        if item["path"] in {
+            "cache.town_kdtree.node_left_indices",
+            "cache.town_kdtree.node_right_indices",
+            "cache.town_kdtree.root_index",
+            "cache.station_kdtree.node_left_indices",
+            "cache.station_kdtree.node_right_indices",
+            "cache.station_kdtree.root_index",
+        }:
+            item["null_sentinel"] = 0xFFFFFFFFFFFFFFFF
+        item["sample_encoded_hex"] = encode_sample(item)
         item["enum_encoding_rule"] = "explicit pinned numeric value; raw C++ object representation is forbidden" if any(token in item["path"] for token in ("type", "mode", "direction", "status", "flags", "state", "owner", "classification")) else "not_enum"
         item["consumed_by_simulation"] = item["classification"] not in {"diagnostic", "out_of_scope_unreachable"}
         item["cache_evidence_sha256"] = None
@@ -1601,11 +2002,14 @@ def build_projection_plan(registry: dict[str, Any]) -> dict[str, Any]:
         ("settings.", "singleton GameSettings", "registry field-ID order"),
         ("map.tile.", "Map::_m then Map::_me", "TileIndex ascending 0..4095 for each native plane"),
         ("map.", "singleton Map", "one value"),
+        ("cache.town_kdtree.", "singleton _town_kdtree", "native node vector and free-list indices in exact stored order"),
+        ("cache.station_kdtree.", "singleton _station_kdtree", "native node vector and free-list indices in exact stored order"),
         ("company.", "Company::Iterate()", "occupied CompanyID ascending; nested offsets partition native ordinals"),
         ("industry.", "Industry::Iterate()", "occupied IndustryID ascending; produced/accepted/history offsets partition nested vectors"),
         ("station.goods.", "Station::Iterate() then CargoType 0..NUM_CARGO-1", "GoodsEntry lexicographic; packet/flow/share prefix offsets preserve nesting"),
         ("station.", "Station::Iterate()", "occupied StationID ascending; nested offsets preserve native containers"),
         ("road_stop.", "RoadStop::Iterate()", "occupied RoadStopID ascending"),
+        ("effect_vehicle.", "Vehicle::Iterate() filtered by BaseVehicle::type Effect", "effect VehicleID ascending; discriminator column maps shared VehiclePool slots"),
         ("road_vehicle.", "Vehicle::Iterate() filtered by BaseVehicle::type Road", "VehicleID ascending; engine/path discriminator columns explicit"),
         ("vehicle.", "Vehicle::Iterate()", "occupied VehicleID ascending; nested packet offsets preserve list order"),
         ("order_list.", "OrderList::Iterate()", "occupied OrderListID ascending"),
@@ -1616,7 +2020,8 @@ def build_projection_plan(registry: dict[str, Any]) -> dict[str, Any]:
         ("engine.", "Engine::Iterate()", "occupied EngineID ascending; road properties use engine.road_engine_ids"),
         ("cargo_payment.", "CargoPayment::Iterate()", "occupied CargoPaymentID ascending"),
         ("subsidy.", "Subsidy::Iterate()", "occupied SubsidyID ascending"),
-        ("linkgraph.", "LinkGraph::Iterate()", "pool zero-state only under manual distribution"),
+        ("linkgraph_job.", "LinkGraphJob::Iterate() and LinkGraphSchedule::running", "occupied LinkGraphJobID ascending; schedule lists preserve native order"),
+        ("linkgraph.", "LinkGraph::Iterate() and LinkGraphSchedule::schedule", "occupied LinkGraphID ascending; node/edge offsets and native schedule order are explicit"),
     ]
     rows = []
     for field in registry["fields"]:

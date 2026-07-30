@@ -27,6 +27,37 @@ class RegistryError(ValueError):
     pass
 
 
+def source_code_lines(lines: list[str]) -> list[str]:
+    """Remove C/C++ comments while preserving one output entry per line."""
+    result: list[str] = []
+    in_block_comment = False
+    for line in lines:
+        code = line
+        output = ""
+        while code:
+            if in_block_comment:
+                if "*/" not in code:
+                    code = ""
+                    break
+                code = code.split("*/", 1)[1]
+                in_block_comment = False
+                continue
+            block = code.find("/*")
+            single = code.find("//")
+            if single >= 0 and (block < 0 or single < block):
+                output += code[:single]
+                code = ""
+            elif block >= 0:
+                output += code[:block]
+                code = code[block + 2:]
+                in_block_comment = True
+            else:
+                output += code
+                code = ""
+        result.append(output)
+    return result
+
+
 def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -111,13 +142,18 @@ def validate_registry(registry_path: Path, schema_path: Path, source_root: Path)
         if not source.is_file():
             raise RegistryError(f"field {field_id} source file absent: {field['source_file']}")
         lines = source.read_text(encoding="utf-8").splitlines()
+        code_lines = source_code_lines(lines)
         line = field["source_line_diagnostic"]
         if line > len(lines):
             raise RegistryError(f"field {field_id} source line outside file")
-        if field["source_symbol"] not in lines[line - 1]:
-            if not any(field["source_symbol"] in candidate for candidate in lines):
-                raise RegistryError(f"field {field_id} source symbol absent: {field['source_symbol']}")
-            raise RegistryError(f"field {field_id} source-line diagnostic no longer locates symbol")
+        symbol = field["source_symbol"]
+        matches = [number for number, candidate in enumerate(code_lines, 1) if symbol in candidate]
+        if not matches:
+            raise RegistryError(f"field {field_id} source declaration/definition locator absent outside comments: {symbol}")
+        if symbol not in code_lines[line - 1]:
+            raise RegistryError(f"field {field_id} source-line diagnostic points to a comment or different symbol")
+        if line != matches[0]:
+            raise RegistryError(f"field {field_id} source-line diagnostic is not the reviewed first exact code locator")
 
         typ = field["value_type"]
         width = field["width_bits"]
