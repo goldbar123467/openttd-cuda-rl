@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/openttd-rl/divergence-report-v1.schema.json",
+  "title": "OpenTTD RL first-divergence report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "backend_labels", "boundary", "cache_class",
+    "diagnostics_differ_ignored", "element_index", "equal", "field",
+    "field_id", "field_path", "identities", "kind", "last_command",
+    "logical_environment_id", "minimal_prefix", "native_tick",
+    "oracle_digest", "oracle_value", "oracle_value_decimal",
+    "oracle_value_hex", "previous_checkpoint", "public_step",
+    "record_sequence", "record_type", "reproduce", "source_anchor",
+    "status", "target_digest", "target_record_sequence", "target_value",
+    "target_value_decimal", "target_value_hex", "value_signed",
+    "value_type", "value_width_bits"
+  ],
+  "properties": {
+    "backend_labels": {
+      "type": "object", "additionalProperties": false,
+      "required": ["oracle", "target"],
+      "properties": {"oracle": {"type": "string"}, "target": {"type": "string"}}
+    },
+    "boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "ordinal"],
+      "properties": {"kind": {"type": "integer", "minimum": 0}, "ordinal": {"$ref": "#/$defs/u64"}}
+    },
+    "cache_class": {"type": "string"},
+    "diagnostics_differ_ignored": {"type": "boolean"},
+    "element_index": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "equal": {"const": false},
+    "field": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "signed", "type", "width_bits"],
+      "properties": {
+        "id": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "path": {"type": "string"}, "signed": {"type": "boolean"},
+        "type": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "width_bits": {"type": "integer", "minimum": 0, "maximum": 64}
+      }
+    },
+    "field_id": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "field_path": {"type": "string"},
+    "identities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["oracle", "target"],
+      "properties": {"oracle": {"$ref": "#/$defs/identity"}, "target": {"$ref": "#/$defs/identity"}}
+    },
+    "kind": {"type": "integer", "minimum": 1, "maximum": 4},
+    "last_command": {
+      "type": "object", "additionalProperties": false,
+      "required": ["execute", "intent", "test"],
+      "properties": {
+        "execute": {"$ref": "#/$defs/nullableCommand"},
+        "intent": {"$ref": "#/$defs/nullableCommand"},
+        "test": {"$ref": "#/$defs/nullableCommand"}
+      }
+    },
+    "logical_environment_id": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "minimal_prefix": {
+      "type": "object", "additionalProperties": false,
+      "required": ["digest", "path"],
+      "properties": {"digest": {"$ref": "#/$defs/sha256"}, "path": {"type": "string", "minLength": 1}}
+    },
+    "native_tick": {"$ref": "#/$defs/u64"},
+    "oracle_digest": {"$ref": "#/$defs/sha256"},
+    "oracle_value": {"$ref": "#/$defs/value"},
+    "oracle_value_decimal": {"$ref": "#/$defs/nullableString"},
+    "oracle_value_hex": {"$ref": "#/$defs/nullableString"},
+    "previous_checkpoint": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["id", "name", "sequence"],
+          "properties": {
+            "id": {"type": "integer", "minimum": 1, "maximum": 8},
+            "name": {"enum": ["route_completion", "first_production", "first_station_capture", "first_loading", "first_unloading", "first_accepted_delivery", "first_payment", "continuation_end"]},
+            "sequence": {"$ref": "#/$defs/u64"}
+          }
+        }
+      ]
+    },
+    "public_step": {"$ref": "#/$defs/u64"},
+    "record_sequence": {"$ref": "#/$defs/u64"},
+    "record_type": {"type": "integer", "minimum": 0, "maximum": 65535},
+    "reproduce": {
+      "type": "object", "additionalProperties": false,
+      "required": ["compare", "minimize"],
+      "properties": {
+        "compare": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string"}},
+        "minimize": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"type": "string"}}
+      }
+    },
+    "source_anchor": {"type": "string"},
+    "status": {"const": "divergence"},
+    "target_digest": {"$ref": "#/$defs/sha256"},
+    "target_record_sequence": {"$ref": "#/$defs/u64"},
+    "target_value": {"$ref": "#/$defs/value"},
+    "target_value_decimal": {"$ref": "#/$defs/nullableString"},
+    "target_value_hex": {"$ref": "#/$defs/nullableString"},
+    "value_signed": {"type": "boolean"},
+    "value_type": {"type": "integer", "minimum": 0, "maximum": 65535},
+    "value_width_bits": {"type": "integer", "minimum": 0, "maximum": 64}
+  },
+  "$defs": {
+    "u64": {"type": "integer", "minimum": 0},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableString": {"type": ["string", "null"]},
+    "value": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decimal", "hex"],
+      "properties": {"decimal": {"$ref": "#/$defs/nullableString"}, "hex": {"$ref": "#/$defs/nullableString"}}
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["build_sha256", "command_input_sha256", "command_schema_sha256", "content_sha256", "executable_sha256", "field_schema_sha256", "fixture_sha256", "instrumentation_sha256", "newgrfs", "settings_sha256", "source_commit"],
+      "properties": {
+        "build_sha256": {"$ref": "#/$defs/sha256"},
+        "command_input_sha256": {"$ref": "#/$defs/sha256"},
+        "command_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "executable_sha256": {"$ref": "#/$defs/sha256"},
+        "field_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "fixture_sha256": {"$ref": "#/$defs/sha256"},
+        "instrumentation_sha256": {"$ref": "#/$defs/sha256"},
+        "newgrfs": {"type": "array", "maxItems": 0},
+        "settings_sha256": {"$ref": "#/$defs/sha256"},
+        "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "nullableCommand": {"anyOf": [{"type": "null"}, {"type": "object"}]}
+  }
+}
