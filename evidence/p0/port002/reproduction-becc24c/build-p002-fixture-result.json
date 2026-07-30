@@ -1,0 +1,1 @@
+{"diagnostics":{"duration_seconds":315,"finished_at":"2026-07-30T03:48:11Z","started_at":"2026-07-30T03:42:56Z"},"message":"PORT002A fixture reproduction produced two byte-identical saves and map-plane streams matching the committed artifacts","return_code":0,"stage":"build-p002-fixture","status":"PASS"}
