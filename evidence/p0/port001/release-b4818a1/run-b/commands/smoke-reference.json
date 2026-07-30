@@ -1,0 +1,1 @@
+["/workspace/openttd-cuda-rl/oracle/runner/smoke_reference.sh","--install-root","/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/install","--artifact-root","/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b","--build-manifest","/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/manifests/build-reference.json"]

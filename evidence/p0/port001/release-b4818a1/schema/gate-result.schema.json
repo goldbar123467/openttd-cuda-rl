@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/oracle/manifests/schema/gate-result.schema.json",
+  "title": "OpenTTD P0 machine-readable gate result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "gate_result_kind",
+    "gate_id",
+    "profile",
+    "status",
+    "checks",
+    "artifacts",
+    "open_counts",
+    "branch_push",
+    "diagnostics"
+  ],
+  "properties": {
+    "$schema": { "const": "../schema/gate-result.schema.json" },
+    "schema_version": { "const": 1 },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "gate_result_kind": { "const": "p0-gate-result" },
+    "gate_id": { "type": "string", "enum": ["GATE-0", "PORT-001", "PORT-002", "PORT-003", "PORT-004", "PORT-005", "P0-FINAL"] },
+    "profile": { "type": "string", "enum": ["local-release", "ci-smoke"] },
+    "status": { "$ref": "#/$defs/status" },
+    "status_reason": { "type": "string", "minLength": 1 },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "evidence"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Z0-9][A-Z0-9-]+$" },
+          "status": { "$ref": "#/$defs/status" },
+          "reason": { "type": "string", "minLength": 1 },
+          "evidence": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/artifact" }
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "enum": ["FAIL", "SKIP"] } }, "required": ["status"] },
+            "then": { "required": ["reason"] }
+          }
+        ]
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "open_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defects", "divergences", "mandatory_skips", "unverified_artifacts"],
+      "properties": {
+        "defects": { "type": "integer", "minimum": 0 },
+        "divergences": { "type": "integer", "minimum": 0 },
+        "mandatory_skips": { "type": "integer", "minimum": 0 },
+        "unverified_artifacts": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "branch_push": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "verified", "branch", "local_commit", "remote_commit"],
+      "properties": {
+        "required": { "const": true },
+        "verified": { "type": "boolean" },
+        "branch": { "const": "port/p0-oracle-contract" },
+        "local_commit": { "$ref": "#/$defs/git_commit" },
+        "remote_commit": { "$ref": "#/$defs/git_commit" }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "finished_at"],
+      "properties": {
+        "started_at": { "type": "string", "format": "date-time" },
+        "finished_at": { "type": "string", "format": "date-time" },
+        "duration_seconds": { "type": "integer", "minimum": 0 },
+        "artifact_root": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["FAIL", "SKIP"] } }, "required": ["status"] },
+      "then": { "required": ["status_reason"] }
+    },
+    {
+      "if": { "properties": { "gate_id": { "const": "P0-FINAL" }, "status": { "const": "PASS" } }, "required": ["gate_id", "status"] },
+      "then": {
+        "properties": {
+          "profile": { "const": "local-release" },
+          "open_counts": {
+            "properties": {
+              "defects": { "const": 0 },
+              "divergences": { "const": 0 },
+              "mandatory_skips": { "const": 0 },
+              "unverified_artifacts": { "const": 0 }
+            }
+          },
+          "branch_push": {
+            "properties": {
+              "verified": { "const": true }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "git_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256", "size_bytes"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "relative_path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }
+      }
+    }
+  }
+}

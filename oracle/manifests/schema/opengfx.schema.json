@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/oracle/manifests/schema/opengfx.schema.json",
+  "title": "OpenTTD P0 frozen OpenGFX content profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "manifest_kind",
+    "profile",
+    "status",
+    "identity",
+    "acquisition",
+    "installed",
+    "network_policy",
+    "materials",
+    "expected_outputs"
+  ],
+  "properties": {
+    "$schema": { "const": "../schema/opengfx.schema.json" },
+    "schema_version": { "const": 1 },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_kind": { "const": "frozen-content-profile" },
+    "profile": { "const": "opengfx-8.0" },
+    "status": { "$ref": "#/$defs/status" },
+    "status_reason": { "type": "string", "minLength": 1 },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "shortname", "content_version", "palette", "blitter", "license"],
+      "properties": {
+        "name": { "const": "OpenGFX" },
+        "version": { "const": "8.0" },
+        "shortname": { "const": "OGFX" },
+        "content_version": { "const": 9499 },
+        "palette": { "const": "DOS" },
+        "blitter": { "const": "8bpp" },
+        "license": { "const": "GPL-2.0-only" }
+      }
+    },
+    "acquisition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "archive_name", "archive_format", "sha256", "digest_authority"],
+      "properties": {
+        "url": { "const": "https://cdn.openttd.org/opengfx-releases/8.0/opengfx-8.0-all.zip" },
+        "archive_name": { "const": "opengfx-8.0-all.zip" },
+        "archive_format": { "const": "zip" },
+        "sha256": { "const": "43a0c1dabf39cb865394f3a6cc36d4da5c10ecfaaf55652043104806810903be" },
+        "digest_authority": { "const": "https://www.openttd.org/downloads/opengfx-releases/latest" }
+      }
+    },
+    "installed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delivery_file", "sha256", "size_bytes", "content_root", "files"],
+      "properties": {
+        "delivery_file": { "const": "opengfx-8.0.tar" },
+        "sha256": { "const": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c" },
+        "size_bytes": { "const": 5396480 },
+        "content_root": { "const": "opengfx-8.0" },
+        "files": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/file" }
+        }
+      }
+    },
+    "network_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acquisition_https_only", "verify_before_extract", "safe_paths_required", "atomic_install", "authoritative_run_network_required"],
+      "properties": {
+        "acquisition_https_only": { "const": true },
+        "verify_before_extract": { "const": true },
+        "safe_paths_required": { "const": true },
+        "atomic_install": { "const": true },
+        "authoritative_run_network_required": { "const": false }
+      }
+    },
+    "materials": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/material" }
+    },
+    "expected_outputs": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/output" }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "verification_basis": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["FAIL", "SKIP"] } }, "required": ["status"] },
+      "then": { "required": ["status_reason"] }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size_bytes", "sha256"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^opengfx-8\\.0/(?!.*(?:^|/)\\.\\.(?:/|$))[^/].+$" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "identity"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "identity": { "type": "string", "minLength": 1 }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256", "size_bytes"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

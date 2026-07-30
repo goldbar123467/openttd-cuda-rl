@@ -1,0 +1,1 @@
+{"diagnostics":{"duration_seconds":547,"finished_at":"2026-07-30T03:00:36Z","started_at":"2026-07-30T02:51:29Z"},"message":"PORT-001 passed from two clean roots at pushed commit b4818a12a1d37492fc43f8e8a9b87091ca5d60e8","return_code":0,"stage":"port001-gate","status":"PASS"}

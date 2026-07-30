@@ -1,0 +1,66 @@
+{
+  "$schema": "../schema/source.schema.json",
+  "schema_version": 1,
+  "schema_sha256": "8200066570a21d87f66eb7c295a71791baaffb5ce830fb6c9bb4c085d153419b",
+  "manifest_kind": "frozen-profile",
+  "profile": "local-release",
+  "status": "PASS",
+  "identity": {
+    "outer_repository": {
+      "canonical_url": "https://github.com/goldbar123467/openttd-cuda-rl.git",
+      "basis_commit": "58895696c8a75eda2fac2ae553654ba4398f5cda",
+      "required_work_branch": "port/p0-oracle-contract"
+    },
+    "submodule": {
+      "path": "openttd-upstream",
+      "canonical_url": "https://github.com/OpenTTD/OpenTTD.git",
+      "commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86",
+      "gitlink_mode": 160000,
+      "clean_required": true,
+      "gitmodules_sha256": "326fef5383bcf7cc8b5c8a2522dca8a86acdcc653968ae2d5306b111ea49e04b"
+    }
+  },
+  "materials": [
+    {
+      "name": "outer-repository-basis-commit-id",
+      "kind": "git-commit",
+      "sha256": "e369a4f8ec326da7f05d2ef738e4d6f38076bc88a5614fafede91b16dae4fb53"
+    },
+    {
+      "name": "openttd-submodule-commit-id",
+      "kind": "git-commit",
+      "sha256": "149aaea02d6c17e24e5906aee1c589771cbfc51f64aecf1945fab7a41ca2fa71"
+    },
+    {
+      "name": ".gitmodules",
+      "kind": "file",
+      "sha256": "326fef5383bcf7cc8b5c8a2522dca8a86acdcc653968ae2d5306b111ea49e04b"
+    }
+  ],
+  "expected_outputs": [
+    {
+      "name": "generated-source-run-evidence",
+      "schema": "oracle/manifests/schema/evidence.schema.json",
+      "digest_required_at_run": true
+    }
+  ],
+  "commands": [
+    {
+      "purpose": "verify outer repository identity",
+      "argv": ["git", "rev-parse", "HEAD"]
+    },
+    {
+      "purpose": "verify pinned submodule commit",
+      "argv": ["git", "-C", "openttd-upstream", "rev-parse", "HEAD"]
+    },
+    {
+      "purpose": "verify pinned submodule clean state",
+      "argv": ["git", "-C", "openttd-upstream", "status", "--short"]
+    }
+  ],
+  "environment_allowlist": ["CI", "GITHUB_ACTIONS", "LANG", "LC_ALL", "P0_ARTIFACT_ROOT", "P0_PROFILE", "PYTHONHASHSEED", "SOURCE_DATE_EPOCH", "TZ", "XDG_CONFIG_HOME", "XDG_DATA_HOME"],
+  "diagnostics": {
+    "authored_from_outer_commit": "801ad8d9b35584b21981a00acced1a2aee8616c0",
+    "note": "The outer basis commit is the immutable main-branch commit on which P0 began; generated run evidence records the executing outer commit and is intentionally not self-referential here."
+  }
+}

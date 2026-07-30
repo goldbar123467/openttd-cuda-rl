@@ -1,0 +1,25 @@
+---
+Checks: >-
+  -*,
+  clang-analyzer-apiModeling.*,
+  clang-analyzer-core.*,
+  clang-analyzer-deadcode.*,
+  clang-analyzer-unix.*,
+  bugprone-branch-clone,
+  bugprone-infinite-loop,
+  bugprone-misplaced-operator-in-strlen-in-alloc,
+  bugprone-misplaced-pointer-arithmetic-in-alloc,
+  bugprone-misplaced-widening-cast,
+  bugprone-suspicious-enum-usage,
+  bugprone-suspicious-memory-comparison,
+  bugprone-suspicious-memset-usage,
+  bugprone-suspicious-realloc-usage,
+  bugprone-undefined-memory-manipulation,
+  cert-err34-c,
+  misc-redundant-expression,
+  portability-simd-intrinsics
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/parity/(include|src|tools|tests)/.*'
+AnalyzeTemporaryDtors: false
+FormatStyle: none
+...

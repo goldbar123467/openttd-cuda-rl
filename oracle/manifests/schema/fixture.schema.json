@@ -1,0 +1,619 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/oracle/manifests/schema/fixture.schema.json",
+  "title": "OpenTTD P0 road-freight fixture contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "manifest_kind",
+    "fixture_id",
+    "review_status",
+    "source_identity",
+    "fixture_bytes",
+    "creation",
+    "world",
+    "initial_boundary",
+    "content",
+    "normalized_settings",
+    "towns",
+    "companies",
+    "industries",
+    "cargo",
+    "vehicle_engine",
+    "coordinate_plan",
+    "command_plan",
+    "funding_proof",
+    "milestones",
+    "source_evidence",
+    "known_unreachable_subsystems",
+    "closure_blockers"
+  ],
+  "properties": {
+    "$schema": { "const": "../../manifests/schema/fixture.schema.json" },
+    "schema_version": { "const": 1 },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_kind": { "const": "road-freight-fixture-contract" },
+    "fixture_id": { "const": "road_freight_v1" },
+    "review_status": {
+      "enum": ["PORT002A_REVIEW_REQUIRED", "PORT002A_FROZEN", "PORT002B_PASS"]
+    },
+    "source_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "creation_executable"],
+      "properties": {
+        "repository": { "const": "https://github.com/OpenTTD/OpenTTD.git" },
+        "commit": { "const": "29f808ef0022064e6d9a83c8476d1e0f4686af86" },
+        "creation_executable": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["state", "blocking_reason"],
+              "properties": {
+                "state": { "enum": ["not-built", "built-identity-pending"] },
+                "blocking_reason": { "type": "string", "minLength": 1 }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["state", "sha256", "size_bytes"],
+              "properties": {
+                "state": { "const": "verified" },
+                "sha256": { "$ref": "#/$defs/sha256" },
+                "size_bytes": { "type": "integer", "minimum": 1 }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "fixture_bytes": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "intended_relative_path", "blocking_evidence"],
+          "properties": {
+            "state": { "const": "not-generated" },
+            "intended_relative_path": { "const": "fixture.sav" },
+            "blocking_evidence": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "relative_path", "sha256", "size_bytes"],
+          "properties": {
+            "state": { "const": "frozen" },
+            "relative_path": { "const": "fixture.sav" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "size_bytes": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "creation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "generation_seed", "interactive_random_seed", "savegame_id", "pre_save_state", "native_operation_log", "release_runs", "post_freeze_mutation_allowed"],
+      "properties": {
+        "method": { "const": "disposable-pinned-native-fixture-builder" },
+        "generation_seed": { "const": 1380341297 },
+        "interactive_random_seed": { "const": 1230128689 },
+        "savegame_id": { "const": "50304649585455524553415645494431" },
+        "pre_save_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tick", "calendar_date", "calendar_fract", "economy_date", "economy_fract", "state_rng", "interactive_rng"],
+          "properties": {
+            "tick": { "const": 0 },
+            "calendar_date": { "const": 712223 },
+            "calendar_fract": { "const": 0 },
+            "economy_date": { "const": 712223 },
+            "economy_fract": { "const": 0 },
+            "state_rng": { "const": [1536594464, 1985458814] },
+            "interactive_rng": { "const": [1230128689, 1230128689] }
+          }
+        },
+        "native_operation_log": {
+          "type": "array",
+          "minItems": 5,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "release_runs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/release_run" }
+        },
+        "post_freeze_mutation_allowed": { "const": false }
+      }
+    },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["map", "climate", "start_date", "network_game", "terrain_branches"],
+      "properties": {
+        "map": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height", "source", "generator_version_commit", "map_planes"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 },
+            "source": { "const": "GWM_EMPTY" },
+            "generator_version_commit": { "const": "29f808ef0022064e6d9a83c8476d1e0f4686af86" },
+            "map_planes": { "$ref": "#/$defs/map_planes" }
+          }
+        },
+        "climate": { "const": "temperate" },
+        "start_date": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["year", "month", "day"],
+          "properties": {
+            "year": { "const": 1950 },
+            "month": { "const": 1 },
+            "day": { "const": 1 }
+          }
+        },
+        "network_game": { "const": false },
+        "terrain_branches": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bridge", "tunnel", "rail_crossing", "water_crossing", "one_way_road", "tram", "slope"],
+          "properties": {
+            "bridge": { "const": false },
+            "tunnel": { "const": false },
+            "rail_crossing": { "const": false },
+            "water_crossing": { "const": false },
+            "one_way_road": { "const": false },
+            "tram": { "const": false },
+            "slope": { "const": false }
+          }
+        }
+      }
+    },
+    "initial_boundary": { "$ref": "#/$defs/boundary" },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "profile_manifest_sha256", "installed_tar_sha256", "newgrfs", "game_script", "ai_scripts"],
+      "properties": {
+        "profile": { "const": "opengfx-8.0" },
+        "profile_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "installed_tar_sha256": { "const": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c" },
+        "newgrfs": { "type": "array", "maxItems": 0 },
+        "game_script": { "type": "null" },
+        "ai_scripts": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "normalized_settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relative_path", "sha256", "authoritative_identity_sha256", "schema_identity"],
+      "properties": {
+        "relative_path": { "const": "settings.normalized.json" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "authoritative_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "schema_identity": { "const": "openttd-p0-settings-v1" }
+      }
+    },
+    "towns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/town" }
+    },
+    "companies": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/company" }
+    },
+    "industries": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/industry" }
+    },
+    "cargo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "label", "classes", "producer_rate", "acceptance_units"],
+      "properties": {
+        "id": { "const": 1 },
+        "type": { "const": "coal" },
+        "label": { "const": "COAL" },
+        "classes": {
+          "type": "array",
+          "const": ["bulk", "non-potable"]
+        },
+        "producer_rate": { "const": 15 },
+        "acceptance_units": { "const": 8 }
+      }
+    },
+    "vehicle_engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["global_engine_id", "road_engine_id", "name", "cargo", "capacity", "available_from_year", "available_through_year", "articulated"],
+      "properties": {
+        "global_engine_id": { "const": 123 },
+        "road_engine_id": { "const": 7 },
+        "name": { "const": "Balogh Coal Truck" },
+        "cargo": { "const": "coal" },
+        "capacity": { "const": 20 },
+        "available_from_year": { "type": "integer" },
+        "available_through_year": { "type": "integer" },
+        "articulated": { "const": false }
+      }
+    },
+    "coordinate_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["road_segments", "pickup_stop", "delivery_stop", "depot", "vehicle_spawn_route", "catchment_radius"],
+      "properties": {
+        "road_segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/road_segment" }
+        },
+        "pickup_stop": { "$ref": "#/$defs/stop" },
+        "delivery_stop": { "$ref": "#/$defs/stop" },
+        "depot": { "$ref": "#/$defs/depot" },
+        "vehicle_spawn_route": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/coordinate" }
+        },
+        "catchment_radius": { "const": 4 }
+      }
+    },
+    "command_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dispatcher_policy", "schedule_boundary", "expected_command_count", "actions", "order_sequence"],
+      "properties": {
+        "dispatcher_policy": { "const": "pinned-native-command-dispatcher-only" },
+        "schedule_boundary": { "const": "after-load-before-first-simulation-tick" },
+        "expected_command_count": { "const": 10 },
+        "actions": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/action" }
+        },
+        "order_sequence": {
+          "type": "array",
+          "const": [
+            { "position": 0, "station_role": "pickup", "mode": "full-load-any" },
+            { "position": 1, "station_role": "delivery", "mode": "unload-if-accepted" }
+          ]
+        }
+      }
+    },
+    "funding_proof": { "$ref": "#/$defs/funding" },
+    "milestones": { "$ref": "#/$defs/milestones" },
+    "source_evidence": {
+      "type": "array",
+      "minItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^openttd-upstream/src/[^:]+:[0-9]+(?:-[0-9]+)?$" }
+    },
+    "known_unreachable_subsystems": {
+      "type": "array",
+      "minItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "closure_blockers": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "release_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "log_name", "log_sha256", "log_size_bytes", "fixture_sha256", "map_planes_sha256"],
+      "properties": {
+        "id": { "enum": ["run-a", "run-b"] },
+        "log_name": { "type": "string", "pattern": "^run-[ab]/creation\\.stderr\\.log$" },
+        "log_sha256": { "$ref": "#/$defs/sha256" },
+        "log_size_bytes": { "const": 831 },
+        "fixture_sha256": { "const": "74c9be53902598061e1e82835c394a37b77bfc71c818de1df8456cdfc2804d20" },
+        "map_planes_sha256": { "const": "5a933bc43d59c05b0d8fda519aec0aafa71b16d50a03aea83aefade7a57c9dd6" }
+      }
+    },
+    "coordinate": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer" },
+        { "type": "integer" }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "boundary": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "declared_boundary", "required_projection"],
+          "properties": {
+            "state": { "const": "pending-port003-projection" },
+            "declared_boundary": { "const": "after-load-before-first-scripted-command" },
+            "required_projection": {
+              "type": "array",
+              "const": ["tick", "calendar-date", "economy-date", "calendar-timer", "economy-timer", "state-rng-0", "state-rng-1", "interactive-rng-0", "interactive-rng-1"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "declared_boundary", "tick", "calendar_date", "economy_date", "calendar_timer", "economy_timer", "state_rng", "interactive_rng"],
+          "properties": {
+            "state": { "const": "verified" },
+            "declared_boundary": { "const": "after-load-before-first-scripted-command" },
+            "tick": { "type": "integer", "minimum": 0 },
+            "calendar_date": { "type": "integer", "minimum": 0 },
+            "economy_date": { "type": "integer", "minimum": 0 },
+            "calendar_timer": { "type": "integer", "minimum": 0 },
+            "economy_timer": { "type": "integer", "minimum": 0 },
+            "state_rng": { "$ref": "#/$defs/rng" },
+            "interactive_rng": { "$ref": "#/$defs/rng" }
+          }
+        }
+      ]
+    },
+    "rng": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "map_planes": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "blocking_reason"],
+          "properties": {
+            "state": { "const": "pending-save-generation" },
+            "blocking_reason": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "format", "tile_count", "bytes_per_tile", "size_bytes", "sha256", "two_run_equal"],
+          "properties": {
+            "state": { "const": "verified" },
+            "format": { "const": "tile-index-order:type,height,m1,m2le,m3,m4,m5,m6,m7,m8le" },
+            "tile_count": { "const": 4096 },
+            "bytes_per_tile": { "const": 12 },
+            "size_bytes": { "const": 49152 },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "two_run_equal": { "const": true }
+          }
+        }
+      ]
+    },
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "name_policy", "opening_balance", "opening_loan", "cheat_state"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "kind": { "enum": ["human", "ai"] },
+        "name_policy": { "type": "string", "minLength": 1 },
+        "opening_balance": { "type": "integer", "minimum": 0 },
+        "opening_loan": { "type": "integer", "minimum": 0 },
+        "cheat_state": { "const": false }
+      }
+    },
+    "town": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "tile", "tile_index", "name_policy", "name", "population", "house_count", "road_tile_count", "growing", "growth_rate"],
+      "properties": {
+        "id": { "const": 0 },
+        "tile": { "const": [32, 16] },
+        "tile_index": { "const": 1056 },
+        "name_policy": { "const": "fixed-non-personal-fixture-string" },
+        "name": { "const": "P0 Fixture Town" },
+        "population": { "const": 0 },
+        "house_count": { "const": 0 },
+        "road_tile_count": { "const": 0 },
+        "growing": { "const": false },
+        "growth_rate": { "const": "TOWN_GROWTH_RATE_NONE" }
+      }
+    },
+    "industry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "id", "type_id", "type", "selected_layout", "anchor", "footprint", "tiles", "tile_indices", "produces", "accepts"],
+      "properties": {
+        "role": { "enum": ["producer", "acceptor"] },
+        "id": { "type": "integer", "minimum": 0 },
+        "type_id": { "type": "integer", "minimum": 0 },
+        "type": { "enum": ["coal-mine", "power-station"] },
+        "selected_layout": { "const": 2 },
+        "anchor": { "$ref": "#/$defs/coordinate" },
+        "footprint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "const": 3 },
+            "height": { "const": 3 }
+          }
+        },
+        "tiles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/coordinate" }
+        },
+        "tile_indices": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0, "maximum": 4095 }
+        },
+        "produces": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "accepts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "forbidden": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bridge", "tunnel", "rail_crossing", "water_crossing", "one_way", "tram", "slope"],
+      "properties": {
+        "bridge": { "type": "boolean" },
+        "tunnel": { "type": "boolean" },
+        "rail_crossing": { "type": "boolean" },
+        "water_crossing": { "type": "boolean" },
+        "one_way": { "type": "boolean" },
+        "tram": { "type": "boolean" },
+        "slope": { "type": "boolean" }
+      }
+    },
+    "road_segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "from", "to", "road_type", "forbidden_branches"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "from": { "$ref": "#/$defs/coordinate" },
+        "to": { "$ref": "#/$defs/coordinate" },
+        "road_type": { "const": "ROADTYPE_ROAD" },
+        "forbidden_branches": { "$ref": "#/$defs/forbidden" }
+      }
+    },
+    "stop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tile", "direction", "road_access", "station_kind", "drive_through"],
+      "properties": {
+        "tile": { "$ref": "#/$defs/coordinate" },
+        "direction": { "$ref": "#/$defs/diag_direction" },
+        "road_access": { "$ref": "#/$defs/coordinate" },
+        "station_kind": { "const": "truck-bay" },
+        "drive_through": { "const": false }
+      }
+    },
+    "depot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tile", "direction", "road_access"],
+      "properties": {
+        "tile": { "$ref": "#/$defs/coordinate" },
+        "direction": { "$ref": "#/$defs/diag_direction" },
+        "road_access": { "$ref": "#/$defs/coordinate" }
+      }
+    },
+    "diag_direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "source_symbol", "raw_u8"],
+      "properties": {
+        "source_type": { "const": "DiagDirection" },
+        "source_symbol": { "enum": ["DiagDirection::SE", "DiagDirection::SW"] },
+        "raw_u8": { "enum": [1, 2] }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "id", "native_command", "intent"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "id": { "type": "string", "minLength": 1 },
+        "native_command": { "type": "string", "pattern": "^Commands::[A-Za-z0-9]+$" },
+        "intent": { "type": "string", "minLength": 1 }
+      }
+    },
+    "funding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "opening_balance", "safety_margin_policy", "blocking_reason"],
+          "properties": {
+            "state": { "const": "pending-native-command-costs" },
+            "opening_balance": { "const": 10000000 },
+            "safety_margin_policy": { "const": "at-least-25-percent-of-opening-balance" },
+            "blocking_reason": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "opening_balance", "command_cost_total", "safety_margin", "cost_evidence"],
+          "properties": {
+            "state": { "const": "verified" },
+            "opening_balance": { "const": 10000000 },
+            "command_cost_total": { "type": "integer", "minimum": 1 },
+            "safety_margin": { "type": "integer", "minimum": 2500000 },
+            "cost_evidence": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "milestones": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "required_events"],
+          "properties": {
+            "state": { "const": "pending-native-replay" },
+            "required_events": {
+              "type": "array",
+              "const": ["first-cargo-capture", "first-loading", "first-accepted-delivery", "first-payment"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "first_pickup_tick", "first_loading_tick", "first_delivery_tick", "first_payment_tick", "payment_amount"],
+          "properties": {
+            "state": { "const": "verified" },
+            "first_pickup_tick": { "type": "integer", "minimum": 0 },
+            "first_loading_tick": { "type": "integer", "minimum": 0 },
+            "first_delivery_tick": { "type": "integer", "minimum": 0 },
+            "first_payment_tick": { "type": "integer", "minimum": 0 },
+            "payment_amount": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "../schema/opengfx.schema.json",
+  "schema_version": 1,
+  "schema_sha256": "fa91dc126c394b9cc6893407bddee1b7f9a3fab5dfb7fde83eb5fe1a9d398a81",
+  "manifest_kind": "frozen-content-profile",
+  "profile": "opengfx-8.0",
+  "status": "PASS",
+  "identity": {
+    "name": "OpenGFX",
+    "version": "8.0",
+    "shortname": "OGFX",
+    "content_version": 9499,
+    "palette": "DOS",
+    "blitter": "8bpp",
+    "license": "GPL-2.0-only"
+  },
+  "acquisition": {
+    "url": "https://cdn.openttd.org/opengfx-releases/8.0/opengfx-8.0-all.zip",
+    "archive_name": "opengfx-8.0-all.zip",
+    "archive_format": "zip",
+    "sha256": "43a0c1dabf39cb865394f3a6cc36d4da5c10ecfaaf55652043104806810903be",
+    "digest_authority": "https://www.openttd.org/downloads/opengfx-releases/latest"
+  },
+  "installed": {
+    "delivery_file": "opengfx-8.0.tar",
+    "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c",
+    "size_bytes": 5396480,
+    "content_root": "opengfx-8.0",
+    "files": [
+      { "path": "opengfx-8.0/changelog.txt", "size_bytes": 26753, "sha256": "809876a1746a2802634689efdb1f3a3c39e5497cbd962b1e17a2bb154370fce7" },
+      { "path": "opengfx-8.0/license.txt", "size_bytes": 18092, "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643" },
+      { "path": "opengfx-8.0/ogfx1_base.grf", "size_bytes": 2693610, "sha256": "f8201e87c7210493aaf525993013dc94dd4b7a801c4bb27df47544786bf8eaa9" },
+      { "path": "opengfx-8.0/ogfxc_arctic.grf", "size_bytes": 287331, "sha256": "17cf3be5a9410d6807347a13b5655cf534f3b10f19d1bb7a43080f7c226817ce" },
+      { "path": "opengfx-8.0/ogfxe_extra.grf", "size_bytes": 988215, "sha256": "6472d934f15210dc4ad03acaad12d1e2717f4f5f836495cdd78bfc45fcbb0adb" },
+      { "path": "opengfx-8.0/ogfxh_tropical.grf", "size_bytes": 472020, "sha256": "b9aa39877daccd417ee1b248010bc8891648accf1680d1443f58a8589189238c" },
+      { "path": "opengfx-8.0/ogfxi_logos.grf", "size_bytes": 249673, "sha256": "20644db32d97b2e1d7d7d9b73b0484b904a86f9e91752d9fc5f86bebb7706e5a" },
+      { "path": "opengfx-8.0/ogfxt_toyland.grf", "size_bytes": 622079, "sha256": "d01320fdcfc94cf4ef637ec72e892314dc5dc682b949e6957c3fb72cb9385986" },
+      { "path": "opengfx-8.0/opengfx.obg", "size_bytes": 10737, "sha256": "e3ce8169ea9cf0fab624ad8b9b940684f3dfdf189f88bc79bbe62064fd3496d0" },
+      { "path": "opengfx-8.0/readme.txt", "size_bytes": 15140, "sha256": "c3021f3fb1c9c0f5de501772d5fe099d4c483651f60ab253b2cb291b367de3d2" }
+    ]
+  },
+  "network_policy": {
+    "acquisition_https_only": true,
+    "verify_before_extract": true,
+    "safe_paths_required": true,
+    "atomic_install": true,
+    "authoritative_run_network_required": false
+  },
+  "materials": [
+    {
+      "name": "official-opengfx-8.0-acquisition-archive",
+      "identity": "sha256:43a0c1dabf39cb865394f3a6cc36d4da5c10ecfaaf55652043104806810903be"
+    },
+    {
+      "name": "official-opengfx-release-digest-page",
+      "identity": "https://www.openttd.org/downloads/opengfx-releases/latest"
+    }
+  ],
+  "expected_outputs": [
+    {
+      "name": "opengfx-8.0.tar",
+      "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c",
+      "size_bytes": 5396480
+    },
+    {
+      "name": "opengfx-8.0/license.txt",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "size_bytes": 18092
+    }
+  ],
+  "diagnostics": {
+    "verification_basis": "The immutable official archive URL and published digest are frozen as acquisition authority. The installed tar and all ten contained files were re-hashed locally; the content is referenced, not committed."
+  }
+}

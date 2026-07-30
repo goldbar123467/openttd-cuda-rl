@@ -1,0 +1,25 @@
+Internal ctest changing into directory: /workspace/openttd-p0-artifacts/port001-release-b4818a1/contract-build
+Test project /workspace/openttd-p0-artifacts/port001-release-b4818a1/contract-build
+    Start 2: p001_comparator
+    Test #2: p001_comparator ..................   Passed    3.06 sec
+    Start 2: p001_comparator
+    Test #2: p001_comparator ..................   Passed    3.07 sec
+    Start 2: p001_comparator
+1/2 Test #2: p001_comparator ..................   Passed    3.16 sec
+    Start 1: p001_contract
+    Test #1: p001_contract ....................   Passed   40.18 sec
+    Start 1: p001_contract
+    Test #1: p001_contract ....................   Passed   39.84 sec
+    Start 1: p001_contract
+2/2 Test #1: p001_contract ....................   Passed   39.38 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Label Time Summary:
+comparator    =   3.16 sec*proc (1 test)
+contract      =  39.38 sec*proc (1 test)
+offline       =  42.54 sec*proc (2 tests)
+p0            =  42.54 sec*proc (2 tests)
+port001       =  42.54 sec*proc (2 tests)
+
+Total Test time (real) = 128.70 sec

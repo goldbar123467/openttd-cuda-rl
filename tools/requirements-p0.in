@@ -1,0 +1,4 @@
+# P0 manifest/schema and independent-reference tools only.
+# Production tape parsing, canonical identity, comparison, and minimization remain C17.
+jsonschema==4.26.0
+rfc8785==0.1.4

@@ -1,0 +1,815 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-g++"
+	tests="99"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="608c2039b6c0"
+	time="5"
+	timestamp="2026-07-30T02:56:56"
+	>
+	<testcase name="ICU ScriptRun" classname="ICU ScriptRun" time="0.0289464" status="run">
+		<properties/>
+		<system-out>Filters: ICU ScriptRun
+===============================================================================
+All tests passed (17 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="AlternatingIterator tests" classname="AlternatingIterator tests" time="0.0288413" status="run">
+		<properties/>
+		<system-out>Filters: AlternatingIterator tests
+===============================================================================
+All tests passed (15 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="SetBitIterator tests" classname="SetBitIterator tests" time="0.0329414" status="run">
+		<properties/>
+		<system-out>Filters: SetBitIterator tests
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="EnumOverOptimisation_BoundsCheck" classname="EnumOverOptimisation_BoundsCheck" time="0.0256847" status="run">
+		<properties/>
+		<system-out>Filters: EnumOverOptimisation_BoundsCheck
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="EnumOverOptimisation_Bitmask" classname="EnumOverOptimisation_Bitmask" time="0.0287572" status="run">
+		<properties/>
+		<system-out>Filters: EnumOverOptimisation_Bitmask
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="FlatSet - basic" classname="FlatSet - basic" time="0.0285609" status="run">
+		<properties/>
+		<system-out>Filters: FlatSet - basic
+===============================================================================
+All tests passed (31 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="History Rotation and Reporting tests" classname="History Rotation and Reporting tests" time="0.0279512" status="run">
+		<properties/>
+		<system-out>Filters: History Rotation and Reporting tests
+===============================================================================
+All tests passed (86 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelSlopeAdditionTest - A one corner slope, plus the opposite three corner slope results in a flat but elevated slope" classname="PartialPixelSlopeAdditionTest - A one corner slope, plus the opposite three corner slope results in a flat but elevated slope" time="0.0288623" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelSlopeAdditionTest - A one corner slope\, plus the opposite three corner slope results in a flat but elevated slope
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelSlopeAdditionTest - Diagonal slopes with their opposite slope result in a flat but elevated slope" classname="PartialPixelSlopeAdditionTest - Diagonal slopes with their opposite slope result in a flat but elevated slope" time="0.025107" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelSlopeAdditionTest - Diagonal slopes with their opposite slope result in a flat but elevated slope
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelSlopeAdditionTest - Half tile slopes with their opposite half tile slope result in a flat but elevated slope" classname="PartialPixelSlopeAdditionTest - Half tile slopes with their opposite half tile slope result in a flat but elevated slope" time="0.0280256" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelSlopeAdditionTest - Half tile slopes with their opposite half tile slope result in a flat but elevated slope
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelSlopeAdditionTest - Two opposite one corner slopes result in the two corner slope with opposite corners" classname="PartialPixelSlopeAdditionTest - Two opposite one corner slopes result in the two corner slope with opposite corners" time="0.0276526" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelSlopeAdditionTest - Two opposite one corner slopes result in the two corner slope with opposite corners
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelSlopeAdditionTest - A steep slope is a one corner slope on top of a three corner slope" classname="PartialPixelSlopeAdditionTest - A steep slope is a one corner slope on top of a three corner slope" time="0.0247527" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelSlopeAdditionTest - A steep slope is a one corner slope on top of a three corner slope
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelSlopeAdditionTest - A half tile steep slope is a one corner half tile on top of a three corner slope" classname="PartialPixelSlopeAdditionTest - A half tile steep slope is a one corner half tile on top of a three corner slope" time="0.0279855" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelSlopeAdditionTest - A half tile steep slope is a one corner half tile on top of a three corner slope
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - One corner up slopes - SLOPE_N" classname="PartialPixelTest - One corner up slopes - SLOPE_N" time="0.0270069" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - One corner up slopes - SLOPE_N
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - One corner up slopes - SLOPE_E" classname="PartialPixelTest - One corner up slopes - SLOPE_E" time="0.0266432" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - One corner up slopes - SLOPE_E
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - One corner up slopes - SLOPE_S" classname="PartialPixelTest - One corner up slopes - SLOPE_S" time="0.024521" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - One corner up slopes - SLOPE_S
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - One corner up slopes - SLOPE_W" classname="PartialPixelTest - One corner up slopes - SLOPE_W" time="0.0281538" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - One corner up slopes - SLOPE_W
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Two corner up, diagonal slopes - SLOPE_NE" classname="PartialPixelTest - Two corner up, diagonal slopes - SLOPE_NE" time="0.0270757" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Two corner up\, diagonal slopes - SLOPE_NE
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Two corner up, diagonal slopes - SLOPE_SE" classname="PartialPixelTest - Two corner up, diagonal slopes - SLOPE_SE" time="0.0241834" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Two corner up\, diagonal slopes - SLOPE_SE
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Two corner up, diagonal slopes - SLOPE_SW" classname="PartialPixelTest - Two corner up, diagonal slopes - SLOPE_SW" time="0.026868" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Two corner up\, diagonal slopes - SLOPE_SW
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Two corner up, diagonal slopes - SLOPE_NW" classname="PartialPixelTest - Two corner up, diagonal slopes - SLOPE_NW" time="0.0280641" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Two corner up\, diagonal slopes - SLOPE_NW
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Two opposite corner up slopes - SLOPE_NS" classname="PartialPixelTest - Two opposite corner up slopes - SLOPE_NS" time="0.028197" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Two opposite corner up slopes - SLOPE_NS
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Two opposite corner up slopes - SLOPE_EW" classname="PartialPixelTest - Two opposite corner up slopes - SLOPE_EW" time="0.0261359" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Two opposite corner up slopes - SLOPE_EW
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Three corner up slopes - SLOPE_ENW" classname="PartialPixelTest - Three corner up slopes - SLOPE_ENW" time="0.0274238" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Three corner up slopes - SLOPE_ENW
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Three corner up slopes - SLOPE_SEN" classname="PartialPixelTest - Three corner up slopes - SLOPE_SEN" time="0.0269519" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Three corner up slopes - SLOPE_SEN
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Three corner up slopes - SLOPE_WSE" classname="PartialPixelTest - Three corner up slopes - SLOPE_WSE" time="0.0267319" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Three corner up slopes - SLOPE_WSE
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Three corner up slopes - SLOPE_NWS" classname="PartialPixelTest - Three corner up slopes - SLOPE_NWS" time="0.0248497" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Three corner up slopes - SLOPE_NWS
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Normal half tile slopes - SLOPE_N/Corner::N" classname="PartialPixelTest - Normal half tile slopes - SLOPE_N/Corner::N" time="0.027567" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Normal half tile slopes - SLOPE_N/Corner::N
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Normal half tile slopes - SLOPE_E/Corner::E" classname="PartialPixelTest - Normal half tile slopes - SLOPE_E/Corner::E" time="0.0255031" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Normal half tile slopes - SLOPE_E/Corner::E
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Normal half tile slopes - SLOPE_S/Corner::S" classname="PartialPixelTest - Normal half tile slopes - SLOPE_S/Corner::S" time="0.0249266" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Normal half tile slopes - SLOPE_S/Corner::S
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Normal half tile slopes - SLOPE_W/Corner::W" classname="PartialPixelTest - Normal half tile slopes - SLOPE_W/Corner::W" time="0.0260564" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Normal half tile slopes - SLOPE_W/Corner::W
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Steep slopes - SLOPE_STEEP_N" classname="PartialPixelTest - Steep slopes - SLOPE_STEEP_N" time="0.0272104" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Steep slopes - SLOPE_STEEP_N
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Steep slopes - SLOPE_STEEP_E" classname="PartialPixelTest - Steep slopes - SLOPE_STEEP_E" time="0.0286762" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Steep slopes - SLOPE_STEEP_E
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Steep slopes - SLOPE_STEEP_S" classname="PartialPixelTest - Steep slopes - SLOPE_STEEP_S" time="0.0274233" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Steep slopes - SLOPE_STEEP_S
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Steep slopes - SLOPE_STEEP_W" classname="PartialPixelTest - Steep slopes - SLOPE_STEEP_W" time="0.0266313" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Steep slopes - SLOPE_STEEP_W
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::N" classname="PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::N" time="0.0274617" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::N
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::E" classname="PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::E" time="0.0258527" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::E
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::S" classname="PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::S" time="0.0273078" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::S
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::W" classname="PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::W" time="0.0280203" status="run">
+		<properties/>
+		<system-out>Filters: PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::W
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="DivideApproxTest - Negative" classname="DivideApproxTest - Negative" time="0.0267538" status="run">
+		<properties/>
+		<system-out>Filters: DivideApproxTest - Negative
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="DivideApproxTest, Divide" classname="DivideApproxTest, Divide" time="0.0284242" status="run">
+		<properties/>
+		<system-out>Filters: DivideApproxTest\, Divide
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="IntSqrtTest - Zero" classname="IntSqrtTest - Zero" time="0.0277514" status="run">
+		<properties/>
+		<system-out>Filters: IntSqrtTest - Zero
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="IntSqrtTest - FindSqRt" classname="IntSqrtTest - FindSqRt" time="0.0273144" status="run">
+		<properties/>
+		<system-out>Filters: IntSqrtTest - FindSqRt
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="ClampTo" classname="ClampTo" time="0.0268297" status="run">
+		<properties/>
+		<system-out>Filters: ClampTo
+===============================================================================
+All tests passed (27 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="SoftClamp" classname="SoftClamp" time="0.0269609" status="run">
+		<properties/>
+		<system-out>Filters: SoftClamp
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringBuilder - basic" classname="StringBuilder - basic" time="0.0268445" status="run">
+		<properties/>
+		<system-out>Filters: StringBuilder - basic
+===============================================================================
+All tests passed (7 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringBuilder - binary" classname="StringBuilder - binary" time="0.026674" status="run">
+		<properties/>
+		<system-out>Filters: StringBuilder - binary
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringBuilder - text" classname="StringBuilder - text" time="0.026928" status="run">
+		<properties/>
+		<system-out>Filters: StringBuilder - text
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - basic" classname="StringConsumer - basic" time="0.0271893" status="run">
+		<properties/>
+		<system-out>[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 1 &gt; 0
+Filters: StringConsumer - basic
+===============================================================================
+All tests passed (28 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - binary8" classname="StringConsumer - binary8" time="0.0271691" status="run">
+		<properties/>
+		<system-out>[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 1 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 1 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 1 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 1 &gt; 0
+Filters: StringConsumer - binary8
+===============================================================================
+All tests passed (21 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - binary16" classname="StringConsumer - binary16" time="0.0275207" status="run">
+		<properties/>
+		<system-out>[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 2 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 2 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 2 &gt; 0
+Filters: StringConsumer - binary16
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - binary32" classname="StringConsumer - binary32" time="0.0251208" status="run">
+		<properties/>
+		<system-out>[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 4 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 4 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 4 &gt; 0
+Filters: StringConsumer - binary32
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - binary64" classname="StringConsumer - binary64" time="0.0271474" status="run">
+		<properties/>
+		<system-out>[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 8 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 8 &gt; 0
+[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 8 &gt; 0
+Filters: StringConsumer - binary64
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - utf8" classname="StringConsumer - utf8" time="0.0265136" status="run">
+		<properties/>
+		<system-out>[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 1 &gt; 0
+Filters: StringConsumer - utf8
+===============================================================================
+All tests passed (13 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - conditions" classname="StringConsumer - conditions" time="0.0264271" status="run">
+		<properties/>
+		<system-out>[2026-07-30 02:56:57] dbg: [misc:0] Source buffer too short: 2 &gt; 0
+Filters: StringConsumer - conditions
+===============================================================================
+All tests passed (58 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - ascii" classname="StringConsumer - ascii" time="0.027818" status="run">
+		<properties/>
+		<system-out>Filters: StringConsumer - ascii
+===============================================================================
+All tests passed (27 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - parse int" classname="StringConsumer - parse int" time="0.0265266" status="run">
+		<properties/>
+		<system-out>[2026-07-30 02:56:57] dbg: [misc:0] Cannot parse integer: ''+'-2 -'
+[2026-07-30 02:56:57] dbg: [misc:0] Integer out of range: 'ffffFFFF'+' fff'
+[2026-07-30 02:56:57] dbg: [misc:0] Cannot parse integer: ''+'-1aa'
+[2026-07-30 02:56:57] dbg: [misc:0] Integer out of range: '1234567890123'+' 123'
+[2026-07-30 02:56:57] dbg: [misc:0] Integer out of range: '1234567890123'+' 123'
+[2026-07-30 02:56:57] dbg: [misc:0] Integer out of range: 'ffffFFFFffffFFFE'+' fff'
+[2026-07-30 02:56:57] dbg: [misc:0] Integer out of range: 'ffffFFFFffffFFFE'+' fff'
+[2026-07-30 02:56:57] dbg: [misc:0] Integer out of range: 'ffffFFFFffffFFFE'+' fff'
+[2026-07-30 02:56:57] dbg: [misc:0] Cannot parse integer: ''+' '
+[2026-07-30 02:56:57] dbg: [misc:0] Cannot parse integer: ''+' '
+[2026-07-30 02:56:57] dbg: [misc:0] Cannot parse integer: ''+' '
+[2026-07-30 02:56:57] dbg: [misc:0] Cannot parse integer: ''+' '
+[2026-07-30 02:56:57] dbg: [misc:0] Cannot parse integer: ''+' '
+[2026-07-30 02:56:57] dbg: [misc:0] Cannot parse integer: ''+' '
+[2026-07...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - invalid int" classname="StringConsumer - invalid int" time="0.0263953" status="run">
+		<properties/>
+		<system-out>Filters: StringConsumer - invalid int
+===============================================================================
+All tests passed (36 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StringConsumer - most negative" classname="StringConsumer - most negative" time="0.0284785" status="run">
+		<properties/>
+		<system-out>Filters: StringConsumer - most negative
+===============================================================================
+All tests passed (19 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="InPlaceReplacement" classname="InPlaceReplacement" time="0.0262791" status="run">
+		<properties/>
+		<system-out>Filters: InPlaceReplacement
+===============================================================================
+All tests passed (26 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrCompareIgnoreCase - std::string" classname="StrCompareIgnoreCase - std::string" time="0.0280101" status="run">
+		<properties/>
+		<system-out>Filters: StrCompareIgnoreCase - std::string
+===============================================================================
+All tests passed (15 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrCompareIgnoreCase - std::string_view" classname="StrCompareIgnoreCase - std::string_view" time="0.0269884" status="run">
+		<properties/>
+		<system-out>Filters: StrCompareIgnoreCase - std::string_view
+===============================================================================
+All tests passed (15 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrEqualsIgnoreCase - std::string" classname="StrEqualsIgnoreCase - std::string" time="0.026987" status="run">
+		<properties/>
+		<system-out>Filters: StrEqualsIgnoreCase - std::string
+===============================================================================
+All tests passed (11 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrEqualsIgnoreCase - std::string_view" classname="StrEqualsIgnoreCase - std::string_view" time="0.0267802" status="run">
+		<properties/>
+		<system-out>Filters: StrEqualsIgnoreCase - std::string_view
+===============================================================================
+All tests passed (11 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrStartsWithIgnoreCase - std::string" classname="StrStartsWithIgnoreCase - std::string" time="0.0272173" status="run">
+		<properties/>
+		<system-out>Filters: StrStartsWithIgnoreCase - std::string
+===============================================================================
+All tests passed (14 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrStartsWithIgnoreCase - std::string_view" classname="StrStartsWithIgnoreCase - std::string_view" time="0.0264415" status="run">
+		<properties/>
+		<system-out>Filters: StrStartsWithIgnoreCase - std::string_view
+===============================================================================
+All tests passed (14 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrEndsWithIgnoreCase - std::string" classname="StrEndsWithIgnoreCase - std::string" time="0.0264467" status="run">
+		<properties/>
+		<system-out>Filters: StrEndsWithIgnoreCase - std::string
+===============================================================================
+All tests passed (14 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrEndsWithIgnoreCase - std::string_view" classname="StrEndsWithIgnoreCase - std::string_view" time="0.0270717" status="run">
+		<properties/>
+		<system-out>Filters: StrEndsWithIgnoreCase - std::string_view
+===============================================================================
+All tests passed (14 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="FormatArrayAsHex" classname="FormatArrayAsHex" time="0.0274372" status="run">
+		<properties/>
+		<system-out>Filters: FormatArrayAsHex
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="ConvertHexToBytes" classname="ConvertHexToBytes" time="0.0266818" status="run">
+		<properties/>
+		<system-out>Filters: ConvertHexToBytes
+===============================================================================
+All tests passed (31 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrTrimInPlace" classname="StrTrimInPlace" time="0.0274587" status="run">
+		<properties/>
+		<system-out>Filters: StrTrimInPlace
+===============================================================================
+All tests passed (7 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="StrTrimView" classname="StrTrimView" time="0.0269745" status="run">
+		<properties/>
+		<system-out>Filters: StrTrimView
+===============================================================================
+All tests passed (7 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="FixSCCEncoded" classname="FixSCCEncoded" time="0.0286388" status="run">
+		<properties/>
+		<system-out>Filters: FixSCCEncoded
+===============================================================================
+All tests passed (11 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="FixSCCEncodedNegative" classname="FixSCCEncodedNegative" time="0.0275087" status="run">
+		<properties/>
+		<system-out>Filters: FixSCCEncodedNegative
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="EncodedString::ReplaceParam - positive" classname="EncodedString::ReplaceParam - positive" time="0.0281648" status="run">
+		<properties/>
+		<system-out>Filters: EncodedString::ReplaceParam - positive
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="EncodedString::ReplaceParam - negative" classname="EncodedString::ReplaceParam - negative" time="0.0276127" status="run">
+		<properties/>
+		<system-out>Filters: EncodedString::ReplaceParam - negative
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Authentication_KeyExchangeOnly" classname="Authentication_KeyExchangeOnly" time="0.0287035" status="run">
+		<properties/>
+		<system-out>Filters: Authentication_KeyExchangeOnly
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Authentication_PAKE" classname="Authentication_PAKE" time="0.0303905" status="run">
+		<properties/>
+		<system-out>Filters: Authentication_PAKE
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Authentication_AuthorizedKey" classname="Authentication_AuthorizedKey" time="0.028508" status="run">
+		<properties/>
+		<system-out>Filters: Authentication_AuthorizedKey
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Authentication_Combined" classname="Authentication_Combined" time="0.0378366" status="run">
+		<properties/>
+		<system-out>Filters: Authentication_Combined
+===============================================================================
+All tests passed (32 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Encryption handling" classname="Encryption handling" time="0.0284133" status="run">
+		<properties/>
+		<system-out>Filters: Encryption handling
+===============================================================================
+All tests passed (61 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Squirrel -&gt; JSON conversion" classname="Squirrel -&gt; JSON conversion" time="0.0273055" status="run">
+		<properties/>
+		<system-out>Filters: Squirrel -&gt; JSON conversion
+===============================================================================
+All tests passed (60 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="JSON -&gt; Squirrel conversion" classname="JSON -&gt; Squirrel conversion" time="0.0284409" status="run">
+		<properties/>
+		<system-out>Filters: JSON -&gt; Squirrel conversion
+===============================================================================
+All tests passed (55 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="WindowDesc - ini_key uniqueness" classname="WindowDesc - ini_key uniqueness" time="0.0277953" status="run">
+		<properties/>
+		<system-out>Filters: WindowDesc - ini_key uniqueness
+===============================================================================
+All tests passed (107 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="WindowDesc - ini_key validity" classname="WindowDesc - ini_key validity" time="0.0292447" status="run">
+		<properties/>
+		<system-out>Filters: WindowDesc - ini_key validity
+===============================================================================
+All tests passed (163 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="WindowDesc - NWidgetParts properly closed" classname="WindowDesc - NWidgetParts properly closed" time="0.0300481" status="run">
+		<properties/>
+		<system-out>Filters: WindowDesc - NWidgetParts properly closed
+===============================================================================
+All tests passed (163 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="WindowDesc - NWidgetPart validity" classname="WindowDesc - NWidgetPart validity" time="0.0313673" status="run">
+		<properties/>
+		<system-out>Filters: WindowDesc - NWidgetPart validity
+===============================================================================
+All tests passed (326 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="SpiralTileSequence - minimum" classname="SpiralTileSequence - minimum" time="0.0268288" status="run">
+		<properties/>
+		<system-out>Filters: SpiralTileSequence - minimum
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="SpiralTileSequence - odd" classname="SpiralTileSequence - odd" time="0.0266204" status="run">
+		<properties/>
+		<system-out>Filters: SpiralTileSequence - odd
+===============================================================================
+All tests passed (33 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="SpiralTileSequence - even" classname="SpiralTileSequence - even" time="0.0265375" status="run">
+		<properties/>
+		<system-out>Filters: SpiralTileSequence - even
+===============================================================================
+All tests passed (102 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="SpiralTileSequence - zero hole" classname="SpiralTileSequence - zero hole" time="0.0273643" status="run">
+		<properties/>
+		<system-out>Filters: SpiralTileSequence - zero hole
+===============================================================================
+All tests passed (49 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="SpiralTileSequence - normal hole" classname="SpiralTileSequence - normal hole" time="0.0288805" status="run">
+		<properties/>
+		<system-out>Filters: SpiralTileSequence - normal hole
+===============================================================================
+All tests passed (21 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Utf8View - empty" classname="Utf8View - empty" time="0.0266821" status="run">
+		<properties/>
+		<system-out>Filters: Utf8View - empty
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Utf8View - invalid" classname="Utf8View - invalid" time="0.0270306" status="run">
+		<properties/>
+		<system-out>Filters: Utf8View - invalid
+===============================================================================
+All tests passed (42 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Utf8View - iterate" classname="Utf8View - iterate" time="0.027469" status="run">
+		<properties/>
+		<system-out>Filters: Utf8View - iterate
+===============================================================================
+All tests passed (50 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="regression_regression" classname="regression_regression" time="1.08557" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="regression_stationlist" classname="regression_stationlist" time="0.934733" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="regression_gs" classname="regression_gs" time="0.33138" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="regression_gs_compat" classname="regression_gs_compat" time="0.341924" status="run">
+		<properties/>
+		<system-out></system-out>
+	</testcase>
+</testsuite>

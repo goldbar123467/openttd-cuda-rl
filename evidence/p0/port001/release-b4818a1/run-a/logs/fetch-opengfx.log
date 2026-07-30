@@ -1,0 +1,3 @@
+2026-07-30T02:53:57Z [INFO] [fetch-opengfx] downloading opengfx-8.0-all.zip from the frozen HTTPS origin
+2026-07-30T02:53:59Z [INFO] [fetch-opengfx] archive digest verified; validating archive members before extraction
+2026-07-30T02:53:59Z [INFO] [fetch-opengfx] OpenGFX 8.0 INSTALLED with verified archive and installed digests

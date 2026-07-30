@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-cc"
+	tests="2"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="608c2039b6c0"
+	time="128"
+	timestamp="2026-07-30T02:51:39"
+	>
+	<testcase name="p001_contract" classname="p001_contract" time="39.3803" status="run">
+		<properties>
+			<property name="cmake_labels" value="contract;offline;p0;port001"/>
+		</properties>
+		<system-out>TAP version 13
+1..61
+# six frozen baseline/schema pairs: positive and negative validation PASS
+# randomized mandatory-case schedule seed: 1785314342
+ok 1 - P001-BLD-002 incompatible cache is isolated
+ok 2 - P001-REP-004 missing submodule gives recovery command
+ok 3 - P001-REP-002 wrong submodule commit fails with identities
+ok 4 - P001-MAN-002 missing commit is invalid
+ok 5 - P001-REP-005 modified submodule URL fails
+ok 6 - P001-MAN-008 UTF-8 BOM is invalid
+ok 7 - P001-TST-004 renamed test fails
+ok 8 - P001-BLD-009 unresolved shared library fails
+ok 9 - P001-SMK-006 version drift fails
+ok 10 - P001-GFX-006 absolute archive path is rejected
+ok 11 - P001-BLD-007 missing dependency fails clearly
+ok 12 - P001-BLD-006 wrong generator fails
+ok 13 - P001-MAN-004 uppercase digest is invalid
+ok 14 - P001-BLD-010 omitted executable digest fails
+ok 15 - P001-SMK-003 wrong executable digest fails before run
+ok 16 - P001-REP-007 detached read-only mode succeeds
+ok 17 - P001-TST-010 malformed inventory JSON fails
+ok 18 - P...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="p001_comparator" classname="p001_comparator" time="3.15889" status="run">
+		<properties>
+			<property name="cmake_labels" value="comparator;offline;p0;port001"/>
+		</properties>
+		<system-out>PORT-001 comparator tests: PASS
+</system-out>
+	</testcase>
+</testsuite>

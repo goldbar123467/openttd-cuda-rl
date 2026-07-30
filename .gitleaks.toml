@@ -1,0 +1,10 @@
+title = "OpenTTD CUDA RL secret scanning policy"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Pinned third-party submodule bytes are governed by exact commit and clean-tree verification, not outer-repository authorship scanning."
+paths = [
+  '''^openttd-upstream/''',
+]

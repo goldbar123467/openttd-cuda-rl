@@ -1,0 +1,1 @@
+{"diagnostics":{"duration_seconds":176,"finished_at":"2026-07-30T02:56:55Z","started_at":"2026-07-30T02:53:59Z"},"message":"reference built and installed; executable SHA-256 ae73552b5829d7f569aec301ac4f30a9b4cc81ba1ab1208f9372da3b853b738f","return_code":0,"stage":"build-reference","status":"PASS"}

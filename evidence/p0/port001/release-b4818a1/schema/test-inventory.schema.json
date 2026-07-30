@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/oracle/manifests/schema/test-inventory.schema.json",
+  "title": "OpenTTD P0 exact CTest inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "manifest_kind",
+    "profile",
+    "status",
+    "source_commit",
+    "build_profile",
+    "inventory_format",
+    "normalization",
+    "expected_count",
+    "inventory_sha256",
+    "inventory_stream_size_bytes",
+    "test_names",
+    "serial_tests",
+    "materials",
+    "expected_outputs"
+  ],
+  "properties": {
+    "$schema": { "const": "../schema/test-inventory.schema.json" },
+    "schema_version": { "const": 1 },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_kind": { "const": "frozen-observed-baseline" },
+    "profile": { "const": "tests-relwithdebinfo" },
+    "status": { "$ref": "#/$defs/status" },
+    "status_reason": { "type": "string", "minLength": 1 },
+    "source_commit": { "const": "29f808ef0022064e6d9a83c8476d1e0f4686af86" },
+    "build_profile": { "const": "build-relwithdebinfo" },
+    "inventory_format": { "const": "ctest-json-v1" },
+    "normalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authoritative_properties", "working_directory_token", "ordering", "digest_encoding"],
+      "properties": {
+        "authoritative_properties": {
+          "const": ["name", "run_serial", "working_directory_role"]
+        },
+        "working_directory_token": { "const": "$BUILD_ROOT" },
+        "ordering": { "const": "lexicographic-byte-order" },
+        "digest_encoding": { "const": "utf8-lf-terminated-name-stream" }
+      }
+    },
+    "expected_count": { "const": 99 },
+    "inventory_sha256": { "$ref": "#/$defs/sha256" },
+    "inventory_stream_size_bytes": { "type": "integer", "minimum": 1 },
+    "test_names": {
+      "type": "array",
+      "minItems": 99,
+      "maxItems": 99,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "serial_tests": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "materials": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/material" }
+    },
+    "expected_outputs": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/expected_output" }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observation": { "type": "string", "minLength": 1 },
+        "stale_report_count_explanation": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["FAIL", "SKIP"] } }, "required": ["status"] },
+      "then": { "required": ["status_reason"] }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "identity"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "identity": { "type": "string", "minLength": 1 }
+      }
+    },
+    "expected_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "digest_required_at_run"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "digest_required_at_run": { "const": true }
+      }
+    }
+  }
+}
