@@ -1,0 +1,3 @@
+2026-07-30T02:57:16Z [INFO] [build-reference] building the reference through Ninja with bounded parallelism 16
+2026-07-30T03:00:09Z [INFO] [build-reference] installing the just-built reference into the freshly reset FHS root
+2026-07-30T03:00:13Z [INFO] [build-reference] reference built and installed; executable SHA-256 378c4aa5c82c7d961000317bb36eac5e9c4c28495b3ccdafe4b84704bcaae842

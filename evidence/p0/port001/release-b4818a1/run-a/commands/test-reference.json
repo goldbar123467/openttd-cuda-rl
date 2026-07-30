@@ -1,0 +1,1 @@
+["/workspace/openttd-cuda-rl/oracle/runner/test_reference.sh","--build-root","/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-a/build","--artifact-root","/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-a","--baseline-inventory","/workspace/openttd-cuda-rl/oracle/manifests/baseline/tests-relwithdebinfo.json"]

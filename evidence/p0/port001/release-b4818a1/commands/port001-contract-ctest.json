@@ -1,0 +1,1 @@
+["/usr/bin/ctest","--test-dir","/workspace/openttd-p0-artifacts/port001-release-b4818a1/contract-build","--output-on-failure","--no-tests=error","--schedule-random","--repeat","until-fail:3","--timeout","900","--output-junit","/workspace/openttd-p0-artifacts/port001-release-b4818a1/contract-tests/p001-contract.junit.xml","-R","^p001_(contract|comparator)$"]

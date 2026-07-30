@@ -1,0 +1,2 @@
+# Raw oracle evidence is content-addressed and must retain producer bytes exactly.
+evidence/p0/** -whitespace

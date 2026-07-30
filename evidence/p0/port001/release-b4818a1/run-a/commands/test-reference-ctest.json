@@ -1,0 +1,1 @@
+["ctest","--test-dir","/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-a/build","--output-on-failure","--no-tests=error","--timeout","300","--output-junit","/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-a/test-results/ctest-results.junit.xml"]

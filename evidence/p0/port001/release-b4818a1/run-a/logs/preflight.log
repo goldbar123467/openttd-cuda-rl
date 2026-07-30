@@ -1,0 +1,6 @@
+2026-07-30T02:53:48Z [INFO] [preflight] checking repository identity and immutable source pin
+2026-07-30T02:53:48Z [INFO] [preflight] checking staged-path policy without reading staged file contents
+2026-07-30T02:53:48Z [INFO] [preflight] checking required tools and Ubuntu 24.04 profile minimums
+2026-07-30T02:53:48Z [INFO] [preflight] verifying exact Ubuntu platform and dpkg dependency identities
+2026-07-30T02:53:53Z [INFO] [preflight] checking artifact-root safety, free space, and credential-file names
+2026-07-30T02:53:53Z [INFO] [preflight] preflight passed; OpenGFX state: ACQUISITION_REQUIRED

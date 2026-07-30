@@ -1,0 +1,942 @@
+[1/929] Copying ai/compat_0.7.nut
+[2/929] Copying ai/compat_1.1.nut
+[3/929] Copying ai/compat_1.10.nut
+[4/929] Copying ai/compat_1.0.nut
+[5/929] Copying ai/compat_1.11.nut
+[6/929] Copying ai/compat_1.6.nut
+[7/929] Copying ai/compat_1.2.nut
+[8/929] Copying ai/compat_1.3.nut
+[9/929] Copying ai/compat_1.5.nut
+[10/929] Copying ai/compat_1.7.nut
+[11/929] Copying ai/compat_1.4.nut
+[12/929] Copying ai/compat_1.8.nut
+[13/929] Copying ai/compat_1.9.nut
+[14/929] Copying ai/compat_13.nut
+[15/929] Copying ai/compat_12.nut
+[16/929] Copying ai/compat_14.nut
+[17/929] Copying ai/compat_15.nut
+[18/929] Copying game/compat_1.10.nut
+[19/929] Copying game/compat_1.3.nut
+[20/929] Copying game/compat_1.11.nut
+[21/929] Copying game/compat_1.2.nut
+[22/929] Copying game/compat_1.4.nut
+[23/929] Copying game/compat_1.6.nut
+[24/929] Copying game/compat_1.5.nut
+[25/929] Copying game/compat_1.7.nut
+[26/929] Copying game/compat_1.8.nut
+[27/929] Copying game/compat_1.9.nut
+[28/929] Copying game/compat_13.nut
+[29/929] Copying game/compat_12.nut
+[30/929] Copying game/compat_14.nut
+[31/929] Copying game/compat_15.nut
+[32/929] cd /workspace/openttd-cuda-rl/openttd-upstream && /usr/bin/cmake -DFIND_VERSION_BINARY_DIR=/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/generated -DCPACK_BINARY_DIR=/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build -DREV_MAJOR=16 -DREV_MINOR=0 -DWINDOWS= -DDOXYGEN_WARN_FORMAT_LINE=line -DDOXYGEN_WARN_FILE= -DDOXYGEN_GS_WARN_FILE= -DDOXYGEN_AI_WARN_FILE= -P /workspace/openttd-cuda-rl/openttd-upstream/cmake/scripts/FindVersion.cmake
+-- Version string: 20260729--g29f808ef00
+-- Generating rev.cpp
+-- Generating CPackProperties.cmake
+-- Generating Doxyfile
+-- Generating Doxyfile_AI
+-- Generating Doxyfile_GS
+[33/929] Generating script_window.hpp
+[34/929] Generating ai/ai_accounting.sq.hpp
+[35/929] Generating ai/ai_admin.sq.hpp
+[36/929] Generating ai/ai_airport.sq.hpp
+[37/929] Generating ai/ai_asyncmode.sq.hpp
+[38/929] Generating ai/ai_base.sq.hpp
+[39/929] Generating ai/ai_basestation.sq.hpp
+[40/929] Generating ai/ai_bridge.sq.hpp
+[41/929] Generating ai/ai_bridgelist.sq.hpp
+[42/929] Generating ai/ai_cargo.sq.hpp
+[43/929] Generating ai/ai_cargolist.sq.hpp
+[44/929] Generating ai/ai_cargomonitor.sq.hpp
+[45/929] Generating ai/ai_client.sq.hpp
+[46/929] Generating ai/ai_clientlist.sq.hpp
+[47/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/misc/getoptdata.cpp.o
+[48/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/__/misc/getoptdata.cpp.o
+[49/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/core/utf8.cpp.o
+[50/929] Generating ai/ai_companymode.sq.hpp
+[51/929] Generating ai/ai_depotlist.sq.hpp
+[52/929] Generating ai/ai_date.sq.hpp
+[53/929] Generating ai/ai_enginelist.sq.hpp
+[54/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/error.cpp.o
+[55/929] Generating ai/ai_company.sq.hpp
+[56/929] Generating ai/ai_engine.sq.hpp
+[57/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/__/error.cpp.o
+[58/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/core/string_builder.cpp.o
+[59/929] Generating ai/ai_event.sq.hpp
+[60/929] Generating ai/ai_error.sq.hpp
+[61/929] Generating ai/ai_execmode.sq.hpp
+[62/929] Generating ai/ai_game.sq.hpp
+[63/929] Generating ai/ai_gamesettings.sq.hpp
+[64/929] Generating ai/ai_grouplist.sq.hpp
+[65/929] Generating ai/ai_industrylist.sq.hpp
+[66/929] Generating ai/ai_goal.sq.hpp
+[67/929] Generating ai/ai_industrytypelist.sq.hpp
+[68/929] Generating ai/ai_group.sq.hpp
+[69/929] Generating ai/ai_industrytype.sq.hpp
+[70/929] Generating ai/ai_infrastructure.sq.hpp
+[71/929] Generating ai/ai_league.sq.hpp
+[72/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/core/string_inplace.cpp.o
+[73/929] Generating ai/ai_industry.sq.hpp
+[74/929] Generating ai/ai_info_docs.sq.hpp
+[75/929] Generating ai/ai_log_types.sq.hpp
+[76/929] Generating ai/ai_log.sq.hpp
+[77/929] Generating ai/ai_newgrf.sq.hpp
+[78/929] Generating ai/ai_map.sq.hpp
+[79/929] Generating ai/ai_news.sq.hpp
+[80/929] Generating ai/ai_objecttype.sq.hpp
+[81/929] Generating ai/ai_objecttypelist.sq.hpp
+[82/929] Generating ai/ai_marine.sq.hpp
+[83/929] Generating ai/ai_list.sq.hpp
+[84/929] Generating ai/ai_priorityqueue.sq.hpp
+[85/929] Generating ai/ai_railtypelist.sq.hpp
+[86/929] Generating ai/ai_roadtypelist.sq.hpp
+[87/929] Generating ai/ai_signlist.sq.hpp
+[88/929] Generating ai/ai_sign.sq.hpp
+[89/929] Generating ai/ai_object.sq.hpp
+[90/929] Generating ai/ai_event_types.sq.hpp
+[91/929] Generating ai/ai_storypageelementlist.sq.hpp
+[92/929] Generating ai/ai_storypagelist.sq.hpp
+[93/929] Generating ai/ai_station.sq.hpp
+[94/929] Generating ai/ai_order.sq.hpp
+[95/929] Generating ai/ai_rail.sq.hpp
+[96/929] Generating ai/ai_stationlist.sq.hpp
+[97/929] Generating ai/ai_subsidylist.sq.hpp
+[98/929] Generating ai/ai_road.sq.hpp
+[99/929] Generating ai/ai_testmode.sq.hpp
+[100/929] Generating ai/ai_subsidy.sq.hpp
+[101/929] Generating ai/ai_townlist.sq.hpp
+[102/929] Generating ai/ai_text.sq.hpp
+[103/929] Generating ai/ai_tilelist.sq.hpp
+[104/929] Generating ai/ai_story_page.sq.hpp
+[105/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/core/string_consumer.cpp.o
+[106/929] Generating ai/ai_tunnel.sq.hpp
+[107/929] Generating ai/ai_types.sq.hpp
+[108/929] Generating ai/ai_waypointlist.sq.hpp
+[109/929] Generating ai/ai_viewport.sq.hpp
+[110/929] Generating ai/ai_vehiclelist.sq.hpp
+[111/929] Generating ai/ai_waypoint.sq.hpp
+[112/929] Generating game/game_admin.sq.hpp
+[113/929] Generating game/game_accounting.sq.hpp
+[114/929] Generating game/game_asyncmode.sq.hpp
+[115/929] Generating ai/ai_town.sq.hpp
+[116/929] Generating ai/ai_tile.sq.hpp
+[117/929] Generating game/game_base.sq.hpp
+[118/929] Generating game/game_bridgelist.sq.hpp
+[119/929] Generating game/game_airport.sq.hpp
+[120/929] Generating game/game_basestation.sq.hpp
+[121/929] Generating game/game_cargolist.sq.hpp
+[122/929] Generating game/game_bridge.sq.hpp
+[123/929] Generating game/game_cargomonitor.sq.hpp
+[124/929] Generating game/game_cargo.sq.hpp
+[125/929] Generating game/game_client.sq.hpp
+[126/929] Generating game/game_clientlist.sq.hpp
+[127/929] Generating ai/ai_vehicle.sq.hpp
+[128/929] Generating game/game_companymode.sq.hpp
+[129/929] Generating game/game_depotlist.sq.hpp
+[130/929] Generating game/game_enginelist.sq.hpp
+[131/929] Generating game/game_date.sq.hpp
+[132/929] Generating game/game_execmode.sq.hpp
+[133/929] Generating game/game_event.sq.hpp
+[134/929] Generating game/game_game.sq.hpp
+[135/929] Generating game/game_error.sq.hpp
+[136/929] Generating game/game_gamesettings.sq.hpp
+[137/929] Generating game/game_engine.sq.hpp
+[138/929] Generating game/game_company.sq.hpp
+[139/929] Generating game/game_grouplist.sq.hpp
+[140/929] Generating game/game_industrylist.sq.hpp
+[141/929] Generating game/game_industrytypelist.sq.hpp
+[142/929] Generating game/game_goal.sq.hpp
+[143/929] Generating game/game_group.sq.hpp
+[144/929] Generating game/game_industrytype.sq.hpp
+[145/929] Generating game/game_infrastructure.sq.hpp
+[146/929] Generating game/game_industry.sq.hpp
+[147/929] Generating game/game_log.sq.hpp
+[148/929] Generating game/game_info_docs.sq.hpp
+[149/929] Generating game/game_log_types.sq.hpp
+[150/929] Generating game/game_league.sq.hpp
+[151/929] Generating game/game_map.sq.hpp
+[152/929] Generating game/game_newgrf.sq.hpp
+[153/929] Generating game/game_news.sq.hpp
+[154/929] Generating game/game_objecttype.sq.hpp
+[155/929] Generating game/game_marine.sq.hpp
+[156/929] Generating game/game_objecttypelist.sq.hpp
+[157/929] Generating game/game_priorityqueue.sq.hpp
+[158/929] Generating game/game_list.sq.hpp
+[159/929] Generating game/game_railtypelist.sq.hpp
+[160/929] Generating game/game_roadtypelist.sq.hpp
+[161/929] Generating game/game_sign.sq.hpp
+[162/929] Generating game/game_signlist.sq.hpp
+[163/929] Generating game/game_object.sq.hpp
+[164/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/ini_load.cpp.o
+[165/929] Generating game/game_storypageelementlist.sq.hpp
+[166/929] Generating game/game_storypagelist.sq.hpp
+[167/929] Generating game/game_event_types.sq.hpp
+[168/929] Generating game/game_rail.sq.hpp
+[169/929] Generating game/game_station.sq.hpp
+[170/929] Generating game/game_stationlist.sq.hpp
+[171/929] Generating game/game_subsidylist.sq.hpp
+[172/929] Generating game/game_testmode.sq.hpp
+[173/929] Generating game/game_road.sq.hpp
+[174/929] Generating game/game_subsidy.sq.hpp
+[175/929] Generating game/game_order.sq.hpp
+[176/929] Generating game/game_story_page.sq.hpp
+[177/929] Generating game/game_townlist.sq.hpp
+[178/929] Generating game/game_text.sq.hpp
+[179/929] Generating game/game_tilelist.sq.hpp
+[180/929] Generating game/game_tunnel.sq.hpp
+[181/929] Generating game/game_types.sq.hpp
+[182/929] Generating game/game_vehiclelist.sq.hpp
+[183/929] Generating game/game_waypointlist.sq.hpp
+[184/929] Generating game/game_viewport.sq.hpp
+[185/929] Generating game/game_waypoint.sq.hpp
+[186/929] Generating template/template_accounting.sq.hpp
+[187/929] Generating template/template_admin.sq.hpp
+[188/929] Generating template/template_asyncmode.sq.hpp
+[189/929] Generating template/template_base.sq.hpp
+[190/929] Generating game/game_town.sq.hpp
+[191/929] Generating game/game_tile.sq.hpp
+[192/929] Generating template/template_basestation.sq.hpp
+[193/929] Generating template/template_airport.sq.hpp
+[194/929] Generating template/template_bridgelist.sq.hpp
+[195/929] Generating template/template_bridge.sq.hpp
+[196/929] Generating template/template_cargolist.sq.hpp
+[197/929] Generating template/template_cargomonitor.sq.hpp
+[198/929] Generating game/game_vehicle.sq.hpp
+[199/929] Generating template/template_clientlist.sq.hpp
+[200/929] Generating template/template_client.sq.hpp
+[201/929] Generating template/template_cargo.sq.hpp
+[202/929] Generating template/template_companymode.sq.hpp
+[203/929] Generating template/template_depotlist.sq.hpp
+[204/929] Generating template/template_enginelist.sq.hpp
+[205/929] Generating template/template_date.sq.hpp
+[206/929] Generating template/template_execmode.sq.hpp
+[207/929] Generating template/template_event.sq.hpp
+[208/929] Generating template/template_game.sq.hpp
+[209/929] Generating template/template_error.sq.hpp
+[210/929] Generating template/template_gamesettings.sq.hpp
+[211/929] Generating template/template_engine.sq.hpp
+[212/929] Generating template/template_company.sq.hpp
+[213/929] Generating template/template_grouplist.sq.hpp
+[214/929] Generating template/template_industrylist.sq.hpp
+[215/929] Generating template/template_industrytypelist.sq.hpp
+[216/929] Generating template/template_goal.sq.hpp
+[217/929] Generating template/template_industrytype.sq.hpp
+[218/929] Generating template/template_group.sq.hpp
+[219/929] Generating template/template_infrastructure.sq.hpp
+[220/929] Generating template/template_industry.sq.hpp
+[221/929] Generating template/template_info_docs.sq.hpp
+[222/929] Generating template/template_league.sq.hpp
+[223/929] Generating template/template_log.sq.hpp
+[224/929] Generating template/template_log_types.sq.hpp
+[225/929] Generating template/template_newgrf.sq.hpp
+[226/929] Generating template/template_map.sq.hpp
+[227/929] Generating template/template_news.sq.hpp
+[228/929] Generating template/template_objecttype.sq.hpp
+[229/929] Generating template/template_list.sq.hpp
+[230/929] Generating template/template_objecttypelist.sq.hpp
+[231/929] Generating template/template_marine.sq.hpp
+[232/929] Generating template/template_priorityqueue.sq.hpp
+[233/929] Generating template/template_railtypelist.sq.hpp
+[234/929] Generating template/template_roadtypelist.sq.hpp
+[235/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/string.cpp.o
+[236/929] Generating template/template_signlist.sq.hpp
+[237/929] Generating ai/ai_window.sq.hpp
+[238/929] Generating template/template_object.sq.hpp
+[239/929] Generating template/template_sign.sq.hpp
+[240/929] Generating template/template_event_types.sq.hpp
+[241/929] Generating template/template_storypageelementlist.sq.hpp
+[242/929] Generating template/template_storypagelist.sq.hpp
+[243/929] Generating ai/ai_includes.hpp
+[244/929] Generating template/template_stationlist.sq.hpp
+[245/929] Generating template/template_rail.sq.hpp
+[246/929] Generating template/template_subsidylist.sq.hpp
+[247/929] Generating template/template_testmode.sq.hpp
+[248/929] Generating template/template_station.sq.hpp
+[249/929] Generating template/template_order.sq.hpp
+[250/929] Generating template/template_subsidy.sq.hpp
+[251/929] Generating template/template_road.sq.hpp
+[252/929] Generating template/template_text.sq.hpp
+[253/929] Generating template/template_story_page.sq.hpp
+[254/929] Generating template/template_townlist.sq.hpp
+[255/929] Generating template/template_tilelist.sq.hpp
+[256/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/settingsgen.cpp.o
+[257/929] Generating template/template_tunnel.sq.hpp
+[258/929] Generating template/template_viewport.sq.hpp
+[259/929] Generating template/template_vehiclelist.sq.hpp
+[260/929] Generating template/template_waypointlist.sq.hpp
+[261/929] Generating template/template_types.sq.hpp
+[262/929] Generating template/template_waypoint.sq.hpp
+[263/929] Copying openttd.128.png file
+[264/929] Copying openttd.16.png file
+[265/929] Copying openttd.256.png file
+[266/929] Copying openttd.32.png file
+[267/929] Copying openttd.64.png file
+[268/929] Copying openttd.48.png file
+[269/929] Generating template/template_town.sq.hpp
+[270/929] Generating template/template_tile.sq.hpp
+[271/929] Copying openttd.32.xpm file
+[272/929] Copying openttd.64.xpm file
+[273/929] Copying OpenTTD-Mono.ttf baseset file
+[274/929] Copying OpenTTD-Sans.ttf baseset file
+[275/929] Copying OpenTTD-Serif.ttf baseset file
+[276/929] Copying OpenTTD-Small.ttf baseset file
+[277/929] Copying openttd.32.bmp baseset file
+[278/929] Copying openttd.grf baseset file
+[279/929] Generating template/template_vehicle.sq.hpp
+[280/929] Copying opntitle.dat baseset file
+[281/929] Generating game/game_window.sq.hpp
+[282/929] Generating game/game_includes.hpp
+[283/929] Generating desktop file
+[284/929] Generating no_music.obm baseset metadata file
+[285/929] Generating no_sound.obs baseset metadata file
+[286/929] Copying orig_extra.grf baseset file
+[287/929] Generating orig_dos.obg baseset metadata file
+[288/929] Generating orig_dos.obm baseset metadata file
+[289/929] Generating template/template_window.sq.hpp
+[290/929] Copying regression/info.nut regression file
+[291/929] Copying regression/main.nut regression file
+[292/929] Copying regression/require.nut regression file
+[293/929] Copying regression/result.txt regression file
+[294/929] Copying regression/test.sav regression file
+[295/929] Copying stationlist/info.nut regression file
+[296/929] Copying stationlist/main.nut regression file
+[297/929] Copying stationlist/result.txt regression file
+[298/929] Copying stationlist/test.sav regression file
+[299/929] Copying gs/info.nut regression file
+[300/929] Copying gs/main.nut regression file
+[301/929] Copying gs/require.nut regression file
+[302/929] Copying gs/result.txt regression file
+[303/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/__/core/utf8.cpp.o
+[304/929] Copying gs_compat/info.nut regression file
+[305/929] Copying gs/test.sav regression file
+[306/929] Copying gs_compat/main.nut regression file
+[307/929] Copying gs_compat/result.txt regression file
+[308/929] Copying gs_compat/test.sav regression file
+[309/929] Copying regression.cfg regression file
+[310/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/__/core/string_builder.cpp.o
+[311/929] Generating orig_dos.obs baseset metadata file
+[312/929] Generating orig_dos_de.obg baseset metadata file
+[313/929] Generating orig_win.obg baseset metadata file
+[314/929] Generating orig_tto.obm baseset metadata file
+[315/929] Generating orig_win.obm baseset metadata file
+[316/929] Generating orig_win.obs baseset metadata file
+[317/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/__/core/string_inplace.cpp.o
+[318/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/__/core/string_consumer.cpp.o
+[319/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/strgen_base.cpp.o
+[320/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/__/string.cpp.o
+[321/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/__/3rdparty/fmt/format.cc.o
+[322/929] Building CXX object src/settingsgen/CMakeFiles/settingsgen.dir/__/3rdparty/fmt/format.cc.o
+[323/929] Linking CXX executable src/settingsgen/settingsgen
+[324/929] Generating table/settings.h
+[325/929] Building CXX object src/strgen/CMakeFiles/strgen.dir/strgen.cpp.o
+[326/929] Linking CXX executable src/strgen/strgen
+[327/929] Compiling language chuvash
+[328/929] Compiling language brazilian_portuguese
+[329/929] Compiling language basque
+[330/929] Compiling language danish
+[331/929] Compiling language afrikaans
+[332/929] Compiling language belarusian
+[333/929] Compiling language arabic_egypt
+[334/929] Compiling language croatian
+[335/929] Compiling language catalan
+[336/929] Compiling language english
+[337/929] Compiling language bulgarian
+[338/929] Compiling language dutch
+[339/929] Compiling language esperanto
+[340/929] Compiling language english_US
+[341/929] Compiling language english_AU
+[342/929] Compiling language czech
+[343/929] Compiling language faroese
+[344/929] Compiling language estonian
+[345/929] Compiling language hindi
+[346/929] Compiling language ido
+[347/929] Compiling language frisian
+[348/929] Compiling language french
+[349/929] Compiling language gaelic
+[350/929] Compiling language hebrew
+[351/929] Compiling language finnish
+[352/929] Compiling language galician
+[353/929] Compiling language german
+[354/929] Compiling language icelandic
+[355/929] Compiling language hungarian
+[356/929] Compiling language greek
+[357/929] Compiling language indonesian
+[358/929] Compiling language irish
+[359/929] Compiling language japanese
+[360/929] Compiling language korean
+[361/929] Compiling language maltese
+[362/929] Compiling language macedonian
+[363/929] Compiling language marathi
+[364/929] Compiling language italian
+[365/929] Compiling language latin
+[366/929] Compiling language malay
+[367/929] Compiling language luxembourgish
+[368/929] Compiling language norwegian_bokmal
+[369/929] Compiling language norwegian_nynorsk
+[370/929] Compiling language lithuanian
+[371/929] Compiling language maori
+[372/929] Compiling language latvian
+[373/929] Compiling language persian
+[374/929] Compiling language polish
+[375/929] Compiling language serbian
+[376/929] Compiling language portuguese
+[377/929] Compiling language romanian
+[378/929] Compiling language thai
+[379/929] Compiling language swedish
+[380/929] Compiling language spanish_MX
+[381/929] Compiling language russian
+[382/929] Compiling language slovenian
+[383/929] Compiling language slovak
+[384/929] Compiling language tamil
+[385/929] Compiling language turkish
+[386/929] Compiling language traditional_chinese
+[387/929] Compiling language spanish
+[388/929] Compiling language urdu
+[389/929] Compiling language ukrainian
+[390/929] Compiling language simplified_chinese
+[391/929] Compiling language welsh
+[392/929] Compiling language vietnamese
+[393/929] Generating table/strings.h
+[394/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/enum_over_optimisation.cpp.o
+[395/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/bitmath_func.cpp.o
+[396/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/string_builder.cpp.o
+[397/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/mock_spritecache.cpp.o
+[398/929] Building CXX object CMakeFiles/openttd_test.dir/src/3rdparty/icu/tests/test_srtest.cpp.o
+[399/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/math_func.cpp.o
+[400/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/string_inplace.cpp.o
+[401/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/alternating_iterator.cpp.o
+[402/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/flatset_type.cpp.o
+[403/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/history_func.cpp.o
+[404/929] Building CXX object CMakeFiles/openttd_lib.dir/cmake_pch.hxx.gch
+[405/929] Building CXX object CMakeFiles/openttd.dir/src/os/unix/unix_main.cpp.o
+[406/929] Building CXX object CMakeFiles/openttd_lib.dir/generated/rev.cpp.o
+[407/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/landscape_partial_pixel_z.cpp.o
+[408/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_accounting.cpp.o
+[409/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_base.cpp.o
+[410/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_asyncmode.cpp.o
+[411/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/tilearea.cpp.o
+[412/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/fmt/format.cc.o
+[413/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/test_window_desc.cpp.o
+[414/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/test_network_crypto.cpp.o
+[415/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/utf8.cpp.o
+[416/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/string_func.cpp.o
+[417/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_cargo.cpp.o
+[418/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_bridgelist.cpp.o
+[419/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_basestation.cpp.o
+[420/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_client.cpp.o
+[421/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_airport.cpp.o
+[422/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_clientlist.cpp.o
+[423/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_bridge.cpp.o
+[424/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_cargolist.cpp.o
+[425/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_companymode.cpp.o
+[426/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_cargomonitor.cpp.o
+[427/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_date.cpp.o
+[428/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_controller.cpp.o
+[429/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_error.cpp.o
+[430/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_event.cpp.o
+[431/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_admin.cpp.o
+[432/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/test_script_admin.cpp.o
+[433/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_execmode.cpp.o
+[434/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_enginelist.cpp.o
+[435/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_game.cpp.o
+[436/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_depotlist.cpp.o
+[437/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_engine.cpp.o
+[438/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_gamesettings.cpp.o
+[439/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_grouplist.cpp.o
+[440/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_company.cpp.o
+[441/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_infrastructure.cpp.o
+[442/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_industrytypelist.cpp.o
+[443/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_log.cpp.o
+[444/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_industrylist.cpp.o
+[445/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_map.cpp.o
+[446/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_list.cpp.o
+[447/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_industrytype.cpp.o
+[448/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/string_consumer.cpp.o
+[449/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_industry.cpp.o
+[450/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_newgrf.cpp.o
+[451/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_league.cpp.o
+[452/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_goal.cpp.o
+[453/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_group.cpp.o
+[454/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_priorityqueue.cpp.o
+[455/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_objecttypelist.cpp.o
+[456/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_railtypelist.cpp.o
+[457/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_marine.cpp.o
+[458/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_objecttype.cpp.o
+[459/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_object.cpp.o
+[460/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_signlist.cpp.o
+[461/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_event_types.cpp.o
+[462/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_roadtypelist.cpp.o
+[463/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_news.cpp.o
+[464/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_sign.cpp.o
+[465/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_storypagelist.cpp.o
+[466/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_storypageelementlist.cpp.o
+[467/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_subsidylist.cpp.o
+[468/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_testmode.cpp.o
+[469/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_station.cpp.o
+[470/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_stationlist.cpp.o
+[471/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_order.cpp.o
+[472/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_subsidy.cpp.o
+[473/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_text.cpp.o
+[474/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_tilelist.cpp.o
+[475/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_townlist.cpp.o
+[476/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_viewport.cpp.o
+[477/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_tile.cpp.o
+[478/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_rail.cpp.o
+[479/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_vehiclelist.cpp.o
+[480/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_road.cpp.o
+[481/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_waypoint.cpp.o
+[482/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_tunnel.cpp.o
+[483/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_window.cpp.o
+[484/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_story_page.cpp.o
+[485/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/script_info_dummy.cpp.o
+[486/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/icu/scriptrun.cpp.o
+[487/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_waypointlist.cpp.o
+[488/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/fmt/os.cc.o
+[489/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/md5/md5.cpp.o
+[490/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/monocypher/monocypher-ed25519.cpp.o
+[491/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/sqstdlib/sqstdmath.cpp.o
+[492/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/sqstdlib/sqstdaux.cpp.o
+[493/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/squirrel_std.cpp.o
+[494/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqdebug.cpp.o
+[495/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqclass.cpp.o
+[496/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/script_config.cpp.o
+[497/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqbaselib.cpp.o
+[498/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/monocypher/monocypher.cpp.o
+[499/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/squirrel.cpp.o
+[500/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqfuncstate.cpp.o
+[501/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqapi.cpp.o
+[502/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/script_info.cpp.o
+[503/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_town.cpp.o
+[504/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqcompiler.cpp.o
+[505/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqtable.cpp.o
+[506/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqlexer.cpp.o
+[507/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/script_scanner.cpp.o
+[508/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqobject.cpp.o
+[509/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/api/script_vehicle.cpp.o
+[510/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_base.cpp.o
+[511/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/script_instance.cpp.o
+[512/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqstate.cpp.o
+[513/929] Building CXX object CMakeFiles/openttd_lib.dir/src/strgen/strgen_base.cpp.o
+[514/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/8bpp_base.cpp.o
+[515/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ai/ai_config.cpp.o
+[516/929] Building CXX object CMakeFiles/openttd_lib.dir/src/script/script_gui.cpp.o
+[517/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ai/ai_core.cpp.o
+[518/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ai/ai_info.cpp.o
+[519/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/8bpp_simple.cpp.o
+[520/929] Building CXX object CMakeFiles/openttd_lib.dir/src/3rdparty/squirrel/squirrel/sqvm.cpp.o
+[521/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ai/ai_scanner.cpp.o
+[522/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_simple.cpp.o
+[523/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/math_func.cpp.o
+[524/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/label.cpp.o
+[525/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/geometry_func.cpp.o
+[526/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ai/ai_gui.cpp.o
+[527/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/pool_func.cpp.o
+[528/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/string_builder.cpp.o
+[529/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/8bpp_optimized.cpp.o
+[530/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_anim.cpp.o
+[531/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/string_inplace.cpp.o
+[532/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/utf8.cpp.o
+[533/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_optimized.cpp.o
+[534/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_anim_sse2.cpp.o
+[535/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/random_func.cpp.o
+[536/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/null.cpp.o
+[537/929] Building CXX object CMakeFiles/openttd_lib.dir/src/fontcache/spritefontcache.cpp.o
+[538/929] Building CXX object CMakeFiles/openttd_lib.dir/src/core/string_consumer.cpp.o
+[539/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_sse2.cpp.o
+[540/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_ssse3.cpp.o
+[541/929] Building CXX object CMakeFiles/openttd_lib.dir/src/fontcache/truetypefontcache.cpp.o
+[542/929] Building CXX object CMakeFiles/openttd_lib.dir/src/fontcache/freetypefontcache.cpp.o
+[543/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_sse4.cpp.o
+[544/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/32bpp_anim_sse4.cpp.o
+[545/929] Building CXX object CMakeFiles/openttd_lib.dir/src/game/game_config.cpp.o
+[546/929] Building CXX object CMakeFiles/openttd_lib.dir/src/blitter/40bpp_anim.cpp.o
+[547/929] Building CXX object CMakeFiles/openttd_test.dir/src/tests/test_main.cpp.o
+[548/929] Building CXX object CMakeFiles/openttd_lib.dir/src/game/game_core.cpp.o
+[549/929] Building CXX object CMakeFiles/openttd_lib.dir/src/game/game_scanner.cpp.o
+[550/929] Building CXX object CMakeFiles/openttd_lib.dir/src/game/game_info.cpp.o
+[551/929] Building CXX object CMakeFiles/openttd_lib.dir/src/misc/getoptdata.cpp.o
+[552/929] Building CXX object CMakeFiles/openttd_lib.dir/src/misc/history.cpp.o
+[553/929] Building CXX object CMakeFiles/openttd_lib.dir/src/game/game_gui.cpp.o
+[554/929] Building CXX object CMakeFiles/openttd_lib.dir/src/music/fluidsynth.cpp.o
+[555/929] Building CXX object CMakeFiles/openttd_lib.dir/src/music/null_m.cpp.o
+[556/929] Building CXX object CMakeFiles/openttd_lib.dir/src/misc/dbg_helpers.cpp.o
+[557/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/config.cpp.o
+[558/929] Building CXX object CMakeFiles/openttd_lib.dir/src/linkgraph/linkgraph.cpp.o
+[559/929] Building CXX object CMakeFiles/openttd_lib.dir/src/linkgraph/flowmapper.cpp.o
+[560/929] Building CXX object CMakeFiles/openttd_lib.dir/src/game/game_text.cpp.o
+[561/929] Building CXX object CMakeFiles/openttd_lib.dir/src/linkgraph/demands.cpp.o
+[562/929] Building CXX object CMakeFiles/openttd_lib.dir/src/linkgraph/refresh.cpp.o
+[563/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/os_abstraction.cpp.o
+[564/929] Building CXX object CMakeFiles/openttd_lib.dir/src/music/midifile.cpp.o
+[565/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/core.cpp.o
+[566/929] Building CXX object CMakeFiles/openttd_lib.dir/src/linkgraph/linkgraph_gui.cpp.o
+[567/929] Building CXX object CMakeFiles/openttd_lib.dir/src/linkgraph/linkgraphschedule.cpp.o
+[568/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/host.cpp.o
+[569/929] Building CXX object CMakeFiles/openttd_lib.dir/src/music/extmidi.cpp.o
+[570/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/packet.cpp.o
+[571/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/tcp.cpp.o
+[572/929] Building CXX object CMakeFiles/openttd_lib.dir/src/linkgraph/mcf.cpp.o
+[573/929] Building CXX object CMakeFiles/openttd_lib.dir/src/linkgraph/linkgraphjob.cpp.o
+[574/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/address.cpp.o
+[575/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/tcp_coordinator.cpp.o
+[576/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/tcp_stun.cpp.o
+[577/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/tcp_turn.cpp.o
+[578/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/tcp_admin.cpp.o
+[579/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/network_game_info.cpp.o
+[580/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/udp.cpp.o
+[581/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/tcp_game.cpp.o
+[582/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/tcp_content.cpp.o
+[583/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ai/ai_instance.cpp.o
+[584/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/tcp_connect.cpp.o
+[585/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_crypto.cpp.o
+[586/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/core/http_curl.cpp.o
+[587/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_gamelist.cpp.o
+[588/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_chat_gui.cpp.o
+[589/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_stun.cpp.o
+[590/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_query.cpp.o
+[591/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_admin.cpp.o
+[592/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_turn.cpp.o
+[593/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_content_gui.cpp.o
+[594/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_content.cpp.o
+[595/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_udp.cpp.o
+[596/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_coordinator.cpp.o
+[597/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network.cpp.o
+[598/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_aircraft.cpp.o
+[599/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_badges.cpp.o
+[600/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_client.cpp.o
+[601/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_cargo.cpp.o
+[602/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_canals.cpp.o
+[603/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_bridges.cpp.o
+[604/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_airports.cpp.o
+[605/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_objects.cpp.o
+[606/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_railtypes.cpp.o
+[607/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_roadstops.cpp.o
+[608/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_houses.cpp.o
+[609/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_roadtypes.cpp.o
+[610/929] Building CXX object CMakeFiles/openttd_lib.dir/src/game/game_instance.cpp.o
+[611/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_sounds.cpp.o
+[612/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_gui.cpp.o
+[613/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_roadvehs.cpp.o
+[614/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_ships.cpp.o
+[615/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_survey.cpp.o
+[616/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_industries.cpp.o
+[617/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_server.cpp.o
+[618/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_globalvar.cpp.o
+[619/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_trains.cpp.o
+[620/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act5.cpp.o
+[621/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act1.cpp.o
+[622/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act6.cpp.o
+[623/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0_stations.cpp.o
+[624/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_acta.cpp.o
+[625/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act8.cpp.o
+[626/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act0.cpp.o
+[627/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_bytereader.cpp.o
+[628/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act7_9.cpp.o
+[629/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_actc.cpp.o
+[630/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_acte.cpp.o
+[631/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act4.cpp.o
+[632/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act10.cpp.o
+[633/929] Building CXX object CMakeFiles/openttd_lib.dir/src/os/unix/library_loader_unix.cpp.o
+[634/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_actb.cpp.o
+[635/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act13.cpp.o
+[636/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_actf.cpp.o
+[637/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act2.cpp.o
+[638/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act3.cpp.o
+[639/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act11.cpp.o
+[640/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act12.cpp.o
+[641/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_actd.cpp.o
+[642/929] Building CXX object CMakeFiles/openttd_lib.dir/src/os/unix/font_unix.cpp.o
+[643/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_stringmapping.cpp.o
+[644/929] Building CXX object CMakeFiles/openttd_lib.dir/src/os/unix/survey_unix.cpp.o
+[645/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf/newgrf_act14.cpp.o
+[646/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/airport_sl.cpp.o
+[647/929] Building CXX object CMakeFiles/openttd_lib.dir/src/os/unix/crashlog_unix.cpp.o
+[648/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/animated_tile_sl.cpp.o
+[649/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/autoreplace_sl.cpp.o
+[650/929] Building CXX object CMakeFiles/openttd_lib.dir/src/pathfinder/yapf/yapf_river_builder.cpp.o
+[651/929] Building CXX object CMakeFiles/openttd_lib.dir/src/os/unix/unix.cpp.o
+[652/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/ai_sl.cpp.o
+[653/929] Building CXX object CMakeFiles/openttd_lib.dir/src/pathfinder/yapf/yapf_ship_regions.cpp.o
+[654/929] Building CXX object CMakeFiles/openttd_lib.dir/src/pathfinder/yapf/yapf_road.cpp.o
+[655/929] Building CXX object CMakeFiles/openttd_lib.dir/src/pathfinder/yapf/yapf_ship.cpp.o
+[656/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/cargomonitor_sl.cpp.o
+[657/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/cargopacket_sl.cpp.o
+[658/929] Building CXX object CMakeFiles/openttd_lib.dir/src/pathfinder/water_regions.cpp.o
+[659/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/cheat_sl.cpp.o
+[660/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/economy_sl.cpp.o
+[661/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/goal_sl.cpp.o
+[662/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/depot_sl.cpp.o
+[663/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/group_sl.cpp.o
+[664/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/game_sl.cpp.o
+[665/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/engine_sl.cpp.o
+[666/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/league_sl.cpp.o
+[667/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/map_sl.cpp.o
+[668/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/gamelog_sl.cpp.o
+[669/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/labelmaps_sl.cpp.o
+[670/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/misc_sl.cpp.o
+[671/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/company_sl.cpp.o
+[672/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/object_sl.cpp.o
+[673/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/newgrf_sl.cpp.o
+[674/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/oldloader.cpp.o
+[675/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/industry_sl.cpp.o
+[676/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/randomizer_sl.cpp.o
+[677/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/signs_sl.cpp.o
+[678/929] Building CXX object CMakeFiles/openttd_lib.dir/src/pathfinder/yapf/yapf_rail.cpp.o
+[679/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/storage_sl.cpp.o
+[680/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/order_sl.cpp.o
+[681/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/linkgraph_sl.cpp.o
+[682/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/strings_sl.cpp.o
+[683/929] Building CXX object CMakeFiles/openttd_lib.dir/src/sound/null_s.cpp.o
+[684/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/story_sl.cpp.o
+[685/929] Building CXX object CMakeFiles/openttd_lib.dir/src/spriteloader/makeindexed.cpp.o
+[686/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/subsidy_sl.cpp.o
+[687/929] Building CXX object CMakeFiles/openttd_lib.dir/src/spriteloader/sprite_file.cpp.o
+[688/929] Building CXX object CMakeFiles/openttd_lib.dir/src/timer/timer_game_common.cpp.o
+[689/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/settings_sl.cpp.o
+[690/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/afterload.cpp.o
+[691/929] Building CXX object CMakeFiles/openttd_lib.dir/src/sound/sdl2_s.cpp.o
+[692/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/water_regions_sl.cpp.o
+[693/929] Building CXX object CMakeFiles/openttd_lib.dir/src/timer/timer_game_realtime.cpp.o
+[694/929] Building CXX object CMakeFiles/openttd_lib.dir/src/timer/timer_game_tick.cpp.o
+[695/929] Building CXX object CMakeFiles/openttd_lib.dir/src/timer/timer_window.cpp.o
+[696/929] Building CXX object CMakeFiles/openttd_lib.dir/src/spriteloader/grf.cpp.o
+[697/929] Building CXX object CMakeFiles/openttd_lib.dir/src/timer/timer_game_calendar.cpp.o
+[698/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/town_sl.cpp.o
+[699/929] Building CXX object CMakeFiles/openttd_lib.dir/src/viewport_sprite_sorter_sse4.cpp.o
+[700/929] Building CXX object CMakeFiles/openttd_lib.dir/src/timer/timer_game_economy.cpp.o
+[701/929] Building CXX object CMakeFiles/openttd_lib.dir/src/video/opengl.cpp.o
+[702/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/oldloader_sl.cpp.o
+[703/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/waypoint_sl.cpp.o
+[704/929] Building CXX object CMakeFiles/openttd_lib.dir/src/video/null_v.cpp.o
+[705/929] Building CXX object CMakeFiles/openttd_lib.dir/src/soundloader_opus.cpp.o
+[706/929] Building CXX object CMakeFiles/openttd_lib.dir/src/video/sdl2_default_v.cpp.o
+[707/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/station_sl.cpp.o
+[708/929] Building CXX object CMakeFiles/openttd_lib.dir/src/video/sdl2_v.cpp.o
+[709/929] Building CXX object CMakeFiles/openttd_lib.dir/src/video/dedicated_v.cpp.o
+[710/929] Building CXX object CMakeFiles/openttd_lib.dir/src/video/video_driver.cpp.o
+[711/929] Building CXX object CMakeFiles/openttd_lib.dir/src/video/sdl2_opengl_v.cpp.o
+[712/929] Building CXX object CMakeFiles/openttd_lib.dir/src/gfx_layout_icu.cpp.o
+[713/929] Building CXX object CMakeFiles/openttd_lib.dir/src/animated_tile.cpp.o
+[714/929] Building CXX object CMakeFiles/openttd_lib.dir/src/screenshot_png.cpp.o
+[715/929] Building CXX object CMakeFiles/openttd_lib.dir/src/bmp.cpp.o
+[716/929] Building CXX object CMakeFiles/openttd_lib.dir/src/aircraft_gui.cpp.o
+[717/929] Building CXX object CMakeFiles/openttd_lib.dir/src/airport.cpp.o
+[718/929] Building CXX object CMakeFiles/openttd_lib.dir/src/base_consist.cpp.o
+[719/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/vehicle_sl.cpp.o
+[720/929] Building CXX object CMakeFiles/openttd_lib.dir/src/autoreplace.cpp.o
+[721/929] Building CXX object CMakeFiles/openttd_lib.dir/src/autocompletion.cpp.o
+[722/929] Building CXX object CMakeFiles/openttd_lib.dir/src/bridge_map.cpp.o
+[723/929] Building CXX object CMakeFiles/openttd_lib.dir/src/articulated_vehicles.cpp.o
+[724/929] Building CXX object CMakeFiles/openttd_lib.dir/src/cheat.cpp.o
+[725/929] Building CXX object CMakeFiles/openttd_lib.dir/src/saveload/saveload.cpp.o
+[726/929] Building CXX object CMakeFiles/openttd_lib.dir/src/airport_gui.cpp.o
+[727/929] Building CXX object CMakeFiles/openttd_lib.dir/src/bootstrap_gui.cpp.o
+[728/929] Building CXX object CMakeFiles/openttd_lib.dir/src/aircraft_cmd.cpp.o
+[729/929] Building CXX object CMakeFiles/openttd_lib.dir/src/cargoaction.cpp.o
+[730/929] Building CXX object CMakeFiles/openttd_lib.dir/src/bridge_gui.cpp.o
+[731/929] Building CXX object CMakeFiles/openttd_lib.dir/src/cargotype.cpp.o
+[732/929] Building CXX object CMakeFiles/openttd_lib.dir/src/cargomonitor.cpp.o
+[733/929] Building CXX object CMakeFiles/openttd_lib.dir/src/cpu.cpp.o
+[734/929] Building CXX object CMakeFiles/openttd_lib.dir/src/autoreplace_cmd.cpp.o
+[735/929] Building CXX object CMakeFiles/openttd_lib.dir/src/autoreplace_gui.cpp.o
+[736/929] Building CXX object CMakeFiles/openttd_lib.dir/src/clear_cmd.cpp.o
+[737/929] Building CXX object CMakeFiles/openttd_lib.dir/src/cargopacket.cpp.o
+[738/929] Building CXX object CMakeFiles/openttd_lib.dir/src/date_gui.cpp.o
+[739/929] Building CXX object CMakeFiles/openttd_lib.dir/src/dedicated.cpp.o
+[740/929] Building CXX object CMakeFiles/openttd_lib.dir/src/cachecheck.cpp.o
+[741/929] Building CXX object CMakeFiles/openttd_lib.dir/src/currency.cpp.o
+[742/929] Building CXX object CMakeFiles/openttd_lib.dir/src/command.cpp.o
+[743/929] Building CXX object CMakeFiles/openttd_lib.dir/src/console.cpp.o
+[744/929] Building CXX object CMakeFiles/openttd_lib.dir/src/cheat_gui.cpp.o
+[745/929] Building CXX object CMakeFiles/openttd_lib.dir/src/console_gui.cpp.o
+[746/929] Building CXX object CMakeFiles/openttd_lib.dir/src/depot.cpp.o
+[747/929] Building CXX object CMakeFiles/openttd_lib.dir/src/depot_cmd.cpp.o
+[748/929] Building CXX object CMakeFiles/openttd_lib.dir/src/build_vehicle_gui.cpp.o
+[749/929] Building CXX object CMakeFiles/openttd_lib.dir/src/debug.cpp.o
+[750/929] Building CXX object CMakeFiles/openttd_lib.dir/src/error.cpp.o
+[751/929] Building CXX object CMakeFiles/openttd_lib.dir/src/effectvehicle.cpp.o
+[752/929] Building CXX object CMakeFiles/openttd_lib.dir/src/driver.cpp.o
+[753/929] Building CXX object CMakeFiles/openttd_lib.dir/src/dropdown.cpp.o
+[754/929] Building CXX object CMakeFiles/openttd_lib.dir/src/company_cmd.cpp.o
+[755/929] Building CXX object CMakeFiles/openttd_lib.dir/src/elrail.cpp.o
+[756/929] Building CXX object CMakeFiles/openttd_lib.dir/src/dock_gui.cpp.o
+[757/929] Building CXX object CMakeFiles/openttd_lib.dir/src/company_gui.cpp.o
+[758/929] Building CXX object CMakeFiles/openttd_lib.dir/src/disaster_vehicle.cpp.o
+[759/929] Building CXX object CMakeFiles/openttd_lib.dir/src/error_gui.cpp.o
+[760/929] Building CXX object CMakeFiles/openttd_lib.dir/src/crashlog.cpp.o
+[761/929] Building CXX object CMakeFiles/openttd_lib.dir/src/depot_gui.cpp.o
+[762/929] Building CXX object CMakeFiles/openttd_lib.dir/src/engine_gui.cpp.o
+[763/929] Building CXX object CMakeFiles/openttd_lib.dir/src/fontcache.cpp.o
+[764/929] Building CXX object CMakeFiles/openttd_lib.dir/src/gfx_layout_fallback.cpp.o
+[765/929] Building CXX object CMakeFiles/openttd_lib.dir/src/engine.cpp.o
+[766/929] Building CXX object CMakeFiles/openttd_lib.dir/src/framerate_gui.cpp.o
+[767/929] Building CXX object CMakeFiles/openttd_lib.dir/src/gamelog.cpp.o
+[768/929] Building CXX object CMakeFiles/openttd_lib.dir/src/gfx_layout.cpp.o
+[769/929] Building CXX object CMakeFiles/openttd_lib.dir/src/fios.cpp.o
+[770/929] Building CXX object CMakeFiles/openttd_lib.dir/src/fios_gui.cpp.o
+[771/929] Building CXX object CMakeFiles/openttd_lib.dir/src/console_cmds.cpp.o
+[772/929] Building CXX object CMakeFiles/openttd_lib.dir/src/fileio.cpp.o
+[773/929] Building CXX object CMakeFiles/openttd_lib.dir/src/economy.cpp.o
+[774/929] Building CXX object CMakeFiles/openttd_lib.dir/src/gfx.cpp.o
+[775/929] Building CXX object CMakeFiles/openttd_lib.dir/src/help_gui.cpp.o
+[776/929] Building CXX object CMakeFiles/openttd_lib.dir/src/goal.cpp.o
+[777/929] Building CXX object CMakeFiles/openttd_lib.dir/src/goal_gui.cpp.o
+[778/929] Building CXX object CMakeFiles/openttd_lib.dir/src/highscore.cpp.o
+[779/929] Building CXX object CMakeFiles/openttd_lib.dir/src/genworld_gui.cpp.o
+[780/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ground_vehicle.cpp.o
+[781/929] Building CXX object CMakeFiles/openttd_lib.dir/src/hotkeys.cpp.o
+[782/929] Building CXX object CMakeFiles/openttd_lib.dir/src/heightmap.cpp.o
+[783/929] Building CXX object CMakeFiles/openttd_lib.dir/src/highscore_gui.cpp.o
+[784/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ini_load.cpp.o
+[785/929] Building CXX object CMakeFiles/openttd_lib.dir/src/gfxinit.cpp.o
+[786/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ini.cpp.o
+[787/929] Building CXX object CMakeFiles/openttd_lib.dir/src/map.cpp.o
+[788/929] Building CXX object CMakeFiles/openttd_lib.dir/src/graph_gui.cpp.o
+[789/929] Building CXX object CMakeFiles/openttd_lib.dir/src/group_cmd.cpp.o
+[790/929] Building CXX object CMakeFiles/openttd_lib.dir/src/genworld.cpp.o
+[791/929] Building CXX object CMakeFiles/openttd_lib.dir/src/mixer.cpp.o
+[792/929] Building CXX object CMakeFiles/openttd_lib.dir/src/group_gui.cpp.o
+[793/929] Building CXX object CMakeFiles/openttd_lib.dir/src/misc_cmd.cpp.o
+[794/929] Building CXX object CMakeFiles/openttd_lib.dir/src/misc.cpp.o
+[795/929] Building CXX object CMakeFiles/openttd_lib.dir/src/league_cmd.cpp.o
+[796/929] Building CXX object CMakeFiles/openttd_lib.dir/src/main_gui.cpp.o
+[797/929] Building CXX object CMakeFiles/openttd_lib.dir/src/landscape.cpp.o
+[798/929] Building CXX object CMakeFiles/openttd_lib.dir/src/league_gui.cpp.o
+[799/929] Building CXX object CMakeFiles/openttd_lib.dir/src/network/network_command.cpp.o
+[800/929] Building CXX object CMakeFiles/openttd_lib.dir/src/music.cpp.o
+[801/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_cargo.cpp.o
+[802/929] Building CXX object CMakeFiles/openttd_lib.dir/src/music_gui.cpp.o
+[803/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_badge_config.cpp.o
+[804/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_canal.cpp.o
+[805/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_badge.cpp.o
+[806/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_airporttiles.cpp.o
+[807/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_airport.cpp.o
+[808/929] Building CXX object CMakeFiles/openttd_lib.dir/src/misc_gui.cpp.o
+[809/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_generic.cpp.o
+[810/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_commons.cpp.o
+[811/929] Building CXX object CMakeFiles/openttd_lib.dir/src/industry_gui.cpp.o
+[812/929] Building CXX object CMakeFiles/openttd_lib.dir/src/intro_gui.cpp.o
+[813/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_badge_gui.cpp.o
+[814/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_house.cpp.o
+[815/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_industrytiles.cpp.o
+[816/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_config.cpp.o
+[817/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_engine.cpp.o
+[818/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_object.cpp.o
+[819/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_industries.cpp.o
+[820/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_railtype.cpp.o
+[821/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_profiling.cpp.o
+[822/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_spritegroup.cpp.o
+[823/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_sound.cpp.o
+[824/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf.cpp.o
+[825/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_roadtype.cpp.o
+[826/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_townname.cpp.o
+[827/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_roadstop.cpp.o
+[828/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_storage.cpp.o
+[829/929] Building CXX object CMakeFiles/openttd_lib.dir/src/industry_cmd.cpp.o
+[830/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_town.cpp.o
+[831/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_debug_gui.cpp.o
+[832/929] Building CXX object CMakeFiles/openttd_lib.dir/src/progress.cpp.o
+[833/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_gui.cpp.o
+[834/929] Building CXX object CMakeFiles/openttd_lib.dir/src/osk_gui.cpp.o
+[835/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_station.cpp.o
+[836/929] Building CXX object CMakeFiles/openttd_lib.dir/src/order_backup.cpp.o
+[837/929] Building CXX object CMakeFiles/openttd_lib.dir/src/palette.cpp.o
+[838/929] Building CXX object CMakeFiles/openttd_lib.dir/src/newgrf_text.cpp.o
+[839/929] Building CXX object CMakeFiles/openttd_lib.dir/src/rail.cpp.o
+[840/929] Building CXX object CMakeFiles/openttd_lib.dir/src/object_gui.cpp.o
+[841/929] Building CXX object CMakeFiles/openttd_lib.dir/src/random_access_file.cpp.o
+[842/929] Building CXX object CMakeFiles/openttd_lib.dir/src/object_cmd.cpp.o
+[843/929] Building CXX object CMakeFiles/openttd_lib.dir/src/news_gui.cpp.o
+[844/929] Building CXX object CMakeFiles/openttd_lib.dir/src/pbs.cpp.o
+[845/929] Building CXX object CMakeFiles/openttd_lib.dir/src/screenshot_bmp.cpp.o
+[846/929] Building CXX object CMakeFiles/openttd_lib.dir/src/screenshot_gui.cpp.o
+[847/929] Building CXX object CMakeFiles/openttd_lib.dir/src/order_cmd.cpp.o
+[848/929] Building CXX object CMakeFiles/openttd_lib.dir/src/road_map.cpp.o
+[849/929] Building CXX object CMakeFiles/openttd_lib.dir/src/road.cpp.o
+[850/929] Building CXX object CMakeFiles/openttd_lib.dir/src/screenshot_pcx.cpp.o
+[851/929] Building CXX object CMakeFiles/openttd_lib.dir/src/order_gui.cpp.o
+[852/929] Building CXX object CMakeFiles/openttd_lib.dir/src/roadveh_gui.cpp.o
+[853/929] Building CXX object CMakeFiles/openttd_lib.dir/src/roadstop.cpp.o
+[854/929] Building CXX object CMakeFiles/openttd_lib.dir/src/picker_gui.cpp.o
+[855/929] Building CXX object CMakeFiles/openttd_lib.dir/src/screenshot.cpp.o
+[856/929] Building CXX object CMakeFiles/openttd_lib.dir/src/openttd.cpp.o
+[857/929] Building CXX object CMakeFiles/openttd_lib.dir/src/rail_cmd.cpp.o
+[858/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ship_gui.cpp.o
+[859/929] Building CXX object CMakeFiles/openttd_lib.dir/src/settingentry_gui.cpp.o
+[860/929] Building CXX object CMakeFiles/openttd_lib.dir/src/roadveh_cmd.cpp.o
+[861/929] Building CXX object CMakeFiles/openttd_lib.dir/src/slider.cpp.o
+[862/929] Building CXX object CMakeFiles/openttd_lib.dir/src/signal.cpp.o
+[863/929] Building CXX object CMakeFiles/openttd_lib.dir/src/road_cmd.cpp.o
+[864/929] Building CXX object CMakeFiles/openttd_lib.dir/src/soundloader_raw.cpp.o
+[865/929] Building CXX object CMakeFiles/openttd_lib.dir/src/ship_cmd.cpp.o
+[866/929] Building CXX object CMakeFiles/openttd_lib.dir/src/social_integration.cpp.o
+[867/929] Building CXX object CMakeFiles/openttd_lib.dir/src/soundloader.cpp.o
+[868/929] Building CXX object CMakeFiles/openttd_lib.dir/src/rail_gui.cpp.o
+[869/929] Building CXX object CMakeFiles/openttd_lib.dir/src/soundloader_wav.cpp.o
+[870/929] Building CXX object CMakeFiles/openttd_lib.dir/src/signs.cpp.o
+[871/929] Building CXX object CMakeFiles/openttd_lib.dir/src/signs_cmd.cpp.o
+[872/929] Building CXX object CMakeFiles/openttd_lib.dir/src/signs_gui.cpp.o
+[873/929] Building CXX object CMakeFiles/openttd_lib.dir/src/sprite.cpp.o
+[874/929] Building CXX object CMakeFiles/openttd_lib.dir/src/stringfilter.cpp.o
+[875/929] Building CXX object CMakeFiles/openttd_lib.dir/src/road_gui.cpp.o
+/workspace/openttd-cuda-rl/openttd-upstream/src/road_gui.cpp: In member function ‘virtual void BuildRoadToolbarWindow::OnClick(Point, WidgetID, int)’:
+/workspace/openttd-cuda-rl/openttd-upstream/src/road_gui.cpp:610:33: warning: ‘started’ may be used uninitialized [-Wmaybe-uninitialized]
+  610 |                                 if (started) {
+      |                                 ^~
+/workspace/openttd-cuda-rl/openttd-upstream/src/road_gui.cpp:581:22: note: ‘started’ was declared here
+  581 |                 bool started;
+      |                      ^~~~~~~
+[876/929] Building CXX object CMakeFiles/openttd_lib.dir/src/settings_gui.cpp.o
+[877/929] Building CXX object CMakeFiles/openttd_lib.dir/src/settings.cpp.o
+[878/929] Building CXX object CMakeFiles/openttd_lib.dir/src/sound.cpp.o
+[879/929] Building CXX object CMakeFiles/openttd_lib.dir/src/signature.cpp.o
+[880/929] Building CXX object CMakeFiles/openttd_lib.dir/src/spritecache.cpp.o
+[881/929] Building CXX object CMakeFiles/openttd_lib.dir/src/string.cpp.o
+[882/929] Building CXX object CMakeFiles/openttd_lib.dir/src/statusbar_gui.cpp.o
+[883/929] Building CXX object CMakeFiles/openttd_lib.dir/src/textbuf.cpp.o
+[884/929] Building CXX object CMakeFiles/openttd_lib.dir/src/smallmap_gui.cpp.o
+[885/929] Building CXX object CMakeFiles/openttd_lib.dir/src/story.cpp.o
+[886/929] Building CXX object CMakeFiles/openttd_lib.dir/src/tilearea.cpp.o
+[887/929] Building CXX object CMakeFiles/openttd_lib.dir/src/story_gui.cpp.o
+[888/929] Building CXX object CMakeFiles/openttd_lib.dir/src/texteff.cpp.o
+[889/929] Building CXX object CMakeFiles/openttd_lib.dir/src/tile_map.cpp.o
+[890/929] Building CXX object CMakeFiles/openttd_lib.dir/src/subsidy_gui.cpp.o
+[891/929] Building CXX object CMakeFiles/openttd_lib.dir/src/terraform_cmd.cpp.o
+[892/929] Building CXX object CMakeFiles/openttd_lib.dir/src/tgp.cpp.o
+[893/929] Building CXX object CMakeFiles/openttd_lib.dir/src/subsidy.cpp.o
+[894/929] Building CXX object CMakeFiles/openttd_lib.dir/src/station.cpp.o
+[895/929] Building CXX object CMakeFiles/openttd_lib.dir/src/terraform_gui.cpp.o
+[896/929] Building CXX object CMakeFiles/openttd_lib.dir/src/timetable_cmd.cpp.o
+[897/929] Building CXX object CMakeFiles/openttd_lib.dir/src/transparency_gui.cpp.o
+[898/929] Building CXX object CMakeFiles/openttd_lib.dir/src/station_gui.cpp.o
+[899/929] Building CXX object CMakeFiles/openttd_lib.dir/src/timetable_gui.cpp.o
+[900/929] Building CXX object CMakeFiles/openttd_lib.dir/src/tree_gui.cpp.o
+[901/929] Building CXX object CMakeFiles/openttd_lib.dir/src/tree_cmd.cpp.o
+[902/929] Building CXX object CMakeFiles/openttd_lib.dir/src/tunnel_map.cpp.o
+[903/929] Building CXX object CMakeFiles/openttd_lib.dir/src/survey.cpp.o
+[904/929] Building CXX object CMakeFiles/openttd_lib.dir/src/train_gui.cpp.o
+[905/929] Building CXX object CMakeFiles/openttd_lib.dir/src/strings.cpp.o
+[906/929] Building CXX object CMakeFiles/openttd_lib.dir/src/toolbar_gui.cpp.o
+[907/929] Building CXX object CMakeFiles/openttd_lib.dir/src/textfile_gui.cpp.o
+[908/929] Building CXX object CMakeFiles/openttd_lib.dir/src/viewport_gui.cpp.o
+[909/929] Building CXX object CMakeFiles/openttd_lib.dir/src/void_cmd.cpp.o
+[910/929] Building CXX object CMakeFiles/openttd_lib.dir/src/vehiclelist.cpp.o
+[911/929] Building CXX object CMakeFiles/openttd_lib.dir/src/station_cmd.cpp.o
+[912/929] Building CXX object CMakeFiles/openttd_lib.dir/src/train_cmd.cpp.o
+[913/929] Building CXX object CMakeFiles/openttd_lib.dir/src/tunnelbridge_cmd.cpp.o
+[914/929] Building CXX object CMakeFiles/openttd_lib.dir/src/town_gui.cpp.o
+[915/929] Building CXX object CMakeFiles/openttd_lib.dir/src/vehicle_cmd.cpp.o
+[916/929] Building CXX object CMakeFiles/openttd_lib.dir/src/waypoint.cpp.o
+[917/929] Building CXX object CMakeFiles/openttd_lib.dir/src/waypoint_gui.cpp.o
+[918/929] Building CXX object CMakeFiles/openttd_lib.dir/src/town_cmd.cpp.o
+[919/929] Building CXX object CMakeFiles/openttd_lib.dir/src/vehicle.cpp.o
+[920/929] Building CXX object CMakeFiles/openttd_lib.dir/src/widget.cpp.o
+[921/929] Building CXX object CMakeFiles/openttd_lib.dir/src/water_cmd.cpp.o
+[922/929] Building CXX object CMakeFiles/openttd_lib.dir/src/waypoint_cmd.cpp.o
+[923/929] Building CXX object CMakeFiles/openttd_lib.dir/src/viewport.cpp.o
+[924/929] Building CXX object CMakeFiles/openttd_lib.dir/src/window.cpp.o
+[925/929] Building CXX object CMakeFiles/openttd_lib.dir/src/townname.cpp.o
+[926/929] Building CXX object CMakeFiles/openttd_lib.dir/src/settings_table.cpp.o
+[927/929] Building CXX object CMakeFiles/openttd_lib.dir/src/vehicle_gui.cpp.o
+[928/929] Linking CXX executable openttd
+[929/929] Linking CXX executable openttd_test

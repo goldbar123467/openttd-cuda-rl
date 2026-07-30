@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/oracle/manifests/schema/toolchain.schema.json",
+  "title": "OpenTTD P0 frozen reference toolchain",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "manifest_kind",
+    "profile",
+    "status",
+    "platform",
+    "tools",
+    "linker_policy",
+    "environment",
+    "materials",
+    "expected_outputs"
+  ],
+  "properties": {
+    "$schema": { "const": "../schema/toolchain.schema.json" },
+    "schema_version": { "const": 1 },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_kind": { "const": "frozen-profile" },
+    "profile": { "const": "toolchain-linux-x86_64" },
+    "status": { "$ref": "#/$defs/status" },
+    "status_reason": { "type": "string", "minLength": 1 },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os_id", "os_version", "architecture"],
+      "properties": {
+        "os_id": { "const": "ubuntu" },
+        "os_version": { "const": "24.04" },
+        "architecture": { "const": "x86_64" }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 9,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/tool" }
+    },
+    "linker_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["driver", "implementation", "explicit_cmake_linker_override"],
+      "properties": {
+        "driver": { "const": "g++" },
+        "implementation": { "const": "GNU ld" },
+        "explicit_cmake_linker_override": { "const": false }
+      }
+    },
+    "environment": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/environment_entry" }
+    },
+    "materials": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/material" }
+    },
+    "expected_outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/expected_output" }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clang_present_at_baseline_authoring": { "type": "boolean" },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["FAIL", "SKIP"] } }, "required": ["status"] },
+      "then": { "required": ["status_reason"] }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path",
+        "path_binary_package",
+        "resolved_path",
+        "resolved_binary_package",
+        "sha256",
+        "version",
+        "binary_package",
+        "package_version",
+        "source_package",
+        "source_version"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "pattern": "^/usr/(?:bin|sbin)/[^/]+$" },
+        "path_binary_package": { "type": "string", "minLength": 1 },
+        "resolved_path": { "type": "string", "pattern": "^/usr/(?:bin|lib|share)/.+$" },
+        "resolved_binary_package": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "version": { "type": "string", "minLength": 1 },
+        "binary_package": { "type": "string", "minLength": 1 },
+        "package_version": { "type": "string", "minLength": 1 },
+        "source_package": { "type": "string", "minLength": 1 },
+        "source_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "environment_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value", "identity_affecting"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "value": { "type": "string" },
+        "identity_affecting": { "type": "boolean" }
+      }
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "identity"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "const": "operating-system-package-set" },
+        "identity": { "type": "string", "minLength": 1 }
+      }
+    },
+    "expected_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "digest_required_at_run"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "digest_required_at_run": { "const": true }
+      }
+    }
+  }
+}

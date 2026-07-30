@@ -1,0 +1,1 @@
+["/usr/bin/cmake","-S","/workspace/openttd-cuda-rl","-B","/workspace/openttd-p0-artifacts/port001-release-b4818a1/contract-build","-G","Ninja","-DCMAKE_BUILD_TYPE=Release","-DP0_TOOLS_PYTHON=/workspace/openttd-p0-tools-venv/bin/python"]

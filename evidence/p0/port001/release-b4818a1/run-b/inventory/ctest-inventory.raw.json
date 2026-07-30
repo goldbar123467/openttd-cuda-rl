@@ -1,0 +1,1615 @@
+{
+  "backtraceGraph" : 
+  {
+    "commands" : 
+    [
+      "add_test",
+      "create_regression"
+    ],
+    "files" : 
+    [
+      "/workspace/openttd-cuda-rl/openttd-upstream/cmake/CreateRegression.cmake",
+      "/workspace/openttd-cuda-rl/openttd-upstream/regression/regression/CMakeLists.txt",
+      "/workspace/openttd-cuda-rl/openttd-upstream/regression/stationlist/CMakeLists.txt",
+      "/workspace/openttd-cuda-rl/openttd-upstream/regression/gs/CMakeLists.txt",
+      "/workspace/openttd-cuda-rl/openttd-upstream/regression/gs_compat/CMakeLists.txt"
+    ],
+    "nodes" : 
+    [
+      {
+        "file" : 1
+      },
+      {
+        "command" : 1,
+        "file" : 1,
+        "line" : 2,
+        "parent" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 49,
+        "parent" : 1
+      },
+      {
+        "file" : 2
+      },
+      {
+        "command" : 1,
+        "file" : 2,
+        "line" : 2,
+        "parent" : 3
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 49,
+        "parent" : 4
+      },
+      {
+        "file" : 3
+      },
+      {
+        "command" : 1,
+        "file" : 3,
+        "line" : 2,
+        "parent" : 6
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 49,
+        "parent" : 7
+      },
+      {
+        "file" : 4
+      },
+      {
+        "command" : 1,
+        "file" : 4,
+        "line" : 2,
+        "parent" : 9
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 49,
+        "parent" : 10
+      }
+    ]
+  },
+  "kind" : "ctestInfo",
+  "tests" : 
+  [
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "ICU ScriptRun"
+      ],
+      "name" : "ICU ScriptRun",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "AlternatingIterator tests"
+      ],
+      "name" : "AlternatingIterator tests",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "SetBitIterator tests"
+      ],
+      "name" : "SetBitIterator tests",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "EnumOverOptimisation_BoundsCheck"
+      ],
+      "name" : "EnumOverOptimisation_BoundsCheck",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "EnumOverOptimisation_Bitmask"
+      ],
+      "name" : "EnumOverOptimisation_Bitmask",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "FlatSet - basic"
+      ],
+      "name" : "FlatSet - basic",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "History Rotation and Reporting tests"
+      ],
+      "name" : "History Rotation and Reporting tests",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelSlopeAdditionTest - A one corner slope\\, plus the opposite three corner slope results in a flat but elevated slope"
+      ],
+      "name" : "PartialPixelSlopeAdditionTest - A one corner slope, plus the opposite three corner slope results in a flat but elevated slope",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelSlopeAdditionTest - Diagonal slopes with their opposite slope result in a flat but elevated slope"
+      ],
+      "name" : "PartialPixelSlopeAdditionTest - Diagonal slopes with their opposite slope result in a flat but elevated slope",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelSlopeAdditionTest - Half tile slopes with their opposite half tile slope result in a flat but elevated slope"
+      ],
+      "name" : "PartialPixelSlopeAdditionTest - Half tile slopes with their opposite half tile slope result in a flat but elevated slope",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelSlopeAdditionTest - Two opposite one corner slopes result in the two corner slope with opposite corners"
+      ],
+      "name" : "PartialPixelSlopeAdditionTest - Two opposite one corner slopes result in the two corner slope with opposite corners",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelSlopeAdditionTest - A steep slope is a one corner slope on top of a three corner slope"
+      ],
+      "name" : "PartialPixelSlopeAdditionTest - A steep slope is a one corner slope on top of a three corner slope",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelSlopeAdditionTest - A half tile steep slope is a one corner half tile on top of a three corner slope"
+      ],
+      "name" : "PartialPixelSlopeAdditionTest - A half tile steep slope is a one corner half tile on top of a three corner slope",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - One corner up slopes - SLOPE_N"
+      ],
+      "name" : "PartialPixelTest - One corner up slopes - SLOPE_N",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - One corner up slopes - SLOPE_E"
+      ],
+      "name" : "PartialPixelTest - One corner up slopes - SLOPE_E",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - One corner up slopes - SLOPE_S"
+      ],
+      "name" : "PartialPixelTest - One corner up slopes - SLOPE_S",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - One corner up slopes - SLOPE_W"
+      ],
+      "name" : "PartialPixelTest - One corner up slopes - SLOPE_W",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Two corner up\\, diagonal slopes - SLOPE_NE"
+      ],
+      "name" : "PartialPixelTest - Two corner up, diagonal slopes - SLOPE_NE",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Two corner up\\, diagonal slopes - SLOPE_SE"
+      ],
+      "name" : "PartialPixelTest - Two corner up, diagonal slopes - SLOPE_SE",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Two corner up\\, diagonal slopes - SLOPE_SW"
+      ],
+      "name" : "PartialPixelTest - Two corner up, diagonal slopes - SLOPE_SW",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Two corner up\\, diagonal slopes - SLOPE_NW"
+      ],
+      "name" : "PartialPixelTest - Two corner up, diagonal slopes - SLOPE_NW",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Two opposite corner up slopes - SLOPE_NS"
+      ],
+      "name" : "PartialPixelTest - Two opposite corner up slopes - SLOPE_NS",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Two opposite corner up slopes - SLOPE_EW"
+      ],
+      "name" : "PartialPixelTest - Two opposite corner up slopes - SLOPE_EW",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Three corner up slopes - SLOPE_ENW"
+      ],
+      "name" : "PartialPixelTest - Three corner up slopes - SLOPE_ENW",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Three corner up slopes - SLOPE_SEN"
+      ],
+      "name" : "PartialPixelTest - Three corner up slopes - SLOPE_SEN",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Three corner up slopes - SLOPE_WSE"
+      ],
+      "name" : "PartialPixelTest - Three corner up slopes - SLOPE_WSE",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Three corner up slopes - SLOPE_NWS"
+      ],
+      "name" : "PartialPixelTest - Three corner up slopes - SLOPE_NWS",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Normal half tile slopes - SLOPE_N/Corner::N"
+      ],
+      "name" : "PartialPixelTest - Normal half tile slopes - SLOPE_N/Corner::N",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Normal half tile slopes - SLOPE_E/Corner::E"
+      ],
+      "name" : "PartialPixelTest - Normal half tile slopes - SLOPE_E/Corner::E",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Normal half tile slopes - SLOPE_S/Corner::S"
+      ],
+      "name" : "PartialPixelTest - Normal half tile slopes - SLOPE_S/Corner::S",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Normal half tile slopes - SLOPE_W/Corner::W"
+      ],
+      "name" : "PartialPixelTest - Normal half tile slopes - SLOPE_W/Corner::W",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Steep slopes - SLOPE_STEEP_N"
+      ],
+      "name" : "PartialPixelTest - Steep slopes - SLOPE_STEEP_N",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Steep slopes - SLOPE_STEEP_E"
+      ],
+      "name" : "PartialPixelTest - Steep slopes - SLOPE_STEEP_E",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Steep slopes - SLOPE_STEEP_S"
+      ],
+      "name" : "PartialPixelTest - Steep slopes - SLOPE_STEEP_S",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Steep slopes - SLOPE_STEEP_W"
+      ],
+      "name" : "PartialPixelTest - Steep slopes - SLOPE_STEEP_W",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::N"
+      ],
+      "name" : "PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::N",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::E"
+      ],
+      "name" : "PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::E",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::S"
+      ],
+      "name" : "PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::S",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::W"
+      ],
+      "name" : "PartialPixelTest - Half tile on top of steep slopes - SLOPE_STEEP/Corner::W",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "DivideApproxTest - Negative"
+      ],
+      "name" : "DivideApproxTest - Negative",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "DivideApproxTest\\, Divide"
+      ],
+      "name" : "DivideApproxTest, Divide",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "IntSqrtTest - Zero"
+      ],
+      "name" : "IntSqrtTest - Zero",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "IntSqrtTest - FindSqRt"
+      ],
+      "name" : "IntSqrtTest - FindSqRt",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "ClampTo"
+      ],
+      "name" : "ClampTo",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "SoftClamp"
+      ],
+      "name" : "SoftClamp",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringBuilder - basic"
+      ],
+      "name" : "StringBuilder - basic",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringBuilder - binary"
+      ],
+      "name" : "StringBuilder - binary",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringBuilder - text"
+      ],
+      "name" : "StringBuilder - text",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - basic"
+      ],
+      "name" : "StringConsumer - basic",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - binary8"
+      ],
+      "name" : "StringConsumer - binary8",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - binary16"
+      ],
+      "name" : "StringConsumer - binary16",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - binary32"
+      ],
+      "name" : "StringConsumer - binary32",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - binary64"
+      ],
+      "name" : "StringConsumer - binary64",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - utf8"
+      ],
+      "name" : "StringConsumer - utf8",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - conditions"
+      ],
+      "name" : "StringConsumer - conditions",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - ascii"
+      ],
+      "name" : "StringConsumer - ascii",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - parse int"
+      ],
+      "name" : "StringConsumer - parse int",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - invalid int"
+      ],
+      "name" : "StringConsumer - invalid int",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StringConsumer - most negative"
+      ],
+      "name" : "StringConsumer - most negative",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "InPlaceReplacement"
+      ],
+      "name" : "InPlaceReplacement",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrCompareIgnoreCase - std::string"
+      ],
+      "name" : "StrCompareIgnoreCase - std::string",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrCompareIgnoreCase - std::string_view"
+      ],
+      "name" : "StrCompareIgnoreCase - std::string_view",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrEqualsIgnoreCase - std::string"
+      ],
+      "name" : "StrEqualsIgnoreCase - std::string",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrEqualsIgnoreCase - std::string_view"
+      ],
+      "name" : "StrEqualsIgnoreCase - std::string_view",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrStartsWithIgnoreCase - std::string"
+      ],
+      "name" : "StrStartsWithIgnoreCase - std::string",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrStartsWithIgnoreCase - std::string_view"
+      ],
+      "name" : "StrStartsWithIgnoreCase - std::string_view",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrEndsWithIgnoreCase - std::string"
+      ],
+      "name" : "StrEndsWithIgnoreCase - std::string",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrEndsWithIgnoreCase - std::string_view"
+      ],
+      "name" : "StrEndsWithIgnoreCase - std::string_view",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "FormatArrayAsHex"
+      ],
+      "name" : "FormatArrayAsHex",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "ConvertHexToBytes"
+      ],
+      "name" : "ConvertHexToBytes",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrTrimInPlace"
+      ],
+      "name" : "StrTrimInPlace",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "StrTrimView"
+      ],
+      "name" : "StrTrimView",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "FixSCCEncoded"
+      ],
+      "name" : "FixSCCEncoded",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "FixSCCEncodedNegative"
+      ],
+      "name" : "FixSCCEncodedNegative",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "EncodedString::ReplaceParam - positive"
+      ],
+      "name" : "EncodedString::ReplaceParam - positive",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "EncodedString::ReplaceParam - negative"
+      ],
+      "name" : "EncodedString::ReplaceParam - negative",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Authentication_KeyExchangeOnly"
+      ],
+      "name" : "Authentication_KeyExchangeOnly",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Authentication_PAKE"
+      ],
+      "name" : "Authentication_PAKE",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Authentication_AuthorizedKey"
+      ],
+      "name" : "Authentication_AuthorizedKey",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Authentication_Combined"
+      ],
+      "name" : "Authentication_Combined",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Encryption handling"
+      ],
+      "name" : "Encryption handling",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Squirrel -> JSON conversion"
+      ],
+      "name" : "Squirrel -> JSON conversion",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "JSON -> Squirrel conversion"
+      ],
+      "name" : "JSON -> Squirrel conversion",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "WindowDesc - ini_key uniqueness"
+      ],
+      "name" : "WindowDesc - ini_key uniqueness",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "WindowDesc - ini_key validity"
+      ],
+      "name" : "WindowDesc - ini_key validity",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "WindowDesc - NWidgetParts properly closed"
+      ],
+      "name" : "WindowDesc - NWidgetParts properly closed",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "WindowDesc - NWidgetPart validity"
+      ],
+      "name" : "WindowDesc - NWidgetPart validity",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "SpiralTileSequence - minimum"
+      ],
+      "name" : "SpiralTileSequence - minimum",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "SpiralTileSequence - odd"
+      ],
+      "name" : "SpiralTileSequence - odd",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "SpiralTileSequence - even"
+      ],
+      "name" : "SpiralTileSequence - even",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "SpiralTileSequence - zero hole"
+      ],
+      "name" : "SpiralTileSequence - zero hole",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "SpiralTileSequence - normal hole"
+      ],
+      "name" : "SpiralTileSequence - normal hole",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Utf8View - empty"
+      ],
+      "name" : "Utf8View - empty",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Utf8View - invalid"
+      ],
+      "name" : "Utf8View - invalid",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "command" : 
+      [
+        "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd_test",
+        "Utf8View - iterate"
+      ],
+      "name" : "Utf8View - iterate",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 2,
+      "command" : 
+      [
+        "/usr/bin/cmake",
+        "-DOPENTTD_EXECUTABLE=/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd",
+        "-DEDITBIN_EXECUTABLE=",
+        "-DREGRESSION_TEST=regression",
+        "-DSCRIPT_FOLDER=ai",
+        "-P",
+        "/workspace/openttd-cuda-rl/openttd-upstream/cmake/scripts/Regression.cmake"
+      ],
+      "name" : "regression_regression",
+      "properties" : 
+      [
+        {
+          "name" : "RUN_SERIAL",
+          "value" : true
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 5,
+      "command" : 
+      [
+        "/usr/bin/cmake",
+        "-DOPENTTD_EXECUTABLE=/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd",
+        "-DEDITBIN_EXECUTABLE=",
+        "-DREGRESSION_TEST=stationlist",
+        "-DSCRIPT_FOLDER=ai",
+        "-P",
+        "/workspace/openttd-cuda-rl/openttd-upstream/cmake/scripts/Regression.cmake"
+      ],
+      "name" : "regression_stationlist",
+      "properties" : 
+      [
+        {
+          "name" : "RUN_SERIAL",
+          "value" : true
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 8,
+      "command" : 
+      [
+        "/usr/bin/cmake",
+        "-DOPENTTD_EXECUTABLE=/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd",
+        "-DEDITBIN_EXECUTABLE=",
+        "-DREGRESSION_TEST=gs",
+        "-DSCRIPT_FOLDER=game",
+        "-P",
+        "/workspace/openttd-cuda-rl/openttd-upstream/cmake/scripts/Regression.cmake"
+      ],
+      "name" : "regression_gs",
+      "properties" : 
+      [
+        {
+          "name" : "RUN_SERIAL",
+          "value" : true
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    },
+    {
+      "backtrace" : 11,
+      "command" : 
+      [
+        "/usr/bin/cmake",
+        "-DOPENTTD_EXECUTABLE=/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build/openttd",
+        "-DEDITBIN_EXECUTABLE=",
+        "-DREGRESSION_TEST=gs_compat",
+        "-DSCRIPT_FOLDER=game",
+        "-P",
+        "/workspace/openttd-cuda-rl/openttd-upstream/cmake/scripts/Regression.cmake"
+      ],
+      "name" : "regression_gs_compat",
+      "properties" : 
+      [
+        {
+          "name" : "RUN_SERIAL",
+          "value" : true
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/workspace/openttd-p0-artifacts/port001-release-b4818a1/run-b/build"
+        }
+      ]
+    }
+  ],
+  "version" : 
+  {
+    "major" : 1,
+    "minor" : 0
+  }
+}

@@ -1,0 +1,1 @@
+["./oracle/runner/port001_gate.sh","--profile","local-release","--artifact-root","/workspace/openttd-p0-artifacts/port001-release-b4818a1","--tools-python","/workspace/openttd-p0-tools-venv/bin/python","--parallel","16"]

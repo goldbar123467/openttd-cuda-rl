@@ -1,0 +1,251 @@
+{
+  "$schema": "../schema/toolchain.schema.json",
+  "schema_version": 1,
+  "schema_sha256": "f461bce164a09713c9ec3b8b1ad58c5befd6fbf4bc0cb1f8472e3bc31413ac83",
+  "manifest_kind": "frozen-profile",
+  "profile": "toolchain-linux-x86_64",
+  "status": "PASS",
+  "platform": {
+    "os_id": "ubuntu",
+    "os_version": "24.04",
+    "architecture": "x86_64"
+  },
+  "tools": [
+    {
+      "name": "gcc",
+      "path": "/usr/bin/gcc",
+      "path_binary_package": "gcc",
+      "resolved_path": "/usr/bin/x86_64-linux-gnu-gcc-13",
+      "resolved_binary_package": "gcc-13-x86-64-linux-gnu",
+      "sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+      "version": "13.3.0",
+      "binary_package": "gcc-13",
+      "package_version": "13.3.0-6ubuntu2~24.04.1",
+      "source_package": "gcc-13",
+      "source_version": "13.3.0-6ubuntu2~24.04.1"
+    },
+    {
+      "name": "g++",
+      "path": "/usr/bin/g++",
+      "path_binary_package": "g++",
+      "resolved_path": "/usr/bin/x86_64-linux-gnu-g++-13",
+      "resolved_binary_package": "g++-13-x86-64-linux-gnu",
+      "sha256": "1353e9bdd29a7295c7226bf6c63abccce056d8cac31f112e5cdbecc3f28c2769",
+      "version": "13.3.0",
+      "binary_package": "g++-13",
+      "package_version": "13.3.0-6ubuntu2~24.04.1",
+      "source_package": "gcc-13",
+      "source_version": "13.3.0-6ubuntu2~24.04.1"
+    },
+    {
+      "name": "ld",
+      "path": "/usr/bin/ld",
+      "path_binary_package": "binutils",
+      "resolved_path": "/usr/bin/x86_64-linux-gnu-ld.bfd",
+      "resolved_binary_package": "binutils-x86-64-linux-gnu",
+      "sha256": "e9ceb054c12207970f2726dfc07e9a66b411602748628baf27399f02a9bbb31b",
+      "version": "GNU ld 2.42",
+      "binary_package": "binutils",
+      "package_version": "2.42-4ubuntu2.10",
+      "source_package": "binutils",
+      "source_version": "2.42-4ubuntu2.10"
+    },
+    {
+      "name": "objcopy",
+      "path": "/usr/bin/objcopy",
+      "path_binary_package": "binutils",
+      "resolved_path": "/usr/bin/x86_64-linux-gnu-objcopy",
+      "resolved_binary_package": "binutils-x86-64-linux-gnu",
+      "sha256": "9276e918e3c26d3aa7ef9dd2232cd8ac692f03d3c1f270bfa5144a2b5492b713",
+      "version": "GNU objcopy 2.42",
+      "binary_package": "binutils",
+      "package_version": "2.42-4ubuntu2.10",
+      "source_package": "binutils",
+      "source_version": "2.42-4ubuntu2.10"
+    },
+    {
+      "name": "readelf",
+      "path": "/usr/bin/readelf",
+      "path_binary_package": "binutils",
+      "resolved_path": "/usr/bin/x86_64-linux-gnu-readelf",
+      "resolved_binary_package": "binutils-x86-64-linux-gnu",
+      "sha256": "64c58e15274bbbb5153f31078e455e9e77ee5f51489e709bba5bb788ce9df2b0",
+      "version": "GNU readelf 2.42",
+      "binary_package": "binutils",
+      "package_version": "2.42-4ubuntu2.10",
+      "source_package": "binutils",
+      "source_version": "2.42-4ubuntu2.10"
+    },
+    {
+      "name": "cmake",
+      "path": "/usr/bin/cmake",
+      "path_binary_package": "cmake",
+      "resolved_path": "/usr/bin/cmake",
+      "resolved_binary_package": "cmake",
+      "sha256": "1c5227af4edd22d8d689def545e18ee458260c0fd579eba2187967f38817e638",
+      "version": "3.28.3",
+      "binary_package": "cmake",
+      "package_version": "3.28.3-1build7",
+      "source_package": "cmake",
+      "source_version": "3.28.3-1build7"
+    },
+    {
+      "name": "ctest",
+      "path": "/usr/bin/ctest",
+      "path_binary_package": "cmake",
+      "resolved_path": "/usr/bin/ctest",
+      "resolved_binary_package": "cmake",
+      "sha256": "45c60ab2448411a4f49a0bdb6cf5800fedbf0293048e3c82710a34190c7d1ef4",
+      "version": "3.28.3",
+      "binary_package": "cmake",
+      "package_version": "3.28.3-1build7",
+      "source_package": "cmake",
+      "source_version": "3.28.3-1build7"
+    },
+    {
+      "name": "ninja",
+      "path": "/usr/bin/ninja",
+      "path_binary_package": "ninja-build",
+      "resolved_path": "/usr/bin/ninja",
+      "resolved_binary_package": "ninja-build",
+      "sha256": "5965527e09fe2b3787772aa4f711d6a36b393e7f2fcaa744a7a96c5a4ddf59cb",
+      "version": "1.11.1",
+      "binary_package": "ninja-build",
+      "package_version": "1.11.1-2",
+      "source_package": "ninja-build",
+      "source_version": "1.11.1-2"
+    },
+    {
+      "name": "git",
+      "path": "/usr/bin/git",
+      "path_binary_package": "git",
+      "resolved_path": "/usr/bin/git",
+      "resolved_binary_package": "git",
+      "sha256": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668",
+      "version": "2.43.0",
+      "binary_package": "git",
+      "package_version": "1:2.43.0-1ubuntu7.3",
+      "source_package": "git",
+      "source_version": "1:2.43.0-1ubuntu7.3"
+    },
+    {
+      "name": "python3",
+      "path": "/usr/bin/python3",
+      "path_binary_package": "python3-minimal",
+      "resolved_path": "/usr/bin/python3.12",
+      "resolved_binary_package": "python3.12-minimal",
+      "sha256": "1643dacd9feaedc58f3cc581e4d22577dfe25c09b10282936186ccf0f2e61118",
+      "version": "3.12.3",
+      "binary_package": "python3",
+      "package_version": "3.12.3-0ubuntu2.1",
+      "source_package": "python3-defaults",
+      "source_version": "3.12.3-0ubuntu2.1"
+    },
+    {
+      "name": "pkg-config",
+      "path": "/usr/bin/pkg-config",
+      "path_binary_package": "pkgconf:amd64",
+      "resolved_path": "/usr/bin/pkgconf",
+      "resolved_binary_package": "pkgconf-bin",
+      "sha256": "7e8152db1b0c7e49d47b4b82a70dc9997b557951c5d4d938b0e7f208ce9eb10b",
+      "version": "1.8.1",
+      "binary_package": "pkg-config:amd64",
+      "package_version": "1.8.1-2build1",
+      "source_package": "pkgconf",
+      "source_version": "1.8.1-2build1"
+    },
+    {
+      "name": "clang-16",
+      "path": "/usr/bin/clang-16",
+      "path_binary_package": "clang-16",
+      "resolved_path": "/usr/lib/llvm-16/bin/clang",
+      "resolved_binary_package": "clang-16",
+      "sha256": "12f4879ca2d03e73e0981eef1e7e007cadd09415371e6dccc3899bd90f6c687e",
+      "version": "16.0.6",
+      "binary_package": "clang-16",
+      "package_version": "1:16.0.6-23ubuntu4",
+      "source_package": "llvm-toolchain-16",
+      "source_version": "1:16.0.6-23ubuntu4"
+    },
+    {
+      "name": "clang-tidy-16",
+      "path": "/usr/bin/clang-tidy-16",
+      "path_binary_package": "clang-tidy-16",
+      "resolved_path": "/usr/lib/llvm-16/bin/clang-tidy",
+      "resolved_binary_package": "clang-tidy-16",
+      "sha256": "f30b8cdbc3d90989d104779f44c3dbe2fc2e23c792562409b4021e977c7fd706",
+      "version": "16.0.6",
+      "binary_package": "clang-tidy-16",
+      "package_version": "1:16.0.6-23ubuntu4",
+      "source_package": "llvm-toolchain-16",
+      "source_version": "1:16.0.6-23ubuntu4"
+    },
+    {
+      "name": "llvm-cov-16",
+      "path": "/usr/bin/llvm-cov-16",
+      "path_binary_package": "llvm-16",
+      "resolved_path": "/usr/lib/llvm-16/bin/llvm-cov",
+      "resolved_binary_package": "llvm-16",
+      "sha256": "564f9bda5ffab29f37984cea0cfff2cc6d4e9a18efb13f4e47652dc01a0793a1",
+      "version": "16.0.6",
+      "binary_package": "llvm-16",
+      "package_version": "1:16.0.6-23ubuntu4",
+      "source_package": "llvm-toolchain-16",
+      "source_version": "1:16.0.6-23ubuntu4"
+    },
+    {
+      "name": "llvm-profdata-16",
+      "path": "/usr/bin/llvm-profdata-16",
+      "path_binary_package": "llvm-16",
+      "resolved_path": "/usr/lib/llvm-16/bin/llvm-profdata",
+      "resolved_binary_package": "llvm-16",
+      "sha256": "e09c83fdc63aa43877c8c4fcabe612d44418354648350d1bc8dc5f850b09e1e3",
+      "version": "16.0.6",
+      "binary_package": "llvm-16",
+      "package_version": "1:16.0.6-23ubuntu4",
+      "source_package": "llvm-toolchain-16",
+      "source_version": "1:16.0.6-23ubuntu4"
+    },
+    {
+      "name": "scan-build-16",
+      "path": "/usr/bin/scan-build-16",
+      "path_binary_package": "clang-tools-16",
+      "resolved_path": "/usr/share/clang/scan-build-16/bin/scan-build",
+      "resolved_binary_package": "clang-tools-16",
+      "sha256": "9ac27454b1961dcea6a966cfe4e95f9bb343d674d5db1c23755f662a6edd7fdf",
+      "version": "16.0.6",
+      "binary_package": "clang-tools-16",
+      "package_version": "1:16.0.6-23ubuntu4",
+      "source_package": "llvm-toolchain-16",
+      "source_version": "1:16.0.6-23ubuntu4"
+    }
+  ],
+  "linker_policy": {
+    "driver": "g++",
+    "implementation": "GNU ld",
+    "explicit_cmake_linker_override": false
+  },
+  "environment": [
+    { "name": "LANG", "value": "C.UTF-8", "identity_affecting": true },
+    { "name": "LC_ALL", "value": "C.UTF-8", "identity_affecting": true },
+    { "name": "SOURCE_DATE_EPOCH", "value": "1785314342", "identity_affecting": true },
+    { "name": "TZ", "value": "UTC", "identity_affecting": true }
+  ],
+  "materials": [
+    {
+      "name": "ubuntu-24.04-x86_64-package-set",
+      "kind": "operating-system-package-set",
+      "identity": "dependencies-ubuntu-24.04"
+    }
+  ],
+  "expected_outputs": [
+    {
+      "name": "generated-toolchain-run-evidence",
+      "digest_required_at_run": true
+    }
+  ],
+  "diagnostics": {
+    "clang_present_at_baseline_authoring": true,
+    "note": "The versioned Clang 16 frontend existed even though the unversioned clang command was absent from PATH. Clang is not part of this GCC reference-build identity; the separately pinned LLVM 16 harness matrix is recorded and remains independently gated."
+  }
+}
