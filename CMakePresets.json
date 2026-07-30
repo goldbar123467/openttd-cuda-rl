@@ -1,0 +1,214 @@
+{
+  "version": 8,
+  "$schema": "https://raw.githubusercontent.com/Kitware/CMake/v3.28.3/Help/manual/presets/schema.json",
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 28,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "p0-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../openttd-p0-artifacts/native/${presetName}",
+      "cacheVariables": {
+        "BUILD_TESTING": true,
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": false,
+        "P0_ENABLE_ASAN": false,
+        "P0_ENABLE_UBSAN": false,
+        "P0_ENABLE_COVERAGE": false,
+        "P0_ENABLE_FUZZING": false
+      },
+      "environment": {
+        "LC_ALL": "C.UTF-8",
+        "LANG": "C.UTF-8",
+        "TZ": "UTC"
+      }
+    },
+    {
+      "name": "gcc-base",
+      "hidden": true,
+      "inherits": "p0-base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/usr/bin/gcc-13"
+      }
+    },
+    {
+      "name": "clang-base",
+      "hidden": true,
+      "inherits": "p0-base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/usr/bin/clang-16"
+      }
+    },
+    {
+      "name": "gcc-debug",
+      "displayName": "P0 GCC 13 debug",
+      "description": "Strict C17 warnings at -Og in an isolated GCC 13 build tree",
+      "inherits": "gcc-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_FLAGS_DEBUG": "-Og -g3"
+      }
+    },
+    {
+      "name": "gcc-release",
+      "displayName": "P0 GCC 13 release",
+      "description": "Strict C17 release checks at -O2 in an isolated GCC 13 build tree",
+      "inherits": "gcc-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS_RELEASE": "-O2 -DNDEBUG"
+      }
+    },
+    {
+      "name": "clang-debug",
+      "displayName": "P0 Clang 16 debug",
+      "description": "Strict C17 warnings at -Og in an isolated Clang 16 build tree",
+      "inherits": "clang-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_FLAGS_DEBUG": "-Og -g3"
+      }
+    },
+    {
+      "name": "clang-release",
+      "displayName": "P0 Clang 16 release",
+      "description": "Strict C17 release checks at -O2 in an isolated Clang 16 build tree",
+      "inherits": "clang-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS_RELEASE": "-O2 -DNDEBUG"
+      }
+    },
+    {
+      "name": "clang-asan",
+      "displayName": "P0 Clang 16 ASan",
+      "description": "AddressSanitizer-only profile with leak detection configured by its test preset",
+      "inherits": "clang-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O1 -g3 -DNDEBUG",
+        "P0_ENABLE_ASAN": true
+      }
+    },
+    {
+      "name": "clang-ubsan",
+      "displayName": "P0 Clang 16 UBSan",
+      "description": "UndefinedBehaviorSanitizer-only profile with no sanitizer recovery",
+      "inherits": "clang-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O1 -g3 -DNDEBUG",
+        "P0_ENABLE_UBSAN": true
+      }
+    },
+    {
+      "name": "clang-asan-ubsan",
+      "displayName": "P0 Clang 16 ASan + UBSan",
+      "description": "Required combined ASan+UBSan profile with frame pointers and fail-fast behavior",
+      "inherits": "clang-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O1 -g3 -DNDEBUG",
+        "P0_ENABLE_ASAN": true,
+        "P0_ENABLE_UBSAN": true
+      }
+    },
+    {
+      "name": "clang-coverage",
+      "displayName": "P0 Clang 16 source coverage",
+      "description": "Isolated source-based coverage build for llvm-profdata and llvm-cov",
+      "inherits": "clang-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_FLAGS_DEBUG": "-O0 -g3",
+        "P0_ENABLE_COVERAGE": true
+      }
+    },
+    {
+      "name": "clang-fuzz",
+      "displayName": "P0 Clang 16 libFuzzer",
+      "description": "Isolated libFuzzer build with ASan, UBSan, and fail-fast recovery policy",
+      "inherits": "clang-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O1 -g3 -DNDEBUG",
+        "P0_ENABLE_FUZZING": true
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "gcc-debug", "configurePreset": "gcc-debug", "jobs": 2 },
+    { "name": "gcc-release", "configurePreset": "gcc-release", "jobs": 2 },
+    { "name": "clang-debug", "configurePreset": "clang-debug", "jobs": 2 },
+    { "name": "clang-release", "configurePreset": "clang-release", "jobs": 2 },
+    { "name": "clang-asan", "configurePreset": "clang-asan", "jobs": 2 },
+    { "name": "clang-ubsan", "configurePreset": "clang-ubsan", "jobs": 2 },
+    { "name": "clang-asan-ubsan", "configurePreset": "clang-asan-ubsan", "jobs": 2 },
+    { "name": "clang-coverage", "configurePreset": "clang-coverage", "jobs": 2 },
+    { "name": "clang-fuzz", "configurePreset": "clang-fuzz", "jobs": 2 }
+  ],
+  "testPresets": [
+    {
+      "name": "p0-test-base",
+      "hidden": true,
+      "output": {
+        "outputOnFailure": true,
+        "outputJUnitFile": "p0-ctest.xml"
+      },
+      "execution": {
+        "timeout": 120,
+        "noTestsAction": "error"
+      }
+    },
+    { "name": "gcc-debug", "inherits": "p0-test-base", "configurePreset": "gcc-debug" },
+    { "name": "gcc-release", "inherits": "p0-test-base", "configurePreset": "gcc-release" },
+    { "name": "clang-debug", "inherits": "p0-test-base", "configurePreset": "clang-debug" },
+    { "name": "clang-release", "inherits": "p0-test-base", "configurePreset": "clang-release" },
+    {
+      "name": "clang-asan",
+      "inherits": "p0-test-base",
+      "configurePreset": "clang-asan",
+      "environment": {
+        "ASAN_OPTIONS": "abort_on_error=1:check_initialization_order=1:detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1:strict_string_checks=1"
+      }
+    },
+    {
+      "name": "clang-ubsan",
+      "inherits": "p0-test-base",
+      "configurePreset": "clang-ubsan",
+      "environment": {
+        "UBSAN_OPTIONS": "abort_on_error=1:halt_on_error=1:print_stacktrace=1"
+      }
+    },
+    {
+      "name": "clang-asan-ubsan",
+      "inherits": "p0-test-base",
+      "configurePreset": "clang-asan-ubsan",
+      "environment": {
+        "ASAN_OPTIONS": "abort_on_error=1:check_initialization_order=1:detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1:strict_string_checks=1",
+        "UBSAN_OPTIONS": "abort_on_error=1:halt_on_error=1:print_stacktrace=1"
+      }
+    },
+    {
+      "name": "clang-coverage",
+      "inherits": "p0-test-base",
+      "configurePreset": "clang-coverage",
+      "environment": {
+        "LLVM_PROFILE_FILE": "p0-%p-%m.profraw"
+      }
+    },
+    {
+      "name": "clang-fuzz",
+      "inherits": "p0-test-base",
+      "configurePreset": "clang-fuzz",
+      "environment": {
+        "ASAN_OPTIONS": "abort_on_error=1:detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1:strict_string_checks=1",
+        "UBSAN_OPTIONS": "abort_on_error=1:halt_on_error=1:print_stacktrace=1"
+      }
+    }
+  ]
+}

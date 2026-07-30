@@ -53,6 +53,57 @@ and local root `openttd-upstream/`. The repository tree is also available at the
 The reached-source section is intentionally append-only during implementation.
 Initial anchors do not claim projection completeness.
 
+## Reached OpenTTD sources registered during P0 design
+
+Every local path below is governed by the same exact pinned commit as the starting
+anchors. Line ranges are anchors at that commit; symbol review controls if a later
+tool displays shifted diagnostic line numbers.
+
+| ID | Local pinned source and anchor | Reached behavior | Governs |
+|---|---|---|---|
+| `OTTD-R-001` | `src/command_func.h:132-193,219-247,313-464` | typed command post, validation, native test and execute phases | command-input action mapping; patch 0003 |
+| `OTTD-R-002` | `src/command.cpp:175-189,260-263,301-391` | money checks, command log context, test/execute consistency and completion | command records, costs, rejection tests |
+| `OTTD-R-003` | `src/command_type.h:205-360` | stable native command identifiers and traits | `commands-v1.json` |
+| `OTTD-R-004` | `src/network/network_internal.h:90-103` | `CommandPacket` representation | native-dispatch adapter only; never external raw ABI |
+| `OTTD-R-005` | `src/network/network_command.cpp:133-173,256-285,374-407,493-510` | generated dispatch, company context, sanitization and `PostFromNet` | patch 0003 and native-command parity tests |
+| `OTTD-R-006` | `src/network/network.cpp:1149-1260` | existing compiled-in command replay precedent | strict replay architecture evidence |
+| `OTTD-R-007` | `src/openttd.cpp:856-868,1202-1281` | headless company-creation branch and complete game-tick ordering | fixture creation ADR; post-tick projection hook |
+| `OTTD-R-008` | `src/timer/timer_game_tick.cpp:51-59` | tick increment and callback order | tick boundary and global time fields |
+| `OTTD-R-009` | `src/timer/timer_game_calendar.cpp:95-161` | calendar progression | calendar fields and continuation |
+| `OTTD-R-010` | `src/timer/timer_game_economy.cpp:122-188` | economy-date progression | economy fields and continuation |
+| `OTTD-R-011` | `src/timer/timer.h:21-184` | timer period, storage, timeout and fired state | field registry and timer projection |
+| `OTTD-R-012` | `src/timer/timer_manager.h:26-123` | timer registry and callback order | timer audit; pointer order excluded |
+| `OTTD-R-013` | `src/timer/timer_game_common.h:99-145` | deterministic gameplay timer priorities | timer semantic tags and order tests |
+| `OTTD-R-014` | `src/core/random_func.hpp:27-43`; `src/core/random_func.cpp:42-69` | gameplay and interactive RNG state/algorithm/seeding | both RNG field families and startup policy |
+| `OTTD-R-015` | `src/os/unix/unix_main.cpp:21-36` | wall-clock startup seed for both RNG streams | deterministic launch-seed control risk |
+| `OTTD-R-016` | `src/saveload/misc_sl.cpp:86-112` | saved calendar, economy, tick, cursor, timeout, gameplay RNG and pause state | continuation inventory and fixture load audit |
+| `OTTD-R-017` | `src/saveload/randomizer_sl.cpp:16-43` | saved script randomizers | GameScript exclusion and fixture policy |
+| `OTTD-R-018` | `src/saveload/afterload.cpp:3442-3456` | human company creation after nonnetworked load | fixture-construction/load strategy |
+| `OTTD-R-019` | `src/map.cpp:19-59`; `src/map_func.h:25-55,84-220` | dimensions, native map planes, accessors and stable iteration | complete 4,096-tile projection |
+| `OTTD-R-020` | `src/landscape.cpp:800-842,1729-1742` | persistent tile-loop cursor and daily subsystem order | map cursor, tick projection and continuation |
+| `OTTD-R-021` | `src/core/pool_type.hpp:49-81,140-163,203-243,416-461` | slot IDs, capacities, used bitmap, allocation cursors and stable iteration | generic pool projection and typed references |
+| `OTTD-R-022` | `src/core/pool_func.hpp:35-176` | bitmap growth, first-free search, allocation and free | future ID/allocation-state projection |
+| `OTTD-R-023` | `src/company_base.h:23-148`; `src/company_cmd.cpp:277-357,627-703` | company pool, finances, history, infrastructure, unit-ID bitmap and timeout | company/ledger projection and fixture finances |
+| `OTTD-R-024` | `src/town.h:37-38,234-238`; `src/town_cmd.cpp:3229-3256` | town pool, lazy name cache and growth-rate command | fixture town freeze and cache policy |
+| `OTTD-R-025` | `src/industry.h:25-138,273-276`; `src/industry_cmd.cpp:1234-1255,2449-2490,3082-3141` | industry pool, production/timers, density and name cache | coal fixture, industry fields and cache policy |
+| `OTTD-R-026` | `src/table/build_industry.h:1048-1051,1149-1168`; `src/table/cargo_const.h:56-60,103-108` | coal mine/power station and temperate coal mappings | ADR 0003 cargo/industry selection |
+| `OTTD-R-027` | `src/table/engines.h:226-228,670-684`; `src/engine.cpp:755-829`; `src/engine_type.h:150-166` | original coal-truck definitions and availability initialization | fixture engine identity and compatibility |
+| `OTTD-R-028` | `src/base_station_base.h:19-20,76-87`; `src/station_base.h:336-343,549,561`; `src/station_cmd.cpp:4334-4371` | station/road-stop pools, cargo data, catchment, nearby industry and timing | station/goods projection and cache audit |
+| `OTTD-R-029` | `src/vehicle_base.h:47-92,162-317`; `src/vehicle.cpp:985-1071,1874-1914` | vehicle pools, timers/cargo, caches, stable ticks and unit-ID allocation | vehicle/controller/cache projection |
+| `OTTD-R-030` | `src/roadveh.h:91-106`; `src/roadveh_cmd.cpp:925-984,1397-1403,1651-1669` | road-path vector consumption/insertion, vehicle tick and invalidation | authoritative road controller/path cache |
+| `OTTD-R-031` | `src/order_base.h:23-56,384-547`; `src/order_cmd.h:35-44` | order pool, raw fields, order-list caches and canonical native wire model | order action schema and complete order projection |
+| `OTTD-R-032` | `src/cargopacket.h:23-65,288-619` | packet pool, packet fields, list order, reservations and cached totals | cargo packet/list field families |
+| `OTTD-R-033` | `src/economy_base.h:15-38`; `src/saveload/economy_sl.cpp:44-120` | cargo-payment pool and saved economy globals/payment state | payment and continuation projection |
+| `OTTD-R-034` | `src/economy.cpp:880-895,1085-1129,1172-1222` | production accumulation, delivery statistics, route profit and final delivery | cargo/payment diagnostics and ledger checks |
+| `OTTD-R-035` | `src/cachecheck.cpp:31-242` | production cache checking and potential rebuild side effects | prohibition on extra cache checks; checkpoint experiments |
+| `OTTD-R-036` | `src/pathfinder/yapf/yapf_road.cpp:338-405` | road path-vector construction | route diagnostics and road-path cache policy |
+| `OTTD-R-037` | `src/tests/CMakeLists.txt:1-23`; `cmake/scripts/Regression.cmake:17-127` | native unit inventory and saved-fixture/null-driver regression pattern | PORT-001 inventory and oracle integration tests |
+| `OTTD-R-038` | `docs/debugging_desyncs.md:3-25`; `docs/desync.md:20-69,140-151` | command recording, deterministic model and cache-debug guidance | nonperturbation and cache validation strategy |
+
+The register does not yet claim that every future projection field has been
+reached. PORT-005 closes that claim through the independent source-owner and
+continuation review passes, with any additional paths appended here.
+
 ## Content and licensing sources
 
 | ID | Source | Version | Relevant subject | Governs |

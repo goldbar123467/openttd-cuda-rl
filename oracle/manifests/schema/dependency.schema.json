@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/oracle/manifests/schema/dependency.schema.json",
+  "title": "OpenTTD P0 frozen dependency profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "manifest_kind",
+    "profile",
+    "status",
+    "platform",
+    "packages",
+    "python_environment",
+    "feature_requirements",
+    "materials",
+    "expected_outputs"
+  ],
+  "properties": {
+    "$schema": { "const": "../schema/dependency.schema.json" },
+    "schema_version": { "const": 1 },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_kind": { "const": "frozen-profile" },
+    "profile": { "const": "dependencies-ubuntu-24.04" },
+    "status": { "$ref": "#/$defs/status" },
+    "status_reason": { "type": "string", "minLength": 1 },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os_id", "os_version", "architecture", "package_architecture"],
+      "properties": {
+        "os_id": { "const": "ubuntu" },
+        "os_version": { "const": "24.04" },
+        "architecture": { "const": "x86_64" },
+        "package_architecture": { "const": "amd64" }
+      }
+    },
+    "packages": {
+      "type": "array",
+      "minItems": 24,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/package" }
+    },
+    "python_environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_executable",
+        "distribution_count",
+        "exact_distribution_set",
+        "implementation",
+        "interpreter_version",
+        "require_isolated_venv",
+        "requirements_lock",
+        "requirements_lock_sha256"
+      ],
+      "properties": {
+        "base_executable": { "const": "/usr/bin/python3.12" },
+        "distribution_count": { "const": 7 },
+        "exact_distribution_set": { "const": true },
+        "implementation": { "const": "CPython" },
+        "interpreter_version": { "const": "3.12.3" },
+        "require_isolated_venv": { "const": true },
+        "requirements_lock": { "const": "tools/requirements-p0.txt" },
+        "requirements_lock_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "feature_requirements": {
+      "type": "array",
+      "minItems": 15,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["feature", "required", "provided_by"],
+        "properties": {
+          "feature": { "type": "string", "minLength": 1 },
+          "required": { "type": "boolean" },
+          "provided_by": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/material" }
+    },
+    "expected_outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/expected_output" }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "validation_note": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["FAIL", "SKIP"] } }, "required": ["status"] },
+      "then": { "required": ["status_reason"] }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "package_manager",
+        "binary_package",
+        "package_version",
+        "source_package",
+        "source_version",
+        "source_kind",
+        "required",
+        "purpose"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "package_manager": { "type": "string", "enum": ["dpkg", "python-distribution"] },
+        "binary_package": { "type": "string", "minLength": 1 },
+        "package_version": { "type": "string", "minLength": 1 },
+        "source_package": { "type": "string", "minLength": 1 },
+        "source_version": { "type": "string", "minLength": 1 },
+        "source_kind": { "type": "string", "enum": ["ubuntu-source-package", "installed-python-distribution-metadata"] },
+        "required": { "type": "boolean" },
+        "purpose": { "type": "string", "minLength": 1 },
+        "detected_library_version": { "type": "string", "minLength": 1 },
+        "provenance_note": { "type": "string", "minLength": 1 }
+      }
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "identity"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["os-release", "package-database"] },
+        "identity": { "type": "string", "minLength": 1 }
+      }
+    },
+    "expected_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "digest_required_at_run"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "digest_required_at_run": { "const": true }
+      }
+    }
+  }
+}
