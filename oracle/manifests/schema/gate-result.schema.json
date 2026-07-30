@@ -52,6 +52,123 @@
         ]
       }
     },
+    "source_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outer_commit", "submodule_commit", "instrumentation_series_sha256"],
+      "properties": {
+        "outer_commit": { "$ref": "#/$defs/git_commit" },
+        "submodule_commit": { "const": "29f808ef0022064e6d9a83c8476d1e0f4686af86" },
+        "instrumentation_series_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "build_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_uninstrumented", "reference_trace_disabled", "reference_trace_enabled"],
+      "properties": {
+        "reference_uninstrumented": { "$ref": "#/$defs/identity_artifact" },
+        "reference_trace_disabled": { "$ref": "#/$defs/identity_artifact" },
+        "reference_trace_enabled": { "$ref": "#/$defs/identity_artifact" }
+      }
+    },
+    "fixture_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["save_sha256", "manifest_sha256", "settings_sha256", "behavior_settings_sha256", "content_sha256", "map_planes_sha256"],
+      "properties": {
+        "save_sha256": { "$ref": "#/$defs/sha256" },
+        "manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "settings_sha256": { "$ref": "#/$defs/sha256" },
+        "behavior_settings_sha256": { "$ref": "#/$defs/sha256" },
+        "content_sha256": { "$ref": "#/$defs/sha256" },
+        "map_planes_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "command_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_sha256", "registry_sha256", "registry_schema_sha256"],
+      "properties": {
+        "input_sha256": { "$ref": "#/$defs/sha256" },
+        "registry_sha256": { "$ref": "#/$defs/sha256" },
+        "registry_schema_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "field_schema_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry_sha256", "registry_schema_sha256", "authoritative_field_count"],
+      "properties": {
+        "registry_sha256": { "$ref": "#/$defs/sha256" },
+        "registry_schema_sha256": { "$ref": "#/$defs/sha256" },
+        "authoritative_field_count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "tape_format": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["major", "minor"],
+      "properties": {
+        "major": { "const": 1 },
+        "minor": { "const": 0 }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "result_sha256"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Z0-9][A-Z0-9-]+$" },
+          "status": { "$ref": "#/$defs/status" },
+          "reason": { "type": "string", "minLength": 1 },
+          "result_sha256": { "$ref": "#/$defs/sha256" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "enum": ["FAIL", "SKIP"] } }, "required": ["status"] },
+            "then": { "required": ["reason"] }
+          }
+        ]
+      }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "passed", "failed", "skipped", "families"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 1 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "families": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "total", "passed", "failed", "skipped", "evidence_sha256"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Z0-9][A-Z0-9-]+$" },
+              "total": { "type": "integer", "minimum": 1 },
+              "passed": { "type": "integer", "minimum": 0 },
+              "failed": { "type": "integer", "minimum": 0 },
+              "skipped": { "type": "integer", "minimum": 0 },
+              "evidence_sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    },
+    "open_defects": { "type": "integer", "minimum": 0 },
+    "open_divergences": { "type": "integer", "minimum": 0 },
+    "final_commit": { "$ref": "#/$defs/git_commit" },
+    "branch": { "const": "port/p0-oracle-contract" },
     "artifacts": {
       "type": "array",
       "uniqueItems": true,
@@ -100,8 +217,43 @@
     {
       "if": { "properties": { "gate_id": { "const": "P0-FINAL" }, "status": { "const": "PASS" } }, "required": ["gate_id", "status"] },
       "then": {
+        "required": [
+          "source_identity",
+          "build_identity",
+          "fixture_identity",
+          "command_identity",
+          "field_schema_identity",
+          "tape_format",
+          "gates",
+          "tests",
+          "open_defects",
+          "open_divergences",
+          "final_commit",
+          "branch"
+        ],
         "properties": {
           "profile": { "const": "local-release" },
+          "gates": {
+            "items": {
+              "properties": { "status": { "const": "PASS" } }
+            }
+          },
+          "tests": {
+            "properties": {
+              "failed": { "const": 0 },
+              "skipped": { "const": 0 },
+              "families": {
+                "items": {
+                  "properties": {
+                    "failed": { "const": 0 },
+                    "skipped": { "const": 0 }
+                  }
+                }
+              }
+            }
+          },
+          "open_defects": { "const": 0 },
+          "open_divergences": { "const": 0 },
           "open_counts": {
             "properties": {
               "defects": { "const": 0 },
@@ -123,6 +275,15 @@
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "git_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "status": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+    "identity_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "size_bytes"],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
     "artifact": {
       "type": "object",
       "additionalProperties": false,
