@@ -1,0 +1,211 @@
+{
+  "$schema": "../../docs/project/schema/v1-m03-bridge-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m03-bridge-contract-1",
+  "semantic_version": "1.0.0",
+  "status": "FROZEN",
+  "contract_id": "m03-synchronized-bridge-v1",
+  "engine": {
+    "build_option": "OPTION_RL_ENVIRONMENT=ON",
+    "m02_composed_source_identity_sha256": "edc76541bfda23c2916fc85d499e6e0d5a5cefaad09f40bf19972c2d3307385e",
+    "m02_result_tree": "551a99fbd33bd1b0f8c9ec35561deb0e893b81fe",
+    "openttd_version": "15.3",
+    "source_commit": "14ec60f248547d4d062a1160f0fc26d742319888"
+  },
+  "transport": {
+    "control_channel": "inherited-anonymous-byte-streams",
+    "network_listener": false,
+    "stdout_role": "structured-human-logging-only",
+    "stderr_role": "fatal-bootstrap-diagnostics-only",
+    "worker_processes_per_environment": 1,
+    "environments_per_worker_process": 1
+  },
+  "framing": {
+    "byte_order": "little-endian",
+    "header_bytes": 56,
+    "magic_ascii": "ORL1",
+    "protocol_major": 1,
+    "protocol_minor": 0,
+    "maximum_payload_bytes": 1048576,
+    "checksum": "crc32c-header-with-zeroed-checksum-plus-payload",
+    "reserved_header_bytes_must_be_zero": true,
+    "payload_encoding": "utf-8-canonical-compact-json-v1",
+    "request_flag": 0,
+    "response_flag": 1,
+    "error_flag": 2,
+    "header_layout": [
+      "magic:u8[4]@0",
+      "protocol_major:u16@4",
+      "protocol_minor:u16@6",
+      "message_type:u16@8",
+      "flags:u16@10",
+      "payload_length:u32@12",
+      "crc32c:u32@16",
+      "reserved:u32@20",
+      "session_id:u64@24",
+      "episode_id:u64@32",
+      "request_id:u64@40",
+      "transition_ordinal:u64@48"
+    ]
+  },
+  "handle": {
+    "fields": ["session_id", "episode_id"],
+    "integer_type": "uint64",
+    "zero_is_invalid": true,
+    "session_binding": "first-valid-reset-request",
+    "episode_allocation": "increment-by-one-per-successful-reset",
+    "stale_handle_policy": "reject-without-mutation-or-tick-advance"
+  },
+  "lifecycle": {
+    "initial_state": "READY",
+    "states": [
+      "READY",
+      "RESETTING",
+      "AT_BOUNDARY",
+      "EXECUTING",
+      "ADVANCING",
+      "PAUSED",
+      "FAILED",
+      "CLOSED"
+    ],
+    "successful_transitions": [
+      "READY:reset:RESETTING:AT_BOUNDARY",
+      "AT_BOUNDARY:reset:RESETTING:AT_BOUNDARY",
+      "AT_BOUNDARY:snapshot:AT_BOUNDARY",
+      "AT_BOUNDARY:legal_actions:AT_BOUNDARY",
+      "AT_BOUNDARY:step:EXECUTING:ADVANCING:AT_BOUNDARY",
+      "AT_BOUNDARY:pause:PAUSED",
+      "PAUSED:snapshot:PAUSED",
+      "PAUSED:legal_actions:PAUSED",
+      "PAUSED:resume:AT_BOUNDARY",
+      "READY:close:CLOSED",
+      "AT_BOUNDARY:close:CLOSED",
+      "PAUSED:close:CLOSED",
+      "FAILED:close:CLOSED"
+    ],
+    "invalid_call_policy": "typed-error-without-mutation-or-tick-advance",
+    "fatal_internal_failure_transition": "any-nonclosed:FAILED"
+  },
+  "operations": {
+    "reset": {"message_type": 1, "valid_states": ["READY", "AT_BOUNDARY"]},
+    "snapshot": {"message_type": 2, "valid_states": ["AT_BOUNDARY", "PAUSED"]},
+    "legal_actions": {"message_type": 3, "valid_states": ["AT_BOUNDARY", "PAUSED"]},
+    "step": {"message_type": 4, "valid_states": ["AT_BOUNDARY"]},
+    "pause": {"message_type": 5, "valid_states": ["AT_BOUNDARY"]},
+    "resume": {"message_type": 6, "valid_states": ["PAUSED"]},
+    "close": {"message_type": 7, "valid_states": ["READY", "AT_BOUNDARY", "PAUSED", "FAILED"]}
+  },
+  "request_ordering": {
+    "request_id_first": 1,
+    "request_id_rule": "strictly-increase-by-one",
+    "reset_transition_ordinal": 0,
+    "query_transition_ordinal": "equal-current-committed-transition",
+    "step_transition_ordinal": "equal-current-committed-transition-plus-one",
+    "duplicate_policy": "reject-without-replay",
+    "gap_policy": "reject-without-mutation-or-tick-advance"
+  },
+  "boundary": {
+    "engine_boundary": "immediately-before-or-after-StateGameLoop-never-inside",
+    "token_format": "m03b1:<session-16hex>:<episode-16hex>:<transition-16hex>:<tick-16hex>",
+    "snapshot_and_legal_actions_same_token": true,
+    "observation_callbacks_may_advance_ticks": false,
+    "observation_callbacks_may_consume_rng": false,
+    "observation_callbacks_may_execute_commands": false
+  },
+  "scheduler": {
+    "policy": "fixed-ticks-after-every-step",
+    "default_action_interval_ticks": 128,
+    "minimum_action_interval_ticks": 1,
+    "maximum_action_interval_ticks": 128,
+    "v1_reference_action_interval_ticks": 128,
+    "tick_zero": "TimerGameTick::counter-immediately-after-successful-M02-materialization",
+    "interval_inclusivity": "execute-exactly-N-complete-StateGameLoop-calls-after-command-commit",
+    "construction_time": "immediate-engine-command-time-before-first-advanced-tick",
+    "pause_behavior": "bridge-control-pause-does-not-call-StateGameLoop-or-mutate-engine-pause-mode",
+    "noop_behavior": "execute-no-command-then-advance-exactly-N-ticks",
+    "reward_boundary": "after-final-StateGameLoop-call-at-post-action-boundary",
+    "terminal_detection": "after-final-StateGameLoop-call-before-response-commit",
+    "action_horizon": 512,
+    "tick_horizon": 65536,
+    "simultaneous_horizon_priority": ["action-horizon", "tick-horizon"]
+  },
+  "m03_test_actions": {
+    "namespace": "m03-integration-fixture-only-not-policy-actions",
+    "actions": [
+      {"id": 0, "name": "WAIT", "effect": "no-command"},
+      {"id": 1, "name": "M02_SCRIPTED_BUS_SETUP", "effect": "execute-once-normal-engine-command-fixture"}
+    ],
+    "policy_action_registry": false,
+    "setup_repeat_policy": "illegal-after-first-success",
+    "native_mutation_path": "normal-typed-engine-commands-only"
+  },
+  "snapshot": {
+    "purpose": "m03-synchronization-and-nonperturbation-evidence-only",
+    "is_m04_policy_observation": false,
+    "fields": [
+      "boundary_token",
+      "company",
+      "episode_id",
+      "lifecycle",
+      "pools",
+      "scenario",
+      "session_id",
+      "tick",
+      "transition_ordinal",
+      "vehicle"
+    ],
+    "canonical_ordering": "json-object-keys-lexicographic-entity-ids-ascending"
+  },
+  "result_semantics": {
+    "action_rejection_is_bridge_failure": false,
+    "internal_bridge_failure_is_reward": false,
+    "response_commit": "single-complete-frame-after-boundary-invariants-pass",
+    "engine_command_execution_at_most_once": true,
+    "error_fields": ["code", "fatal", "lifecycle", "message"]
+  },
+  "error_codes": [
+    "BAD_CHECKSUM",
+    "BAD_FLAGS",
+    "BAD_FRAME",
+    "BAD_MAGIC",
+    "BAD_PAYLOAD",
+    "BAD_PROTOCOL_VERSION",
+    "ENGINE_FAILURE",
+    "INTERNAL_INVARIANT",
+    "INVALID_ACTION",
+    "INVALID_LIFECYCLE",
+    "IO_FAILURE",
+    "OVERSIZED_PAYLOAD",
+    "REQUEST_GAP",
+    "STALE_BOUNDARY",
+    "STALE_HANDLE",
+    "STALE_REQUEST",
+    "TRUNCATED_FRAME",
+    "UNSUPPORTED_MESSAGE"
+  ],
+  "failure_artifacts": {
+    "owner": "coordinator",
+    "retained_inputs": ["command", "contract-identities", "last-valid-frame", "scenario-instance"],
+    "retained_outputs": ["exit-status", "stderr", "stdout", "timeout-or-crash-classification"],
+    "worker_timeout_source": "coordinator-monotonic-clock",
+    "engine_semantics_use_wall_clock": false
+  },
+  "isolation": {
+    "v1_strategy": "one-environment-per-worker-process",
+    "coordinator_batching": "multiple-independent-worker-processes",
+    "in_process_vectorization": false,
+    "replacement_requires_adr_and-global-state-isolation-proof": true
+  },
+  "nonperturbation": {
+    "bridge_disabled": "no-M03-entrypoint-or-control-I/O",
+    "observation_only": "zero-StateGameLoop-zero-command-zero-RNG-consumption",
+    "action_free_comparison": "same-M02-reset-plus-same-explicit-tick-count",
+    "scripted_comparison": "same-M02-command-fixture-plus-same-explicit-tick-count",
+    "comparison": "byte-identical-canonical-M03-snapshot-after-removing-control-envelope"
+  },
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6",
+    "schema_path": "docs/project/schema/v1-m03-bridge-contract.schema.json",
+    "schema_sha256": "199c57a1b55b776f725aaa5d23ad298ef85a2b0bb13837674503ae98f7245dea"
+  }
+}

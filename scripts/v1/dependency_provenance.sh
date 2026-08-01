@@ -6,7 +6,7 @@ if [ "$#" -ne 10 ] || [ "$1" != "--artifact-root" ] || [ "$3" != "--dependency-c
     exit 2
 fi
 
-repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+repository_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 exec python3 "$repository_root/scripts/v1/generate_dependency_provenance.py" \
     --artifact-root "$2" \
     --dependency-cache "$4" \

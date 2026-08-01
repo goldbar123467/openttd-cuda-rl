@@ -8,18 +8,13 @@ claim later milestones from partial infrastructure.
 
 ## Current-state baseline
 
-As of 2026-07-31, repository evidence supports only the following conservative
-claims:
-
-- a pinned OpenTTD submodule and rigorous reference-build machinery exist;
-- a legacy 64 by 64 road-freight fixture and partial external instrumentation
-  program exist;
-- C17 tape, schema, comparison, and test tooling exists but remains under active,
-  uncommitted repair;
-- the worktree contains user-owned changes that must not be discarded;
-- no accepted 32 by 32 passenger-bus scenario, RL bridge, V1 observation/action
-  schema, reward, trajectory layer, PPO trainer, CUDA trainer, evaluator, ONNX
-  package, or in-game neural agent exists.
+As of 2026-08-01, `G00` through `G03` pass. The accepted substrate is a pinned
+and reproducible OpenTTD 15.3 profile, a frozen 32 by 32 passenger-bus
+scenario/reset corpus, and a synchronized source-integrated headless bridge with
+process isolation, exact tick stepping, lifecycle failures, and repeated native
+non-perturbation evidence. No V1 policy observation/action schema, reward,
+trajectory layer, PPO trainer, CUDA trainer, evaluator, ONNX package, or in-game
+neural agent exists.
 
 Legacy P0 completion is not a prerequisite as originally written because its
 freight target conflicts with the active bus-only scope. Its reusable pieces enter
@@ -205,6 +200,10 @@ evidence and closes G02 without implementing an RL bridge.
 - no legacy freight fixture is used as V1 completion evidence.
 
 ## M03 — Synchronized headless environment bridge
+
+Status: `PASS` at `G03` on 2026-08-01. The accepted contract and evidence are in
+[`M03_SYNCHRONIZED_BRIDGE.md`](M03_SYNCHRONIZED_BRIDGE.md) and
+[`G03_GATE_REPORT.md`](G03_GATE_REPORT.md).
 
 ### Objective
 
@@ -553,15 +552,17 @@ retains prior model packages or supplies an explicit migration/rejection policy.
 
 ## Immediate critical path
 
-`G00`, `G01`, and `G02` are recorded as passing. The conditional map support,
-frozen passenger-bus scenario/reset, and scripted native acceptance trajectory
-are the accepted M02 boundary. The next implementation path is:
+`G00` through `G03` are recorded as passing. The synchronized bridge now supplies
+the safe read-only boundary required by M04. The next implementation path is:
 
-1. preserve the accepted M01 and M02 source/evidence identities;
-2. begin M03 with the synchronized source-integrated environment bridge;
-3. prove exact lifecycle, tick-boundary, isolation, and non-perturbation behavior;
-4. retain the M02 scripted trajectory as a fixed downstream integration fixture;
-5. do not begin observations, actions, rewards, or PPO before their owning gates.
+1. preserve the accepted M01 through M03 source/evidence identities;
+2. begin M04 only by freezing the versioned policy observation and shared
+   preprocessing contract;
+3. prove every observation field/channel against actual engine state without
+   perturbing the M03 boundary;
+4. retain the M02 scripted trajectory and M03 lifecycle oracle as fixed
+   downstream integration fixtures;
+5. do not begin M05 actions, M06 rewards, or PPO before their owning gates.
 
 Continuing the legacy freight instrumentation patch series is not on the V1
 critical path unless its transition review identifies a specific bus-platform gate

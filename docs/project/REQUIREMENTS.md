@@ -96,13 +96,13 @@ cover the whole statement.
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `LIFE-001` | Launch one headless OpenTTD environment through a stable programmatic interface. | Environment smoke test. | `NOT_STARTED` |
-| `LIFE-002` | Launch multiple isolated environments for batched rollout. | Isolation and batch integration test. | `NOT_STARTED` |
+| `LIFE-001` | Launch one headless OpenTTD environment through a stable programmatic interface. | Environment smoke test. | `PASS` |
+| `LIFE-002` | Launch multiple isolated environments for batched rollout. | Isolation and batch integration test. | `PASS` |
 | `LIFE-003` | Reset each environment to a controlled initial state. | Reset contract tests. | `PASS` |
-| `LIFE-004` | Extract observations only at documented synchronization boundaries. | Boundary assertion and differential trace. | `NOT_STARTED` |
+| `LIFE-004` | Extract observations only at documented synchronization boundaries. | Boundary assertion and differential trace. | `PASS` |
 | `LIFE-005` | Generate legal action masks matching the same state snapshot as the observation. | Mask oracle and stale-state tests. | `NOT_STARTED` |
-| `LIFE-006` | Apply selected actions through explicit OpenTTD operations. | Command-path integration evidence. | `NOT_STARTED` |
-| `LIFE-007` | Advance simulation by a configurable, deterministic stepping rule. | Tick-step tests. | `NOT_STARTED` |
+| `LIFE-006` | Apply selected actions through explicit OpenTTD operations. | Command-path integration evidence. | `PASS` |
+| `LIFE-007` | Advance simulation by a configurable, deterministic stepping rule. | Tick-step tests. | `PASS` |
 | `LIFE-008` | Calculate scalar reward from separately retained components. | Reward unit/integration evidence. | `NOT_STARTED` |
 | `LIFE-009` | Record complete trajectories with schema and provenance. | Trajectory round-trip and resume tests. | `NOT_STARTED` |
 | `LIFE-010` | Train actor-critic PPO policies in the production C++/CUDA path. | Trainer convergence and algorithm tests. | `NOT_STARTED` |
@@ -126,7 +126,7 @@ cover the whole statement.
 | `STACK-006` | ONNX is the primary portable neural-network interchange format. | Export/package schema. | `NOT_STARTED` |
 | `STACK-007` | The ONNX execution backend is pinned and explicitly validated. | Dependency manifest and equivalence tests. | `NOT_STARTED` |
 | `STACK-008` | Initial spatial policies use CNNs; new architecture families require baseline validation first. | Model registry and roadmap gate. | `NOT_STARTED` |
-| `STACK-009` | The OpenTTD/RL interface does not depend on screen scraping, simulated input, or menu navigation. | Source audit and integration design review. | `NOT_STARTED` |
+| `STACK-009` | The OpenTTD/RL interface does not depend on screen scraping, simulated input, or menu navigation. | Source audit and integration design review. | `PASS` |
 | `STACK-010` | Training-only dependencies are not required for normal in-game inference. | Clean inference-only build/install test. | `NOT_STARTED` |
 | `STACK-011` | The accepted production training path uses at least one correctness-validated CUDA-accelerated neural/tensor workload with a measured benefit over its CPU reference on declared hardware. | CUDA parity and benchmark report. | `NOT_STARTED` |
 
@@ -263,16 +263,16 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `RUN-001` | Runtime supports single- and multi-environment modes. | Integration tests. | `NOT_STARTED` |
-| `RUN-002` | Simulation speed and tick stepping are configurable and recorded. | Step contract tests. | `NOT_STARTED` |
-| `RUN-003` | Runtime supports controlled pause, resume, and reset. | State-machine tests. | `NOT_STARTED` |
-| `RUN-004` | Runtime supports seeded scenario generation. | Reproducibility campaign. | `NOT_STARTED` |
-| `RUN-005` | Environment crashes are detected, classified, and recovered or fail closed without corrupting the run. | Crash fault-injection test. | `NOT_STARTED` |
+| `RUN-001` | Runtime supports single- and multi-environment modes. | Integration tests. | `PASS` |
+| `RUN-002` | Simulation speed and tick stepping are configurable and recorded. | Step contract tests. | `PASS` |
+| `RUN-003` | Runtime supports controlled pause, resume, and reset. | State-machine tests. | `PASS` |
+| `RUN-004` | Runtime supports seeded scenario generation. | Reproducibility campaign. | `PASS` |
+| `RUN-005` | Environment crashes are detected, classified, and recovered or fail closed without corrupting the run. | Crash fault-injection test. | `PASS` |
 | `RUN-006` | Training resumes from valid checkpoints after process interruption. | Recovery campaign. | `NOT_STARTED` |
 | `RUN-007` | Logs are structured, schema-versioned, bounded, and usable non-interactively. | Log schema/resource tests. | `NOT_STARTED` |
 | `RUN-008` | Runtime supports batch evaluation and long unattended runs. | Evaluation and soak results. | `NOT_STARTED` |
 | `RUN-009` | CPU/GPU/environment performance can be profiled without changing authoritative semantics. | Profile on/off parity test. | `NOT_STARTED` |
-| `RUN-010` | The OpenTTD/RL interface is stable, versioned, and synchronized. | ABI/API contract tests. | `NOT_STARTED` |
+| `RUN-010` | The OpenTTD/RL interface is stable, versioned, and synchronized. | ABI/API contract tests. | `PASS` |
 | `MON-001` | Interactive monitor remains readable over SSH and in tmux. | Terminal acceptance capture. | `NOT_STARTED` |
 | `MON-002` | Monitor shows run name, repository commit, OpenTTD version, environment version, seed, environment count, and device. | Metric-source accuracy test. | `NOT_STARTED` |
 | `MON-003` | Monitor shows elapsed time, environment steps, simulation ticks, steps/second, and updates. | Counter accuracy test. | `NOT_STARTED` |
@@ -326,7 +326,7 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | `TEST-002` | Test observation extraction, normalization, and every spatial channel. | Golden/differential tests. | `NOT_STARTED` |
 | `TEST-003` | Test action encoding, decoding, legality, and masking. | Unit/property/integration tests. | `NOT_STARTED` |
 | `TEST-004` | Test every reward component and scalar aggregation. | Unit/scenario tests. | `NOT_STARTED` |
-| `TEST-005` | Test tick stepping and game-state synchronization. | Boundary/differential tests. | `NOT_STARTED` |
+| `TEST-005` | Test tick stepping and game-state synchronization. | Boundary/differential tests. | `PASS` |
 | `TEST-006` | Test bus purchasing, depot/stop placement, road construction, route creation, order assignment, and vehicle start. | Actual OpenTTD integration tests. | `NOT_STARTED` |
 | `TEST-007` | Test passenger delivery and profit calculation against actual OpenTTD state. | Controlled economic integration tests. | `NOT_STARTED` |
 | `TEST-008` | Test bankruptcy and every episode termination/truncation reason. | Scenario tests. | `NOT_STARTED` |

@@ -22,8 +22,35 @@ engine-feasibility slice, the project has a frozen eight-template passenger-bus
 corpus, disjoint seed ledger, native controlled reset and complete semantic
 projection, fail-closed forbidden-scope validation, and a normal-command
 scripted bus trajectory that reaches passenger delivery and positive income on
-every template. The immediate next milestone is M03 bridge design and
-implementation only; PPO remains downstream.
+every template. It remains the frozen scenario/reset prerequisite for M03 and
+later gates.
+
+`M03/G03` now passes as well. The source-integrated bridge freezes inherited-pipe
+framing, typed lifecycle operations, process-based environment isolation, and
+configurable 1-through-128-tick stepping. The immediate next milestone is M04
+observation/preprocessing contract work only; policy actions, rewards, PPO, and
+CUDA training remain downstream.
+
+## M03/G03 completion checkpoint — 2026-08-01
+
+The frozen bridge compatibility identity is
+`4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6`.
+The ordered native patch has SHA-256
+`6677d5a32abc5250394133e162236f1b2c5a9acfe19ea867a8b0512b10343c50`,
+produces tree `39ed7069eca2c48c512a9bdd989c049aca3c5329`, and has composed source
+identity `d5d14398d545c951b04325d91d444e6194553e537d4b1f16615cba44351f2ef1`.
+
+Two complete roots, `m03-bridge-oracle-20260801-a` and `-b`, are retained under
+`/home/thecl/.codex/artifacts/openttd-rl/` and are byte-identical. Their common
+`manifest.json` SHA-256 is
+`0a0664be8345ef79f6d01a7de404ad0f7427071849661a5e6dabd3025a960877`;
+their common `commands.json` SHA-256 is
+`9fe51ff69535e422db6286c1f5e3e83205fb41a953cdddb66f0129607a3ca4bf`.
+All eight templates replay identically, the bridge-disabled M02 path retains its
+accepted hashes, the two-process isolation test passes, 1/64/128-tick steps
+advance exactly, invalid intervals fail without mutation, and the action-free
+soak reaches 512 actions and 65,536 ticks. Preserve this boundary while beginning
+M04.
 
 ## M02/G02 completion checkpoint — 2026-08-01
 
@@ -54,7 +81,7 @@ binutils 2.42-4ubuntu2.10 archives and the exact OpenGFX 8.0 archive. The gate
 contract, identities, automated QA, retained evidence, and manual QA are recorded
 in `docs/project/M02_SCENARIO_RESET_CONTRACT.md` and
 `docs/project/G02_GATE_REPORT.md`. Preserve this boundary and do not redesign it
-while beginning M03.
+while beginning M04.
 
 ## M02 feasibility checkpoint — 2026-08-01
 
@@ -249,7 +276,7 @@ authorization to expand scope.
 | `M00` | authority, preservation, machine traceability, reuse ADRs | `PASS` | `G00_GATE_REPORT.md` records restored snapshot and combined V1/P0 validation |
 | `M01` | reproducible V1 OpenTTD/toolchain/headless/playable profile | `PASS` | `G01_GATE_REPORT.md` records the deterministic 15-check closure audit |
 | `M02` | 32x32 passenger-bus scenario/reset | `PASS` | `G02_GATE_REPORT.md` records repeated native reset and scripted trajectory evidence |
-| `M03` | synchronized headless bridge | `NOT_STARTED` | integration strategy not accepted/implemented |
+| `M03` | synchronized headless bridge | `PASS` | `G03_GATE_REPORT.md` records repeated lifecycle, tick, isolation, and non-perturbation evidence |
 | `M04` | observation/preprocessing contract | `NOT_STARTED` | no V1 schema/encoder |
 | `M05` | action/mask/execution contract | `NOT_STARTED` | no V1 action representation/adapter |
 | `M06` | reward/episode/trajectory contract | `NOT_STARTED` | no V1 artifacts |
@@ -424,9 +451,8 @@ This trajectory becomes a core integration fixture for `M03` through `M06`.
 
 ## Subsequent implementation order
 
-After `G02`, follow `docs/project/ROADMAP.md` exactly:
+After `G03`, follow `docs/project/ROADMAP.md` exactly:
 
-- `M03`: synchronized source-integrated bridge;
 - `M04`: structured/spatial observations;
 - `M05`: bounded actions and legal masks;
 - `M06`: rewards, episode semantics, trajectories;
@@ -514,10 +540,9 @@ Before handing off:
 
 ## Current next action
 
-Begin M03 only: freeze the synchronized source-integrated headless bridge
-lifecycle and safe tick-boundary contract, then implement the smallest
-single-process/single-environment `reset`, `snapshot`, `legal_actions`, `step`,
-`pause`, `resume`, and `close` surface with explicit failures. Reuse the accepted
-M02 scripted bus trajectory as an integration fixture. Do not redesign M02 and do
-not begin observation encoding, reward semantics, PPO, production ONNX, or neural
-in-game control before their owning gates.
+Begin M04 only: freeze the versioned policy observation and shared preprocessing
+contract on the accepted M03 snapshot boundary. Prove field and channel values
+against actual engine state and preserve query non-perturbation. Do not reinterpret
+the M03 synchronization snapshot as the policy observation, and do not begin M05
+actions, M06 rewards, PPO, production ONNX, or neural in-game control before their
+owning gates.

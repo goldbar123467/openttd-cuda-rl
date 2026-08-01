@@ -6,7 +6,7 @@ if [ "$#" -ne 4 ] || [ "$1" != "--artifact-root" ] || [ "$3" != "--artifact-stor
     exit 2
 fi
 
-repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+repository_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 exec python3 "$repository_root/scripts/v1/audit_g01.py" \
     --root "$repository_root" \
     --artifact-root "$2" \

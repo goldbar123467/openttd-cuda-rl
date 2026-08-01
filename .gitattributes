@@ -4,3 +4,4 @@ evidence/p0/** -whitespace
 # validate the applied source tree instead of interpreting diff framing as
 # source indentation.
 oracle/**/*.patch -whitespace
+integration/**/*.patch -whitespace

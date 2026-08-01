@@ -6,10 +6,11 @@ single learning company must learn profitable passenger-bus operation on control
 32 by 32 maps with PPO, then export a policy that can be watched inside OpenTTD.
 
 The repository is not at Version 1 yet. Its accepted V1 substrate now includes
-the reproducible M01 source/toolchain/build profile and the completed M02 32 by
-32 passenger-bus scenario/reset gate. It still has no RL environment bridge.
-The unfinished legacy P0 64 by 64 road-freight workstream remains retained for
-deterministic tooling and historical evidence, not as bus or RL progress.
+the reproducible M01 source/toolchain/build profile, the completed M02 32 by 32
+passenger-bus scenario/reset gate, and the completed M03 synchronized headless
+environment bridge. The unfinished legacy P0 64 by 64 road-freight workstream
+remains retained for deterministic tooling and historical evidence, not as bus
+or RL progress.
 
 ## Start here
 
@@ -61,6 +62,10 @@ deterministic tooling and historical evidence, not as bus or RL progress.
     scripted native trajectory contract.
 20. [`docs/project/G02_GATE_REPORT.md`](docs/project/G02_GATE_REPORT.md) — passed
     controlled scenario/reset gate and repeated current-Ubuntu evidence.
+21. [`docs/project/M03_SYNCHRONIZED_BRIDGE.md`](docs/project/M03_SYNCHRONIZED_BRIDGE.md)
+    — frozen lifecycle, framed local protocol, process isolation, and tick policy.
+22. [`docs/project/G03_GATE_REPORT.md`](docs/project/G03_GATE_REPORT.md) — passed
+    synchronized-bridge gate and repeated all-template native evidence.
 
 ## Current status
 
@@ -71,7 +76,7 @@ deterministic tooling and historical evidence, not as bus or RL progress.
 | Pinned historical P0 reference build | Existing manifests, scripts, and P0 evidence | Retained legacy evidence; not the V1 source profile |
 | Legacy tape/parity tooling | C17 library, schemas, tests, and in-progress fixes | Incomplete legacy workstream |
 | 32 by 32 passenger-bus scenario/reset | Frozen contract/corpus/seeds, native reset projection, scope mutations, and repeated scripted delivery/income trajectory | `M02/G02 PASS`; frozen baseline |
-| Headless RL environment API | No implementation | Not started |
+| Headless RL environment API | Versioned local framing, typed lifecycle, process isolation, 1–128 tick stepping, repeated all-template oracle | `M03/G03 PASS`; frozen synchronization boundary |
 | Structured/spatial observations | No V1 schemas or encoder | Not started |
 | Legal bus action masking | No V1 implementation | Not started |
 | PPO trainer | No implementation | Not started |
@@ -97,7 +102,7 @@ distributed multi-machine training.
 
 ## Repository note
 
-The worktree may contain active, uncommitted legacy P0 implementation changes.
-They belong to the user and must be preserved. Follow the transition document
-before deleting, renaming, or repurposing any existing oracle, parity, fixture, or
-evidence artifact.
+The accepted milestone commits are kept synchronized with `origin/main` and the
+worktree is expected to be clean at handoff. Any future user-owned changes must
+still be preserved. Follow the transition document before deleting, renaming, or
+repurposing an existing oracle, parity fixture, or evidence artifact.

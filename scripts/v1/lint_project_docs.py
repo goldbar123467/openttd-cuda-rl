@@ -30,6 +30,10 @@ ACTIVE_FIXED = (
     "docs/project/M01_BUILD_PROFILE_RESOURCE_PROVENANCE.md",
     "docs/project/G01_GATE_REPORT.md",
     "docs/project/M02_MAP_FEASIBILITY.md",
+    "docs/project/M02_SCENARIO_RESET_CONTRACT.md",
+    "docs/project/G02_GATE_REPORT.md",
+    "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+    "docs/project/G03_GATE_REPORT.md",
 )
 V1_ADR_NUMBERS = tuple(range(7, 14))
 LEGACY_BANNER_FILES = (
@@ -62,6 +66,10 @@ REQUIRED_NAVIGATION_TARGETS = (
     "docs/project/M01_BUILD_PROFILE_RESOURCE_PROVENANCE.md",
     "docs/project/G01_GATE_REPORT.md",
     "docs/project/M02_MAP_FEASIBILITY.md",
+    "docs/project/M02_SCENARIO_RESET_CONTRACT.md",
+    "docs/project/G02_GATE_REPORT.md",
+    "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+    "docs/project/G03_GATE_REPORT.md",
     "docs/decisions/",
 )
 

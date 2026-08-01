@@ -214,6 +214,16 @@ context to locate first divergence. Compare repeated scripted/random/legal-polic
 runs, bridge observation on/off, telemetry on/off, and debug overlay on/off. A final
 equal balance is insufficient if intermediate states diverged.
 
+`G03` closes the bridge subset of this campaign with two byte-identical
+all-template native roots. It proves exact 1/64/128-tick advances, rejects 0 and
+129 without mutation, replays every scripted trace twice, preserves accepted M02
+results with the bridge entrypoint disabled, interleaves two isolated workers,
+and soaks one action-free worker for 512 steps and 65,536 ticks. Bad checksum,
+killed-worker, timeout, stale-handle, stale-boundary, invalid-lifecycle, and
+post-horizon cases are classified without silently committing another
+transition. The policy observation, mask, random/legal-policy, telemetry, and
+debug-overlay portions remain owned by later gates.
+
 ## PPO and model verification
 
 ### Algorithm reference corpus

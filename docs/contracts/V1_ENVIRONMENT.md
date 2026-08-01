@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-This document specifies the contract that milestones `M02` through `M06` must
-freeze and implement. Values marked `TBD-BLOCKING` are deliberate design gates,
-not defaults an implementer may choose silently.
+This document specifies the contract that milestones `M02` through `M06` freeze
+and implement. M02 scenario/reset and M03 lifecycle/stepping values below are
+frozen; later observation, action, and reward values remain owned by their gates.
 
 The environment is actual OpenTTD constrained to a 32 by 32, single-learning-
 company, passenger-bus scenario. It exposes semantic state and explicit game
@@ -99,10 +99,8 @@ map seed or image.
 ### Fixed properties
 
 - map width and height: 32 tiles each;
-- climate: `TBD-BLOCKING`, expected temperate unless evidence favors another
-  default-content climate;
-- calendar start: `TBD-BLOCKING` and chosen so a documented bus engine is
-  available;
+- climate: temperate;
+- calendar start: 1950-01-01, with the MPS Regal Bus available;
 - economy: pinned default-economy settings with every behavior-affecting override
   explicit;
 - learning companies: exactly one;
@@ -112,10 +110,11 @@ map seed or image.
 - permitted constructed transport infrastructure: roads, bus stops, and required
   road-vehicle depots;
 - disasters, NewGRFs, networking, multiplayer, and arbitrary scripts: disabled;
-- initial balance/loan, maximum loan, inflation, breakdowns, town growth,
-  construction cost, vehicle availability, and passenger generation:
-  `TBD-BLOCKING` in the scenario ADR;
-- maximum episode ticks/days/actions: `TBD-BLOCKING` in the step/horizon ADR.
+- initial balance and loan: 100,000 internal currency units each; maximum loan:
+  300,000; inflation, breakdowns, and town growth: disabled; construction and
+  running-cost levels: low; passenger generation: bitcount at 100 percent;
+- maximum episode actions: 512; maximum ticks: 65,536; the calendar-day ceiling
+  is 886.
 
 ### Layout validity
 
@@ -202,16 +201,14 @@ diagnostic artifact.
 
 ### Simulation advance policy
 
-The initial choice is `TBD-BLOCKING` between:
-
-- fixed ticks after every agent action;
-- decision-boundary stepping that stops at a bounded reviewed event; or
-- a hybrid with an explicit fixed upper bound.
-
-The final policy must define tick zero, inclusivity of the interval, whether
-construction time is immediate engine time or agent-step time, pause behavior,
-vehicle/event processing, reward boundary, terminal detection timing, and no-op
-behavior. It must be reproducible and shared by headless and in-game control.
+M03 freezes fixed-tick stepping after every action. Each request records an
+interval in 1 through 128; the V1 reference interval is 128. Tick zero is the
+engine counter immediately after successful M02 materialization. A step commits
+its command at immediate engine time, executes exactly the requested number of
+complete `StateGameLoop` calls, then evaluates truncation and commits the
+response. Pause and observation-only calls execute no game loop, command, or RNG
+operation. A no-op executes no command and advances the requested ticks. The same
+rule is required anywhere the V1 policy controls a game.
 
 ## Observation contract
 
@@ -469,7 +466,7 @@ produce release evidence.
 
 Environment contract v1 freezes only when:
 
-- all `TBD-BLOCKING` values have reviewed ADRs and machine artifacts;
+- all milestone-owned values have reviewed decisions and machine artifacts;
 - every candidate feature/action/reward has a disposition;
 - one scripted agent can complete the bus economic loop;
 - observation and action masks refer to identical snapshots;

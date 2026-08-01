@@ -1,0 +1,914 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 688a9196e607675dded1ef989e04aebc35e1722d..652ac4f4286325a3a465029c92de7050acd7a583 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -46,6 +46,8 @@ add_files(
+ )
+ 
+ add_files(
++    rl_bridge.cpp
++    rl_bridge.h
+     rl_environment.cpp
+     rl_environment.h
+     CONDITION OPTION_RL_ENVIRONMENT
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index a63ec7db13d0ad5bb90a7ed7b267624019bc6d42..fbae255e4c75de5a7bf8fe17fb97ef7bf1e08943 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -83,6 +83,7 @@
+ #include "core/string_consumer.hpp"
+ 
+ #ifdef WITH_RL_ENVIRONMENT
++#	include "rl_bridge.h"
+ #	include "rl_environment.h"
+ #endif
+ 
+@@ -193,6 +194,7 @@ static void ShowHelp()
+ 		"  -Q                  = Don't scan for/load NewGRF files on startup\n"
+ 		"  -QQ                 = Disable NewGRF scanning/loading entirely\n"
+ #ifdef WITH_RL_ENVIRONMENT
++		"  -B read_fd:write_fd = Run the synchronized M03 bridge over inherited pipes\n"
+ 		"  -Z scenario_file    = Reset the deterministic M02 scenario from a canonical instance\n"
+ 		"  -Y output_file      = Write the deterministic M02 reset projection report\n"
+ 		"  -T output_file      = Execute and write the deterministic M02 scripted bus trajectory\n"
+@@ -394,6 +396,7 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string join_server_password;           ///< The password to join the server with.
+ 	bool save_config = true;                    ///< The save config setting.
+ #ifdef WITH_RL_ENVIRONMENT
++	std::string rl_bridge_descriptors;         ///< Inherited M03 read/write descriptor pair.
+ 	std::string rl_scenario_instance;           ///< Canonical M02 scenario instance to materialize.
+ 	std::string rl_projection_output;           ///< Destination for the semantic reset projection.
+ 	std::string rl_trajectory_output;           ///< Optional destination for the scripted bus trajectory.
+@@ -455,7 +458,15 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
+ #ifdef WITH_RL_ENVIRONMENT
+-		if (!rl_scenario_instance.empty()) {
++		if (!rl_bridge_descriptors.empty()) {
++			try {
++				RunRlEnvironmentBridge(rl_scenario_instance, rl_bridge_descriptors);
++			} catch (const std::exception &e) {
++				UserError("M03 bridge: {}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		} else if (!rl_scenario_instance.empty()) {
+ 			if (rl_projection_output.empty()) UserError("RL scenario mode requires -Y <projection-output>");
+ 			try {
+ 				RunRlEnvironmentScenario(rl_scenario_instance, rl_projection_output, rl_trajectory_output, rl_reset_repetitions);
+@@ -513,7 +524,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"RTYZ"
++			"BRTYZ"
+ #endif
+ 		) options.push_back({ .type = ODF_HAS_VALUE, .id = c, .shortname = c });
+ 
+@@ -680,6 +691,7 @@ int openttd_main(std::span<std::string_view> arguments)
+ 			break;
+ 		case 'c': _config_file = mgo.opt; break;
+ #ifdef WITH_RL_ENVIRONMENT
++		case 'B': scanner->rl_bridge_descriptors = mgo.opt; break;
+ 		case 'R':
+ 			if (auto value = ParseInteger(mgo.opt); value.has_value() && *value >= 1 && *value <= 16) {
+ 				scanner->rl_reset_repetitions = *value;
+@@ -718,7 +730,16 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ 
+ #ifdef WITH_RL_ENVIRONMENT
+-	if (scanner->rl_scenario_instance.empty() != scanner->rl_projection_output.empty()) {
++	if (!scanner->rl_bridge_descriptors.empty()) {
++		if (scanner->rl_scenario_instance.empty()) {
++			fmt::print(stderr, "M03 bridge mode requires -Z <scenario-instance>\n");
++			return 1;
++		}
++		if (!scanner->rl_projection_output.empty() || !scanner->rl_trajectory_output.empty() || scanner->rl_reset_repetitions != 1) {
++			fmt::print(stderr, "M03 bridge mode forbids M02 batch options -Y, -T, and -R\n");
++			return 1;
++		}
++	} else if (scanner->rl_scenario_instance.empty() != scanner->rl_projection_output.empty()) {
+ 		fmt::print(stderr, "RL scenario mode requires both -Z <scenario-instance> and -Y <projection-output>\n");
+ 		return 1;
+ 	}
+diff --git a/src/rl_bridge.cpp b/src/rl_bridge.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..89c252f92897f13b7085bbc5947a7f7fc1418d98
+--- /dev/null
++++ b/src/rl_bridge.cpp
+@@ -0,0 +1,635 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_bridge.cpp Synchronized single-process/single-environment M03 bridge. */
++
++#include "stdafx.h"
++
++#include "rl_bridge.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "company_base.h"
++#include "openttd.h"
++#include "rl_environment.h"
++#include "timer/timer_game_tick.h"
++
++#include <array>
++#include <charconv>
++#include <cerrno>
++#include <limits>
++#include <stdexcept>
++#include <string_view>
++#include <vector>
++
++#if !defined(_WIN32)
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#endif
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++namespace {
++
++static constexpr std::string_view BRIDGE_COMPATIBILITY_SHA256 = "4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6";
++static constexpr std::string_view RESPONSE_SCHEMA = "openttd-rl-v1-m03-bridge-response-1";
++static constexpr size_t HEADER_BYTES = 56;
++static constexpr uint32_t MAXIMUM_PAYLOAD_BYTES = 1048576;
++static constexpr uint16_t PROTOCOL_MAJOR = 1;
++static constexpr uint16_t PROTOCOL_MINOR = 0;
++static constexpr uint16_t FLAG_RESPONSE = 1;
++static constexpr uint16_t FLAG_ERROR = 2;
++static constexpr uint32_t MINIMUM_ACTION_INTERVAL_TICKS = 1;
++static constexpr uint32_t MAXIMUM_ACTION_INTERVAL_TICKS = 128;
++static constexpr uint64_t ACTION_HORIZON = 512;
++static constexpr uint64_t TICK_HORIZON = 65536;
++
++enum class MessageType : uint16_t {
++	Reset = 1,
++	Snapshot = 2,
++	LegalActions = 3,
++	Step = 4,
++	Pause = 5,
++	Resume = 6,
++	Close = 7,
++};
++
++enum class Lifecycle {
++	Ready,
++	Resetting,
++	AtBoundary,
++	Executing,
++	Advancing,
++	Paused,
++	Failed,
++	Closed,
++};
++
++static std::string_view LifecycleName(Lifecycle lifecycle)
++{
++	switch (lifecycle) {
++		case Lifecycle::Ready: return "READY";
++		case Lifecycle::Resetting: return "RESETTING";
++		case Lifecycle::AtBoundary: return "AT_BOUNDARY";
++		case Lifecycle::Executing: return "EXECUTING";
++		case Lifecycle::Advancing: return "ADVANCING";
++		case Lifecycle::Paused: return "PAUSED";
++		case Lifecycle::Failed: return "FAILED";
++		case Lifecycle::Closed: return "CLOSED";
++	}
++	return "FAILED";
++}
++
++class BridgeError : public std::runtime_error {
++public:
++	BridgeError(std::string_view code, std::string message, bool fatal = false) :
++		std::runtime_error(std::move(message)), code(code), fatal(fatal)
++	{}
++
++	std::string code;
++	bool fatal;
++};
++
++struct Frame {
++	std::array<uint8_t, HEADER_BYTES> header{};
++	uint16_t message_type = 0;
++	uint16_t flags = 0;
++	uint32_t payload_length = 0;
++	uint32_t checksum = 0;
++	uint32_t reserved = 0;
++	uint64_t session_id = 0;
++	uint64_t episode_id = 0;
++	uint64_t request_id = 0;
++	uint64_t transition_ordinal = 0;
++	std::string payload;
++};
++
++static uint16_t ReadU16(const uint8_t *value)
++{
++	return static_cast<uint16_t>(value[0]) |
++		(static_cast<uint16_t>(value[1]) << 8);
++}
++
++static uint32_t ReadU32(const uint8_t *value)
++{
++	return static_cast<uint32_t>(value[0]) |
++		(static_cast<uint32_t>(value[1]) << 8) |
++		(static_cast<uint32_t>(value[2]) << 16) |
++		(static_cast<uint32_t>(value[3]) << 24);
++}
++
++static uint64_t ReadU64(const uint8_t *value)
++{
++	uint64_t result = 0;
++	for (uint8_t index = 0; index < 8; ++index) result |= static_cast<uint64_t>(value[index]) << (index * 8);
++	return result;
++}
++
++static void WriteU16(uint8_t *output, uint16_t value)
++{
++	for (uint8_t index = 0; index < 2; ++index) output[index] = static_cast<uint8_t>(value >> (index * 8));
++}
++
++static void WriteU32(uint8_t *output, uint32_t value)
++{
++	for (uint8_t index = 0; index < 4; ++index) output[index] = static_cast<uint8_t>(value >> (index * 8));
++}
++
++static void WriteU64(uint8_t *output, uint64_t value)
++{
++	for (uint8_t index = 0; index < 8; ++index) output[index] = static_cast<uint8_t>(value >> (index * 8));
++}
++
++static uint32_t Crc32c(std::span<const uint8_t> header, std::string_view payload)
++{
++	uint32_t crc = 0xFFFFFFFFU;
++	auto update = [&crc](uint8_t byte) {
++		crc ^= byte;
++		for (uint8_t bit = 0; bit < 8; ++bit) crc = (crc >> 1) ^ (0x82F63B78U & (0U - (crc & 1U)));
++	};
++	for (uint8_t byte : header) update(byte);
++	for (uint8_t byte : payload) update(byte);
++	return ~crc;
++}
++
++#if !defined(_WIN32)
++static bool ReadExact(int descriptor, std::span<uint8_t> output)
++{
++	size_t offset = 0;
++	while (offset < output.size()) {
++		ssize_t count = read(descriptor, output.data() + offset, output.size() - offset);
++		if (count == 0) {
++			if (offset == 0) return false;
++			throw BridgeError("TRUNCATED_FRAME", "control input closed inside a frame", true);
++		}
++		if (count < 0) {
++			if (errno == EINTR) continue;
++			throw BridgeError("IO_FAILURE", fmt::format("control read failed with errno {}", errno), true);
++		}
++		offset += static_cast<size_t>(count);
++	}
++	return true;
++}
++
++static void WriteExact(int descriptor, std::span<const uint8_t> input)
++{
++	size_t offset = 0;
++	while (offset < input.size()) {
++		ssize_t count = write(descriptor, input.data() + offset, input.size() - offset);
++		if (count < 0) {
++			if (errno == EINTR) continue;
++			throw BridgeError("IO_FAILURE", fmt::format("control write failed with errno {}", errno), true);
++		}
++		if (count == 0) throw BridgeError("IO_FAILURE", "control write made no progress", true);
++		offset += static_cast<size_t>(count);
++	}
++}
++
++static int ParseDescriptor(std::string_view text, std::string_view label)
++{
++	int descriptor = -1;
++	auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), descriptor);
++	if (error != std::errc() || end != text.data() + text.size() || descriptor < 3) {
++		throw BridgeError("BAD_FRAME", fmt::format("{} must be an inherited descriptor >= 3", label), true);
++	}
++	return descriptor;
++}
++
++static std::pair<int, int> ParseDescriptorPair(const std::string &value)
++{
++	size_t separator = value.find(':');
++	if (separator == std::string::npos || value.find(':', separator + 1) != std::string::npos) {
++		throw BridgeError("BAD_FRAME", "bridge descriptor pair must be <read-fd>:<write-fd>", true);
++	}
++	int read_descriptor = ParseDescriptor(std::string_view(value).substr(0, separator), "read descriptor");
++	int write_descriptor = ParseDescriptor(std::string_view(value).substr(separator + 1), "write descriptor");
++	if (read_descriptor == write_descriptor) throw BridgeError("BAD_FRAME", "bridge descriptors must differ", true);
++
++	struct stat read_stat{};
++	struct stat write_stat{};
++	if (fstat(read_descriptor, &read_stat) != 0 || fstat(write_descriptor, &write_stat) != 0) {
++		throw BridgeError("IO_FAILURE", "bridge descriptor is not open", true);
++	}
++	if (!S_ISFIFO(read_stat.st_mode) || !S_ISFIFO(write_stat.st_mode)) {
++		throw BridgeError("BAD_FRAME", "bridge descriptors must be anonymous pipes", true);
++	}
++	int read_flags = fcntl(read_descriptor, F_GETFL);
++	int write_flags = fcntl(write_descriptor, F_GETFL);
++	if (read_flags < 0 || write_flags < 0 || (read_flags & O_ACCMODE) == O_WRONLY || (write_flags & O_ACCMODE) == O_RDONLY) {
++		throw BridgeError("BAD_FRAME", "bridge descriptor access modes are invalid", true);
++	}
++	return {read_descriptor, write_descriptor};
++}
++#endif
++
++class BridgeWorker {
++public:
++	BridgeWorker(std::string instance_path, int read_descriptor, int write_descriptor) :
++		instance_path(std::move(instance_path)), read_descriptor(read_descriptor), write_descriptor(write_descriptor)
++	{}
++
++	void Run()
++	{
++		while (this->lifecycle != Lifecycle::Closed) {
++			Frame request;
++			bool header_available = false;
++			try {
++				this->ReadFrame(request, header_available);
++				json payload = ParseCanonicalPayload(request.payload);
++				bool close = false;
++				json response = this->Handle(request, payload, close);
++				this->WriteResponse(request, response, false);
++				if (close) break;
++			} catch (const BridgeError &error) {
++				if (error.fatal) this->lifecycle = Lifecycle::Failed;
++				if (header_available) this->WriteError(request, error);
++				if (error.fatal && (error.code == "IO_FAILURE" || error.code == "TRUNCATED_FRAME" || error.code == "OVERSIZED_PAYLOAD")) throw;
++			} catch (const std::exception &error) {
++				this->lifecycle = Lifecycle::Failed;
++				BridgeError wrapped("ENGINE_FAILURE", error.what(), true);
++				if (header_available) this->WriteError(request, wrapped);
++			}
++		}
++		fmt::print("M03_BRIDGE=CLOSED session={} episodes={} transitions={}\n", this->session_id, this->episode_id, this->transition_ordinal);
++	}
++
++private:
++	std::string instance_path;
++	int read_descriptor;
++	int write_descriptor;
++	Lifecycle lifecycle = Lifecycle::Ready;
++	uint64_t session_id = 0;
++	uint64_t episode_id = 0;
++	uint64_t last_request_id = 0;
++	uint64_t transition_ordinal = 0;
++	uint64_t tick_zero = 0;
++	bool scripted_setup_applied = false;
++	bool truncated = false;
++
++	void ReadFrame(Frame &frame, bool &header_available)
++	{
++		if (!ReadExact(this->read_descriptor, frame.header)) {
++			throw BridgeError("IO_FAILURE", "control input closed before CLOSE", true);
++		}
++		frame.message_type = ReadU16(frame.header.data() + 8);
++		frame.flags = ReadU16(frame.header.data() + 10);
++		frame.payload_length = ReadU32(frame.header.data() + 12);
++		frame.checksum = ReadU32(frame.header.data() + 16);
++		frame.reserved = ReadU32(frame.header.data() + 20);
++		frame.session_id = ReadU64(frame.header.data() + 24);
++		frame.episode_id = ReadU64(frame.header.data() + 32);
++		frame.request_id = ReadU64(frame.header.data() + 40);
++		frame.transition_ordinal = ReadU64(frame.header.data() + 48);
++		header_available = true;
++		if (frame.payload_length > MAXIMUM_PAYLOAD_BYTES) throw BridgeError("OVERSIZED_PAYLOAD", "frame payload exceeds 1048576 bytes", true);
++
++		frame.payload.resize(frame.payload_length);
++		if (!frame.payload.empty()) {
++			ReadExact(this->read_descriptor, std::span<uint8_t>(reinterpret_cast<uint8_t *>(frame.payload.data()), frame.payload.size()));
++		}
++
++		if (!std::equal(frame.header.begin(), frame.header.begin() + 4, std::string_view("ORL1").begin())) {
++			throw BridgeError("BAD_MAGIC", "frame magic is not ORL1", true);
++		}
++		if (ReadU16(frame.header.data() + 4) != PROTOCOL_MAJOR || ReadU16(frame.header.data() + 6) != PROTOCOL_MINOR) {
++			throw BridgeError("BAD_PROTOCOL_VERSION", "frame protocol version is not 1.0", true);
++		}
++		if (frame.flags != 0) throw BridgeError("BAD_FLAGS", "request frame flags must be zero", true);
++		if (frame.reserved != 0) throw BridgeError("BAD_FRAME", "reserved frame header bytes must be zero", true);
++		std::array<uint8_t, HEADER_BYTES> checksum_header = frame.header;
++		std::fill(checksum_header.begin() + 16, checksum_header.begin() + 20, 0);
++		if (Crc32c(checksum_header, frame.payload) != frame.checksum) {
++			throw BridgeError("BAD_CHECKSUM", "frame CRC32C mismatch", true);
++		}
++	}
++
++	static json ParseCanonicalPayload(const std::string &payload)
++	{
++		json value;
++		try {
++			value = json::parse(payload);
++		} catch (const json::exception &error) {
++			throw BridgeError("BAD_PAYLOAD", fmt::format("payload is not JSON: {}", error.what()));
++		}
++		if (!value.is_object() || value.dump() != payload) {
++			throw BridgeError("BAD_PAYLOAD", "payload is not a canonical compact JSON object");
++		}
++		return value;
++	}
++
++	void ValidateOrdering(const Frame &request)
++	{
++		if (request.request_id <= this->last_request_id) {
++			throw BridgeError("STALE_REQUEST", "request_id is stale or duplicated");
++		}
++		if (request.request_id != this->last_request_id + 1) {
++			throw BridgeError("REQUEST_GAP", "request_id does not increase by exactly one");
++		}
++		this->last_request_id = request.request_id;
++	}
++
++	void ValidateHandle(const Frame &request) const
++	{
++		if (this->session_id == 0 || request.session_id != this->session_id || request.episode_id != this->episode_id) {
++			throw BridgeError("STALE_HANDLE", "session_id or episode_id does not name the active environment");
++		}
++	}
++
++	void ValidateCurrentTransition(const Frame &request) const
++	{
++		if (request.transition_ordinal != this->transition_ordinal) {
++			throw BridgeError("STALE_BOUNDARY", "transition ordinal does not name the committed boundary");
++		}
++	}
++
++	static void RequireEmptyPayload(const json &payload)
++	{
++		if (!payload.empty()) throw BridgeError("BAD_PAYLOAD", "operation payload must be the empty object");
++	}
++
++	static void RequireCompatibility(const json &payload)
++	{
++		if (!payload.contains("bridge_compatibility_sha256") || payload.at("bridge_compatibility_sha256") != BRIDGE_COMPATIBILITY_SHA256) {
++			throw BridgeError("BAD_PAYLOAD", "bridge compatibility identity mismatch");
++		}
++	}
++
++	std::string BoundaryToken() const
++	{
++		return fmt::format("m03b1:{:016x}:{:016x}:{:016x}:{:016x}", this->session_id, this->episode_id, this->transition_ordinal, static_cast<uint64_t>(TimerGameTick::counter));
++	}
++
++	json Snapshot() const
++	{
++		json snapshot = json::parse(BuildRlEnvironmentBridgeSnapshot());
++		snapshot["boundary_token"] = this->BoundaryToken();
++		snapshot["episode_id"] = this->episode_id;
++		snapshot["lifecycle"] = LifecycleName(this->lifecycle);
++		snapshot["session_id"] = this->session_id;
++		snapshot["transition_ordinal"] = this->transition_ordinal;
++		if (snapshot.size() != 10) throw BridgeError("INTERNAL_INVARIANT", "M03 snapshot field inventory drifted", true);
++		return snapshot;
++	}
++
++	json ResponseBase() const
++	{
++		return {
++			{"episode_id", this->episode_id},
++			{"lifecycle", LifecycleName(this->lifecycle)},
++			{"schema_version", RESPONSE_SCHEMA},
++			{"session_id", this->session_id},
++			{"status", "OK"},
++			{"transition_ordinal", this->transition_ordinal},
++		};
++	}
++
++	json Handle(const Frame &request, const json &payload, bool &close)
++	{
++		this->ValidateOrdering(request);
++		switch (static_cast<MessageType>(request.message_type)) {
++			case MessageType::Reset: return this->Reset(request, payload);
++			case MessageType::Snapshot: return this->QuerySnapshot(request, payload);
++			case MessageType::LegalActions: return this->LegalActions(request, payload);
++			case MessageType::Step: return this->Step(request, payload);
++			case MessageType::Pause: return this->Pause(request, payload);
++			case MessageType::Resume: return this->Resume(request, payload);
++			case MessageType::Close: close = true; return this->Close(request, payload);
++		}
++		throw BridgeError("UNSUPPORTED_MESSAGE", fmt::format("unsupported message type {}", request.message_type));
++	}
++
++	json Reset(const Frame &request, const json &payload)
++	{
++		if (this->lifecycle != Lifecycle::Ready && this->lifecycle != Lifecycle::AtBoundary) {
++			throw BridgeError("INVALID_LIFECYCLE", "RESET requires READY or AT_BOUNDARY");
++		}
++		if (payload.size() != 1) throw BridgeError("BAD_PAYLOAD", "RESET payload contains unexpected fields");
++		RequireCompatibility(payload);
++		if (request.session_id == 0 || request.transition_ordinal != 0) {
++			throw BridgeError("STALE_HANDLE", "RESET requires nonzero session_id and transition ordinal zero");
++		}
++		if (this->session_id == 0) {
++			if (request.episode_id != 0) throw BridgeError("STALE_HANDLE", "first RESET requires episode_id zero");
++		} else if (request.session_id != this->session_id || request.episode_id != this->episode_id) {
++			throw BridgeError("STALE_HANDLE", "RESET handle does not name the active environment");
++		}
++		if (this->episode_id == std::numeric_limits<uint64_t>::max()) {
++			throw BridgeError("INTERNAL_INVARIANT", "episode_id exhausted", true);
++		}
++
++		this->lifecycle = Lifecycle::Resetting;
++		json scenario = json::parse(ResetRlEnvironmentBridgeScenario(this->instance_path));
++		(void)scenario;
++		if (this->session_id == 0) this->session_id = request.session_id;
++		++this->episode_id;
++		this->transition_ordinal = 0;
++		this->tick_zero = TimerGameTick::counter;
++		this->scripted_setup_applied = false;
++		this->truncated = false;
++		this->lifecycle = Lifecycle::AtBoundary;
++		json response = this->ResponseBase();
++		response["snapshot"] = this->Snapshot();
++		return response;
++	}
++
++	json QuerySnapshot(const Frame &request, const json &payload)
++	{
++		if (this->lifecycle != Lifecycle::AtBoundary && this->lifecycle != Lifecycle::Paused) {
++			throw BridgeError("INVALID_LIFECYCLE", "SNAPSHOT requires AT_BOUNDARY or PAUSED");
++		}
++		RequireEmptyPayload(payload);
++		this->ValidateHandle(request);
++		this->ValidateCurrentTransition(request);
++		json response = this->ResponseBase();
++		response["snapshot"] = this->Snapshot();
++		return response;
++	}
++
++	json LegalActions(const Frame &request, const json &payload)
++	{
++		if (this->lifecycle != Lifecycle::AtBoundary && this->lifecycle != Lifecycle::Paused) {
++			throw BridgeError("INVALID_LIFECYCLE", "LEGAL_ACTIONS requires AT_BOUNDARY or PAUSED");
++		}
++		RequireEmptyPayload(payload);
++		this->ValidateHandle(request);
++		this->ValidateCurrentTransition(request);
++		json actions = json::array();
++		if (this->lifecycle == Lifecycle::AtBoundary && !this->truncated) {
++			actions.push_back({{"id", 0}, {"name", "WAIT"}});
++			if (!this->scripted_setup_applied) actions.push_back({{"id", 1}, {"name", "M02_SCRIPTED_BUS_SETUP"}});
++		}
++		json response = this->ResponseBase();
++		response["boundary_token"] = this->BoundaryToken();
++		response["legal_actions"] = std::move(actions);
++		return response;
++	}
++
++	json Step(const Frame &request, const json &payload)
++	{
++		if (this->lifecycle != Lifecycle::AtBoundary) throw BridgeError("INVALID_LIFECYCLE", "STEP requires AT_BOUNDARY");
++		if (payload.size() != 4 || !payload.contains("action_id") || !payload.contains("action_interval_ticks") || !payload.contains("boundary_token")) {
++			throw BridgeError("BAD_PAYLOAD", "STEP payload field inventory is invalid");
++		}
++		RequireCompatibility(payload);
++		this->ValidateHandle(request);
++		if (request.transition_ordinal != this->transition_ordinal + 1) {
++			throw BridgeError("STALE_BOUNDARY", "STEP transition ordinal is not the next transition");
++		}
++		if (payload.at("boundary_token") != this->BoundaryToken()) throw BridgeError("STALE_BOUNDARY", "STEP boundary token is stale");
++		if (!payload.at("action_interval_ticks").is_number_unsigned()) {
++			throw BridgeError("BAD_PAYLOAD", "STEP action interval must be an unsigned integer");
++		}
++		uint64_t requested_action_interval_ticks = payload.at("action_interval_ticks").get<uint64_t>();
++		if (requested_action_interval_ticks < MINIMUM_ACTION_INTERVAL_TICKS || requested_action_interval_ticks > MAXIMUM_ACTION_INTERVAL_TICKS) {
++			throw BridgeError("BAD_PAYLOAD", "STEP action interval must be in 1..128 ticks");
++		}
++		uint32_t action_interval_ticks = static_cast<uint32_t>(requested_action_interval_ticks);
++		if (this->truncated) throw BridgeError("INVALID_ACTION", "episode horizon is already exhausted");
++		if (!payload.at("action_id").is_number_unsigned()) throw BridgeError("INVALID_ACTION", "action_id must be an unsigned integer");
++		uint64_t requested_action_id = payload.at("action_id").get<uint64_t>();
++		if (requested_action_id > 1 || (requested_action_id == 1 && this->scripted_setup_applied)) {
++			throw BridgeError("INVALID_ACTION", "action_id is not legal at this boundary");
++		}
++		uint32_t action_id = static_cast<uint32_t>(requested_action_id);
++
++		std::string pre_boundary = this->BoundaryToken();
++		uint64_t before = TimerGameTick::counter;
++		this->lifecycle = Lifecycle::Executing;
++		if (action_id == 1) {
++			ApplyRlEnvironmentBridgeScriptedBusSetup();
++			this->scripted_setup_applied = true;
++		}
++		this->lifecycle = Lifecycle::Advancing;
++		for (uint32_t tick = 0; tick < action_interval_ticks; ++tick) StateGameLoop();
++		uint64_t after = TimerGameTick::counter;
++		if (after - before != action_interval_ticks) {
++			throw BridgeError("INTERNAL_INVARIANT", fmt::format("StateGameLoop advanced {} ticks instead of {}", after - before, action_interval_ticks), true);
++		}
++		this->transition_ordinal = request.transition_ordinal;
++		uint64_t relative_ticks = after - this->tick_zero;
++		bool action_horizon = this->transition_ordinal >= ACTION_HORIZON;
++		bool tick_horizon = relative_ticks >= TICK_HORIZON;
++		this->truncated = action_horizon || tick_horizon;
++		this->lifecycle = Lifecycle::AtBoundary;
++
++		json response = this->ResponseBase();
++		response["action_outcome"] = { {"action_id", action_id}, {"status", "EXECUTED"} };
++		response["advanced_ticks"] = after - before;
++		response["post_boundary_token"] = this->BoundaryToken();
++		response["pre_boundary_token"] = std::move(pre_boundary);
++		response["snapshot"] = this->Snapshot();
++		response["terminal"] = false;
++		response["truncated"] = this->truncated;
++		if (action_horizon) {
++			response["truncation_reason"] = "action-horizon";
++		} else if (tick_horizon) {
++			response["truncation_reason"] = "tick-horizon";
++		} else {
++			response["truncation_reason"] = nullptr;
++		}
++		return response;
++	}
++
++	json Pause(const Frame &request, const json &payload)
++	{
++		if (this->lifecycle != Lifecycle::AtBoundary) throw BridgeError("INVALID_LIFECYCLE", "PAUSE requires AT_BOUNDARY");
++		RequireEmptyPayload(payload);
++		this->ValidateHandle(request);
++		this->ValidateCurrentTransition(request);
++		this->lifecycle = Lifecycle::Paused;
++		json response = this->ResponseBase();
++		response["boundary_token"] = this->BoundaryToken();
++		return response;
++	}
++
++	json Resume(const Frame &request, const json &payload)
++	{
++		if (this->lifecycle != Lifecycle::Paused) throw BridgeError("INVALID_LIFECYCLE", "RESUME requires PAUSED");
++		RequireEmptyPayload(payload);
++		this->ValidateHandle(request);
++		this->ValidateCurrentTransition(request);
++		this->lifecycle = Lifecycle::AtBoundary;
++		json response = this->ResponseBase();
++		response["boundary_token"] = this->BoundaryToken();
++		return response;
++	}
++
++	json Close(const Frame &request, const json &payload)
++	{
++		if (this->lifecycle != Lifecycle::Ready && this->lifecycle != Lifecycle::AtBoundary && this->lifecycle != Lifecycle::Paused && this->lifecycle != Lifecycle::Failed) {
++			throw BridgeError("INVALID_LIFECYCLE", "CLOSE is invalid in the current lifecycle state");
++		}
++		RequireEmptyPayload(payload);
++		if (this->lifecycle == Lifecycle::Failed && this->session_id == 0) {
++			if (request.episode_id != 0 || request.transition_ordinal != 0) {
++				throw BridgeError("STALE_HANDLE", "CLOSE before first reset requires zero episode and transition IDs");
++			}
++		} else if (this->lifecycle != Lifecycle::Ready) {
++			this->ValidateHandle(request);
++			this->ValidateCurrentTransition(request);
++		} else if (request.episode_id != 0 || request.transition_ordinal != 0) {
++			throw BridgeError("STALE_HANDLE", "CLOSE from READY requires zero episode and transition IDs");
++		}
++		this->lifecycle = Lifecycle::Closed;
++		return this->ResponseBase();
++	}
++
++	void WriteError(const Frame &request, const BridgeError &error)
++	{
++		json response = {
++			{"error", {
++				{"code", error.code},
++				{"fatal", error.fatal},
++				{"lifecycle", LifecycleName(this->lifecycle)},
++				{"message", error.what()},
++			}},
++			{"schema_version", RESPONSE_SCHEMA},
++			{"status", "ERROR"},
++		};
++		this->WriteResponse(request, response, true);
++	}
++
++	void WriteResponse(const Frame &request, const json &response, bool error)
++	{
++		std::string payload = response.dump();
++		if (payload.size() > MAXIMUM_PAYLOAD_BYTES) throw BridgeError("INTERNAL_INVARIANT", "response payload exceeds protocol bound", true);
++		std::array<uint8_t, HEADER_BYTES> header{};
++		std::copy_n("ORL1", 4, header.begin());
++		WriteU16(header.data() + 4, PROTOCOL_MAJOR);
++		WriteU16(header.data() + 6, PROTOCOL_MINOR);
++		WriteU16(header.data() + 8, request.message_type);
++		WriteU16(header.data() + 10, FLAG_RESPONSE | (error ? FLAG_ERROR : 0));
++		WriteU32(header.data() + 12, static_cast<uint32_t>(payload.size()));
++		WriteU64(header.data() + 24, this->session_id == 0 ? request.session_id : this->session_id);
++		WriteU64(header.data() + 32, this->episode_id);
++		WriteU64(header.data() + 40, request.request_id);
++		WriteU64(header.data() + 48, this->transition_ordinal);
++		WriteU32(header.data() + 16, Crc32c(header, payload));
++		WriteExact(this->write_descriptor, header);
++		WriteExact(this->write_descriptor, std::span<const uint8_t>(reinterpret_cast<const uint8_t *>(payload.data()), payload.size()));
++	}
++};
++
++} // namespace
++
++void RunRlEnvironmentBridge(const std::string &instance_path, const std::string &descriptor_pair)
++{
++#if defined(_WIN32)
++	(void)instance_path;
++	(void)descriptor_pair;
++	throw std::runtime_error("M03 environment bridge V1 requires POSIX anonymous pipes");
++#else
++	if (instance_path.empty()) throw std::runtime_error("M03 bridge scenario instance path is empty");
++	auto [read_descriptor, write_descriptor] = ParseDescriptorPair(descriptor_pair);
++	BridgeWorker worker(instance_path, read_descriptor, write_descriptor);
++	worker.Run();
++	close(read_descriptor);
++	close(write_descriptor);
++#endif
++}
+diff --git a/src/rl_bridge.h b/src/rl_bridge.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..38857733f903b90cba971945851e554ab86dffb6
+--- /dev/null
++++ b/src/rl_bridge.h
+@@ -0,0 +1,17 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_bridge.h Synchronized M03 environment bridge entry point. */
++
++#ifndef RL_BRIDGE_H
++#define RL_BRIDGE_H
++
++#include <string>
++
++void RunRlEnvironmentBridge(const std::string &instance_path, const std::string &descriptor_pair);
++
++#endif /* RL_BRIDGE_H */
+diff --git a/src/rl_environment.cpp b/src/rl_environment.cpp
+index 6f513eb3d09e61dbf5a2beb009c1adcc6a0e9224..3b03a3b204c3f3b8810c4d2c89da735069328d79 100644
+--- a/src/rl_environment.cpp
++++ b/src/rl_environment.cpp
+@@ -117,6 +117,7 @@ static constexpr std::array<TemplateSpec, 8> TEMPLATE_SPECS = {{
+ }};
+ 
+ static bool scenario_active = false;
++static const TemplateSpec *bridge_spec = nullptr;
+ 
+ [[noreturn]] static void Fail(std::string_view message)
+ {
+@@ -629,14 +630,12 @@ static void RecordCommand(json &actions, std::string_view action, const CommandC
+ 	actions.push_back({{"action", action}, {"balance_after", company->money.base()}, {"cost", cost.GetCost().base()}});
+ }
+ 
+-static json RunScriptedTrajectory(const TemplateSpec &spec)
++static void ApplyScriptedBusSetup(const TemplateSpec &spec, json &actions)
+ {
+-	static constexpr uint64_t TICK_LIMIT = 65536;
+ 	static constexpr EngineID BUS_ENGINE{116};
+ 	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
+ 	Require(IsValidCargoType(passengers), "passenger cargo label is unavailable");
+ 
+-	json actions = json::array();
+ 	std::array<StationID, 2> station_ids{};
+ 	for (uint8_t index = 0; index < spec.stops.size(); ++index) {
+ 		const StopSpec &stop = spec.stops[index];
+@@ -691,6 +690,20 @@ static json RunScriptedTrajectory(const TemplateSpec &spec)
+ 	RecordCommand(actions, "start-bus", start_cost);
+ 	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
+ 	Require(!vehicle->vehstatus.Test(VehState::Stopped), "scripted bus remained stopped");
++}
++
++static json RunScriptedTrajectory(const TemplateSpec &spec)
++{
++	static constexpr uint64_t TICK_LIMIT = 65536;
++	static constexpr EngineID BUS_ENGINE{116};
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	Require(IsValidCargoType(passengers), "passenger cargo label is unavailable");
++
++	json actions = json::array();
++	ApplyScriptedBusSetup(spec, actions);
++	std::array<StationID, 2> station_ids{StationID{0}, StationID{1}};
++	VehicleID vehicle_id{0};
++	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
+ 
+ 	Company *company = Company::Get(CompanyID::Begin());
+ 	uint64_t ticks_executed = 0;
+@@ -797,6 +810,94 @@ bool IsRlEnvironmentScenarioActive()
+ 	return scenario_active;
+ }
+ 
++std::string ResetRlEnvironmentBridgeScenario(const std::string &instance_path)
++{
++	json instance = ReadCanonicalInstance(instance_path);
++	const TemplateSpec &spec = ValidateInstance(instance);
++	try {
++		scenario_active = true;
++		SetModalProgress(false);
++		Materialize(spec);
++		scenario_active = false;
++		bridge_spec = &spec;
++		return json({
++			{"scenario_sha256", spec.scenario_sha256},
++			{"seed", spec.seed},
++			{"split", spec.split},
++			{"template_id", spec.id},
++		}).dump();
++	} catch (...) {
++		scenario_active = false;
++		bridge_spec = nullptr;
++		throw;
++	}
++}
++
++std::string BuildRlEnvironmentBridgeSnapshot()
++{
++	Require(bridge_spec != nullptr, "bridge snapshot requested before reset");
++	Require(Company::GetNumItems() == 1, "bridge snapshot company count is not one");
++	Require(Vehicle::GetNumItems() <= 1, "bridge snapshot vehicle count exceeds the M03 fixture bound");
++	Company *company = Company::Get(CompanyID::Begin());
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	Require(IsValidCargoType(passengers), "passenger cargo label is unavailable");
++
++	json vehicle = nullptr;
++	if (Vehicle::GetNumItems() == 1) {
++		const Vehicle *item = Vehicle::Get(VehicleID{0});
++		Require(item->type == VEH_ROAD, "M03 fixture vehicle is not a road vehicle");
++		vehicle = {
++			{"capacity", item->cargo_cap},
++			{"cargo_stored", item->cargo.StoredCount()},
++			{"crashed", item->vehstatus.Test(VehState::Crashed)},
++			{"engine_id", item->engine_type.base()},
++			{"id", item->index.base()},
++			{"last_station_id", item->last_station_visited.base()},
++			{"order_type", to_underlying(item->current_order.GetType())},
++			{"running", !item->vehstatus.Test(VehState::Stopped)},
++			{"tile", item->tile.base()},
++		};
++	}
++
++	return json({
++		{"company", {
++			{"balance", company->money.base()},
++			{"delivered_passengers", company->cur_economy.delivered_cargo[passengers]},
++			{"expenses", company->cur_economy.expenses.base()},
++			{"id", company->index.base()},
++			{"income", company->cur_economy.income.base()},
++		}},
++		{"pools", {
++			{"cargo_packets", CargoPacket::GetNumItems()},
++			{"companies", Company::GetNumItems()},
++			{"depots", Depot::GetNumItems()},
++			{"stations", Station::GetNumItems()},
++			{"towns", Town::GetNumItems()},
++			{"vehicles", Vehicle::GetNumItems()},
++		}},
++		{"scenario", {
++			{"interactive_rng", {_interactive_random.state[0], _interactive_random.state[1]}},
++			{"scenario_sha256", bridge_spec->scenario_sha256},
++			{"seed", bridge_spec->seed},
++			{"simulation_rng", {_random.state[0], _random.state[1]}},
++			{"split", bridge_spec->split},
++			{"template_id", bridge_spec->id},
++		}},
++		{"tick", TimerGameTick::counter},
++		{"vehicle", std::move(vehicle)},
++	}).dump();
++}
++
++void ApplyRlEnvironmentBridgeScriptedBusSetup()
++{
++	Require(bridge_spec != nullptr, "bridge scripted setup requested before reset");
++	Require(Vehicle::GetNumItems() == 0 && Station::GetNumItems() == 0 && Depot::GetNumItems() == 0,
++		"bridge scripted setup may execute exactly once");
++	json actions = json::array();
++	ApplyScriptedBusSetup(*bridge_spec, actions);
++	Require(actions.size() == 8, "bridge scripted setup did not execute exactly eight commands");
++}
++
+ void RunRlEnvironmentScenario(const std::string &instance_path, const std::string &projection_path, const std::string &trajectory_path, uint32_t repetitions)
+ {
+ 	try {
+diff --git a/src/rl_environment.h b/src/rl_environment.h
+index 809c950615aa482af4279bb74ec753a9756d8477..94ad8739784ad73bb42dcce087295ad7c3ef52a0 100644
+--- a/src/rl_environment.h
++++ b/src/rl_environment.h
+@@ -15,5 +15,8 @@
+ 
+ bool IsRlEnvironmentScenarioActive();
+ void RunRlEnvironmentScenario(const std::string &instance_path, const std::string &projection_path, const std::string &trajectory_path, uint32_t repetitions);
++std::string ResetRlEnvironmentBridgeScenario(const std::string &instance_path);
++std::string BuildRlEnvironmentBridgeSnapshot();
++void ApplyRlEnvironmentBridgeScriptedBusSetup();
+ 
+ #endif /* RL_ENVIRONMENT_H */

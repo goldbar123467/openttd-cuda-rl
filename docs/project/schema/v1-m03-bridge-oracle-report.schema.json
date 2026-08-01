@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m03-bridge-oracle-report.schema.json",
+  "title": "OpenTTD-RL V1 M03 bridge oracle report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bridge_contract_compatibility_sha256",
+    "commands_sha256",
+    "executable_sha256",
+    "failure_evidence",
+    "isolation",
+    "m03_composed_source_identity_sha256",
+    "m03_result_tree",
+    "runtime_asset_identity_sha256",
+    "scheduler",
+    "schema_version",
+    "soak",
+    "status",
+    "templates"
+  ],
+  "properties": {
+    "bridge_contract_compatibility_sha256": { "$ref": "#/$defs/sha256" },
+    "commands_sha256": { "$ref": "#/$defs/sha256" },
+    "executable_sha256": { "$ref": "#/$defs/sha256" },
+    "failure_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bad_checksum", "crash", "timeout"],
+      "properties": {
+        "bad_checksum": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "fatal", "process"],
+          "properties": {
+            "code": { "const": "BAD_CHECKSUM" },
+            "fatal": { "const": true },
+            "process": { "$ref": "#/$defs/process" }
+          }
+        },
+        "crash": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["classification", "returncode", "stderr_sha256", "stdout_sha256"],
+          "properties": {
+            "classification": { "const": "crash" },
+            "returncode": { "type": "integer", "maximum": -1 },
+            "stderr_sha256": { "$ref": "#/$defs/sha256" },
+            "stdout_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "timeout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["classification", "returncode", "stderr_sha256", "stdout_sha256"],
+          "properties": {
+            "classification": { "const": "timeout" },
+            "returncode": { "type": "integer", "maximum": -1 },
+            "stderr_sha256": { "$ref": "#/$defs/sha256" },
+            "stdout_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "isolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment_count",
+        "process_count",
+        "processes",
+        "worker_a_snapshot_sha256",
+        "worker_b_snapshot_sha256"
+      ],
+      "properties": {
+        "environment_count": { "const": 2 },
+        "process_count": { "const": 2 },
+        "processes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/process" }
+        },
+        "worker_a_snapshot_sha256": { "$ref": "#/$defs/sha256" },
+        "worker_b_snapshot_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "m03_composed_source_identity_sha256": { "$ref": "#/$defs/sha256" },
+    "m03_result_tree": { "$ref": "#/$defs/git_tree" },
+    "runtime_asset_identity_sha256": { "$ref": "#/$defs/sha256" },
+    "scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_intervals",
+        "final_tick",
+        "maximum_interval",
+        "minimum_interval",
+        "process",
+        "rejected_action_ids",
+        "rejected_intervals"
+      ],
+      "properties": {
+        "accepted_intervals": { "const": [1, 64, 128] },
+        "final_tick": { "const": 193 },
+        "maximum_interval": { "const": 128 },
+        "minimum_interval": { "const": 1 },
+        "process": { "$ref": "#/$defs/process" },
+        "rejected_action_ids": { "const": [4294967297] },
+        "rejected_intervals": { "const": [0, 129, 4294967297] }
+      }
+    },
+    "schema_version": { "const": "openttd-rl-v1-m03-bridge-oracle-report-1" },
+    "soak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_count", "final_snapshot_sha256", "final_tick", "process", "truncation_reason"],
+      "properties": {
+        "action_count": { "const": 512 },
+        "final_snapshot_sha256": { "$ref": "#/$defs/sha256" },
+        "final_tick": { "const": 65536 },
+        "process": { "$ref": "#/$defs/process" },
+        "truncation_reason": { "const": "action-horizon" }
+      }
+    },
+    "status": { "const": "PASS" },
+    "templates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bridge_disabled_projection_sha256",
+          "bridge_disabled_trajectory_report_sha256",
+          "delivery_transition",
+          "initial_snapshot_sha256",
+          "scenario_sha256",
+          "split",
+          "template_id",
+          "trace_sha256"
+        ],
+        "properties": {
+          "bridge_disabled_projection_sha256": { "$ref": "#/$defs/sha256" },
+          "bridge_disabled_trajectory_report_sha256": { "$ref": "#/$defs/sha256" },
+          "delivery_transition": { "type": "integer", "minimum": 1, "maximum": 512 },
+          "initial_snapshot_sha256": { "$ref": "#/$defs/sha256" },
+          "scenario_sha256": { "$ref": "#/$defs/sha256" },
+          "split": { "enum": ["training", "development", "final-evaluation"] },
+          "template_id": { "type": "string", "pattern": "^m02-template-0[1-8]$" },
+          "trace_sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "git_tree": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "returncode", "stderr_sha256", "stdout", "stdout_sha256"],
+      "properties": {
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "returncode": { "const": 0 },
+        "stderr_sha256": { "$ref": "#/$defs/sha256" },
+        "stdout": { "type": "string", "pattern": "^M03_BRIDGE=CLOSED " },
+        "stdout_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

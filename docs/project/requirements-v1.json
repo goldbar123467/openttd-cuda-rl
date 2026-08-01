@@ -738,14 +738,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 passes with two byte-identical all-template native campaigns; see the M03 contract and G03 gate report."
     },
     {
       "id": "LIFE-002",
@@ -758,14 +766,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 passes with two interleaved isolated worker processes and repeated all-template native campaigns."
     },
     {
       "id": "LIFE-003",
@@ -806,14 +822,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 proves synchronized snapshot extraction only at complete StateGameLoop boundaries without tick, command, or RNG perturbation."
     },
     {
       "id": "LIFE-005",
@@ -824,8 +848,8 @@
       "source_sections": [
         "full:core-platform-requirements"
       ],
-      "milestone": "M03",
-      "gate": "G03",
+      "milestone": "M05",
+      "gate": "G05",
       "status": "NOT_STARTED",
       "implementation": [],
       "test_ids": [
@@ -833,7 +857,7 @@
       ],
       "evidence": [],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "The M03 fixture legal-action list proves boundary synchronization but is explicitly not the M05 policy action-mask contract; acceptance remains pending for G05."
     },
     {
       "id": "LIFE-006",
@@ -846,14 +870,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 proves at-most-once fixture action application through normal typed OpenTTD command operations."
     },
     {
       "id": "LIFE-007",
@@ -866,14 +898,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 accepts and records 1-through-128-tick intervals, proves exact 1/64/128 advances, and rejects out-of-range values without mutation."
     },
     {
       "id": "LIFE-008",
@@ -1246,14 +1286,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 uses a source-integrated framed pipe protocol and normal engine commands with no screen scraping, simulated input, or menu navigation."
     },
     {
       "id": "STACK-010",
@@ -3182,14 +3230,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 proves one environment per worker and a coordinator-controlled two-worker multi-environment mode."
     },
     {
       "id": "RUN-002",
@@ -3202,14 +3258,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 records each configured 1-through-128-tick interval and proves exact cumulative engine counters."
     },
     {
       "id": "RUN-003",
@@ -3222,14 +3286,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 proves typed reset, pause, resume, same-process reset, invalid-state rejection, and clean close."
     },
     {
       "id": "RUN-004",
@@ -3240,16 +3312,23 @@
       "source_sections": [
         "full:headless-training-runtime"
       ],
-      "milestone": "M03",
-      "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "config/v1/m02-seed-ledger.json",
+        "scripts/v1/run_m02_reset_oracle.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G02 freezes disjoint seed sets, canonical seeded instances, and repeated clean/same-process native reset evidence."
     },
     {
       "id": "RUN-005",
@@ -3262,14 +3341,21 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 classifies an actually killed worker, a monotonic response timeout, and a fatal checksum failure while retaining process artifacts."
     },
     {
       "id": "RUN-006",
@@ -3362,14 +3448,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "docs/project/schema/v1-m03-bridge-contract.schema.json",
+        "scripts/v1/m03_bridge_protocol.py",
+        "scripts/v1/run_m03_bridge.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 freezes protocol 1.0, bridge compatibility, strict framing, handles, ordering, lifecycle, and synchronization rules."
     },
     {
       "id": "MON-001",
@@ -4121,14 +4215,22 @@
       ],
       "milestone": "M03",
       "gate": "G03",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m03-bridge-contract.json",
+        "integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch",
+        "scripts/v1/run_m03_bridge.py",
+        "tests/project/traceability/test_v1_m03_bridge_protocol.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M03-BRIDGE"
+      ],
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+      "reviewer_note": "G03 proves exact configurable tick advances, synchronized tokens, repeated traces, stale-state rejection, and a 65,536-tick soak."
     },
     {
       "id": "TEST-006",
@@ -4878,12 +4980,7 @@
       "summary": "Planned requirement verification suite for LIFE requirements.",
       "runner": null,
       "requirement_ids": [
-        "LIFE-001",
-        "LIFE-002",
-        "LIFE-004",
         "LIFE-005",
-        "LIFE-006",
-        "LIFE-007",
         "LIFE-008",
         "LIFE-009",
         "LIFE-010",
@@ -4913,7 +5010,6 @@
         "STACK-006",
         "STACK-007",
         "STACK-008",
-        "STACK-009",
         "STACK-010",
         "STACK-011"
       ],
@@ -5085,16 +5181,10 @@
       "summary": "Planned requirement verification suite for RUN requirements.",
       "runner": null,
       "requirement_ids": [
-        "RUN-001",
-        "RUN-002",
-        "RUN-003",
-        "RUN-004",
-        "RUN-005",
         "RUN-006",
         "RUN-007",
         "RUN-008",
-        "RUN-009",
-        "RUN-010"
+        "RUN-009"
       ],
       "status": "PLANNED",
       "evidence": [],
@@ -5173,7 +5263,6 @@
         "TEST-002",
         "TEST-003",
         "TEST-004",
-        "TEST-005",
         "TEST-006",
         "TEST-007",
         "TEST-008",
@@ -5282,6 +5371,7 @@
         "SCOPE-016",
         "SCOPE-017",
         "LIFE-003",
+        "RUN-004",
         "TEST-001"
       ],
       "status": "PASS",
@@ -5291,6 +5381,32 @@
       ],
       "mandatory": true,
       "reviewer_note": "Two complete offline current-Ubuntu oracle campaigns are byte-identical; all focused mutation tests, 96 upstream unit cases, and two native regressions pass."
+    },
+    {
+      "id": "V1-TEST-M03-BRIDGE",
+      "summary": "Verify the frozen M03 framing, lifecycle, process isolation, configurable tick scheduler, native command path, failure handling, soak, and non-perturbation contract.",
+      "runner": "scripts/v1/run_m03_bridge.py",
+      "requirement_ids": [
+        "LIFE-001",
+        "LIFE-002",
+        "LIFE-004",
+        "LIFE-006",
+        "LIFE-007",
+        "STACK-009",
+        "RUN-001",
+        "RUN-002",
+        "RUN-003",
+        "RUN-005",
+        "RUN-010",
+        "TEST-005"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
+        "docs/project/G03_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "Two complete current-Ubuntu campaigns are byte-identical; 98 native CTest entries and the focused M03 repository suite pass."
     }
   ],
   "aggregate_dependencies": [

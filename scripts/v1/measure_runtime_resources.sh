@@ -6,7 +6,7 @@ if [ "$#" -ne 6 ] || [ "$1" != "--artifact-root" ] || [ "$3" != "--headless-root
     exit 2
 fi
 
-repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+repository_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 exec python3 "$repository_root/scripts/v1/measure_runtime_resources.py" \
     --artifact-root "$2" \
     --headless-root "$4" \
