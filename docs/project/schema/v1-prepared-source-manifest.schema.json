@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-prepared-source-manifest.schema.json",
+  "title": "OpenTTD RL V1 prepared source manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_sha256",
+    "profile_id",
+    "profile_sha256",
+    "source",
+    "patch_series",
+    "result",
+    "object_repository_guard",
+    "tools",
+    "preparation_identity_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "openttd-rl-v1-prepared-source-manifest-1"
+    },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "profile_sha256": { "$ref": "#/$defs/sha256" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "release", "commit", "tree", "cxx_standard", "license"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "release": { "type": "string" },
+        "commit": { "$ref": "#/$defs/git_oid" },
+        "tree": { "$ref": "#/$defs/git_oid" },
+        "cxx_standard": { "type": "integer", "minimum": 17 },
+        "license": { "type": "string", "minLength": 1 }
+      }
+    },
+    "patch_series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["series_file", "series_sha256", "patches"],
+      "properties": {
+        "series_file": { "$ref": "#/$defs/relative_path" },
+        "series_sha256": { "$ref": "#/$defs/sha256" },
+        "patches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["order", "path", "sha256"],
+            "properties": {
+              "order": { "type": "integer", "minimum": 1 },
+              "path": { "$ref": "#/$defs/relative_path" },
+              "sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tree", "patch_count", "worktree_status"],
+      "properties": {
+        "tree": { "$ref": "#/$defs/git_oid" },
+        "patch_count": { "type": "integer", "minimum": 0 },
+        "worktree_status": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "object_repository_guard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["head_before", "head_after", "status_before", "status_after", "origin"],
+      "properties": {
+        "head_before": { "$ref": "#/$defs/git_oid" },
+        "head_after": { "$ref": "#/$defs/git_oid" },
+        "status_before": { "type": "array", "maxItems": 0 },
+        "status_after": { "type": "array", "maxItems": 0 },
+        "origin": { "type": "string", "format": "uri" }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git"],
+      "properties": {
+        "git": { "type": "string", "minLength": 1 }
+      }
+    },
+    "preparation_identity_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "git_oid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9._/-]+$"
+    }
+  }
+}

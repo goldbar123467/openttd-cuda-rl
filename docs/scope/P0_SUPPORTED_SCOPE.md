@@ -1,5 +1,8 @@
 # P0 Supported Scope
 
+> **Legacy scope notice (2026-07-31):** This scope is preserved for historical P0
+> verification. It is not the active project scope; see `GOAL.md`.
+
 ## Purpose
 
 P0 builds the deterministic OpenTTD oracle and the independent host-side parity

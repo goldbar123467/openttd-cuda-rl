@@ -24,7 +24,8 @@ isolated Git worktrees, synthetic CMake/CTest projects, deterministic local
 archives, and fake OpenTTD executables. No mandatory ID is skipped. A missing
 required local tool or repository material is a test failure.
 
-The default work root is a fresh directory below /workspace. --work-root must
+The default work root is a fresh directory below the system temporary directory.
+--work-root must
 name a non-existing or empty directory outside the repository and submodule.
 The tools Python must be the hash-locked P0 environment containing jsonschema
 and rfc8785; create it from tools/requirements-p0.txt before this offline test.
@@ -75,7 +76,7 @@ if [[ -n "${SCHEDULE_SEED}" && ! "${SCHEDULE_SEED}" =~ ^-?[0-9]+$ ]]; then
 fi
 
 if [[ -z "${WORK_ROOT}" ]]; then
-    WORK_ROOT=$(mktemp -d -- /workspace/p001-contract-tests.XXXXXXXX)
+    WORK_ROOT=$(mktemp -d -- "${TMPDIR:-/tmp}/p001-contract-tests.XXXXXXXX")
     CREATED_WORK_ROOT=1
 else
     [[ "${WORK_ROOT}" == /* ]] || { printf 'ERROR: --work-root must be absolute\n' >&2; exit 64; }

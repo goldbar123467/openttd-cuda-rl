@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v1-m02-scenario-instance.schema.json",
+  "title": "OpenTTD RL V1 M02 generated scenario configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_id",
+    "contract_compatibility_sha256",
+    "corpus_sha256",
+    "seed_ledger_sha256",
+    "template_id",
+    "split",
+    "seed",
+    "engine",
+    "content",
+    "template",
+    "generation",
+    "identity"
+  ],
+  "properties": {
+    "schema_version": { "const": "openttd-rl-v1-m02-scenario-instance-1" },
+    "contract_id": { "const": "m02-passenger-bus-scenario-v1" },
+    "contract_compatibility_sha256": { "$ref": "#/$defs/sha256" },
+    "corpus_sha256": { "$ref": "#/$defs/sha256" },
+    "seed_ledger_sha256": { "$ref": "#/$defs/sha256" },
+    "template_id": { "type": "string", "pattern": "^m02-template-0[1-8]$" },
+    "split": {
+      "type": "string",
+      "enum": ["training", "development", "final-evaluation"]
+    },
+    "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "engine": { "type": "object" },
+    "content": { "type": "object" },
+    "template": { "type": "object" },
+    "generation": {
+      "const": {
+        "implicit_retry_count": 0,
+        "mode": "fixed-template",
+        "rejection_policy": "record-and-fail"
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "scenario_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "algorithm": { "const": "sha256-canonical-json-v1" },
+        "scenario_sha256": { "$ref": "#/$defs/sha256" },
+        "schema_path": {
+          "const": "docs/project/schema/v1-m02-scenario-instance.schema.json"
+        },
+        "schema_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

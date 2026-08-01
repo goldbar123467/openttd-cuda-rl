@@ -1,0 +1,1068 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 16215e7f8d867de5bcd74b9c032a10e3c7f64299..688a9196e607675dded1ef989e04aebc35e1722d 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -45,6 +45,12 @@ add_files(
+     CONDITION PNG_FOUND
+ )
+ 
++add_files(
++    rl_environment.cpp
++    rl_environment.h
++    CONDITION OPTION_RL_ENVIRONMENT
++)
++
+ add_files(
+     soundloader_opus.cpp
+     CONDITION OpusFile_FOUND
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index 243c8ac0ac134a3007c5199c858b9c4c4df04471..a63ec7db13d0ad5bb90a7ed7b267624019bc6d42 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -82,6 +82,10 @@
+ #include "social_integration.h"
+ #include "core/string_consumer.hpp"
+ 
++#ifdef WITH_RL_ENVIRONMENT
++#	include "rl_environment.h"
++#endif
++
+ #include "linkgraph/linkgraphschedule.h"
+ 
+ #include <system_error>
+@@ -188,6 +192,12 @@ static void ShowHelp()
+ 		"  -q savegame         = Write some information about the savegame and exit\n"
+ 		"  -Q                  = Don't scan for/load NewGRF files on startup\n"
+ 		"  -QQ                 = Disable NewGRF scanning/loading entirely\n"
++#ifdef WITH_RL_ENVIRONMENT
++		"  -Z scenario_file    = Reset the deterministic M02 scenario from a canonical instance\n"
++		"  -Y output_file      = Write the deterministic M02 reset projection report\n"
++		"  -T output_file      = Execute and write the deterministic M02 scripted bus trajectory\n"
++		"  -R count            = Repeat the M02 reset in-process (1..16, default 1)\n"
++#endif
+ 		"\n";
+ 
+ 	/* List the graphics packs */
+@@ -383,6 +393,12 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string connection_string;              ///< Information about the server to connect to
+ 	std::string join_server_password;           ///< The password to join the server with.
+ 	bool save_config = true;                    ///< The save config setting.
++#ifdef WITH_RL_ENVIRONMENT
++	std::string rl_scenario_instance;           ///< Canonical M02 scenario instance to materialize.
++	std::string rl_projection_output;           ///< Destination for the semantic reset projection.
++	std::string rl_trajectory_output;           ///< Optional destination for the scripted bus trajectory.
++	uint32_t rl_reset_repetitions = 1;          ///< Number of resets in this process.
++#endif
+ 
+ 	/**
+ 	 * Create a new callback.
+@@ -438,6 +454,19 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		InitializeGUI();
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
++#ifdef WITH_RL_ENVIRONMENT
++		if (!rl_scenario_instance.empty()) {
++			if (rl_projection_output.empty()) UserError("RL scenario mode requires -Y <projection-output>");
++			try {
++				RunRlEnvironmentScenario(rl_scenario_instance, rl_projection_output, rl_trajectory_output, rl_reset_repetitions);
++			} catch (const std::exception &e) {
++				UserError("{}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		}
++#endif
++
+ 		/* Make sure _settings is filled with _settings_newgame if we switch to a game directly */
+ 		if (_switch_mode != SM_NONE) MakeNewgameSettingsLive();
+ 
+@@ -482,7 +511,11 @@ static std::vector<OptionData> CreateOptions()
+ {
+ 	std::vector<OptionData> options;
+ 	/* Options that require a parameter. */
+-	for (char c : "GIMSbcmnpqrstv") options.push_back({ .type = ODF_HAS_VALUE, .id = c, .shortname = c });
++	for (char c : "GIMSbcmnpqrstv"
++#ifdef WITH_RL_ENVIRONMENT
++			"RTYZ"
++#endif
++		) options.push_back({ .type = ODF_HAS_VALUE, .id = c, .shortname = c });
+ 
+ 	/* Options with an optional parameter. */
+ 	for (char c : "Ddg") options.push_back({ .type = ODF_OPTIONAL_VALUE, .id = c, .shortname = c });
+@@ -646,6 +679,19 @@ int openttd_main(std::span<std::string_view> arguments)
+ 			}
+ 			break;
+ 		case 'c': _config_file = mgo.opt; break;
++#ifdef WITH_RL_ENVIRONMENT
++		case 'R':
++			if (auto value = ParseInteger(mgo.opt); value.has_value() && *value >= 1 && *value <= 16) {
++				scanner->rl_reset_repetitions = *value;
++			} else {
++				fmt::print(stderr, "Invalid RL reset repetition count: {} (expected 1..16)\n", mgo.opt);
++				return 1;
++			}
++			break;
++		case 'T': scanner->rl_trajectory_output = mgo.opt; break;
++		case 'Y': scanner->rl_projection_output = mgo.opt; break;
++		case 'Z': scanner->rl_scenario_instance = mgo.opt; break;
++#endif
+ 		case 'x': scanner->save_config = false; break;
+ 		case 'X': only_local_path = true; break;
+ 		case 'h': break; // handled below
+@@ -671,6 +717,21 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		return 1;
+ 	}
+ 
++#ifdef WITH_RL_ENVIRONMENT
++	if (scanner->rl_scenario_instance.empty() != scanner->rl_projection_output.empty()) {
++		fmt::print(stderr, "RL scenario mode requires both -Z <scenario-instance> and -Y <projection-output>\n");
++		return 1;
++	}
++	if (scanner->rl_scenario_instance.empty() && scanner->rl_reset_repetitions != 1) {
++		fmt::print(stderr, "-R requires RL scenario mode (-Z and -Y)\n");
++		return 1;
++	}
++	if (scanner->rl_scenario_instance.empty() && !scanner->rl_trajectory_output.empty()) {
++		fmt::print(stderr, "-T requires RL scenario mode (-Z and -Y)\n");
++		return 1;
++	}
++#endif
++
+ 	DeterminePaths(arguments[0], only_local_path);
+ 	TarScanner::DoScan(TarScanner::Mode::Baseset);
+ 
+diff --git a/src/rl_environment.cpp b/src/rl_environment.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..6f513eb3d09e61dbf5a2beb009c1adcc6a0e9224
+--- /dev/null
++++ b/src/rl_environment.cpp
+@@ -0,0 +1,850 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_environment.cpp Deterministic M02 scenario reset support. */
++
++#include "stdafx.h"
++
++#include "rl_environment.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "ai/ai_config.hpp"
++#include "base_media_graphics.h"
++#include "cargopacket.h"
++#include "cargotype.h"
++#include "command_func.h"
++#include "company_base.h"
++#include "core/backup_type.hpp"
++#include "core/random_func.hpp"
++#include "depot_base.h"
++#include "economy_func.h"
++#include "error_func.h"
++#include "game/game.hpp"
++#include "game/game_config.hpp"
++#include "genworld.h"
++#include "group.h"
++#include "house.h"
++#include "industry.h"
++#include "map_func.h"
++#include "newgrf.h"
++#include "newgrf_roadstop.h"
++#include "network/network.h"
++#include "network/network_type.h"
++#include "object_base.h"
++#include "openttd.h"
++#include "order_base.h"
++#include "order_cmd.h"
++#include "progress.h"
++#include "road_cmd.h"
++#include "road_map.h"
++#include "settings_type.h"
++#include "signs_base.h"
++#include "station_base.h"
++#include "station_cmd.h"
++#include "station_map.h"
++#include "subsidy_base.h"
++#include "tile_map.h"
++#include "timer/timer_game_calendar.h"
++#include "timer/timer_game_economy.h"
++#include "timer/timer_game_tick.h"
++#include "town.h"
++#include "town_cmd.h"
++#include "vehicle_base.h"
++#include "vehicle_cmd.h"
++
++#include <filesystem>
++#include <fstream>
++#include <map>
++#include <stdexcept>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = CompanyID::Invalid());
++extern void MakeNewgameSettingsLive();
++
++namespace {
++
++static constexpr std::string_view CONTRACT_ID = "m02-passenger-bus-scenario-v1";
++static constexpr std::string_view CONTRACT_SHA256 = "45ec1b3beb4d6d50696bf1de75094e1817c6aa7ef8e0d38fc6696999764e5b0f";
++static constexpr std::string_view CORPUS_SHA256 = "07898d94a56fd080c9cea57dbdf90384e1f0f269e360fb35423de16bc89d2e14";
++static constexpr std::string_view LEDGER_SHA256 = "fcfdb820abb6db783df412d6496f68ce41bfd3def630ced637fe1d00dbbcd8ed";
++static constexpr std::string_view INSTANCE_SCHEMA_SHA256 = "f536eb698cef1f4c3ac12dbe9736cbf1b51c353ce09fe50c78538a94be944701";
++
++struct Point {
++	uint8_t x;
++	uint8_t y;
++};
++
++struct TownSpec {
++	std::string_view name;
++	Point point;
++};
++
++struct StopSpec {
++	uint8_t town_id;
++	std::string_view approach;
++	Point point;
++};
++
++struct TemplateSpec {
++	std::string_view id;
++	std::string_view split;
++	uint32_t seed;
++	std::string_view scenario_sha256;
++	std::array<TownSpec, 2> towns;
++	std::array<Point, 3> waypoints;
++	uint8_t waypoint_count;
++	std::array<StopSpec, 2> stops;
++	std::string_view depot_entrance;
++	Point depot;
++};
++
++static constexpr std::array<TemplateSpec, 8> TEMPLATE_SPECS = {{
++	{"m02-template-01", "training", 1291976705U, "ab38d1a1115c0f86de43c53a9b360bb6432fe8bf3e3d7d03d5dbe3ab59693d26", {{{"M02 A1", {6, 8}}, {"M02 A2", {25, 8}}}}, {{{6, 10}, {25, 10}, {0, 0}}}, 2, {{{0, "east", {8, 10}}, {1, "west", {23, 10}}}}, "north", {15, 11}},
++	{"m02-template-02", "training", 1291976706U, "13b3feacd7ad108eeba4c27219512e0ca72c7b2b7a19a7d734e2b44d3e261698", {{{"M02 B1", {6, 23}}, {"M02 B2", {25, 23}}}}, {{{6, 21}, {25, 21}, {0, 0}}}, 2, {{{0, "east", {8, 21}}, {1, "west", {23, 21}}}}, "south", {15, 20}},
++	{"m02-template-03", "training", 1291976707U, "f91d2bee8ff52b220e8536fc1840ec7fd4ae35f0994c0bb83d3c876958b2398c", {{{"M02 C1", {8, 6}}, {"M02 C2", {8, 25}}}}, {{{10, 6}, {10, 25}, {0, 0}}}, 2, {{{0, "south", {10, 8}}, {1, "north", {10, 23}}}}, "west", {11, 15}},
++	{"m02-template-04", "training", 1291976708U, "c55e8987d75c62af91a2d48fde7aec9524e0a6c23ba718b9bc3acfa2440f4b47", {{{"M02 D1", {23, 6}}, {"M02 D2", {23, 25}}}}, {{{21, 6}, {21, 25}, {0, 0}}}, 2, {{{0, "south", {21, 8}}, {1, "north", {21, 23}}}}, "east", {20, 15}},
++	{"m02-template-05", "development", 1292029953U, "63b678e4f54c34f6e83ce4d89602d03d5ea74aec36f21cf62f8869e00cdd5795", {{{"M02 E1", {8, 8}}, {"M02 E2", {20, 20}}}}, {{{8, 10}, {20, 10}, {20, 18}}}, 3, {{{0, "east", {9, 10}}, {1, "south", {20, 18}}}}, "north", {14, 11}},
++	{"m02-template-06", "development", 1292029954U, "e33f83bf36275466a65e7824a89c2938492c8fde7f1d13c1573ed61d7628cbcb", {{{"M02 F1", {20, 8}}, {"M02 F2", {8, 20}}}}, {{{20, 10}, {8, 10}, {8, 18}}}, 3, {{{0, "west", {19, 10}}, {1, "south", {8, 18}}}}, "north", {14, 11}},
++	{"m02-template-07", "final-evaluation", 1292034049U, "d3b7b254e602164407c66181b78086358d645d1bbf0884c6a740ff402814d141", {{{"M02 G1", {6, 14}}, {"M02 G2", {26, 14}}}}, {{{6, 16}, {26, 16}, {0, 0}}}, 2, {{{0, "east", {8, 16}}, {1, "west", {24, 16}}}}, "north", {16, 17}},
++	{"m02-template-08", "final-evaluation", 1292034050U, "8577bacf18df6b86c19fc9f6218ef39d4a3f1f5a7f9ffe7133373d085b87e99b", {{{"M02 H1", {14, 6}}, {"M02 H2", {14, 26}}}}, {{{16, 6}, {16, 26}, {0, 0}}}, 2, {{{0, "south", {16, 8}}, {1, "north", {16, 24}}}}, "west", {17, 16}},
++}};
++
++static bool scenario_active = false;
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M02 scenario reset: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++static json ReadCanonicalInstance(const std::string &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	if (!input) Fail(fmt::format("cannot open scenario instance '{}'", path));
++	std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
++	if (bytes.empty()) Fail("scenario instance is empty");
++	if (bytes.back() != '\n') Fail("scenario instance must end with one LF");
++	bytes.pop_back();
++	if (bytes.empty() || bytes.back() == '\n' || bytes.back() == '\r') Fail("scenario instance has non-canonical trailing whitespace");
++
++	json instance;
++	try {
++		instance = json::parse(bytes);
++	} catch (const json::exception &e) {
++		Fail(fmt::format("invalid scenario JSON: {}", e.what()));
++	}
++	Require(instance.dump() == bytes, "scenario instance is not canonical compact JSON followed by LF");
++	return instance;
++}
++
++static const TemplateSpec &FindTemplate(std::string_view id)
++{
++	auto it = std::ranges::find(TEMPLATE_SPECS, id, &TemplateSpec::id);
++	if (it == TEMPLATE_SPECS.end()) Fail(fmt::format("unknown template_id '{}'", id));
++	return *it;
++}
++
++static json ExpectedTemplate(const TemplateSpec &spec)
++{
++	json towns = json::array();
++	for (uint8_t i = 0; i < spec.towns.size(); ++i) {
++		const TownSpec &town = spec.towns[i];
++		towns.push_back({{"name", town.name}, {"size", "small"}, {"town_id", i}, {"x", town.point.x}, {"y", town.point.y}});
++	}
++
++	json waypoints = json::array();
++	for (uint8_t i = 0; i < spec.waypoint_count; ++i) waypoints.push_back({{"x", spec.waypoints[i].x}, {"y", spec.waypoints[i].y}});
++
++	json stops = json::array();
++	for (const StopSpec &stop : spec.stops) {
++		stops.push_back({{"approach", stop.approach}, {"town_id", stop.town_id}, {"x", stop.point.x}, {"y", stop.point.y}});
++	}
++
++	return {
++		{"bus_stops", std::move(stops)},
++		{"road_depot", {{"entrance", spec.depot_entrance}, {"x", spec.depot.x}, {"y", spec.depot.y}}},
++		{"road_waypoints", std::move(waypoints)},
++		{"seed", spec.seed},
++		{"split", spec.split},
++		{"template_id", spec.id},
++		{"towns", std::move(towns)},
++	};
++}
++
++static const TemplateSpec &ValidateInstance(const json &instance)
++{
++	Require(instance.is_object() && instance.size() == 13, "scenario instance must contain exactly 13 top-level fields");
++	Require(instance.at("schema_version") == "openttd-rl-v1-m02-scenario-instance-1", "unsupported scenario schema_version");
++	Require(instance.at("contract_id") == CONTRACT_ID, "contract_id mismatch");
++	Require(instance.at("contract_compatibility_sha256") == CONTRACT_SHA256, "contract compatibility identity mismatch");
++	Require(instance.at("corpus_sha256") == CORPUS_SHA256, "corpus identity mismatch");
++	Require(instance.at("seed_ledger_sha256") == LEDGER_SHA256, "seed ledger identity mismatch");
++	Require(instance.at("generation") == json({{"implicit_retry_count", 0}, {"mode", "fixed-template"}, {"rejection_policy", "record-and-fail"}}), "generation policy mismatch");
++	Require(instance.at("engine") == json({
++		{"build_option", "OPTION_RL_ENVIRONMENT=ON"},
++		{"composed_source_identity_sha256", "2140e34ccee8534dbf712487acd2225eda4b66d1c807b9e0ce07243ba40afdbd"},
++		{"map_profile", "rl-32x32-v1"},
++		{"openttd_version", "15.3"},
++		{"prepared_tree", "eba8f4bd3c37042c184d968d2f038864184e3132"},
++		{"source_commit", "14ec60f248547d4d062a1160f0fc26d742319888"},
++	}), "engine identity mismatch");
++	Require(instance.at("content") == json({
++		{"ai_scripts", json::array()},
++		{"base_graphics", {{"installed_name", "opengfx-8.0.tar"}, {"name", "OpenGFX"}, {"sha256", "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c"}, {"version", "8.0"}}},
++		{"game_script", nullptr},
++		{"multiplayer", false},
++		{"networking", false},
++		{"newgrfs", json::array()},
++	}), "content identity mismatch");
++
++	const std::string template_id = instance.at("template_id").get<std::string>();
++	const TemplateSpec &spec = FindTemplate(template_id);
++	Require(instance.at("split") == spec.split, "template split mismatch");
++	Require(instance.at("seed") == spec.seed, "template seed mismatch");
++	Require(instance.at("template") == ExpectedTemplate(spec), "template geometry mismatch");
++	Require(instance.at("identity") == json({
++		{"algorithm", "sha256-canonical-json-v1"},
++		{"scenario_sha256", spec.scenario_sha256},
++		{"schema_path", "docs/project/schema/v1-m02-scenario-instance.schema.json"},
++		{"schema_sha256", INSTANCE_SCHEMA_SHA256},
++	}), "scenario instance identity mismatch");
++	return spec;
++}
++
++static void ConfigureSettings(uint32_t seed)
++{
++	_settings_newgame.game_creation.generation_seed = seed;
++	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{1950};
++	_settings_newgame.game_creation.map_x = 5;
++	_settings_newgame.game_creation.map_y = 5;
++	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.se_flat_world_height = 1;
++	_settings_newgame.game_creation.water_borders = {};
++	_settings_newgame.construction.freeform_edges = true;
++	_settings_newgame.construction.road_stop_on_town_road = true;
++
++	_settings_newgame.difficulty.max_no_competitors = 0;
++	_settings_newgame.difficulty.industry_density = 0;
++	_settings_newgame.difficulty.max_loan = 300000;
++	_settings_newgame.difficulty.initial_interest = 2;
++	_settings_newgame.difficulty.vehicle_costs = 0;
++	_settings_newgame.difficulty.vehicle_breakdowns = 0;
++	_settings_newgame.difficulty.subsidy_duration = 0;
++	_settings_newgame.difficulty.construction_cost = 0;
++	_settings_newgame.difficulty.economy = false;
++	_settings_newgame.difficulty.disasters = false;
++	_settings_newgame.difficulty.infinite_money = false;
++
++	_settings_newgame.economy.inflation = false;
++	_settings_newgame.economy.type = ET_SMOOTH;
++	_settings_newgame.economy.town_growth_rate = 0;
++	_settings_newgame.economy.town_layout = TL_ORIGINAL;
++	_settings_newgame.economy.town_cargogen_mode = static_cast<TownCargoGenMode>(1);
++	_settings_newgame.economy.allow_town_roads = false;
++	_settings_newgame.economy.found_town = TF_CUSTOM_LAYOUT;
++	_settings_newgame.economy.timekeeping_units = TKU_CALENDAR;
++	_settings_newgame.economy.town_cargo_scale = 100;
++
++	_settings_newgame.linkgraph.distribution_pax = static_cast<DistributionType>(0);
++	_settings_newgame.order.gradual_loading = true;
++	_settings_newgame.order.no_servicing_if_no_breakdowns = true;
++	_settings_newgame.station.modified_catchment = true;
++	_settings_newgame.station.station_spread = 4;
++	_settings_newgame.vehicle.max_aircraft = 0;
++	_settings_newgame.vehicle.max_roadveh = 8;
++	_settings_newgame.vehicle.max_ships = 0;
++	_settings_newgame.vehicle.max_trains = 0;
++	_settings_newgame.vehicle.never_expire_vehicles = true;
++	_settings_newgame.vehicle.road_side = 1;
++	_settings_newgame.vehicle.roadveh_acceleration_model = 1;
++
++	for (CompanyID id = CompanyID::Begin(); id < MAX_COMPANIES; ++id) _settings_newgame.script_config.ai[id].reset();
++	_settings_newgame.script_config.game.reset();
++	MakeNewgameSettingsLive();
++}
++
++static DiagDirection DirectionBetween(Point from, Point to)
++{
++	if (from.x + 1 == to.x && from.y == to.y) return DIAGDIR_SW;
++	if (from.x == to.x + 1 && from.y == to.y) return DIAGDIR_NE;
++	if (from.y + 1 == to.y && from.x == to.x) return DIAGDIR_SE;
++	if (from.y == to.y + 1 && from.x == to.x) return DIAGDIR_NW;
++	Fail("road waypoint expansion produced non-adjacent tiles");
++}
++
++static void AddRoadConnection(std::map<uint16_t, RoadBits> &road_bits, Point from, Point to)
++{
++	DiagDirection direction = DirectionBetween(from, to);
++	uint16_t from_index = TileXY(from.x, from.y).base();
++	uint16_t to_index = TileXY(to.x, to.y).base();
++	road_bits[from_index] |= DiagDirToRoadBits(direction);
++	road_bits[to_index] |= DiagDirToRoadBits(ReverseDiagDir(direction));
++}
++
++static void BuildRoadRoute(const TemplateSpec &spec)
++{
++	std::map<uint16_t, RoadBits> road_bits;
++	for (uint8_t segment = 1; segment < spec.waypoint_count; ++segment) {
++		Point current = spec.waypoints[segment - 1];
++		const Point end = spec.waypoints[segment];
++		while (current.x != end.x || current.y != end.y) {
++			Point next = current;
++			if (next.x < end.x) ++next.x;
++			else if (next.x > end.x) --next.x;
++			else if (next.y < end.y) ++next.y;
++			else --next.y;
++			AddRoadConnection(road_bits, current, next);
++			current = next;
++		}
++	}
++
++	AutoRestoreBackup company(_current_company, OWNER_DEITY);
++	for (const auto &[tile_index, bits] : road_bits) {
++		CommandCost result = Command<CMD_BUILD_ROAD>::Do(DoCommandFlag::Execute, TileIndex{tile_index}, bits, ROADTYPE_ROAD, DRD_NONE, TownID::Invalid());
++		if (result.Failed()) Fail(fmt::format("failed to build route road at tile {}", tile_index));
++	}
++}
++
++static void BuildTowns(const TemplateSpec &spec)
++{
++	AutoRestoreBackup company(_current_company, OWNER_DEITY);
++	for (uint8_t i = 0; i < spec.towns.size(); ++i) {
++		const TownSpec &town_spec = spec.towns[i];
++		auto [cost, required_money, town_id] = Command<CMD_FOUND_TOWN>::Do(DoCommandFlag::Execute, TileXY(town_spec.point.x, town_spec.point.y), TSZ_SMALL, false, TL_ORIGINAL, false, 0, std::string(town_spec.name));
++		(void)required_money;
++		if (cost.Failed() || town_id != TownID{i}) Fail(fmt::format("failed to found town {} at ({}, {})", town_spec.name, town_spec.point.x, town_spec.point.y));
++	}
++
++	for (Town *town : Town::Iterate()) {
++		uint attempts = 0;
++		while (town->cache.population < 250 && attempts++ < 4096) {
++			CommandCost result = Command<CMD_EXPAND_TOWN>::Do(DoCommandFlag::Execute, town->index, 1, TownExpandModes{TownExpandMode::Buildings, TownExpandMode::Roads});
++			if (result.Failed()) Fail(fmt::format("failed to expand town {}", town->index.base()));
++		}
++		Require(town->cache.population >= 250 && town->cache.population <= 800, fmt::format("town {} population {} is outside 250..800 after {} expansion attempts", town->index.base(), town->cache.population, attempts));
++		town->flags.Reset(TownFlag::IsGrowing);
++		town->growth_rate = TOWN_GROWTH_RATE_NONE;
++	}
++}
++
++static void Materialize(const TemplateSpec &spec)
++{
++	ConfigureSettings(spec.seed);
++	_random.SetSeed(spec.seed);
++	_interactive_random.SetSeed(spec.seed ^ 0x524C4D32U);
++
++	_game_mode = GM_NORMAL;
++	_switch_mode = SM_NONE;
++	GenerateWorld(GWM_EMPTY, 32, 32, false);
++	Require(Map::SizeX() == 32 && Map::SizeY() == 32, fmt::format("native map dimensions are {}x{}, expected 32x32", Map::SizeX(), Map::SizeY()));
++
++	BuildRoadRoute(spec);
++	BuildTowns(spec);
++
++	Company *company = DoStartupNewCompany(false, CompanyID::Begin());
++	Require(company != nullptr && company->index == CompanyID::Begin(), "failed to create company 0");
++	SetLocalCompany(CompanyID::Begin());
++	_current_company = CompanyID::Begin();
++	Require(company->money == 100000 && company->current_loan == 100000, "company initial finance mismatch");
++}
++
++static bool HasRoadConnection(Point from, Point to)
++{
++	DiagDirection direction = DirectionBetween(from, to);
++	TileIndex from_tile = TileXY(from.x, from.y);
++	TileIndex to_tile = TileXY(to.x, to.y);
++	if (!IsNormalRoadTile(from_tile) || !IsNormalRoadTile(to_tile)) return false;
++	if (!HasTileRoadType(from_tile, RTT_ROAD) || !HasTileRoadType(to_tile, RTT_ROAD)) return false;
++	return (GetRoadBits(from_tile, RTT_ROAD) & DiagDirToRoadBits(direction)) != ROAD_NONE &&
++		(GetRoadBits(to_tile, RTT_ROAD) & DiagDirToRoadBits(ReverseDiagDir(direction))) != ROAD_NONE;
++}
++
++static json ValidatePlannedConstruction(const TemplateSpec &spec)
++{
++	uint path_length = 0;
++	for (uint8_t segment = 1; segment < spec.waypoint_count; ++segment) {
++		Point current = spec.waypoints[segment - 1];
++		const Point end = spec.waypoints[segment];
++		while (current.x != end.x || current.y != end.y) {
++			Point next = current;
++			if (next.x < end.x) ++next.x;
++			else if (next.x > end.x) --next.x;
++			else if (next.y < end.y) ++next.y;
++			else --next.y;
++			Require(HasRoadConnection(current, next), fmt::format("planned route is disconnected between ({}, {}) and ({}, {})", current.x, current.y, next.x, next.y));
++			++path_length;
++			current = next;
++		}
++	}
++	Require(path_length >= 8 && path_length <= 48, "native route length is outside 8..48");
++
++	json planned_stops = json::array();
++	for (const StopSpec &stop : spec.stops) {
++		TileIndex stop_tile = TileXY(stop.point.x, stop.point.y);
++		Require(IsNormalRoadTile(stop_tile) && HasTileRoadType(stop_tile, RTT_ROAD), fmt::format("planned bus stop ({}, {}) is not on a road", stop.point.x, stop.point.y));
++
++		uint passenger_sources = 0;
++		for (TileIndex tile{}; tile < Map::Size(); ++tile) {
++			if (!IsTileType(tile, MP_HOUSE) || GetTownIndex(tile) != TownID{stop.town_id}) continue;
++			if (HouseSpec::Get(GetHouseType(tile))->population == 0) continue;
++			if (std::abs(static_cast<int>(TileX(tile)) - stop.point.x) <= static_cast<int>(CA_BUS) &&
++					std::abs(static_cast<int>(TileY(tile)) - stop.point.y) <= static_cast<int>(CA_BUS)) ++passenger_sources;
++		}
++		Require(passenger_sources > 0, fmt::format("planned bus stop ({}, {}) covers no passenger source for town {}", stop.point.x, stop.point.y, stop.town_id));
++		planned_stops.push_back({
++			{"approach", stop.approach}, {"passenger_source_tiles_in_catchment", passenger_sources},
++			{"town_id", stop.town_id}, {"x", stop.point.x}, {"y", stop.point.y},
++		});
++	}
++
++	Point depot_front = spec.depot;
++	if (spec.depot_entrance == "north") --depot_front.y;
++	else if (spec.depot_entrance == "south") ++depot_front.y;
++	else if (spec.depot_entrance == "east") ++depot_front.x;
++	else if (spec.depot_entrance == "west") --depot_front.x;
++	else Fail("invalid depot entrance in compiled corpus");
++	TileIndex depot_tile = TileXY(spec.depot.x, spec.depot.y);
++	TileIndex front_tile = TileXY(depot_front.x, depot_front.y);
++	Require(IsTileType(depot_tile, MP_CLEAR) && IsTileFlat(depot_tile), "planned road depot tile is not clear and flat");
++	Require(IsNormalRoadTile(front_tile) && HasTileRoadType(front_tile, RTT_ROAD), "planned road depot entrance does not face the route");
++
++	return {
++		{"bus_stops", std::move(planned_stops)},
++		{"road_depot", {{"entrance", spec.depot_entrance}, {"front_x", depot_front.x}, {"front_y", depot_front.y}, {"x", spec.depot.x}, {"y", spec.depot.y}}},
++		{"road_path_length", path_length},
++	};
++}
++
++static json ProjectSettings()
++{
++	return {
++		{"construction.road_stop_on_town_road", _settings_game.construction.road_stop_on_town_road},
++		{"difficulty.construction_cost", _settings_game.difficulty.construction_cost},
++		{"difficulty.disasters", _settings_game.difficulty.disasters},
++		{"difficulty.economy", _settings_game.difficulty.economy},
++		{"difficulty.industry_density", _settings_game.difficulty.industry_density},
++		{"difficulty.initial_interest", _settings_game.difficulty.initial_interest},
++		{"difficulty.max_loan", _settings_game.difficulty.max_loan},
++		{"difficulty.max_no_competitors", _settings_game.difficulty.max_no_competitors},
++		{"difficulty.subsidy_duration", _settings_game.difficulty.subsidy_duration},
++		{"difficulty.vehicle_breakdowns", _settings_game.difficulty.vehicle_breakdowns},
++		{"difficulty.vehicle_costs", _settings_game.difficulty.vehicle_costs},
++		{"economy.allow_town_roads", _settings_game.economy.allow_town_roads},
++		{"economy.inflation", _settings_game.economy.inflation},
++		{"economy.town_cargo_scale", _settings_game.economy.town_cargo_scale},
++		{"economy.town_cargogen_mode", to_underlying(_settings_game.economy.town_cargogen_mode)},
++		{"economy.town_growth_rate", _settings_game.economy.town_growth_rate},
++		{"economy.type", to_underlying(_settings_game.economy.type)},
++		{"game_creation.landscape", to_underlying(_settings_game.game_creation.landscape)},
++		{"game_creation.map_x", _settings_game.game_creation.map_x},
++		{"game_creation.map_y", _settings_game.game_creation.map_y},
++		{"game_creation.starting_year", _settings_game.game_creation.starting_year.base()},
++		{"linkgraph.distribution_pax", to_underlying(_settings_game.linkgraph.distribution_pax)},
++		{"order.gradual_loading", _settings_game.order.gradual_loading},
++		{"order.no_servicing_if_no_breakdowns", _settings_game.order.no_servicing_if_no_breakdowns},
++		{"station.modified_catchment", _settings_game.station.modified_catchment},
++		{"station.station_spread", _settings_game.station.station_spread},
++		{"vehicle.max_aircraft", _settings_game.vehicle.max_aircraft},
++		{"vehicle.max_roadveh", _settings_game.vehicle.max_roadveh},
++		{"vehicle.max_ships", _settings_game.vehicle.max_ships},
++		{"vehicle.max_trains", _settings_game.vehicle.max_trains},
++		{"vehicle.never_expire_vehicles", _settings_game.vehicle.never_expire_vehicles},
++		{"vehicle.road_side", _settings_game.vehicle.road_side},
++		{"vehicle.roadveh_acceleration_model", _settings_game.vehicle.roadveh_acceleration_model},
++	};
++}
++
++static json BuildProjection(const TemplateSpec &spec)
++{
++	json companies = json::array();
++	for (const Company *company : Company::Iterate()) {
++		companies.push_back({
++			{"id", company->index.base()},
++			{"is_ai", company->is_ai},
++			{"money", company->money.base()},
++			{"loan", company->current_loan.base()},
++			{"max_loan", company->GetMaxLoan().base()},
++			{"owned_airport", company->infrastructure.airport},
++			{"owned_rail", company->infrastructure.GetRailTotal()},
++			{"owned_road", company->infrastructure.GetRoadTotal()},
++			{"owned_station", company->infrastructure.station},
++			{"owned_tram", company->infrastructure.GetTramTotal()},
++			{"owned_water", company->infrastructure.water},
++		});
++	}
++
++	json towns = json::array();
++	for (const Town *town : Town::Iterate()) {
++		uint house_tiles = 0;
++		uint passenger_source_tiles = 0;
++		for (TileIndex tile{}; tile < Map::Size(); ++tile) {
++			if (!IsTileType(tile, MP_HOUSE) || GetTownIndex(tile) != town->index) continue;
++			++house_tiles;
++			if (HouseSpec::Get(GetHouseType(tile))->population > 0) ++passenger_source_tiles;
++		}
++		towns.push_back({
++			{"growth_enabled", town->flags.Test(TownFlag::IsGrowing)},
++			{"growth_rate", town->growth_rate},
++			{"house_tiles", house_tiles},
++			{"id", town->index.base()},
++			{"layout", to_underlying(town->layout)},
++			{"name", town->GetCachedName()},
++			{"passenger_source_tiles", passenger_source_tiles},
++			{"population", town->cache.population},
++			{"x", TileX(town->xy)},
++			{"y", TileY(town->xy)},
++		});
++	}
++
++	json roads = json::array();
++	json tiles = json::array();
++	std::array<uint32_t, static_cast<size_t>(MP_OBJECT) + 1> tile_type_counts{};
++	for (TileIndex tile{}; tile < Map::Size(); ++tile) {
++		Tile map_tile{tile};
++		TileType type = GetTileType(tile);
++		++tile_type_counts[type];
++		bool border = TileX(tile) == 0 || TileY(tile) == 0 || TileX(tile) == Map::MaxX() || TileY(tile) == Map::MaxY();
++		if (border) {
++			Require(type == MP_VOID, fmt::format("border tile {} is not void", tile.base()));
++		} else {
++			Require(type != MP_VOID && type != MP_WATER, fmt::format("interior tile {} is void or water", tile.base()));
++			Require(TileHeight(tile) == 1, fmt::format("interior tile {} does not have terrain height 1", tile.base()));
++		}
++		json raw = {map_tile.type(), map_tile.height(), map_tile.m1(), map_tile.m2(), map_tile.m3(), map_tile.m4(), map_tile.m5(), map_tile.m6(), map_tile.m7(), map_tile.m8()};
++		tiles.push_back({{"index", tile.base()}, {"raw", std::move(raw)}, {"x", TileX(tile)}, {"y", TileY(tile)}});
++		if (IsNormalRoadTile(tile) && HasTileRoadType(tile, RTT_ROAD)) {
++			roads.push_back({
++				{"bits", to_underlying(GetRoadBits(tile, RTT_ROAD))},
++				{"index", tile.base()},
++				{"owner", GetRoadOwner(tile, RTT_ROAD).base()},
++				{"road_type", to_underlying(GetRoadType(tile, RTT_ROAD))},
++				{"town_id", GetTownIndex(tile).base()},
++				{"x", TileX(tile)},
++				{"y", TileY(tile)},
++			});
++		}
++	}
++
++	json type_counts = json::array();
++	for (uint i = 0; i < tile_type_counts.size(); ++i) type_counts.push_back(tile_type_counts[i]);
++
++	const GraphicsSet *graphics = BaseGraphics::GetUsedSet();
++	Require(graphics != nullptr, "no active base graphics set");
++	Require(graphics->name == "OpenGFX", "active base graphics set is not OpenGFX");
++	/* OpenGFX 8.0 identifies its frozen metadata payload with version 9499. */
++	Require(graphics->version == std::vector<uint32_t>({9499}), "active OpenGFX metadata version is not 9499 (OpenGFX 8.0)");
++	Require(_grfconfig.empty() && _grfconfig_static.empty(), "NewGRF configuration is not empty");
++	Require(!_networking, "networking is active in the reset environment");
++	Require(Game::GetInfo() == nullptr, "a GameScript is active in the reset environment");
++	json planned_construction = ValidatePlannedConstruction(spec);
++
++	json projection = {
++		{"companies", std::move(companies)},
++		{"compatibility", {{"contract_sha256", CONTRACT_SHA256}, {"corpus_sha256", CORPUS_SHA256}, {"ledger_sha256", LEDGER_SHA256}}},
++		{"content", {{"ai_company_count", 0}, {"base_graphics_metadata_version", graphics->version}, {"base_graphics_name", graphics->name}, {"game_script", nullptr}, {"multiplayer", false}, {"networking", false}, {"newgrf_count", 0}}},
++		{"depots", json::array()},
++		{"economy", {{"inflation_payment", _economy.inflation_payment}, {"inflation_prices", _economy.inflation_prices}, {"interest_rate", _economy.interest_rate}, {"maximum_loan", _economy.max_loan.base()}}},
++		{"map", {{"height", Map::SizeY()}, {"terrain_height", 1}, {"tile_type_counts", std::move(type_counts)}, {"tiles", std::move(tiles)}, {"width", Map::SizeX()}}},
++		{"orders", json::array()},
++		{"pools", {
++			{"cargo_packets", CargoPacket::GetNumItems()}, {"companies", Company::GetNumItems()}, {"depots", Depot::GetNumItems()},
++			{"groups", Group::GetNumItems()}, {"industries", Industry::GetNumItems()}, {"objects", Object::GetNumItems()},
++			{"order_lists", OrderList::GetNumItems()}, {"signs", Sign::GetNumItems()}, {"stations", Station::GetNumItems()},
++			{"subsidies", Subsidy::GetNumItems()}, {"towns", Town::GetNumItems()}, {"vehicles", Vehicle::GetNumItems()}
++		}},
++		{"rng-streams", {{"interactive", {_interactive_random.state[0], _interactive_random.state[1]}}, {"simulation", {_random.state[0], _random.state[1]}}}},
++		{"roads", std::move(roads)},
++		{"scenario", {{"planned_construction", std::move(planned_construction)}, {"scenario_sha256", spec.scenario_sha256}, {"seed", spec.seed}, {"split", spec.split}, {"template_id", spec.id}}},
++		{"settings", ProjectSettings()},
++		{"stations", json::array()},
++		{"time", {
++			{"calendar_date", TimerGameCalendar::date.base()}, {"calendar_date_fraction", TimerGameCalendar::date_fract},
++			{"calendar_month", TimerGameCalendar::month}, {"calendar_year", TimerGameCalendar::year.base()},
++			{"economy_date", TimerGameEconomy::date.base()}, {"economy_date_fraction", TimerGameEconomy::date_fract},
++			{"economy_month", TimerGameEconomy::month}, {"economy_year", TimerGameEconomy::year.base()},
++			{"tick", TimerGameTick::counter}, {"ticks_per_day", Ticks::DAY_TICKS}
++		}},
++		{"towns", std::move(towns)},
++		{"vehicles", json::array()},
++	};
++
++	Require(projection.size() == 16, "semantic projection field count mismatch");
++	Require(projection["companies"].size() == 1, "reset must contain exactly one company");
++	Require(projection["towns"].size() == 2, "reset must contain exactly two towns");
++	Require(projection["pools"]["industries"] == 0 && projection["pools"]["stations"] == 0 && projection["pools"]["vehicles"] == 0, "forbidden entity pool is not empty at reset");
++	return projection;
++}
++
++static DiagDirection ParseCardinalDirection(std::string_view direction)
++{
++	if (direction == "east") return DIAGDIR_SW;
++	if (direction == "west") return DIAGDIR_NE;
++	if (direction == "south") return DIAGDIR_SE;
++	if (direction == "north") return DIAGDIR_NW;
++	Fail(fmt::format("invalid cardinal direction '{}'", direction));
++}
++
++static DiagDirection StopRouteEntranceDirection(const TemplateSpec &spec, uint8_t stop_index)
++{
++	std::vector<Point> route;
++	for (uint8_t segment = 1; segment < spec.waypoint_count; ++segment) {
++		Point current = spec.waypoints[segment - 1];
++		const Point end = spec.waypoints[segment];
++		if (route.empty()) route.push_back(current);
++		while (current.x != end.x || current.y != end.y) {
++			if (current.x < end.x) ++current.x;
++			else if (current.x > end.x) --current.x;
++			else if (current.y < end.y) ++current.y;
++			else --current.y;
++			route.push_back(current);
++		}
++	}
++	const Point stop = spec.stops[stop_index].point;
++	auto it = std::ranges::find_if(route, [stop](Point point) { return point.x == stop.x && point.y == stop.y; });
++	Require(it != route.end(), fmt::format("scripted bus stop {} is absent from the route", stop_index));
++	size_t position = std::distance(route.begin(), it);
++	if (stop_index == 0) {
++		Require(position + 1 < route.size(), "first bus stop has no inward route neighbor");
++		return DirectionBetween(stop, route[position + 1]);
++	}
++	Require(position > 0, "second bus stop has no inward route neighbor");
++	return DirectionBetween(stop, route[position - 1]);
++}
++
++static void RecordCommand(json &actions, std::string_view action, const CommandCost &cost)
++{
++	Require(cost.Succeeded(), fmt::format("scripted action '{}' failed: error={} extra={}", action, cost.GetErrorMessage(), cost.GetExtraErrorMessage()));
++	const Company *company = Company::Get(CompanyID::Begin());
++	actions.push_back({{"action", action}, {"balance_after", company->money.base()}, {"cost", cost.GetCost().base()}});
++}
++
++static json RunScriptedTrajectory(const TemplateSpec &spec)
++{
++	static constexpr uint64_t TICK_LIMIT = 65536;
++	static constexpr EngineID BUS_ENGINE{116};
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	Require(IsValidCargoType(passengers), "passenger cargo label is unavailable");
++
++	json actions = json::array();
++	std::array<StationID, 2> station_ids{};
++	for (uint8_t index = 0; index < spec.stops.size(); ++index) {
++		const StopSpec &stop = spec.stops[index];
++		TileIndex tile = TileXY(stop.point.x, stop.point.y);
++		CommandCost cost = Command<CMD_BUILD_ROAD_STOP>::Do(
++			DoCommandFlag::Execute, tile, 1, 1, RoadStopType::Bus, false,
++			StopRouteEntranceDirection(spec, index), ROADTYPE_ROAD,
++			ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
++		RecordCommand(actions, fmt::format("build-bus-stop-{}", index), cost);
++		Require(IsTileType(tile, MP_STATION) && IsStationRoadStop(tile), fmt::format("bus stop {} did not materialize", index));
++		station_ids[index] = GetStationIndex(tile);
++		Require(station_ids[index] == StationID{index}, fmt::format("bus stop {} received unexpected station ID {}", index, station_ids[index].base()));
++	}
++
++	Point depot_front = spec.depot;
++	DiagDirection depot_direction = ParseCardinalDirection(spec.depot_entrance);
++	if (spec.depot_entrance == "north") --depot_front.y;
++	else if (spec.depot_entrance == "south") ++depot_front.y;
++	else if (spec.depot_entrance == "east") ++depot_front.x;
++	else --depot_front.x;
++	CommandCost connection_cost = Command<CMD_BUILD_ROAD>::Do(
++		DoCommandFlag::Execute, TileXY(depot_front.x, depot_front.y),
++		DiagDirToRoadBits(ReverseDiagDir(depot_direction)), ROADTYPE_ROAD,
++		DRD_NONE, TownID::Invalid());
++	RecordCommand(actions, "connect-road-depot", connection_cost);
++
++	TileIndex depot_tile = TileXY(spec.depot.x, spec.depot.y);
++	CommandCost depot_cost = Command<CMD_BUILD_ROAD_DEPOT>::Do(
++		DoCommandFlag::Execute, depot_tile, ROADTYPE_ROAD, depot_direction);
++	RecordCommand(actions, "build-road-depot", depot_cost);
++	Require(IsRoadDepotTile(depot_tile), "road depot did not materialize");
++
++	auto [vehicle_cost, vehicle_id, refit_capacity, refit_mail, cargo_capacities] =
++		Command<CMD_BUILD_VEHICLE>::Do(
++			DoCommandFlag::Execute, depot_tile, BUS_ENGINE, true, passengers, INVALID_CLIENT_ID);
++	(void)refit_mail;
++	RecordCommand(actions, "build-mps-regal-bus", vehicle_cost);
++	Require(vehicle_id == VehicleID{0}, fmt::format("scripted bus received unexpected vehicle ID {}", vehicle_id.base()));
++	Require(refit_capacity == 31 && cargo_capacities[passengers] == 31, "MPS Regal Bus capacity is not 31 passengers");
++
++	for (uint8_t index = 0; index < station_ids.size(); ++index) {
++		Order order;
++		order.MakeGoToStation(station_ids[index]);
++		order.SetStopLocation(OrderStopLocation::FarEnd);
++		CommandCost order_cost = Command<CMD_INSERT_ORDER>::Do(
++			DoCommandFlag::Execute, vehicle_id, VehicleOrderID{index}, order);
++		RecordCommand(actions, fmt::format("insert-station-order-{}", index), order_cost);
++	}
++
++	CommandCost start_cost = Command<CMD_START_STOP_VEHICLE>::Do(
++		DoCommandFlag::Execute, vehicle_id, false);
++	RecordCommand(actions, "start-bus", start_cost);
++	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
++	Require(!vehicle->vehstatus.Test(VehState::Stopped), "scripted bus remained stopped");
++
++	Company *company = Company::Get(CompanyID::Begin());
++	uint64_t ticks_executed = 0;
++	while ((company->cur_economy.delivered_cargo[passengers] == 0 || company->cur_economy.income <= 0) && ticks_executed < TICK_LIMIT) {
++		StateGameLoop();
++		++ticks_executed;
++	}
++	uint32_t delivered_passengers = company->cur_economy.delivered_cargo[passengers];
++	if (delivered_passengers == 0) {
++		vehicle = Vehicle::Get(vehicle_id);
++		std::array<uint, 2> waiting{};
++		for (uint8_t index = 0; index < station_ids.size(); ++index) {
++			const GoodsEntry &goods = Station::Get(station_ids[index])->goods[passengers];
++			waiting[index] = goods.HasData() ? goods.GetData().cargo.TotalCount() : 0;
++		}
++		Fail(fmt::format(
++			"scripted bus delivered no passengers within {} ticks: tile=({}, {}) stopped={} crashed={} cargo={} order_type={} last_station={} waiting=[{}, {}]",
++			TICK_LIMIT, TileX(vehicle->tile), TileY(vehicle->tile), vehicle->vehstatus.Test(VehState::Stopped),
++			vehicle->vehstatus.Test(VehState::Crashed), vehicle->cargo.StoredCount(), to_underlying(vehicle->current_order.GetType()),
++			vehicle->last_station_visited.base(), waiting[0], waiting[1]));
++	}
++	Require(company->cur_economy.income > 0, "scripted passenger delivery produced no company income");
++	for (CargoType cargo = 0; cargo < NUM_CARGO; ++cargo) {
++		if (cargo != passengers) Require(company->cur_economy.delivered_cargo[cargo] == 0, fmt::format("scripted trajectory delivered forbidden cargo type {}", cargo));
++	}
++
++	vehicle = Vehicle::Get(vehicle_id);
++	Require(vehicle->type == VEH_ROAD && vehicle->engine_type == BUS_ENGINE, "scripted vehicle is not the MPS Regal Bus");
++	Require(vehicle->owner == CompanyID::Begin(), "scripted bus owner mismatch");
++	Require(vehicle->cargo_type == passengers && vehicle->cargo_cap == 31, "scripted vehicle cargo scope mismatch");
++	Require(vehicle->GetNumManualOrders() == 2, "scripted bus does not have exactly two manual orders");
++	json orders = json::array();
++	for (const Order &order : vehicle->Orders()) {
++		if (!order.IsType(OT_GOTO_STATION)) continue;
++		orders.push_back({{"destination_station_id", order.GetDestination().ToStationID().base()}, {"type", "go-to-station"}});
++	}
++	Require(orders == json({
++		{{"destination_station_id", 0}, {"type", "go-to-station"}},
++		{{"destination_station_id", 1}, {"type", "go-to-station"}},
++	}), "scripted bus order sequence mismatch");
++
++	json stations = json::array();
++	for (StationID station_id : station_ids) {
++		const Station *station = Station::Get(station_id);
++		const GoodsEntry &goods = station->goods[passengers];
++		uint waiting = goods.HasData() ? goods.GetData().cargo.TotalCount() : 0;
++		stations.push_back({
++			{"ever_accepted_passengers", goods.status.Test(GoodsEntry::State::EverAccepted)},
++			{"id", station_id.base()},
++			{"owner", station->owner.base()},
++			{"tile", station->xy.base()},
++			{"waiting_passengers", waiting},
++		});
++	}
++	Require(std::ranges::any_of(stations, [](const json &station) { return station.at("ever_accepted_passengers").get<bool>(); }), "no bus station recorded accepted passengers");
++
++	Require(Company::GetNumItems() == 1 && Vehicle::GetNumItems() == 1 && Station::GetNumItems() == 2 && Depot::GetNumItems() == 1, "scripted trajectory entity counts mismatch");
++	Require(Industry::GetNumItems() == 0, "scripted trajectory contains an industry");
++	Require(company->infrastructure.GetRailTotal() == 0 && company->infrastructure.GetTramTotal() == 0 && company->infrastructure.airport == 0 && company->infrastructure.water == 0, "scripted trajectory created forbidden infrastructure");
++
++	return {
++		{"actions", std::move(actions)},
++		{"company", {
++			{"balance", company->money.base()},
++			{"delivered_passengers", delivered_passengers},
++			{"expenses", company->cur_economy.expenses.base()},
++			{"id", company->index.base()},
++			{"income", company->cur_economy.income.base()},
++		}},
++		{"facilities", {{"depot_count", Depot::GetNumItems()}, {"station_count", Station::GetNumItems()}}},
++		{"forbidden", {
++			{"airports", company->infrastructure.airport}, {"industries", Industry::GetNumItems()},
++			{"rail", company->infrastructure.GetRailTotal()}, {"ships", 0}, {"trams", company->infrastructure.GetTramTotal()}, {"trucks", 0}
++		}},
++		{"orders", std::move(orders)},
++		{"scenario", {{"scenario_sha256", spec.scenario_sha256}, {"seed", spec.seed}, {"template_id", spec.id}}},
++		{"stations", std::move(stations)},
++		{"ticks", {{"executed", ticks_executed}, {"final", TimerGameTick::counter}, {"limit", TICK_LIMIT}}},
++		{"vehicle", {
++			{"capacity", vehicle->cargo_cap}, {"cargo", "passengers"}, {"cargo_stored", vehicle->cargo.StoredCount()},
++			{"engine_id", vehicle->engine_type.base()}, {"id", vehicle->index.base()}, {"profit_this_year", vehicle->GetDisplayProfitThisYear().base()},
++			{"running", !vehicle->vehstatus.Test(VehState::Stopped)}, {"type", "bus"}
++		}},
++	};
++}
++
++static void WriteCanonicalJson(const std::string &path, const json &value)
++{
++	Require(!path.empty(), "JSON output path is empty");
++	Require(!std::filesystem::exists(path), fmt::format("JSON output already exists: '{}'", path));
++	std::string output = value.dump();
++	std::ofstream stream(path, std::ios::binary | std::ios::trunc);
++	if (!stream) Fail(fmt::format("cannot create JSON output '{}'", path));
++	stream.write(output.data(), static_cast<std::streamsize>(output.size()));
++	stream.put('\n');
++	stream.close();
++	if (!stream) Fail(fmt::format("failed to write JSON output '{}'", path));
++}
++
++} // namespace
++
++bool IsRlEnvironmentScenarioActive()
++{
++	return scenario_active;
++}
++
++void RunRlEnvironmentScenario(const std::string &instance_path, const std::string &projection_path, const std::string &trajectory_path, uint32_t repetitions)
++{
++	try {
++		Require(repetitions >= 1 && repetitions <= 16, "reset repetitions must be in 1..16");
++		Require(!projection_path.empty(), "projection output path is empty");
++		Require(!std::filesystem::exists(projection_path), fmt::format("projection output already exists: '{}'", projection_path));
++		Require(trajectory_path.empty() || trajectory_path != projection_path, "trajectory and projection output paths must differ");
++		Require(trajectory_path.empty() || !std::filesystem::exists(trajectory_path), fmt::format("trajectory output already exists: '{}'", trajectory_path));
++
++		json instance = ReadCanonicalInstance(instance_path);
++		const TemplateSpec &spec = ValidateInstance(instance);
++
++		std::string canonical_projection;
++		scenario_active = true;
++		/* The initial NewGRF scanner invokes its callback before releasing its modal
++		 * progress state. This synchronous runner owns the process from this point. */
++		SetModalProgress(false);
++		for (uint32_t repetition = 0; repetition < repetitions; ++repetition) {
++			Materialize(spec);
++			std::string current = BuildProjection(spec).dump();
++			if (repetition == 0) {
++				canonical_projection = std::move(current);
++			} else {
++				Require(current == canonical_projection, fmt::format("same-process reset {} differs from reset 0", repetition));
++			}
++		}
++		scenario_active = false;
++
++		json report = {
++			{"projection", json::parse(canonical_projection)},
++			{"same_process_byte_identical", true},
++			{"same_process_repetitions", repetitions},
++			{"schema_version", "openttd-rl-v1-m02-reset-projection-1"},
++			{"status", "PASS"},
++		};
++		WriteCanonicalJson(projection_path, report);
++		if (!trajectory_path.empty()) {
++			json trajectory_report = {
++				{"schema_version", "openttd-rl-v1-m02-scripted-bus-trajectory-1"},
++				{"status", "PASS"},
++				{"trajectory", RunScriptedTrajectory(spec)},
++			};
++			WriteCanonicalJson(trajectory_path, trajectory_report);
++		}
++
++		fmt::print("M02_SCENARIO_RESET=PASS template={} repetitions={} projection_bytes={} trajectory={}\n", spec.id, repetitions, report.dump().size() + 1, trajectory_path.empty() ? "SKIP" : "PASS");
++	} catch (...) {
++		scenario_active = false;
++		throw;
++	}
++}
+diff --git a/src/rl_environment.h b/src/rl_environment.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..809c950615aa482af4279bb74ec753a9756d8477
+--- /dev/null
++++ b/src/rl_environment.h
+@@ -0,0 +1,19 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_environment.h Deterministic M02 scenario reset support. */
++
++#ifndef RL_ENVIRONMENT_H
++#define RL_ENVIRONMENT_H
++
++#include <cstdint>
++#include <string>
++
++bool IsRlEnvironmentScenarioActive();
++void RunRlEnvironmentScenario(const std::string &instance_path, const std::string &projection_path, const std::string &trajectory_path, uint32_t repetitions);
++
++#endif /* RL_ENVIRONMENT_H */
+diff --git a/src/town_cmd.cpp b/src/town_cmd.cpp
+index ae00db28918de785489f2af3f769201423d042b2..e5dbb670dc3b7bc9b23a10e54b3f78bea8f5ea61 100644
+--- a/src/town_cmd.cpp
++++ b/src/town_cmd.cpp
+@@ -68,6 +68,10 @@
+ 
+ #include "safeguards.h"
+ 
++#ifdef WITH_RL_ENVIRONMENT
++#	include "rl_environment.h"
++#endif
++
+ /* Initialize the town-pool */
+ TownPool _town_pool("Town");
+ INSTANTIATE_POOL_METHODS(Town)
+@@ -2088,6 +2092,13 @@ static void DoCreateTown(Town *t, TileIndex tile, uint32_t townnameparts, TownSi
+ 	t->larger_town = city;
+ 
+ 	int x = (int)size * 16 + 3;
++#ifdef WITH_RL_ENVIRONMENT
++	/* The stock small-town seed (3 growth units) cannot satisfy the frozen
++	 * M02 population floor on its compact, fixed road layouts. Keep the town
++	 * classified as small while using a fixed compact initialization value from
++	 * the native random-size range for the explicitly active M02 runner. */
++	if (IsRlEnvironmentScenarioActive() && size == TSZ_SMALL) x = 13;
++#endif
+ 	if (size == TSZ_RANDOM) x = (Random() & 0xF) + 8;
+ 	/* Don't create huge cities when founding town in-game */
+ 	if (city && (!manual || _game_mode == GM_EDITOR)) x *= _settings_game.economy.initial_city_size;
+@@ -2119,12 +2130,22 @@ static void DoCreateTown(Town *t, TileIndex tile, uint32_t townnameparts, TownSi
+ static CommandCost TownCanBePlacedHere(TileIndex tile, bool check_surrounding)
+ {
+ 	/* Check if too close to the edge of map */
+-	if (DistanceFromEdge(tile) < 12) {
++	const uint min_edge_distance =
++#ifdef WITH_RL_ENVIRONMENT
++		IsRlEnvironmentScenarioActive() ? 5 :
++#endif
++		12;
++	if (DistanceFromEdge(tile) < min_edge_distance) {
+ 		return CommandCost(STR_ERROR_TOO_CLOSE_TO_EDGE_OF_MAP_SUB);
+ 	}
+ 
+ 	/* Check distance to all other towns. */
+-	if (IsCloseToTown(tile, 20)) {
++	const uint min_town_distance =
++#ifdef WITH_RL_ENVIRONMENT
++		IsRlEnvironmentScenarioActive() ? 8 :
++#endif
++		20;
++	if (IsCloseToTown(tile, min_town_distance)) {
+ 		return CommandCost(STR_ERROR_TOO_CLOSE_TO_ANOTHER_TOWN);
+ 	}
+ 

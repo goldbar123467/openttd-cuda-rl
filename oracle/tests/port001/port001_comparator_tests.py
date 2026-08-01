@@ -193,7 +193,7 @@ def main() -> int:
         stdout=subprocess.PIPE,
     ).stdout.strip()
 
-    with tempfile.TemporaryDirectory(prefix="p001-comparator-positive.", dir="/workspace") as temp:
+    with tempfile.TemporaryDirectory(prefix="p001-comparator-positive.") as temp:
         root = pathlib.Path(temp)
         create_fixture(root, smoke_mutation=False)
         positive = subprocess.run(comparator_command(repository, root, commit), check=False, text=True, capture_output=True)
@@ -323,7 +323,7 @@ def main() -> int:
             if validation.returncode == 0 or needle not in validation.stderr:
                 raise SystemExit(f"PASS-gate semantic mutant {label} was not rejected precisely:\n{validation.stderr}")
 
-    with tempfile.TemporaryDirectory(prefix="p001-comparator-negative.", dir="/workspace") as temp:
+    with tempfile.TemporaryDirectory(prefix="p001-comparator-negative.") as temp:
         root = pathlib.Path(temp)
         create_fixture(root, smoke_mutation=True)
         negative = subprocess.run(comparator_command(repository, root, commit), check=False, text=True, capture_output=True)
@@ -331,7 +331,7 @@ def main() -> int:
         if negative.returncode == 0 or "headless-smoke-behavior" not in combined:
             raise SystemExit(f"known smoke divergence was not rejected precisely:\n{combined}")
 
-    with tempfile.TemporaryDirectory(prefix="p001-comparator-binary-negative.", dir="/workspace") as temp:
+    with tempfile.TemporaryDirectory(prefix="p001-comparator-binary-negative.") as temp:
         root = pathlib.Path(temp)
         create_fixture(root, smoke_mutation=False, binary_mutation=True)
         negative = subprocess.run(comparator_command(repository, root, commit), check=False, text=True, capture_output=True)
@@ -339,7 +339,7 @@ def main() -> int:
         if negative.returncode == 0 or "unexplained binary difference" not in combined:
             raise SystemExit(f"unexplained executable divergence was not rejected precisely:\n{combined}")
 
-    with tempfile.TemporaryDirectory(prefix="p001-comparator-replacement-negative.", dir="/workspace") as temp:
+    with tempfile.TemporaryDirectory(prefix="p001-comparator-replacement-negative.") as temp:
         root = pathlib.Path(temp)
         create_fixture(root, smoke_mutation=False)
         for role in ("run-a", "run-b"):
@@ -349,7 +349,7 @@ def main() -> int:
         if negative.returncode == 0 or "installed executable does not match the build/smoke manifest chain" not in combined:
             raise SystemExit(f"same post-smoke executable replacement was not rejected precisely:\n{combined}")
 
-    with tempfile.TemporaryDirectory(prefix="p001-comparator-missing-rc-negative.", dir="/workspace") as temp:
+    with tempfile.TemporaryDirectory(prefix="p001-comparator-missing-rc-negative.") as temp:
         root = pathlib.Path(temp)
         create_fixture(root, smoke_mutation=False, missing_stage_rc=True)
         negative = subprocess.run(comparator_command(repository, root, commit), check=False, text=True, capture_output=True)

@@ -1,0 +1,59 @@
+diff --git a/src/newgrf/newgrf_act0_globalvar.cpp b/src/newgrf/newgrf_act0_globalvar.cpp
+index 89bb2fad4..37a0fefa7 100644
+--- a/src/newgrf/newgrf_act0_globalvar.cpp
++++ b/src/newgrf/newgrf_act0_globalvar.cpp
+@@ -302,21 +302,19 @@ static ChangeInfoResult GlobalVarChangeInfo(uint first, uint last, int prop, Byt
+ 					auto [len, c] = DecodeUtf8(name);
+ 					if (c == NFO_UTF8_IDENTIFIER) name.remove_prefix(len);
+ 
+-					LanguageMap::Mapping map;
+-					map.newgrf_id = newgrf_id;
+ 					if (prop == 0x13) {
+-						map.openttd_id = lang->GetGenderIndex(name);
+-						if (map.openttd_id >= MAX_NUM_GENDERS) {
++						const uint8_t openttd_id = lang->GetGenderIndex(name);
++						if (openttd_id >= MAX_NUM_GENDERS) {
+ 							GrfMsg(1, "GlobalVarChangeInfo: Gender name {} is not known, ignoring", StrMakeValid(name));
+ 						} else {
+-							_cur_gps.grffile->language_map[curidx].gender_map.push_back(map);
++							_cur_gps.grffile->language_map[curidx].gender_map.emplace_back(newgrf_id, openttd_id);
+ 						}
+ 					} else {
+-						map.openttd_id = lang->GetCaseIndex(name);
+-						if (map.openttd_id >= MAX_NUM_CASES) {
++						const uint8_t openttd_id = lang->GetCaseIndex(name);
++						if (openttd_id >= MAX_NUM_CASES) {
+ 							GrfMsg(1, "GlobalVarChangeInfo: Case name {} is not known, ignoring", StrMakeValid(name));
+ 						} else {
+-							_cur_gps.grffile->language_map[curidx].case_map.push_back(map);
++							_cur_gps.grffile->language_map[curidx].case_map.emplace_back(newgrf_id, openttd_id);
+ 						}
+ 					}
+ 					newgrf_id = buf.ReadByte();
+diff --git a/src/newgrf_text.cpp b/src/newgrf_text.cpp
+index 83ffee723..dcbdf9c47 100644
+--- a/src/newgrf_text.cpp
++++ b/src/newgrf_text.cpp
+@@ -77,5 +77,9 @@ static TypedIndexContainer<std::vector<GRFTextEntry>, StringIndexInTab> _grf_tex
+ static uint8_t _current_lang_id = GRFLX_ENGLISH;  ///< by default, english is used.
+ 
++LanguageMap::Mapping::Mapping(uint8_t newgrf_id, uint8_t openttd_id) :
++	newgrf_id(newgrf_id), openttd_id(openttd_id)
++{}
++
+ /**
+  * Get the mapping from the NewGRF supplied ID to OpenTTD's internal ID.
+  * @param newgrf_id The NewGRF ID to map.
+diff --git a/src/newgrf_text_type.h b/src/newgrf_text_type.h
+index a89df56de..f70b26529 100644
+--- a/src/newgrf_text_type.h
++++ b/src/newgrf_text_type.h
+@@ -37,6 +37,8 @@ struct LanguageMap {
+ 	struct Mapping {
+ 		uint8_t newgrf_id;  ///< NewGRF's internal ID for a case/gender.
+ 		uint8_t openttd_id; ///< OpenTTD's internal ID for a case/gender.
++
++		Mapping(uint8_t newgrf_id, uint8_t openttd_id);
+ 	};
+ 
+ 	/* We need a vector and can't use SmallMap due to the fact that for "setting" a

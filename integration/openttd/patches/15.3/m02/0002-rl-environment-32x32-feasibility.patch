@@ -1,0 +1,497 @@
+diff --git a/cmake/Options.cmake b/cmake/Options.cmake
+index da2d172..a3bff37 100644
+--- a/cmake/Options.cmake
++++ b/cmake/Options.cmake
+@@ -55,6 +55,7 @@ function(set_options)
+     option(OPTION_FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." OFF)
+ 
+     option(OPTION_DEDICATED "Build dedicated server only (no GUI)" OFF)
++    option(OPTION_RL_ENVIRONMENT "Enable the experimental 32x32 RL environment map profile" OFF)
+     option(OPTION_INSTALL_FHS "Install with Filesystem Hierarchy Standard folders" ${DEFAULT_OPTION_INSTALL_FHS})
+     option(OPTION_USE_ASSERTS "Use assertions; leave enabled for nightlies, betas, and RCs" OFF)
+     option(OPTION_USE_NSIS "Use NSIS to create windows installer; enable only for stable releases" OFF)
+@@ -76,6 +77,7 @@ endfunction()
+ function(show_options)
+     message(STATUS "Option Package Dependencies - ${OPTION_PACKAGE_DEPENDENCIES}")
+     message(STATUS "Option Dedicated - ${OPTION_DEDICATED}")
++    message(STATUS "Option RL Environment - ${OPTION_RL_ENVIRONMENT}")
+     message(STATUS "Option Install FHS - ${OPTION_INSTALL_FHS}")
+     message(STATUS "Option Use assert - ${OPTION_USE_ASSERTS}")
+     message(STATUS "Option Use NSIS - ${OPTION_USE_NSIS}")
+@@ -101,6 +103,10 @@ function(add_definitions_based_on_options)
+         add_definitions(-DDEDICATED)
+     endif()
+ 
++    if(OPTION_RL_ENVIRONMENT)
++        add_definitions(-DWITH_RL_ENVIRONMENT)
++    endif()
++
+     if(OPTION_USE_ASSERTS)
+         add_definitions(-DWITH_ASSERT)
+     else()
+diff --git a/src/landscape.cpp b/src/landscape.cpp
+index 8c5cf4b..df3b90f 100644
+--- a/src/landscape.cpp
++++ b/src/landscape.cpp
+@@ -803,9 +803,13 @@ void RunTileLoop()
+ 	 * shift register (LFSR). This allows a deterministic pseudorandom ordering, but
+ 	 * still with minimal state and fast iteration. */
+ 
+-	/* Maximal length LFSR feedback terms, from 12-bit (for 64x64 maps) to 24-bit (for 4096x4096 maps).
++	/* Maximal length LFSR feedback terms, from the smallest supported map area
++	 * to 24-bit (for 4096x4096 maps).
+ 	 * Extracted from http://www.ece.cmu.edu/~koopman/lfsr/ */
+ 	static const uint32_t feedbacks[] = {
++#ifdef WITH_RL_ENVIRONMENT
++		0x204, 0x402,
++#endif
+ 		0xD8F, 0x1296, 0x2496, 0x4357, 0x8679, 0x1030E, 0x206CD, 0x403FE, 0x807B8, 0x1004B2, 0x2006A8, 0x4004B2, 0x800B87
+ 	};
+ 	static_assert(lengthof(feedbacks) == 2 * MAX_MAP_SIZE_BITS - 2 * MIN_MAP_SIZE_BITS + 1);
+diff --git a/src/main_gui.cpp b/src/main_gui.cpp
+index f54c7d6..e1c65df 100644
+--- a/src/main_gui.cpp
++++ b/src/main_gui.cpp
+@@ -219,7 +219,7 @@ struct MainWindow : Window
+ 		ResizeWindow(this, _screen.width, _screen.height);
+ 
+ 		NWidgetViewport *nvp = this->GetWidget<NWidgetViewport>(WID_M_VIEWPORT);
+-		nvp->InitializeViewport(this, TileXY(32, 32), ScaleZoomGUI(ZoomLevel::Viewport));
++		nvp->InitializeViewport(this, TileXY(std::min(32U, Map::MaxX()), std::min(32U, Map::MaxY())), ScaleZoomGUI(ZoomLevel::Viewport));
+ 
+ 		this->viewport->overlay = std::make_shared<LinkGraphOverlay>(this, WID_M_VIEWPORT, 0, CompanyMask{}, 2);
+ 		this->refresh_timeout.Reset();
+diff --git a/src/map_func.h b/src/map_func.h
+index fd431b4..a329878 100644
+--- a/src/map_func.h
++++ b/src/map_func.h
+@@ -339,6 +339,13 @@ public:
+ 	 */
+ 	static inline uint ScaleBySize(uint n)
+ 	{
++#ifdef WITH_RL_ENVIRONMENT
++		/* A 32x32 or 32x64 map has fewer than 4096 tiles, so the normal
++		 * left-shift expression would have a negative shift count. */
++		if (Map::LogX() + Map::LogY() < 12) {
++			return CeilDiv(n, 1U << (16 - Map::LogX() - Map::LogY()));
++		}
++#endif
+ 		/* Subtract 12 from shift in order to prevent integer overflow
+ 		 * for large values of n. It's safe since the min mapsize is 64x64. */
+ 		return CeilDiv(n << (Map::LogX() + Map::LogY() - 12), 1 << 4);
+diff --git a/src/map_type.h b/src/map_type.h
+index 4d0d44c..f8160c3 100644
+--- a/src/map_type.h
++++ b/src/map_type.h
+@@ -34,11 +34,21 @@ struct TileIndexDiffC {
+ };
+ 
+ /** Minimal and maximal map width and height */
++#ifdef WITH_RL_ENVIRONMENT
++static const uint MIN_MAP_SIZE_BITS = 5;                       ///< Experimental RL minimum map edge is 32 tiles
++#else
+ static const uint MIN_MAP_SIZE_BITS = 6;                       ///< Minimal size of map is equal to 2 ^ MIN_MAP_SIZE_BITS
++#endif
+ static const uint MAX_MAP_SIZE_BITS = 12;                      ///< Maximal size of map is equal to 2 ^ MAX_MAP_SIZE_BITS
+-static const uint MIN_MAP_SIZE      = 1U << MIN_MAP_SIZE_BITS; ///< Minimal map size = 64
++static const uint MIN_MAP_SIZE      = 1U << MIN_MAP_SIZE_BITS; ///< Minimal map size for this build profile
+ static const uint MAX_MAP_SIZE      = 1U << MAX_MAP_SIZE_BITS; ///< Maximal map size = 4096
+ 
++#ifdef WITH_RL_ENVIRONMENT
++static_assert(MIN_MAP_SIZE == 32);
++#else
++static_assert(MIN_MAP_SIZE == 64);
++#endif
++
+ /** Argument for CmdLevelLand describing what to do. */
+ enum LevelMode : uint8_t {
+ 	LM_LEVEL, ///< Level the land.
+diff --git a/src/newgrf/newgrf_actd.cpp b/src/newgrf/newgrf_actd.cpp
+index 38e727f..703ab31 100644
+--- a/src/newgrf/newgrf_actd.cpp
++++ b/src/newgrf/newgrf_actd.cpp
+@@ -96,8 +96,15 @@ static uint32_t GetPatchVariable(uint8_t param)
+ 		 */
+ 		case 0x13: {
+ 			uint8_t map_bits = 0;
++#ifdef WITH_RL_ENVIRONMENT
++			/* The NewGRF map-size variable has no representation below 64.
++			 * Report its defined minimum; the RL profile does not permit NewGRFs. */
++			uint8_t log_X = std::max<uint>(Map::LogX(), 6) - 6;
++			uint8_t log_Y = std::max<uint>(Map::LogY(), 6) - 6;
++#else
+ 			uint8_t log_X = Map::LogX() - 6; // subtraction is required to make the minimal size (64) zero based
+ 			uint8_t log_Y = Map::LogY() - 6;
++#endif
+ 			uint8_t max_edge = std::max(log_X, log_Y);
+ 
+ 			if (log_X == log_Y) { // we have a squared map, since both edges are identical
+diff --git a/src/saveload/map_sl.cpp b/src/saveload/map_sl.cpp
+index 14ae894..2cd2dda 100644
+--- a/src/saveload/map_sl.cpp
++++ b/src/saveload/map_sl.cpp
+@@ -75,8 +75,9 @@ struct MAPTChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).type() = buf[j];
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count, SLE_UINT8);
++			for (uint j = 0; j != count; j++) Tile(i++).type() = buf[j];
+ 		}
+ 	}
+ 
+@@ -87,8 +88,9 @@ struct MAPTChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(size);
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).type();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).type();
++			SlCopy(buf.data(), count, SLE_UINT8);
+ 		}
+ 	}
+ };
+@@ -102,8 +104,9 @@ struct MAPHChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).height() = buf[j];
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count, SLE_UINT8);
++			for (uint j = 0; j != count; j++) Tile(i++).height() = buf[j];
+ 		}
+ 	}
+ 
+@@ -114,8 +117,9 @@ struct MAPHChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(size);
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).height();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).height();
++			SlCopy(buf.data(), count, SLE_UINT8);
+ 		}
+ 	}
+ };
+@@ -129,8 +133,9 @@ struct MAPOChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).m1() = buf[j];
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count, SLE_UINT8);
++			for (uint j = 0; j != count; j++) Tile(i++).m1() = buf[j];
+ 		}
+ 	}
+ 
+@@ -141,8 +146,9 @@ struct MAPOChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(size);
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).m1();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).m1();
++			SlCopy(buf.data(), count, SLE_UINT8);
+ 		}
+ 	}
+ };
+@@ -156,11 +162,12 @@ struct MAP2ChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE,
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count,
+ 				/* In those versions the m2 was 8 bits */
+ 				IsSavegameVersionBefore(SLV_5) ? SLE_FILE_U8 | SLE_VAR_U16 : SLE_UINT16
+ 			);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).m2() = buf[j];
++			for (uint j = 0; j != count; j++) Tile(i++).m2() = buf[j];
+ 		}
+ 	}
+ 
+@@ -171,8 +178,9 @@ struct MAP2ChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(static_cast<uint32_t>(size) * sizeof(uint16_t));
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).m2();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT16);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).m2();
++			SlCopy(buf.data(), count, SLE_UINT16);
+ 		}
+ 	}
+ };
+@@ -186,8 +194,9 @@ struct M3LOChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).m3() = buf[j];
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count, SLE_UINT8);
++			for (uint j = 0; j != count; j++) Tile(i++).m3() = buf[j];
+ 		}
+ 	}
+ 
+@@ -198,8 +207,9 @@ struct M3LOChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(size);
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).m3();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).m3();
++			SlCopy(buf.data(), count, SLE_UINT8);
+ 		}
+ 	}
+ };
+@@ -213,8 +223,9 @@ struct M3HIChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).m4() = buf[j];
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count, SLE_UINT8);
++			for (uint j = 0; j != count; j++) Tile(i++).m4() = buf[j];
+ 		}
+ 	}
+ 
+@@ -225,8 +236,9 @@ struct M3HIChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(size);
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).m4();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).m4();
++			SlCopy(buf.data(), count, SLE_UINT8);
+ 		}
+ 	}
+ };
+@@ -240,8 +252,9 @@ struct MAP5ChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).m5() = buf[j];
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count, SLE_UINT8);
++			for (uint j = 0; j != count; j++) Tile(i++).m5() = buf[j];
+ 		}
+ 	}
+ 
+@@ -252,8 +265,9 @@ struct MAP5ChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(size);
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).m5();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).m5();
++			SlCopy(buf.data(), count, SLE_UINT8);
+ 		}
+ 	}
+ };
+@@ -279,8 +293,9 @@ struct MAPEChunkHandler : ChunkHandler {
+ 			}
+ 		} else {
+ 			for (TileIndex i{}; i != size;) {
+-				SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
+-				for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).m6() = buf[j];
++				uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++				SlCopy(buf.data(), count, SLE_UINT8);
++				for (uint j = 0; j != count; j++) Tile(i++).m6() = buf[j];
+ 			}
+ 		}
+ 	}
+@@ -292,8 +307,9 @@ struct MAPEChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(size);
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).m6();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).m6();
++			SlCopy(buf.data(), count, SLE_UINT8);
+ 		}
+ 	}
+ };
+@@ -307,8 +323,9 @@ struct MAP7ChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).m7() = buf[j];
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count, SLE_UINT8);
++			for (uint j = 0; j != count; j++) Tile(i++).m7() = buf[j];
+ 		}
+ 	}
+ 
+@@ -319,8 +336,9 @@ struct MAP7ChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(size);
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).m7();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT8);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).m7();
++			SlCopy(buf.data(), count, SLE_UINT8);
+ 		}
+ 	}
+ };
+@@ -334,8 +352,9 @@ struct MAP8ChunkHandler : ChunkHandler {
+ 		uint size = Map::Size();
+ 
+ 		for (TileIndex i{}; i != size;) {
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT16);
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) Tile(i++).m8() = buf[j];
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			SlCopy(buf.data(), count, SLE_UINT16);
++			for (uint j = 0; j != count; j++) Tile(i++).m8() = buf[j];
+ 		}
+ 	}
+ 
+@@ -346,8 +365,9 @@ struct MAP8ChunkHandler : ChunkHandler {
+ 
+ 		SlSetLength(static_cast<uint32_t>(size) * sizeof(uint16_t));
+ 		for (TileIndex i{}; i != size;) {
+-			for (uint j = 0; j != MAP_SL_BUF_SIZE; j++) buf[j] = Tile(i++).m8();
+-			SlCopy(buf.data(), MAP_SL_BUF_SIZE, SLE_UINT16);
++			uint count = std::min<uint>(MAP_SL_BUF_SIZE, size - i.base());
++			for (uint j = 0; j != count; j++) buf[j] = Tile(i++).m8();
++			SlCopy(buf.data(), count, SLE_UINT16);
+ 		}
+ 	}
+ };
+diff --git a/src/tests/tilearea.cpp b/src/tests/tilearea.cpp
+index 15facf5..1b848ff 100644
+--- a/src/tests/tilearea.cpp
++++ b/src/tests/tilearea.cpp
+@@ -20,6 +20,36 @@ struct TileCoord {
+ 	uint x, y;
+ };
+ 
++TEST_CASE("Map size profile and scaling")
++{
++#ifdef WITH_RL_ENVIRONMENT
++	CHECK(MIN_MAP_SIZE_BITS == 5);
++	CHECK(MIN_MAP_SIZE == 32);
++
++	Map::Allocate(32, 32);
++	CHECK(Map::SizeX() == 32);
++	CHECK(Map::SizeY() == 32);
++	CHECK(Map::Size() == 1024);
++	CHECK(Map::LogX() == 5);
++	CHECK(Map::LogY() == 5);
++	CHECK(Map::ScaleBySize(1) == 1);
++	CHECK(Map::ScaleBySize(64) == 1);
++	CHECK(Map::ScaleBySize(65) == 2);
++
++	Map::Allocate(32, 64);
++	CHECK(Map::ScaleBySize(32) == 1);
++	CHECK(Map::ScaleBySize(33) == 2);
++#else
++	CHECK(MIN_MAP_SIZE_BITS == 6);
++	CHECK(MIN_MAP_SIZE == 64);
++#endif
++
++	Map::Allocate(64, 64);
++	CHECK(Map::ScaleBySize(1) == 1);
++	CHECK(Map::ScaleBySize(16) == 1);
++	CHECK(Map::ScaleBySize(17) == 2);
++}
++
+ static void TestSpiralTileSequence(TileCoord center, uint diameter, std::span<TileCoord> expected)
+ {
+ 	auto tile = TileXY(center.x, center.y);
+diff --git a/src/tgp.cpp b/src/tgp.cpp
+index 3c1991d..b38cfce 100644
+--- a/src/tgp.cpp
++++ b/src/tgp.cpp
+@@ -234,12 +234,21 @@ static Height TGPGetMaxHeight()
+ 	 * around the mountain to build on. On a 4096x4096 map, it won't cover any major part of the map.
+ 	 */
+ 	static const int max_height[5][MAX_MAP_SIZE_BITS - MIN_MAP_SIZE_BITS + 1] = {
+-		/* 64  128  256  512 1024 2048 4096 */
++		/* The optional first entry is the 32-tile edge. It deliberately
++		 * reuses the 64-tile limit so all established buckets stay exact. */
++#ifdef WITH_RL_ENVIRONMENT
++		{   3,   3,   3,   3,   3,   4,   5,   7 }, ///< Very flat
++		{   5,   5,   7,   8,   9,  14,  19,  31 }, ///< Flat
++		{   8,   8,   9,  10,  15,  23,  37,  61 }, ///< Hilly
++		{  10,  10,  11,  17,  19,  49,  63,  73 }, ///< Mountainous
++		{  12,  12,  19,  25,  31,  67,  75,  87 }, ///< Alpinist
++#else
+ 		{   3,   3,   3,   3,   4,   5,   7 }, ///< Very flat
+ 		{   5,   7,   8,   9,  14,  19,  31 }, ///< Flat
+ 		{   8,   9,  10,  15,  23,  37,  61 }, ///< Hilly
+ 		{  10,  11,  17,  19,  49,  63,  73 }, ///< Mountainous
+ 		{  12,  19,  25,  31,  67,  75,  87 }, ///< Alpinist
++#endif
+ 	};
+ 
+ 	int map_size_bucket = std::min(Map::LogX(), Map::LogY()) - MIN_MAP_SIZE_BITS;
+diff --git a/src/tree_cmd.cpp b/src/tree_cmd.cpp
+index f620799..1db1503 100644
+--- a/src/tree_cmd.cpp
++++ b/src/tree_cmd.cpp
+@@ -954,7 +954,7 @@ static void TileLoop_Trees(TileIndex tile)
+ bool DecrementTreeCounter()
+ {
+ 	/* Ensure _trees_tick_ctr can be decremented past zero only once for the largest map size. */
+-	static_assert(2 * (MAX_MAP_SIZE_BITS - MIN_MAP_SIZE_BITS) - 4 <= std::numeric_limits<uint8_t>::digits);
++	static_assert(2 * MAX_MAP_SIZE_BITS - 16 <= std::numeric_limits<uint8_t>::digits);
+ 
+ 	/* byte underflow */
+ 	uint8_t old_trees_tick_ctr = _trees_tick_ctr;
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index 7d585b0..b53f6d5 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -312,9 +312,13 @@ static void ShutdownGame()
+ 	LinkGraphSchedule::Clear();
+ 	PoolBase::Clean(PT_ALL);
+ 
+ 	/* No NewGRFs were loaded when it was still bootstrapping. */
+ 	if (_game_mode != GM_BOOTSTRAP) ResetNewGRFData();
+ 
++#ifdef WITH_RL_ENVIRONMENT
++	/* ResetNewGRFData repopulates the engine pool; release it at process shutdown. */
++	PoolBase::Clean(PT_ALL);
++#endif
+ 	FontCache::UninitializeFontCaches();
+ }
+ 
+@@ -914,6 +918,9 @@ static void MakeNewGame(bool from_heightmap, bool reset_settings)
+ static void MakeNewEditorWorldDone()
+ {
+ 	SetLocalCompany(OWNER_NONE);
++#ifdef WITH_RL_ENVIRONMENT
++	IConsoleCmdExec("exec scripts/rl_environment_editor_start.scr 0");
++#endif
+ }
+ 
+ static void MakeNewEditorWorld()
+diff --git a/src/script/api/script_date.hpp b/src/script/api/script_date.hpp
+index 1e75a0d..05e85bf 100644
+--- a/src/script/api/script_date.hpp
++++ b/src/script/api/script_date.hpp
+@@ -54,7 +54,7 @@ public:
+ 	 * Date data type is an integer value. Use ScriptDate::GetDate to
+ 	 * compose valid date values for a known year, month and day.
+ 	 */
+-	enum Date {
++	enum Date : int32_t {
+ 		DATE_INVALID = ::EconomyTime::INVALID_DATE.base(), ///< A value representing an invalid date.
+ 	};
+ 

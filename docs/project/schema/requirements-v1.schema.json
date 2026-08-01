@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/requirements-v1.schema.json",
+  "title": "OpenTTD RL project requirement and test traceability registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "registry_kind",
+    "scope",
+    "source_briefs",
+    "requirements",
+    "tests",
+    "aggregate_dependencies",
+    "legacy_evidence_policy"
+  ],
+  "properties": {
+    "$schema": { "const": "schema/requirements-v1.schema.json" },
+    "schema_version": { "const": 1 },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "registry_kind": { "const": "openttd-rl-project-requirements" },
+    "scope": { "const": "V1-and-sequential-post-V1-roadmap" },
+    "source_briefs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/source_brief" }
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/requirement" }
+    },
+    "tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/test" }
+    },
+    "aggregate_dependencies": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/aggregate" }
+    },
+    "legacy_evidence_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legacy_prefix",
+        "fresh_v1_evidence_required_for_pass",
+        "legacy_artifacts_cannot_close_bus_requirements"
+      ],
+      "properties": {
+        "legacy_prefix": { "const": "evidence/p0/" },
+        "fresh_v1_evidence_required_for_pass": { "const": true },
+        "legacy_artifacts_cannot_close_bus_requirements": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "requirement_id": {
+      "type": "string",
+      "pattern": "^(SCOPE|LIFE|STACK|PPO|OBS|ACT|REW|AI|MODEL|RUN|MON|EVAL|REPRO|TEST|ARCH|DONE|EXP)-[0-9]{3}$"
+    },
+    "test_id": {
+      "type": "string",
+      "pattern": "^V1-TEST-[A-Z0-9][A-Z0-9-]*$"
+    },
+    "milestone": {
+      "type": "string",
+      "enum": ["M00", "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "POST_V1"]
+    },
+    "gate": {
+      "type": "string",
+      "enum": ["G00", "G01", "G02", "G03", "G04", "G05", "G06", "G07", "G08", "G09", "G10", "G11", "G12", "POST_V1"]
+    },
+    "source_brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "filename", "size_bytes", "line_count", "sha256", "role"],
+      "properties": {
+        "id": { "type": "string", "enum": ["short", "full"] },
+        "filename": { "type": "string", "pattern": "^pasted-text-[12]\\.txt$" },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "line_count": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "role": { "type": "string", "minLength": 1 }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "mandatory",
+        "release_scope",
+        "summary",
+        "acceptance",
+        "source_sections",
+        "milestone",
+        "gate",
+        "status",
+        "implementation",
+        "test_ids",
+        "evidence",
+        "legacy_evidence",
+        "reviewer_note"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/requirement_id" },
+        "mandatory": { "const": true },
+        "release_scope": { "type": "string", "enum": ["V1", "POST_V1"] },
+        "summary": { "type": "string", "minLength": 1 },
+        "acceptance": { "type": "string", "minLength": 1 },
+        "source_sections": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^(short|full):[a-z0-9][a-z0-9-]*$" }
+        },
+        "milestone": { "$ref": "#/$defs/milestone" },
+        "gate": { "$ref": "#/$defs/gate" },
+        "status": {
+          "type": "string",
+          "enum": ["NOT_STARTED", "IN_PROGRESS", "PASS", "BLOCKED", "DEFERRED_POST_V1", "LEGACY_ONLY"]
+        },
+        "implementation": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/relative_path" }
+        },
+        "test_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/test_id" }
+        },
+        "evidence": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/relative_path" }
+        },
+        "legacy_evidence": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/relative_path" }
+        },
+        "reviewer_note": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "release_scope": { "const": "POST_V1" } }, "required": ["release_scope"] },
+          "then": {
+            "properties": {
+              "milestone": { "const": "POST_V1" },
+              "gate": { "const": "POST_V1" },
+              "status": { "const": "DEFERRED_POST_V1" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "release_scope": { "const": "V1" } }, "required": ["release_scope"] },
+          "then": {
+            "properties": {
+              "milestone": { "not": { "const": "POST_V1" } },
+              "gate": { "not": { "const": "POST_V1" } },
+              "status": { "not": { "const": "DEFERRED_POST_V1" } }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "PASS" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "implementation": { "minItems": 1 },
+              "evidence": { "minItems": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "summary", "runner", "requirement_ids", "status", "evidence", "mandatory", "reviewer_note"],
+      "properties": {
+        "id": { "$ref": "#/$defs/test_id" },
+        "summary": { "type": "string", "minLength": 1 },
+        "runner": { "oneOf": [{ "$ref": "#/$defs/relative_path" }, { "type": "null" }] },
+        "requirement_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/requirement_id" }
+        },
+        "status": { "type": "string", "enum": ["PLANNED", "IMPLEMENTED", "PASS", "FAIL", "DEFERRED"] },
+        "evidence": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/relative_path" }
+        },
+        "mandatory": { "const": true },
+        "reviewer_note": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "enum": ["IMPLEMENTED", "PASS"] } }, "required": ["status"] },
+          "then": { "properties": { "runner": { "$ref": "#/$defs/relative_path" } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "PASS" } }, "required": ["status"] },
+          "then": { "properties": { "evidence": { "minItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "DEFERRED" } }, "required": ["status"] },
+          "then": { "properties": { "runner": { "type": "null" } } }
+        }
+      ]
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement_id", "dependency_ids", "requires_zero_release_blocking_defects"],
+      "properties": {
+        "requirement_id": { "type": "string", "pattern": "^DONE-[0-9]{3}$" },
+        "dependency_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/requirement_id" }
+        },
+        "requires_zero_release_blocking_defects": { "type": "boolean" }
+      }
+    }
+  }
+}

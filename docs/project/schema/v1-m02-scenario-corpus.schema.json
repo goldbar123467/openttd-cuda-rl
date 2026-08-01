@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v1-m02-scenario-corpus.schema.json",
+  "title": "OpenTTD RL V1 M02 fixed scenario corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "contract_compatibility_sha256",
+    "generation",
+    "templates",
+    "identity"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../../docs/project/schema/v1-m02-scenario-corpus.schema.json"
+    },
+    "schema_version": { "const": "openttd-rl-v1-m02-scenario-corpus-1" },
+    "contract_compatibility_sha256": { "$ref": "#/$defs/sha256" },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "implicit_retries", "map_width", "map_height", "terrain_height"],
+      "properties": {
+        "mode": { "const": "fixed-template" },
+        "implicit_retries": { "const": 0 },
+        "map_width": { "const": 32 },
+        "map_height": { "const": 32 },
+        "terrain_height": { "const": 1 }
+      }
+    },
+    "templates": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/template" }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "corpus_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "algorithm": { "const": "sha256-canonical-json-v1" },
+        "corpus_sha256": { "$ref": "#/$defs/sha256" },
+        "schema_path": {
+          "const": "docs/project/schema/v1-m02-scenario-corpus.schema.json"
+        },
+        "schema_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "coordinate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "y": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    },
+    "town": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["town_id", "name", "size", "x", "y"],
+      "properties": {
+        "town_id": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "name": { "type": "string", "pattern": "^M02 [A-H][12]$" },
+        "size": { "const": "small" },
+        "x": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "y": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    },
+    "stop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["town_id", "approach", "x", "y"],
+      "properties": {
+        "town_id": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "approach": { "type": "string", "enum": ["east", "north", "south", "west"] },
+        "x": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "y": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    },
+    "depot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entrance", "x", "y"],
+      "properties": {
+        "entrance": { "type": "string", "enum": ["east", "north", "south", "west"] },
+        "x": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "y": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "template_id",
+        "split",
+        "seed",
+        "towns",
+        "road_waypoints",
+        "bus_stops",
+        "road_depot"
+      ],
+      "properties": {
+        "template_id": { "type": "string", "pattern": "^m02-template-0[1-8]$" },
+        "split": {
+          "type": "string",
+          "enum": ["training", "development", "final-evaluation"]
+        },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "towns": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/town" }
+        },
+        "road_waypoints": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/coordinate" }
+        },
+        "bus_stops": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/stop" }
+        },
+        "road_depot": { "$ref": "#/$defs/depot" }
+      }
+    }
+  }
+}

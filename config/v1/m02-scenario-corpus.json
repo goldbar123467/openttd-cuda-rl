@@ -1,0 +1,140 @@
+{
+  "$schema": "../../docs/project/schema/v1-m02-scenario-corpus.schema.json",
+  "schema_version": "openttd-rl-v1-m02-scenario-corpus-1",
+  "contract_compatibility_sha256": "45ec1b3beb4d6d50696bf1de75094e1817c6aa7ef8e0d38fc6696999764e5b0f",
+  "generation": {
+    "mode": "fixed-template",
+    "implicit_retries": 0,
+    "map_width": 32,
+    "map_height": 32,
+    "terrain_height": 1
+  },
+  "templates": [
+    {
+      "template_id": "m02-template-01",
+      "split": "training",
+      "seed": 1291976705,
+      "towns": [
+        {"town_id": 0, "name": "M02 A1", "size": "small", "x": 6, "y": 8},
+        {"town_id": 1, "name": "M02 A2", "size": "small", "x": 25, "y": 8}
+      ],
+      "road_waypoints": [{"x": 6, "y": 10}, {"x": 25, "y": 10}],
+      "bus_stops": [
+        {"town_id": 0, "approach": "east", "x": 8, "y": 10},
+        {"town_id": 1, "approach": "west", "x": 23, "y": 10}
+      ],
+      "road_depot": {"entrance": "north", "x": 15, "y": 11}
+    },
+    {
+      "template_id": "m02-template-02",
+      "split": "training",
+      "seed": 1291976706,
+      "towns": [
+        {"town_id": 0, "name": "M02 B1", "size": "small", "x": 6, "y": 23},
+        {"town_id": 1, "name": "M02 B2", "size": "small", "x": 25, "y": 23}
+      ],
+      "road_waypoints": [{"x": 6, "y": 21}, {"x": 25, "y": 21}],
+      "bus_stops": [
+        {"town_id": 0, "approach": "east", "x": 8, "y": 21},
+        {"town_id": 1, "approach": "west", "x": 23, "y": 21}
+      ],
+      "road_depot": {"entrance": "south", "x": 15, "y": 20}
+    },
+    {
+      "template_id": "m02-template-03",
+      "split": "training",
+      "seed": 1291976707,
+      "towns": [
+        {"town_id": 0, "name": "M02 C1", "size": "small", "x": 8, "y": 6},
+        {"town_id": 1, "name": "M02 C2", "size": "small", "x": 8, "y": 25}
+      ],
+      "road_waypoints": [{"x": 10, "y": 6}, {"x": 10, "y": 25}],
+      "bus_stops": [
+        {"town_id": 0, "approach": "south", "x": 10, "y": 8},
+        {"town_id": 1, "approach": "north", "x": 10, "y": 23}
+      ],
+      "road_depot": {"entrance": "west", "x": 11, "y": 15}
+    },
+    {
+      "template_id": "m02-template-04",
+      "split": "training",
+      "seed": 1291976708,
+      "towns": [
+        {"town_id": 0, "name": "M02 D1", "size": "small", "x": 23, "y": 6},
+        {"town_id": 1, "name": "M02 D2", "size": "small", "x": 23, "y": 25}
+      ],
+      "road_waypoints": [{"x": 21, "y": 6}, {"x": 21, "y": 25}],
+      "bus_stops": [
+        {"town_id": 0, "approach": "south", "x": 21, "y": 8},
+        {"town_id": 1, "approach": "north", "x": 21, "y": 23}
+      ],
+      "road_depot": {"entrance": "east", "x": 20, "y": 15}
+    },
+    {
+      "template_id": "m02-template-05",
+      "split": "development",
+      "seed": 1292029953,
+      "towns": [
+        {"town_id": 0, "name": "M02 E1", "size": "small", "x": 8, "y": 8},
+        {"town_id": 1, "name": "M02 E2", "size": "small", "x": 20, "y": 20}
+      ],
+      "road_waypoints": [{"x": 8, "y": 10}, {"x": 20, "y": 10}, {"x": 20, "y": 18}],
+      "bus_stops": [
+        {"town_id": 0, "approach": "east", "x": 9, "y": 10},
+        {"town_id": 1, "approach": "south", "x": 20, "y": 18}
+      ],
+      "road_depot": {"entrance": "north", "x": 14, "y": 11}
+    },
+    {
+      "template_id": "m02-template-06",
+      "split": "development",
+      "seed": 1292029954,
+      "towns": [
+        {"town_id": 0, "name": "M02 F1", "size": "small", "x": 20, "y": 8},
+        {"town_id": 1, "name": "M02 F2", "size": "small", "x": 8, "y": 20}
+      ],
+      "road_waypoints": [{"x": 20, "y": 10}, {"x": 8, "y": 10}, {"x": 8, "y": 18}],
+      "bus_stops": [
+        {"town_id": 0, "approach": "west", "x": 19, "y": 10},
+        {"town_id": 1, "approach": "south", "x": 8, "y": 18}
+      ],
+      "road_depot": {"entrance": "north", "x": 14, "y": 11}
+    },
+    {
+      "template_id": "m02-template-07",
+      "split": "final-evaluation",
+      "seed": 1292034049,
+      "towns": [
+        {"town_id": 0, "name": "M02 G1", "size": "small", "x": 6, "y": 14},
+        {"town_id": 1, "name": "M02 G2", "size": "small", "x": 26, "y": 14}
+      ],
+      "road_waypoints": [{"x": 6, "y": 16}, {"x": 26, "y": 16}],
+      "bus_stops": [
+        {"town_id": 0, "approach": "east", "x": 8, "y": 16},
+        {"town_id": 1, "approach": "west", "x": 24, "y": 16}
+      ],
+      "road_depot": {"entrance": "north", "x": 16, "y": 17}
+    },
+    {
+      "template_id": "m02-template-08",
+      "split": "final-evaluation",
+      "seed": 1292034050,
+      "towns": [
+        {"town_id": 0, "name": "M02 H1", "size": "small", "x": 14, "y": 6},
+        {"town_id": 1, "name": "M02 H2", "size": "small", "x": 14, "y": 26}
+      ],
+      "road_waypoints": [{"x": 16, "y": 6}, {"x": 16, "y": 26}],
+      "bus_stops": [
+        {"town_id": 0, "approach": "south", "x": 16, "y": 8},
+        {"town_id": 1, "approach": "north", "x": 16, "y": 24}
+      ],
+      "road_depot": {"entrance": "west", "x": 17, "y": 16}
+    }
+  ],
+  "identity": {
+    "algorithm": "sha256-canonical-json-v1",
+    "corpus_sha256": "07898d94a56fd080c9cea57dbdf90384e1f0f269e360fb35423de16bc89d2e14",
+    "schema_path": "docs/project/schema/v1-m02-scenario-corpus.schema.json",
+    "schema_sha256": "1760ae8c53c15d399e6c6284c8152d7dc2919a9e3d2b21a3e740506b45643d3a"
+  }
+}

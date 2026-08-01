@@ -1,0 +1,25 @@
+{
+  "schema_version": "openttd-rl-v1-source-profile-1",
+  "schema_sha256": "9c826f9a0609d69caefa216baa5cea78fd2344b4c30e68662698f422758d9856",
+  "profile_id": "openttd-15.3-v1",
+  "upstream": {
+    "url": "https://github.com/OpenTTD/OpenTTD.git",
+    "release": "15.3",
+    "commit": "14ec60f248547d4d062a1160f0fc26d742319888",
+    "tree": "02d8cbbb0d8c030698d37ca76ab2773b6e23c397",
+    "cxx_standard": 20,
+    "license": "GPL-2.0-only"
+  },
+  "object_repository": "openttd-upstream",
+  "patch_series": {
+    "directory": "integration/openttd/patches/15.3",
+    "series_file": "integration/openttd/patches/15.3/series",
+    "series_sha256": "f982ca6f630c74e240af16d6cb628660a41997cea6ff0c4940839d2ba80b21e2"
+  },
+  "guards": {
+    "require_clean_object_repository_worktree": true,
+    "reject_unlisted_patches": true,
+    "reject_patch_offset_or_fuzz": true,
+    "require_unchanged_object_repository": true
+  }
+}

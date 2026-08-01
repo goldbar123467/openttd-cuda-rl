@@ -68,7 +68,7 @@ done
 [[ "${SCHEDULE_SEED}" =~ ^-?[0-9]+$ ]] || { printf 'ERROR: --schedule-seed must be an integer\n' >&2; exit 64; }
 
 if [[ -z "${WORK_ROOT}" ]]; then
-    WORK_ROOT=$(mktemp -d -- /workspace/p002-contract-tests.XXXXXXXX)
+    WORK_ROOT=$(mktemp -d -- "${TMPDIR:-/tmp}/p002-contract-tests.XXXXXXXX")
     CREATED_WORK_ROOT=1
 else
     [[ "${WORK_ROOT}" == /* ]] || { printf 'ERROR: --work-root must be absolute\n' >&2; exit 64; }

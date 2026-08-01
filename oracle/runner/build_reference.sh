@@ -19,10 +19,10 @@ Usage: build_reference.sh --build-root ABSOLUTE_PATH
                           --configuration-manifest ABSOLUTE_PATH
                          [--parallel 1..64]
 
-Tests may set P0_TEST_MODE=1 and pass --test-configuration-override for a
-deliberately minimal or mutated configuration statement below artifact-root.
-Production accepts only the canonical configure-reference manifest emitted by
-the preceding stage.
+Tests may set P0_TEST_MODE=1, pass --test-configuration-override for a
+deliberately minimal or mutated configuration statement below artifact-root,
+and set P0_TEST_CMAKE_BIN to an absolute CMake executable. Production accepts
+only the canonical configure-reference manifest emitted by the preceding stage.
 
 Requires the verified OpenGFX payload at BUILD_ROOT/baseset/opengfx-8.0.tar.
 The install root is safely reset below artifact-root, then Ninja builds the
@@ -114,9 +114,18 @@ fi
 
 p0_initialize 'build-reference' "${ARTIFACT_ROOT}" 'build-reference.json'
 p0_write_command_array "${ARTIFACT_ROOT}/commands/build-reference.json" "$0" "${ORIGINAL_ARGUMENTS[@]}"
-for tool in cmake ninja ldd sha256sum stat python3 grep getconf jq; do
+for tool in ninja ldd sha256sum stat python3 grep getconf; do
     p0_require_command "${tool}"
 done
+
+if [[ "${P0_TEST_MODE:-0}" == 1 && ${TEST_CONFIGURATION_OVERRIDE} -eq 1 && -n "${P0_TEST_CMAKE_BIN:-}" ]]; then
+    p0_require_absolute_path "${P0_TEST_CMAKE_BIN}" 'P0_TEST_CMAKE_BIN'
+    CMAKE_BIN=$(p0_realpath "${P0_TEST_CMAKE_BIN}")
+else
+    CMAKE_BIN='/usr/bin/cmake'
+fi
+readonly CMAKE_BIN
+[[ -f "${CMAKE_BIN}" && -x "${CMAKE_BIN}" ]] || p0_die 'frozen CMake path is unavailable' 69
 
 p0_require_result_pass "${CONFIGURATION_MANIFEST}"
 if ((TEST_CONFIGURATION_OVERRIDE == 0)); then
@@ -197,8 +206,8 @@ build_executable="${BUILD_ROOT}/openttd"
 [[ ! -e "${build_executable}" ]] || p0_die 'fresh configuration unexpectedly contains a stale OpenTTD executable' 65
 p0_safe_reset_dir "${INSTALL_ROOT}" "${ARTIFACT_ROOT}"
 
-declare -a build_command=(/usr/bin/cmake --build "${BUILD_ROOT}" --parallel "${PARALLEL}")
-declare -a install_command=(/usr/bin/cmake --install "${BUILD_ROOT}")
+declare -a build_command=("${CMAKE_BIN}" --build "${BUILD_ROOT}" --parallel "${PARALLEL}")
+declare -a install_command=("${CMAKE_BIN}" --install "${BUILD_ROOT}")
 p0_write_command_array "${ARTIFACT_ROOT}/commands/build-reference-cmake.json" "${build_command[@]}"
 p0_write_command_array "${ARTIFACT_ROOT}/commands/install-reference-cmake.json" "${install_command[@]}"
 
@@ -258,7 +267,18 @@ pathlib.Path(sys.argv[2]).write_bytes(json.dumps(value, ensure_ascii=False, sort
 PY
 p0_require_canonical_json "${installed_tree_manifest}" "${ARTIFACT_ROOT}"
 installed_tree_sha256=$(p0_sha256_file "${installed_tree_manifest}")
-installed_tree_file_count=$(jq -er '.files | length' "${installed_tree_manifest}")
+installed_tree_file_count=$(python3 - "${installed_tree_manifest}" <<'PY'
+import json
+import pathlib
+import sys
+
+value = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+files = value.get("files")
+if not isinstance(files, list):
+    raise SystemExit("installed-tree manifest omits files array")
+print(len(files))
+PY
+)
 
 ldd_log="${ARTIFACT_ROOT}/logs/build-reference.ldd.log"
 if ldd "${installed_executable}" >"${ldd_log}" 2>"${ARTIFACT_ROOT}/logs/build-reference.ldd.stderr.log"; then

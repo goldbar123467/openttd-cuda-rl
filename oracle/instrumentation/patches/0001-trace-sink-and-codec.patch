@@ -1,0 +1,449 @@
+From e8afd91bd67867d6ea20614927463118675612c1 Mon Sep 17 00:00:00 2001
+From: OpenTTD P0 Instrumentation <p0-instrumentation@example.invalid>
+Date: Thu, 30 Jul 2026 15:58:38 -0400
+Subject: [PATCH] port003: add fail-closed trace sink foundation
+
+Add the opt-in Linux-only OPTION_P0_ORACLE_TRACE build boundary and a checked little-endian sink that writes exclusively to a .partial journal, retains failures, and durably closes output for the independent C17 finalizer.
+
+The patch anchors at set_options/add_definitions_based_on_options and the src add_files lists. It does not sample gameplay state or enter a command/tick boundary; later patches own those integration points.
+---
+ cmake/Options.cmake         |  10 ++
+ src/CMakeLists.txt          |   6 ++
+ src/p0_trace_sink.cpp       | 190 ++++++++++++++++++++++++++++++++++++
+ src/p0_trace_sink.h         |  67 +++++++++++++
+ src/tests/CMakeLists.txt    |   5 +
+ src/tests/p0_trace_sink.cpp |  88 +++++++++++++++++
+ 6 files changed, 366 insertions(+)
+ create mode 100644 src/p0_trace_sink.cpp
+ create mode 100644 src/p0_trace_sink.h
+ create mode 100644 src/tests/p0_trace_sink.cpp
+
+diff --git a/cmake/Options.cmake b/cmake/Options.cmake
+index cf4655a27c..c19b9e83e6 100644
+--- a/cmake/Options.cmake
++++ b/cmake/Options.cmake
+@@ -62,6 +62,11 @@ function(set_options)
+     option(OPTION_DOCS_ONLY "Build only docs target" OFF)
+     option(OPTION_ALLOW_INVALID_SIGNATURE "Allow loading of content with invalid signatures" OFF)
+     option(OPTION_LINE_IN_DOXYGEN_WARNINGS "Print line number in doxygen warnings" ON)
++    option(OPTION_P0_ORACLE_TRACE "Compile the external P0 oracle trace bridge" OFF)
++
++    if(OPTION_P0_ORACLE_TRACE AND NOT UNIX)
++        message(FATAL_ERROR "OPTION_P0_ORACLE_TRACE is supported only by the pinned Linux oracle profile")
++    endif()
+ 
+     if (OPTION_DOCS_ONLY)
+         set(OPTION_TOOLS_ONLY ON PARENT_SCOPE)
+@@ -99,6 +104,7 @@ function(show_options)
+     message(STATUS "Option Install FHS - ${OPTION_INSTALL_FHS}")
+     message(STATUS "Option Use assert - ${OPTION_USE_ASSERTS}")
+     message(STATUS "Option Use NSIS - ${OPTION_USE_NSIS}")
++    message(STATUS "Option P0 Oracle Trace - ${OPTION_P0_ORACLE_TRACE}")
+ 
+     if(OPTION_SURVEY_KEY)
+         message(STATUS "Option Survey Key - USED")
+@@ -134,4 +140,8 @@ function(add_definitions_based_on_options)
+     if(OPTION_ALLOW_INVALID_SIGNATURE)
+         add_definitions(-DALLOW_INVALID_SIGNATURE)
+     endif()
++
++    if(OPTION_P0_ORACLE_TRACE)
++        add_definitions(-DWITH_P0_ORACLE_TRACE)
++    endif()
+ endfunction()
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index e65c48faea..1e86dee771 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -6,6 +6,12 @@ if(OPTION_TOOLS_ONLY)
+     return()
+ endif()
+ 
++add_files(
++    p0_trace_sink.cpp
++    p0_trace_sink.h
++    CONDITION OPTION_P0_ORACLE_TRACE
++)
++
+ add_subdirectory(3rdparty)
+ add_subdirectory(ai)
+ add_subdirectory(blitter)
+diff --git a/src/p0_trace_sink.cpp b/src/p0_trace_sink.cpp
+new file mode 100644
+index 0000000000..a28f0e4206
+--- /dev/null
++++ b/src/p0_trace_sink.cpp
+@@ -0,0 +1,190 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file p0_trace_sink.cpp Strict binary sink for external P0 oracle tapes. */
++
++#include "stdafx.h"
++#include "p0_trace_sink.h"
++
++#include <algorithm>
++#include <cerrno>
++#include <climits>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++#include "safeguards.h"
++
++namespace P0Trace {
++
++Sink::Sink(int descriptor, std::filesystem::path partial_path, uint64_t maximum_bytes) :
++	descriptor(descriptor), partial_path(std::move(partial_path)), maximum_bytes(maximum_bytes)
++{
++}
++
++/* static */ std::unique_ptr<Sink> Sink::Open(const std::filesystem::path &final_path, uint64_t maximum_bytes, std::error_code &error)
++{
++	error.clear();
++	if (final_path.empty() || maximum_bytes == 0) {
++		error = std::error_code(EINVAL, std::generic_category());
++		return nullptr;
++	}
++
++	struct stat status;
++	if (lstat(final_path.c_str(), &status) == 0) {
++		error = std::error_code(EEXIST, std::generic_category());
++		return nullptr;
++	}
++	if (errno != ENOENT) {
++		error = std::error_code(errno, std::generic_category());
++		return nullptr;
++	}
++
++	std::filesystem::path partial_path = final_path;
++	partial_path += ".partial";
++	int descriptor = open(partial_path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, S_IRUSR | S_IWUSR);
++	if (descriptor < 0) {
++		error = std::error_code(errno, std::generic_category());
++		return nullptr;
++	}
++	return std::unique_ptr<Sink>(new Sink(descriptor, partial_path, maximum_bytes));
++}
++
++Sink::~Sink()
++{
++	if (this->descriptor >= 0) close(this->descriptor);
++}
++
++bool Sink::Fail(int error_value)
++{
++	if (!this->error) this->error = std::error_code(error_value, std::generic_category());
++	return false;
++}
++
++bool Sink::WriteAll(std::span<const uint8_t> bytes)
++{
++	if (this->error) return false;
++	if (this->descriptor < 0 || this->closed) return this->Fail(EINVAL);
++	if (bytes.size() > this->maximum_bytes || this->bytes_written > this->maximum_bytes - bytes.size()) return this->Fail(EFBIG);
++
++	size_t offset = 0;
++	while (offset < bytes.size()) {
++		size_t chunk = std::min(bytes.size() - offset, static_cast<size_t>(SSIZE_MAX));
++		ssize_t written = write(this->descriptor, bytes.data() + offset, chunk);
++		if (written < 0) {
++			if (errno == EINTR) continue;
++			return this->Fail(errno);
++		}
++		if (written == 0) return this->Fail(EIO);
++		offset += static_cast<size_t>(written);
++		this->bytes_written += static_cast<uint64_t>(written);
++	}
++	return true;
++}
++
++bool Sink::WriteU8(uint8_t value)
++{
++	return this->WriteAll(std::span<const uint8_t>(&value, 1));
++}
++
++bool Sink::WriteU16(uint16_t value)
++{
++	std::array<uint8_t, 2> bytes{
++		static_cast<uint8_t>(value),
++		static_cast<uint8_t>(value >> 8),
++	};
++	return this->WriteAll(bytes);
++}
++
++bool Sink::WriteU32(uint32_t value)
++{
++	std::array<uint8_t, 4> bytes{
++		static_cast<uint8_t>(value),
++		static_cast<uint8_t>(value >> 8),
++		static_cast<uint8_t>(value >> 16),
++		static_cast<uint8_t>(value >> 24),
++	};
++	return this->WriteAll(bytes);
++}
++
++bool Sink::WriteU64(uint64_t value)
++{
++	std::array<uint8_t, 8> bytes{
++		static_cast<uint8_t>(value),
++		static_cast<uint8_t>(value >> 8),
++		static_cast<uint8_t>(value >> 16),
++		static_cast<uint8_t>(value >> 24),
++		static_cast<uint8_t>(value >> 32),
++		static_cast<uint8_t>(value >> 40),
++		static_cast<uint8_t>(value >> 48),
++		static_cast<uint8_t>(value >> 56),
++	};
++	return this->WriteAll(bytes);
++}
++
++bool Sink::WriteBytes(std::span<const uint8_t> bytes)
++{
++	return this->WriteAll(bytes);
++}
++
++bool Sink::WriteZeroes(size_t count)
++{
++	static constexpr std::array<uint8_t, 8> ZERO{};
++	if (count > 7) return this->Fail(EINVAL);
++	return this->WriteAll(std::span<const uint8_t>(ZERO.data(), count));
++}
++
++bool Sink::FinishJournal(std::error_code &error)
++{
++	error.clear();
++	if (this->error) {
++		error = this->error;
++		return false;
++	}
++	if (this->descriptor < 0 || this->closed) {
++		error = std::error_code(EINVAL, std::generic_category());
++		return false;
++	}
++	if (fsync(this->descriptor) != 0) {
++		this->Fail(errno);
++		error = this->error;
++		return false;
++	}
++	if (close(this->descriptor) != 0) {
++		this->descriptor = -1;
++		this->Fail(errno);
++		error = this->error;
++		return false;
++	}
++	this->descriptor = -1;
++
++	std::filesystem::path directory = this->partial_path.parent_path();
++	if (directory.empty()) directory = ".";
++	int directory_descriptor = open(directory.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
++	if (directory_descriptor < 0) {
++		this->Fail(errno);
++		error = this->error;
++		return false;
++	}
++	if (fsync(directory_descriptor) != 0) {
++		int fsync_error = errno;
++		close(directory_descriptor);
++		this->Fail(fsync_error);
++		error = this->error;
++		return false;
++	}
++	if (close(directory_descriptor) != 0) {
++		this->Fail(errno);
++		error = this->error;
++		return false;
++	}
++
++	this->closed = true;
++	return true;
++}
++
++} // namespace P0Trace
+diff --git a/src/p0_trace_sink.h b/src/p0_trace_sink.h
+new file mode 100644
+index 0000000000..0002106abf
+--- /dev/null
++++ b/src/p0_trace_sink.h
+@@ -0,0 +1,67 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file p0_trace_sink.h Strict binary sink for external P0 oracle tapes. */
++
++#ifndef P0_TRACE_SINK_H
++#define P0_TRACE_SINK_H
++
++#include <cstdint>
++#include <filesystem>
++#include <memory>
++#include <span>
++#include <system_error>
++
++namespace P0Trace {
++
++/**
++ * Fail-closed writer for a single P0 trace file.
++ *
++ * The sink writes only to FINAL_PATH.partial. FinishJournal() durably closes
++ * that journal but never publishes FINAL_PATH; the independent C17 finalizer
++ * owns validation, trailer creation, and no-overwrite publication. A failed or
++ * interrupted writer deliberately retains the partial file.
++ */
++class Sink {
++public:
++	static std::unique_ptr<Sink> Open(const std::filesystem::path &final_path, uint64_t maximum_bytes, std::error_code &error);
++
++	~Sink();
++
++	Sink(const Sink &) = delete;
++	Sink(Sink &&) = delete;
++	Sink &operator=(const Sink &) = delete;
++	Sink &operator=(Sink &&) = delete;
++
++	bool WriteU8(uint8_t value);
++	bool WriteU16(uint16_t value);
++	bool WriteU32(uint32_t value);
++	bool WriteU64(uint64_t value);
++	bool WriteBytes(std::span<const uint8_t> bytes);
++	bool WriteZeroes(size_t count);
++	bool FinishJournal(std::error_code &error);
++
++	uint64_t BytesWritten() const { return this->bytes_written; }
++	std::error_code Error() const { return this->error; }
++
++private:
++	Sink(int descriptor, std::filesystem::path partial_path, uint64_t maximum_bytes);
++
++	bool Fail(int error_value);
++	bool WriteAll(std::span<const uint8_t> bytes);
++
++	int descriptor;
++	std::filesystem::path partial_path;
++	uint64_t maximum_bytes;
++	uint64_t bytes_written = 0;
++	std::error_code error;
++	bool closed = false;
++};
++
++} // namespace P0Trace
++
++#endif /* P0_TRACE_SINK_H */
+diff --git a/src/tests/CMakeLists.txt b/src/tests/CMakeLists.txt
+index 32715c4431..2e4cebb56e 100644
+--- a/src/tests/CMakeLists.txt
++++ b/src/tests/CMakeLists.txt
+@@ -21,3 +21,8 @@ add_test_files(
+     tilearea.cpp
+     utf8.cpp
+ )
++
++add_test_files(
++    p0_trace_sink.cpp
++    CONDITION OPTION_P0_ORACLE_TRACE
++)
+diff --git a/src/tests/p0_trace_sink.cpp b/src/tests/p0_trace_sink.cpp
+new file mode 100644
+index 0000000000..3f354dd138
+--- /dev/null
++++ b/src/tests/p0_trace_sink.cpp
+@@ -0,0 +1,88 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file p0_trace_sink.cpp Tests for the external P0 oracle trace sink. */
++
++#include "../stdafx.h"
++#include "../3rdparty/catch2/catch.hpp"
++#include "../p0_trace_sink.h"
++
++#include <cerrno>
++#include <fstream>
++#include <unistd.h>
++
++#include "../safeguards.h"
++
++class P0TraceTemporaryDirectory {
++public:
++	P0TraceTemporaryDirectory()
++	{
++		std::filesystem::path pattern = std::filesystem::temp_directory_path() / "openttd-p0-trace-test.XXXXXXXX";
++		std::string storage = pattern.string();
++		storage.push_back('\0');
++		char *created = mkdtemp(storage.data());
++		REQUIRE(created != nullptr);
++		this->path = created;
++	}
++
++	~P0TraceTemporaryDirectory()
++	{
++		std::error_code error;
++		std::filesystem::remove_all(this->path, error);
++	}
++
++	std::filesystem::path path;
++};
++
++TEST_CASE("P0 trace sink writes canonical little-endian primitives and closes a durable journal")
++{
++	P0TraceTemporaryDirectory temporary;
++	std::filesystem::path final_path = temporary.path / "trace.tape";
++	std::error_code error;
++	auto sink = P0Trace::Sink::Open(final_path, 64, error);
++	REQUIRE(sink != nullptr);
++	CHECK(!std::filesystem::exists(final_path));
++	CHECK(std::filesystem::exists(final_path.string() + ".partial"));
++
++	REQUIRE(sink->WriteU8(0x12));
++	REQUIRE(sink->WriteU16(0x3456));
++	REQUIRE(sink->WriteU32(0x789ABCDE));
++	REQUIRE(sink->WriteU64(0x0123456789ABCDEF));
++	REQUIRE(sink->WriteZeroes(1));
++	CHECK(sink->BytesWritten() == 16);
++	REQUIRE(sink->FinishJournal(error));
++	CHECK(!error);
++	CHECK(!std::filesystem::exists(final_path));
++	CHECK(std::filesystem::exists(final_path.string() + ".partial"));
++
++	std::ifstream input(final_path.string() + ".partial", std::ios::binary);
++	std::vector<uint8_t> bytes(std::istreambuf_iterator<char>(input), {});
++	CHECK(bytes == std::vector<uint8_t>{
++		0x12, 0x56, 0x34, 0xDE, 0xBC, 0x9A, 0x78, 0xEF,
++		0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01, 0x00,
++	});
++}
++
++TEST_CASE("P0 trace sink rejects existing output and retains bounded failures")
++{
++	P0TraceTemporaryDirectory temporary;
++	std::filesystem::path existing = temporary.path / "existing.tape";
++	std::ofstream(existing).put('x');
++	std::error_code error;
++	CHECK(P0Trace::Sink::Open(existing, 64, error) == nullptr);
++	CHECK(error.value() == EEXIST);
++
++	std::filesystem::path bounded = temporary.path / "bounded.tape";
++	auto sink = P0Trace::Sink::Open(bounded, 2, error);
++	REQUIRE(sink != nullptr);
++	CHECK(!sink->WriteU32(1));
++	CHECK(sink->Error().value() == EFBIG);
++	CHECK(!sink->FinishJournal(error));
++	CHECK(error.value() == EFBIG);
++	CHECK(!std::filesystem::exists(bounded));
++	CHECK(std::filesystem::exists(bounded.string() + ".partial"));
++}
+-- 
+2.43.0
+

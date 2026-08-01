@@ -54,9 +54,9 @@ class TapeContractTests(unittest.TestCase):
         self.assertIn(status, result.stderr)
 
     def test_primitive_encoding_and_golden_vectors(self) -> None:
-        self.assertEqual(len(tape()), 64528)
+        self.assertEqual(len(tape()), 69280)
         self.assertEqual(hashlib.sha256(tape()).hexdigest(),
-                         "300e9e37659a88714ca19efeccf3d2870c27845abf81c2de6f5a91bbc04dd72f")
+                         "b4843f581526a036759a54e635bbbba65624493973d2569143e284503abd1287")
         self.assertEqual(struct.pack("<B", 0) + struct.pack("<B", 1) + struct.pack("<B", 255),
                          bytes.fromhex("0001ff"))
         self.assertEqual(b"".join(struct.pack("<H", x) for x in (0, 1, 0x1234, 0xFFFF)),
@@ -167,7 +167,7 @@ class TapeContractTests(unittest.TestCase):
 
     def test_projection_contract(self) -> None:
         fields = decode_file(self.valid).records[1].fields
-        self.assertEqual(len(fields), 645)
+        self.assertEqual(len(fields), 757)
         self.assertIn(1030, {field.field_id for field in fields})
         variants = []
         empty = bytearray(projection()); struct.pack_into("<I", empty, 4, 0)
@@ -178,7 +178,18 @@ class TapeContractTests(unittest.TestCase):
         variants.append((bytes(wrong_type), "schema"))
         wrong_count = bytearray(projection()); struct.pack_into("<I", wrong_count, 32, 2)
         variants.append((bytes(wrong_count), "schema"))
-        bad_padding = bytearray(projection()); bad_padding[-1] = 1
+        bad_padding = bytearray(projection())
+        offset = 24
+        for _ in range(struct.unpack_from("<I", bad_padding, 4)[0]):
+            byte_count = struct.unpack_from("<IHHII", bad_padding, offset)[4]
+            value_end = offset + 16 + byte_count
+            padded_end = (value_end + 7) & ~7
+            if value_end < padded_end:
+                bad_padding[value_end] = 1
+                break
+            offset = padded_end
+        else:
+            self.fail("golden projection contains no field padding to corrupt")
         variants.append((bytes(bad_padding), "canonical"))
         for payload, expected in variants:
             records = [record(1, 0, 0, 0), record(5, 1, 0, 0, payload), record(11, 2, 0, 0)]

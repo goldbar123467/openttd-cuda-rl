@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v1-m02-map-feasibility-report.schema.json",
+  "title": "OpenTTD RL V1 M02 32 by 32 map feasibility report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan",
+    "source",
+    "build_inputs",
+    "reference",
+    "tools",
+    "profiles",
+    "equivalence_64",
+    "result",
+    "report_identity_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "openttd-rl-v1-m02-map-feasibility-report-1" },
+    "plan": { "$ref": "#/$defs/identity" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "base_prepared_tree",
+        "base_preparation_identity_sha256",
+        "delta_series_sha256",
+        "patches",
+        "prepared_tree",
+        "composed_identity_sha256"
+      ],
+      "properties": {
+        "commit": { "$ref": "#/$defs/git_sha1" },
+        "base_prepared_tree": { "$ref": "#/$defs/git_sha1" },
+        "base_preparation_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "delta_series_sha256": { "$ref": "#/$defs/sha256" },
+        "patches": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/patch" } },
+        "prepared_tree": { "$ref": "#/$defs/git_sha1" },
+        "composed_identity_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "build_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lock_sha256", "artifact_count", "inventory_sha256", "offline_only"],
+      "properties": {
+        "lock_sha256": { "$ref": "#/$defs/sha256" },
+        "artifact_count": { "type": "integer", "minimum": 1 },
+        "inventory_sha256": { "$ref": "#/$defs/sha256" },
+        "offline_only": { "const": true }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "build_identity_sha256", "executable_sha256", "generated_64"],
+      "properties": {
+        "artifact_id": { "type": "string", "minLength": 1 },
+        "build_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "executable_sha256": { "$ref": "#/$defs/sha256" },
+        "generated_64": { "$ref": "#/$defs/save" }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cmake", "ctest", "gcc", "gxx", "ninja"],
+      "properties": {
+        "cmake": { "type": "string", "minLength": 1 },
+        "ctest": { "type": "string", "minLength": 1 },
+        "gcc": { "type": "string", "minLength": 1 },
+        "gxx": { "type": "string", "minLength": 1 },
+        "ninja": { "type": "string", "minLength": 1 }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/profile" }
+    },
+    "equivalence_64": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_map_sha256", "profile_map_sha256", "map_chunks_byte_identical", "result"],
+      "properties": {
+        "reference_map_sha256": { "$ref": "#/$defs/sha256" },
+        "profile_map_sha256": {
+          "type": "object",
+          "minProperties": 4,
+          "additionalProperties": { "$ref": "#/$defs/sha256" }
+        },
+        "map_chunks_byte_identical": { "const": true },
+        "result": { "const": "PASS" }
+      }
+    },
+    "result": { "const": "PASS" },
+    "report_identity_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "git_sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order", "path", "sha256"],
+      "properties": {
+        "order": { "type": "integer", "minimum": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "save": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height",
+        "tiles",
+        "tile_type_counts",
+        "map_sha256"
+      ],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "tiles": { "type": "integer", "minimum": 1 },
+        "tile_type_counts": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "map_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rl_environment",
+        "sanitizer",
+        "binary_sha256",
+        "test_binary_sha256",
+        "cmake_components",
+        "unit_tests",
+        "regression_tests",
+        "requested_32",
+        "empty_32",
+        "generated_32",
+        "generated_64",
+        "result"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "rl_environment": { "type": "boolean" },
+        "sanitizer": { "enum": ["none", "address", "undefined"] },
+        "binary_sha256": { "$ref": "#/$defs/sha256" },
+        "test_binary_sha256": { "$ref": "#/$defs/sha256" },
+        "cmake_components": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "unit_tests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["test_cases", "assertions", "result"],
+          "properties": {
+            "test_cases": { "type": "integer", "minimum": 1 },
+            "assertions": { "type": "integer", "minimum": 1 },
+            "result": { "const": "PASS" }
+          }
+        },
+        "regression_tests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["names", "result"],
+          "properties": {
+            "names": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "result": { "const": "PASS" }
+          }
+        },
+        "requested_32": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["permitted", "actual_width", "actual_height", "result"],
+          "properties": {
+            "permitted": { "type": "boolean" },
+            "actual_width": { "enum": [32, 64] },
+            "actual_height": { "enum": [32, 64] },
+            "result": { "const": "PASS" }
+          }
+        },
+        "empty_32": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["repetitions", "byte_identical", "reload", "soak_ticks", "result"],
+              "properties": {
+                "repetitions": {
+                  "type": "array",
+                  "minItems": 2,
+                  "items": { "$ref": "#/$defs/save" }
+                },
+                "byte_identical": { "const": true },
+                "reload": { "const": "PASS" },
+                "soak_ticks": { "type": "integer", "minimum": 1048576 },
+                "result": { "const": "PASS" }
+              }
+            }
+          ]
+        },
+        "generated_32": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ticks", "seed", "result"],
+              "properties": {
+                "ticks": { "type": "integer", "minimum": 8192 },
+                "seed": { "type": "integer", "minimum": 0 },
+                "result": { "const": "PASS" }
+              }
+            }
+          ]
+        },
+        "generated_64": { "$ref": "#/$defs/save" },
+        "result": { "const": "PASS" }
+      }
+    }
+  }
+}

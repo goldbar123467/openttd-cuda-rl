@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-source-profile.schema.json",
+  "title": "OpenTTD RL V1 source preparation profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_sha256",
+    "profile_id",
+    "upstream",
+    "object_repository",
+    "patch_series",
+    "guards"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "openttd-rl-v1-source-profile-1"
+    },
+    "schema_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "release", "commit", "tree", "cxx_standard", "license"],
+      "properties": {
+        "url": {
+          "const": "https://github.com/OpenTTD/OpenTTD.git"
+        },
+        "release": {
+          "const": "15.3"
+        },
+        "commit": {
+          "$ref": "#/$defs/git_oid"
+        },
+        "tree": {
+          "$ref": "#/$defs/git_oid"
+        },
+        "cxx_standard": {
+          "const": 20
+        },
+        "license": {
+          "const": "GPL-2.0-only"
+        }
+      }
+    },
+    "object_repository": {
+      "$ref": "#/$defs/relative_path"
+    },
+    "patch_series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["directory", "series_file", "series_sha256"],
+      "properties": {
+        "directory": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "series_file": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "series_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "guards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "require_clean_object_repository_worktree",
+        "reject_unlisted_patches",
+        "reject_patch_offset_or_fuzz",
+        "require_unchanged_object_repository"
+      ],
+      "properties": {
+        "require_clean_object_repository_worktree": { "const": true },
+        "reject_unlisted_patches": { "const": true },
+        "reject_patch_offset_or_fuzz": { "const": true },
+        "require_unchanged_object_repository": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "git_oid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9._/-]+$"
+    }
+  }
+}

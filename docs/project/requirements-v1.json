@@ -1,0 +1,5601 @@
+{
+  "$schema": "schema/requirements-v1.schema.json",
+  "schema_version": 1,
+  "schema_sha256": "0b02935e1cad1e99ddd39fd4e4de1aaff9d2197d94fe830c030a13155a336a31",
+  "registry_kind": "openttd-rl-project-requirements",
+  "scope": "V1-and-sequential-post-V1-roadmap",
+  "source_briefs": [
+    {
+      "id": "short",
+      "filename": "pasted-text-1.txt",
+      "size_bytes": 2124,
+      "line_count": 106,
+      "sha256": "03d14e26b4e0b438e419d6f834ca99025c5a980eecee4c536c0cda5f7243b92a",
+      "role": "Conservative bus-only V1 scope, engineering principles, expansion, and reliable-profitability goal."
+    },
+    {
+      "id": "full",
+      "filename": "pasted-text-2.txt",
+      "size_bytes": 19339,
+      "line_count": 759,
+      "sha256": "a7da553035e44468f29184a69c014f16bd1439fcbdf77275d0762073da306492",
+      "role": "Complete C++/CUDA PPO lifecycle, observations/actions/rewards, evaluation, ONNX, monitoring, and in-game playback."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "SCOPE-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Every V1 scenario is exactly 32 by 32 tiles.",
+      "acceptance": "Scenario-schema test and reset-run manifest.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "config/v1/m02-scenario-corpus.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Training and evaluation run OpenTTD without a graphical window.",
+      "acceptance": "Headless integration and long-run results.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Initial PPO training uses exactly one learning company.",
+      "acceptance": "Reset-state projection and company-count assertion.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_reset_projection.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "V1 uses the default OpenTTD economy under a pinned settings profile.",
+      "acceptance": "Settings manifest and runtime projection.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_reset_projection.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Passengers are the only serviced cargo in V1.",
+      "acceptance": "Scenario validation and forbidden-cargo negative test.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_scripted_trajectory.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Buses are the only operated vehicle type in V1.",
+      "acceptance": "Vehicle-pool validation and forbidden-vehicle tests.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_scripted_trajectory.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Agent-built infrastructure is limited to roads, road-vehicle depots required for buses, and bus stops.",
+      "acceptance": "Command registry and forbidden-command tests.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_scripted_trajectory.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "V1 contains no trains or rail construction.",
+      "acceptance": "Action-schema absence and runtime invariant.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_scripted_trajectory.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "V1 contains no aircraft or airport construction.",
+      "acceptance": "Action-schema absence and runtime invariant.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_scripted_trajectory.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "V1 contains no ships or water-transport construction.",
+      "acceptance": "Action-schema absence and runtime invariant.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_scripted_trajectory.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "V1 contains no industrial cargo servicing.",
+      "acceptance": "Cargo-flow invariant and scenario audit.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_scripted_trajectory.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-012",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "V1 contains no NewGRFs or arbitrary mod content.",
+      "acceptance": "Content manifest and negative compatibility test.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_reset_projection.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-013",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "V1 training contains no multiplayer or competitive company behavior.",
+      "acceptance": "Runtime settings and company invariant.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_reset_projection.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-014",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "V1 disables disasters.",
+      "acceptance": "Settings/runtime assertion.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_reset_projection.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-015",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Seeds are fixed when requested, configurable, recorded, and applied to all owned RNG streams.",
+      "acceptance": "Seed contract tests and run manifest.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "config/v1/m02-scenario-corpus.json",
+        "config/v1/m02-seed-ledger.json",
+        "scripts/v1/generate_m02_scenario.py",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_reset_projection.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-016",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Scenario generation is reproducible from its versioned configuration and seed.",
+      "acceptance": "Independent repeated-reset digest campaign.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-corpus.json",
+        "config/v1/m02-seed-ledger.json",
+        "scripts/v1/generate_m02_scenario.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-017",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Evaluation is deterministic wherever the pinned OpenTTD engine permits; known nondeterminism is measured and disclosed.",
+      "acceptance": "Repeated evaluation report and exception ledger.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-corpus.json",
+        "config/v1/m02-seed-ledger.json",
+        "scripts/v1/generate_m02_scenario.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "SCOPE-018",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can inspect towns, population/economic features, and road state through documented observations.",
+      "acceptance": "Observation semantic tests.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "SCOPE-019",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can choose two towns or population centers to connect.",
+      "acceptance": "Action integration trajectory.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "SCOPE-020",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can build required road segments or paths.",
+      "acceptance": "Native-command integration tests.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "SCOPE-021",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can place valid bus stops and required depots.",
+      "acceptance": "Placement and legality integration tests.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "SCOPE-022",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can purchase a bus.",
+      "acceptance": "Vehicle-purchase integration test.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "SCOPE-023",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can create, assign, and update bus routes/orders.",
+      "acceptance": "Order-list integration tests.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "SCOPE-024",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can start bus service.",
+      "acceptance": "Vehicle-state integration test.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "SCOPE-025",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The environment detects passenger delivery and resulting revenue.",
+      "acceptance": "Controlled delivery/economy test.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "SCOPE-026",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The policy can be penalized for repeated invalid, wasteful, destructive, idle, or unprofitable behavior.",
+      "acceptance": "Reward-component scenario tests.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "SCOPE-027",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "A learned policy can maintain or improve a bus network over a multi-episode evaluation horizon.",
+      "acceptance": "Preregistered evaluation results.",
+      "source_sections": [
+        "short:initial-scope-v1",
+        "full:initial-environment-scope"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-SCOPE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "LIFE-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Launch one headless OpenTTD environment through a stable programmatic interface.",
+      "acceptance": "Environment smoke test.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "LIFE-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Launch multiple isolated environments for batched rollout.",
+      "acceptance": "Isolation and batch integration test.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "LIFE-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Reset each environment to a controlled initial state.",
+      "acceptance": "Reset contract tests.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_reset_projection.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "LIFE-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Extract observations only at documented synchronization boundaries.",
+      "acceptance": "Boundary assertion and differential trace.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "LIFE-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Generate legal action masks matching the same state snapshot as the observation.",
+      "acceptance": "Mask oracle and stale-state tests.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "LIFE-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Apply selected actions through explicit OpenTTD operations.",
+      "acceptance": "Command-path integration evidence.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "LIFE-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Advance simulation by a configurable, deterministic stepping rule.",
+      "acceptance": "Tick-step tests.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "LIFE-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Calculate scalar reward from separately retained components.",
+      "acceptance": "Reward unit/integration evidence.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "LIFE-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Record complete trajectories with schema and provenance.",
+      "acceptance": "Trajectory round-trip and resume tests.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "LIFE-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Train actor-critic PPO policies in the production C++/CUDA path.",
+      "acceptance": "Trainer convergence and algorithm tests.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "LIFE-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Evaluate saved policies in a process and dataset independent from training.",
+      "acceptance": "Evaluation run artifact.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "LIFE-012",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Save native training checkpoints and recover from the declared boundary.",
+      "acceptance": "Interrupted-run recovery comparison.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "LIFE-013",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Export compatible trained networks to ONNX.",
+      "acceptance": "Export gate result.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "LIFE-014",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Convert or package an exported model for the in-game inference runtime.",
+      "acceptance": "Package schema and install test.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "LIFE-015",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Load the package in a normal playable OpenTTD build.",
+      "acceptance": "In-game load/compatibility test.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "LIFE-016",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Let a user visibly watch the policy control its bus company.",
+      "acceptance": "Documented end-to-end acceptance run.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "LIFE-017",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Training, ONNX, and in-game paths share equivalent preprocessing, schemas, masks, and output interpretation.",
+      "acceptance": "Cross-runtime equivalence suite.",
+      "source_sections": [
+        "full:core-platform-requirements"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-LIFE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "STACK-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "C++ owns core environment integration, control, training infrastructure, evaluation, export, and inference.",
+      "acceptance": "Build graph and source ownership audit.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Whole-program C++ ownership can be audited only after the final V1 production controller exists; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "STACK-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "CUDA accelerates only workloads with a measured correctness-preserving benefit.",
+      "acceptance": "CPU baseline, profile, parity, and speed report.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M08",
+      "gate": "G08",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+    },
+    {
+      "id": "STACK-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "CUDA may cover batched inference, PPO optimization, tensor preprocessing, rollout processing, state encoding, evaluation, or CNN execution.",
+      "acceptance": "Per-kernel design and benchmark evidence.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M08",
+      "gate": "G08",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+    },
+    {
+      "id": "STACK-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "OpenTTD simulation remains on CPU unless an explicit semantic-parity gate approves a subsystem.",
+      "acceptance": "Architecture audit and parity result.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M08",
+      "gate": "G08",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+    },
+    {
+      "id": "STACK-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Python remains auxiliary and is not the production environment or training authority.",
+      "acceptance": "Packaging/build/source audit.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "The auxiliary-only Python boundary can be audited completely only after training, export, and deployment exist; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "STACK-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "ONNX is the primary portable neural-network interchange format.",
+      "acceptance": "Export/package schema.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "STACK-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The ONNX execution backend is pinned and explicitly validated.",
+      "acceptance": "Dependency manifest and equivalence tests.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "STACK-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Initial spatial policies use CNNs; new architecture families require baseline validation first.",
+      "acceptance": "Model registry and roadmap gate.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M08",
+      "gate": "G08",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+    },
+    {
+      "id": "STACK-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The OpenTTD/RL interface does not depend on screen scraping, simulated input, or menu navigation.",
+      "acceptance": "Source audit and integration design review.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "STACK-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Training-only dependencies are not required for normal in-game inference.",
+      "acceptance": "Clean inference-only build/install test.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "STACK-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The accepted production training path uses at least one correctness-validated CUDA-accelerated neural/tensor workload with a measured benefit over its CPU reference on declared hardware.",
+      "acceptance": "CUDA parity and benchmark report.",
+      "source_sections": [
+        "full:implementation-stack"
+      ],
+      "milestone": "M08",
+      "gate": "G08",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-STACK"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+    },
+    {
+      "id": "PPO-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The first trusted learner is actor-critic PPO.",
+      "acceptance": "Model/trainer design and smoke run.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "PPO implements the clipped policy objective.",
+      "acceptance": "Reference-vector unit and gradient test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "PPO implements a configurable value-function loss.",
+      "acceptance": "Unit and optimization test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "PPO implements entropy regularization.",
+      "acceptance": "Unit and configuration test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "PPO implements Generalized Advantage Estimation.",
+      "acceptance": "Hand-computed and randomized differential tests.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Advantages are normalized with defined zero-variance behavior.",
+      "acceptance": "Numerical edge-case test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Rollout length is configurable and recorded.",
+      "acceptance": "Configuration/trajectory test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Minibatch size is configurable and validated against rollout shape.",
+      "acceptance": "Boundary and shuffle tests.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Optimization epoch count is configurable and recorded.",
+      "acceptance": "Trainer configuration test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Gradient clipping is implemented and measured.",
+      "acceptance": "Synthetic-gradient test and metric.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Learning rate is configurable and logged.",
+      "acceptance": "Scheduler/configuration test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-012",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Native checkpoints include model, optimizer, counters, RNG state, schemas, and configuration.",
+      "acceptance": "Checkpoint schema/round-trip test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-013",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Checkpoint recovery resumes from a precisely documented update boundary.",
+      "acceptance": "Interrupted/uninterrupted comparison.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-014",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Evaluation mode disables training updates and supports deterministic greedy action selection.",
+      "acceptance": "Read-only evaluation and repeat test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-015",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Rollout collection supports batched environments.",
+      "acceptance": "Batch-shape/isolation test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-016",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Illegal actions receive no sampling probability after masking.",
+      "acceptance": "Extreme-logit and all-mask edge tests.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-017",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "All PPO-owned RNG streams have reproducible independent seeds.",
+      "acceptance": "Seed-sweep determinism test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-018",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Losses, activations, gradients, parameters, advantages, and returns are checked for NaN and infinity.",
+      "acceptance": "Fault-injection tests.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-019",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Numerical failures stop safely and retain a diagnostic checkpoint/artifact.",
+      "acceptance": "Failure-path integration test.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-020",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Training and evaluation metrics are emitted to structured logs.",
+      "acceptance": "Metrics-schema and accuracy tests.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "PPO-021",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The trainer exports inference networks and required metadata.",
+      "acceptance": "Model pipeline gate.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "PPO-022",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "No second RL algorithm is implemented before PPO and V1 gates pass.",
+      "acceptance": "Dependency/source audit.",
+      "source_sections": [
+        "full:ppo-training-focus"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-PPO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "OBS-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The schema supports structured features and map-aligned spatial channels.",
+      "acceptance": "Versioned schemas and encoder tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Company balance, loan, income, and expenses are dispositioned and, if included, precisely scaled.",
+      "acceptance": "Feature registry rows and value tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Bus count, station count, and infrastructure ownership are dispositioned.",
+      "acceptance": "Registry and controlled-state tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Vehicle profitability and route status are dispositioned without future leakage.",
+      "acceptance": "Registry and temporal test.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Town population, passenger production, and passenger ratings are dispositioned.",
+      "acceptance": "Registry and engine-state comparison.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Current date and remaining action budget are dispositioned.",
+      "acceptance": "Registry and boundary tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Recent reward components, if observed, use only causal history available in deployment.",
+      "acceptance": "Temporal/no-leakage test.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Terrain and water spatial channels are dispositioned.",
+      "acceptance": "Per-tile fixtures and channel digest.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Roads and company-owned roads are dispositioned separately where ownership matters.",
+      "acceptance": "Per-tile fixtures and ownership test.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Buildings, town influence, and population density are dispositioned.",
+      "acceptance": "Synthetic-map semantic tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Passenger production and station catchment are dispositioned spatially.",
+      "acceptance": "Catchment/production fixture tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-012",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Bus stops, route occupancy, and vehicle locations are dispositioned spatially.",
+      "acceptance": "Controlled route snapshot tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-013",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Buildable tiles, blocked tiles, and ownership are dispositioned spatially.",
+      "acceptance": "Legality/encoder differential tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-014",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Every feature/channel defines semantic source, shape, type, scale, normalization, missing-value rule, and update boundary.",
+      "acceptance": "Schema lint and review.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-015",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Spatial tensors have an explicit coordinate origin, axis order, channel order, and tile-to-index mapping.",
+      "acceptance": "Pattern-map orientation tests.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-016",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Observation extraction has no mutation, RNG consumption, pathfinding side effect, or lazy-state perturbation.",
+      "acceptance": "Instrumented non-perturbation test.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-017",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Training, evaluator, ONNX, and in-game paths use the same encoder implementation or byte-equivalent fixtures.",
+      "acceptance": "Cross-runtime golden vectors.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "OBS-018",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "MLP, CNN, and combined comparisons use equivalent seeds, settings, budgets, and evaluation protocols.",
+      "acceptance": "Matched experiment manifest.",
+      "source_sections": [
+        "full:observation-design"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-OBS"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "ACT-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Actions are explicit typed operations, never uncontrolled GUI imitation.",
+      "acceptance": "Versioned registry and source audit.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The action schema includes a no-op/wait action with defined tick cost.",
+      "acceptance": "Schema and step test.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can select origin and destination towns through bounded, stable parameters.",
+      "acceptance": "Schema and town-slot tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can build a road segment or reviewed deterministic road-path macro.",
+      "acceptance": "Native-command and atomicity tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can place a bus stop with explicit tile/orientation semantics.",
+      "acceptance": "Placement tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can construct the road-vehicle depot required to buy a bus.",
+      "acceptance": "Depot tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can purchase a bus under a defined engine-selection policy.",
+      "acceptance": "Purchase/cost tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can create and assign vehicle orders/routes.",
+      "acceptance": "Order identity and assignment tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The agent can start and stop a vehicle.",
+      "acceptance": "Vehicle-state test.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Sell-vehicle behavior is dispositioned before schema freeze.",
+      "acceptance": "Registry row and lifecycle tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Removal of owned invalid or unnecessary infrastructure is dispositioned before schema freeze.",
+      "acceptance": "Registry row and ownership tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-012",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Loan take/repay actions are dispositioned before schema freeze.",
+      "acceptance": "Registry row and economy tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-013",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Each action defines parameter domain, legal preconditions, failure modes, native operations, tick/cost semantics, reward effects, and log encoding.",
+      "acceptance": "Action registry lint and tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-014",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Known-illegal action instances are masked before policy sampling.",
+      "acceptance": "Mask differential test.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-015",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Legal action generation is deterministic and bounded for any valid V1 state.",
+      "acceptance": "Repeat/property/resource tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-016",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Multi-command macro actions are atomic from the agent perspective or expose explicit partial results and rollback policy.",
+      "acceptance": "Injected-failure tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-017",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Execution distinguishes legal success, stale-state failure, illegal action, no-op, and internal integration failure.",
+      "acceptance": "Outcome-enum tests and logs.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-018",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "A mask/action schema mismatch fails closed and cannot silently remap logits.",
+      "acceptance": "Compatibility negative tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-019",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "All-masked states have one documented safe resolution and never sample an invalid index.",
+      "acceptance": "Edge-case test.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "ACT-020",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Action IDs and parameter interpretation remain stable within a compatibility version.",
+      "acceptance": "Schema compatibility tests.",
+      "source_sections": [
+        "full:action-design"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "REW-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Operating profit, passenger delivery, transported-passenger growth, station-rating improvement, route profitability, utilization, productive expansion, and long-term company value are each reviewed as positive candidates.",
+      "acceptance": "Reward design ledger.",
+      "source_sections": [
+        "full:reward-design"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REW"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "REW-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Bankruptcy, invalid action, repeated construction failure, idle vehicle, unused station, excessive infrastructure spend, valueless route duplication, vehicle loss, destructive loops, and excessive no-op behavior are each reviewed as penalty candidates.",
+      "acceptance": "Reward design ledger.",
+      "source_sections": [
+        "full:reward-design"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REW"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "REW-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Every included reward component is separately calculated and logged before aggregation.",
+      "acceptance": "Component schema and accuracy tests.",
+      "source_sections": [
+        "full:reward-design"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REW"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "REW-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Reward uses deltas over documented boundaries and does not repeatedly pay an unchanged cumulative statistic.",
+      "acceptance": "Temporal unit tests.",
+      "source_sections": [
+        "full:reward-design"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REW"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "REW-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Scalar aggregation is versioned, configured, and provenance-recorded.",
+      "acceptance": "Config/schema test.",
+      "source_sections": [
+        "full:reward-design"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REW"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "REW-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Reward does not use deployment-unavailable privileged information.",
+      "acceptance": "Feature/reward information audit.",
+      "source_sections": [
+        "full:reward-design"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REW"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "REW-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Reward has explicit tests for farming, cycling, construction/destruction, duplication, idling, bankruptcy avoidance, and no-op exploits.",
+      "acceptance": "Adversarial scenario suite.",
+      "source_sections": [
+        "full:reward-design"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REW"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "REW-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Training reward is not accepted as the sole model-quality measure.",
+      "acceptance": "Independent evaluation gate.",
+      "source_sections": [
+        "full:reward-design"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REW"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "AI-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The platform can run an existing OpenTTD AI or scripted agent in at least one isolated baseline/evaluation workflow.",
+      "acceptance": "Reproducible baseline run.",
+      "source_sections": [
+        "full:existing-openttd-ais-and-agents"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-AI"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "AI-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Supported uses are dispositioned: economic comparison, learning-progress baseline, demonstrations, imitation data, curriculum, stress test, robustness, shared-map competition, and non-neural baseline.",
+      "acceptance": "Baseline registry.",
+      "source_sections": [
+        "full:existing-openttd-ais-and-agents"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-AI"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "AI-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Every external AI record includes name, version, source, configuration, seed, transport support, limitations, scenario, and result.",
+      "acceptance": "Schema-valid baseline manifest.",
+      "source_sections": [
+        "full:existing-openttd-ais-and-agents"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-AI"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "AI-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "An established AI is not presumed correct; its behavior is measured and limitations are reported.",
+      "acceptance": "Baseline review and anomaly log.",
+      "source_sections": [
+        "full:existing-openttd-ais-and-agents"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-AI"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "AI-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Initial PPO training does not depend on competitive multiplayer behavior.",
+      "acceptance": "Trainer scenario audit.",
+      "source_sections": [
+        "full:existing-openttd-ais-and-agents"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-AI"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "AI-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Competitive evaluation remains post-single-company-stability work.",
+      "acceptance": "Roadmap gate enforcement.",
+      "source_sections": [
+        "full:existing-openttd-ais-and-agents"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-AI"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "MODEL-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Every architecture has a stable identifier and versioned definition.",
+      "acceptance": "Model registry.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Native training checkpoints are distinct from deployment packages.",
+      "acceptance": "File schemas and round-trip tests.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Export includes all inference outputs required by deployment, including policy and value outputs.",
+      "acceptance": "ONNX graph inspection.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Each package contains ONNX bytes, model version, architecture ID, observation schema, spatial schema, input shapes/types, normalization, action schema, mask schema, output definitions, training commit/config, OpenTTD commit, environment version, seeds, evaluation results, and compatibility version.",
+      "acceptance": "Package-schema validation.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Every packaged file has a cryptographic digest and the manifest covers the complete package.",
+      "acceptance": "Package integrity test.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Incompatible environment, schema, runtime, or game versions fail clearly before control begins.",
+      "acceptance": "Compatibility mutation tests.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Native, ONNX, and in-game inference compare policy logits, probabilities, values, masks, greedy actions, and recurrent state if introduced.",
+      "acceptance": "Equivalence report.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Sampled-action distributions are statistically compared under a preregistered tolerance and sample count.",
+      "acceptance": "Distribution-test artifact.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Numerical tolerances are justified, versioned, and reject out-of-bound exports.",
+      "acceptance": "Tolerance ADR and negative tests.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "MODEL-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The documented workflow covers train, export, validate, package install, launch, agent selection/configuration, game start, and visible play.",
+      "acceptance": "Clean-machine acceptance run.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "MODEL-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "In-game inference supports deterministic greedy mode.",
+      "acceptance": "Repeated playback test.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "MODEL-012",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "In-game inference may use an explicitly seeded stochastic mode.",
+      "acceptance": "Configuration and distribution test.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "MODEL-013",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Inference interval is adjustable within validated safe bounds.",
+      "acceptance": "Boundary/timing tests.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "MODEL-014",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Playback exposes model metadata and actionable compatibility errors.",
+      "acceptance": "UI/console acceptance tests.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "MODEL-015",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Playback supports optional action logging and optional debug overlays.",
+      "acceptance": "Configuration and render/trace tests.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "MODEL-016",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Playback provides pause and step controls where engine integration makes them practical; unsupported cases are documented.",
+      "acceptance": "Control test or reviewed disposition.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "MODEL-017",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Inspection mode reports current action, confidence, value, legal action count, reward-relevant state, route target, model name, and version.",
+      "acceptance": "Inspection-output accuracy tests.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "MODEL-018",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Normal in-game inference installs without trainer, optimizer, or CUDA-training dependencies.",
+      "acceptance": "Inference-only package test.",
+      "source_sections": [
+        "full:neural-network-model-pipeline",
+        "full:onnx-equivalence-requirements",
+        "full:in-game-model-playback"
+      ],
+      "milestone": "M11",
+      "gate": "G11",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MODEL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+    },
+    {
+      "id": "RUN-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Runtime supports single- and multi-environment modes.",
+      "acceptance": "Integration tests.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "RUN-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Simulation speed and tick stepping are configurable and recorded.",
+      "acceptance": "Step contract tests.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "RUN-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Runtime supports controlled pause, resume, and reset.",
+      "acceptance": "State-machine tests.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "RUN-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Runtime supports seeded scenario generation.",
+      "acceptance": "Reproducibility campaign.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "RUN-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Environment crashes are detected, classified, and recovered or fail closed without corrupting the run.",
+      "acceptance": "Crash fault-injection test.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "RUN-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Training resumes from valid checkpoints after process interruption.",
+      "acceptance": "Recovery campaign.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "RUN-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Logs are structured, schema-versioned, bounded, and usable non-interactively.",
+      "acceptance": "Log schema/resource tests.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "RUN-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Runtime supports batch evaluation and long unattended runs.",
+      "acceptance": "Evaluation and soak results.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "RUN-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "CPU/GPU/environment performance can be profiled without changing authoritative semantics.",
+      "acceptance": "Profile on/off parity test.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M08",
+      "gate": "G08",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+    },
+    {
+      "id": "RUN-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The OpenTTD/RL interface is stable, versioned, and synchronized.",
+      "acceptance": "ABI/API contract tests.",
+      "source_sections": [
+        "full:headless-training-runtime"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-RUN"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "MON-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Interactive monitor remains readable over SSH and in tmux.",
+      "acceptance": "Terminal acceptance capture.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "MON-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Monitor shows run name, repository commit, OpenTTD version, environment version, seed, environment count, and device.",
+      "acceptance": "Metric-source accuracy test.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "MON-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Monitor shows elapsed time, environment steps, simulation ticks, steps/second, and updates.",
+      "acceptance": "Counter accuracy test.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "MON-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Monitor shows policy loss, value loss, entropy, approximate KL, clip fraction, explained variance, and learning rate.",
+      "acceptance": "Trainer-metric test.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "MON-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Monitor shows mean episodic return/length, company profit, passenger deliveries, vehicles, routes, invalid actions, mask violations, and resets.",
+      "acceptance": "Aggregation accuracy test.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "MON-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Monitor shows checkpoint, best evaluation score, GPU utilization/memory when available, CPU utilization, process memory, and warning state.",
+      "acceptance": "System/metric-source tests.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "MON-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Missing hardware telemetry is shown as unavailable, never fabricated or coerced to zero.",
+      "acceptance": "No-GPU/permission negative tests.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "MON-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Every important monitor value is also written to structured logs.",
+      "acceptance": "Display/log correspondence test.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "MON-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Non-interactive mode is suitable for files, CI, automated experiments, and external trackers.",
+      "acceptance": "Pipe/file/CI acceptance tests.",
+      "source_sections": [
+        "full:cli-training-monitor"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-MON"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "EVAL-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Evaluation is independent from training and cannot update policy or normalization state.",
+      "acceptance": "Read-only evaluator test.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The evaluation suite includes fixed seeds and unseen seeds.",
+      "acceptance": "Scenario manifest/results.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "It includes multiple town layouts and passenger distributions.",
+      "acceptance": "Scenario manifest/results.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "It includes reviewed starting-balance and horizon variations.",
+      "acceptance": "Scenario manifest/results.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "It evaluates greedy and explicitly seeded stochastic policies.",
+      "acceptance": "Mode-comparison report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "It compares random, trivial scripted, and at least one existing-AI baseline where scenario support permits.",
+      "acceptance": "Baseline report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "It compares structured MLP, spatial CNN, and combined architectures with matched budgets.",
+      "acceptance": "Architecture report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "It tests robustness to minor in-scope environment variation.",
+      "acceptance": "Robustness report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Metrics disposition survival, bankruptcy, final balance, net/operating profit, passenger deliveries, route profit, profitable vehicles, infrastructure cost, ROI, station rating, coverage, invalid actions, action efficiency, and seed stability.",
+      "acceptance": "Metric registry and report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Primary success metrics and superiority thresholds are preregistered before the final comparison.",
+      "acceptance": "Reviewed evaluation protocol.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Claims report confidence intervals or seed-level dispersion and do not rely on a best seed.",
+      "acceptance": "Statistical report lint.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-012",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "At least one learned policy is superior to random and trivial scripted baselines under the preregistered protocol.",
+      "acceptance": "Final V1 evaluation gate.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "EVAL-013",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "At least one learned policy reliably operates profitably across the preregistered deterministic evaluation set, under explicit profit and stability thresholds.",
+      "acceptance": "Final profitability/reliability report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:evaluation-framework"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EVAL"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "REPRO-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Record outer repository commit, dirty-state policy, and OpenTTD upstream commit.",
+      "acceptance": "Run manifest validation.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "REPRO-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Record build configuration, compiler version, operating system, CPU model, GPU model, and CUDA version when applicable.",
+      "acceptance": "Run manifest validation.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "REPRO-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Record PPO configuration and neural architecture identifier/configuration.",
+      "acceptance": "Run manifest validation.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "REPRO-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Record observation, action, mask, reward, environment, and compatibility schema versions/digests.",
+      "acceptance": "Run manifest validation.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "REPRO-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Record all scenario, environment, model initialization, sampling, shuffle, and evaluation seeds.",
+      "acceptance": "Seed-ledger validation.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "REPRO-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Record wall duration, environment steps, simulation ticks, updates, and evaluation results.",
+      "acceptance": "Counter/log validation.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "REPRO-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Record hashes of checkpoints and exported model packages.",
+      "acceptance": "Artifact-manifest validation.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "REPRO-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "A model lacking required provenance cannot become an accepted research artifact.",
+      "acceptance": "Package rejection test.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "REPRO-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Documentation reconstructs the complete accepted workflow from a clean supported host.",
+      "acceptance": "Independent reproduction report.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:reproducibility-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-REPRO"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "TEST-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test environment reset and seed reproducibility.",
+      "acceptance": "Unit/integration/repeat campaign.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M02",
+      "gate": "G02",
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m02-scenario-contract.json",
+        "config/v1/m02-scenario-corpus.json",
+        "config/v1/m02-seed-ledger.json",
+        "scripts/v1/generate_m02_scenario.py",
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "scripts/v1/validate_m02_reset_projection.py",
+        "scripts/v1/validate_m02_scripted_trajectory.py",
+        "scripts/v1/run_m02_reset_oracle.py"
+      ],
+      "test_ids": [
+        "V1-TEST-M02-SCENARIO-RESET"
+      ],
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "legacy_evidence": [],
+      "reviewer_note": "G02 passes with retained byte-identical current-Ubuntu oracle campaigns and fail-closed focused/native validation; see the G02 gate report."
+    },
+    {
+      "id": "TEST-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test observation extraction, normalization, and every spatial channel.",
+      "acceptance": "Golden/differential tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M04",
+      "gate": "G04",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+    },
+    {
+      "id": "TEST-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test action encoding, decoding, legality, and masking.",
+      "acceptance": "Unit/property/integration tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "TEST-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test every reward component and scalar aggregation.",
+      "acceptance": "Unit/scenario tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "TEST-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test tick stepping and game-state synchronization.",
+      "acceptance": "Boundary/differential tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M03",
+      "gate": "G03",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G03."
+    },
+    {
+      "id": "TEST-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test bus purchasing, depot/stop placement, road construction, route creation, order assignment, and vehicle start.",
+      "acceptance": "Actual OpenTTD integration tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "TEST-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test passenger delivery and profit calculation against actual OpenTTD state.",
+      "acceptance": "Controlled economic integration tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "TEST-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test bankruptcy and every episode termination/truncation reason.",
+      "acceptance": "Scenario tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M06",
+      "gate": "G06",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+    },
+    {
+      "id": "TEST-009",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test PPO advantages, clipping, losses, minibatching, shuffling, masking, gradients, and optimizer updates.",
+      "acceptance": "Reference-vector and differential tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "TEST-010",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test checkpoint save, reload, incompatibility, and interruption recovery.",
+      "acceptance": "Round-trip/recovery tests.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "TEST-011",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test ONNX export and native/ONNX/in-game equivalence.",
+      "acceptance": "Cross-runtime gate.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "TEST-012",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test incompatible model rejection for every compatibility field.",
+      "acceptance": "Mutation matrix.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M10",
+      "gate": "G10",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+    },
+    {
+      "id": "TEST-013",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test headless long-run stability and desynchronization detection.",
+      "acceptance": "Soak and fault campaign.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "TEST-014",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Test every CLI metric against its authoritative counter/source.",
+      "acceptance": "Monitor accuracy suite.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "TEST-015",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Critical gameplay behavior has both code-level assertions and actual-engine integration coverage.",
+      "acceptance": "Traceability lint.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M05",
+      "gate": "G05",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+    },
+    {
+      "id": "TEST-016",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Release gates include sanitizer, static-analysis, resource-bound, malformed-input, and failure-artifact checks appropriate to changed native code.",
+      "acceptance": "Quality-matrix result.",
+      "source_sections": [
+        "short:engineering-principles",
+        "full:testing-requirements"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-TEST",
+        "V1-TEST-TRACEABILITY-CONTRACT"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "ARCH-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Baseline A is a structured MLP using company, town, vehicle, route, and simplified map-summary features.",
+      "acceptance": "Model definition and train/eval run.",
+      "source_sections": [
+        "full:initial-architecture-comparison"
+      ],
+      "milestone": "M07",
+      "gate": "G07",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ARCH"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+    },
+    {
+      "id": "ARCH-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Baseline B is a CNN using the versioned multi-channel 32 by 32 map tensor.",
+      "acceptance": "Model definition and train/eval run.",
+      "source_sections": [
+        "full:initial-architecture-comparison"
+      ],
+      "milestone": "M08",
+      "gate": "G08",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ARCH"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+    },
+    {
+      "id": "ARCH-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Baseline C combines CNN spatial features with structured numerical features.",
+      "acceptance": "Model definition and train/eval run.",
+      "source_sections": [
+        "full:initial-architecture-comparison"
+      ],
+      "milestone": "M08",
+      "gate": "G08",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ARCH"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+    },
+    {
+      "id": "ARCH-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The comparison measures economic quality, computational cost, and sample efficiency.",
+      "acceptance": "Matched report.",
+      "source_sections": [
+        "full:initial-architecture-comparison"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ARCH"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "ARCH-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "No architecture is declared superior without multiple seeds and matched training/evaluation budgets.",
+      "acceptance": "Experiment-manifest lint.",
+      "source_sections": [
+        "full:initial-architecture-comparison"
+      ],
+      "milestone": "M09",
+      "gate": "G09",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-ARCH"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+    },
+    {
+      "id": "DONE-001",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "All V1 scope, lifecycle, environment, PPO, model, runtime, monitoring, evaluation, reproducibility, and test rows pass.",
+      "acceptance": "Machine-generated traceability closure plus review.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:definition-of-done-v1"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-DONE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "DONE-002",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Extended training has no unresolved desynchronization or numerical defect.",
+      "acceptance": "Soak reports and zero release-blocking ledger entries.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:definition-of-done-v1"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-DONE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "DONE-003",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "At least one policy passes both baseline superiority (`EVAL-012`) and reliable profitability (`EVAL-013`).",
+      "acceptance": "Final independent evaluation report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:definition-of-done-v1"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-DONE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "DONE-004",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "MLP, CNN, and combined models are trainable and the required matched comparison is complete.",
+      "acceptance": "Architecture comparison report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:definition-of-done-v1"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-DONE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "DONE-005",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "Existing AI support passes `AI-001` through `AI-004`.",
+      "acceptance": "Baseline workflow report.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:definition-of-done-v1"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-DONE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "DONE-006",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "The complete model pipeline passes export, package, equivalence, rejection, install, and visible-play gates.",
+      "acceptance": "End-to-end acceptance bundle.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:definition-of-done-v1"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-DONE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "DONE-007",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "A clean supported host can reproduce the documented workflow.",
+      "acceptance": "Independent reproduction evidence.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:definition-of-done-v1"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-DONE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "DONE-008",
+      "mandatory": true,
+      "release_scope": "V1",
+      "summary": "No known correctness defect can invalidate accepted results.",
+      "acceptance": "Reviewed defect ledger and final gate.",
+      "source_sections": [
+        "short:success-criteria",
+        "full:definition-of-done-v1"
+      ],
+      "milestone": "M12",
+      "gate": "G12",
+      "status": "NOT_STARTED",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-DONE"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+    },
+    {
+      "id": "EXP-001",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add more varied 32 by 32 passenger-bus scenarios, curricula, AI baselines, reward analysis, and generalization.",
+      "acceptance": "Only after all `DONE-*` pass.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-002",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add larger maps, more towns, and longer horizons.",
+      "acceptance": "After `EXP-001`.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-003",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add mail and passenger/mail coordination.",
+      "acceptance": "After larger-map regression gates.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-004",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add trucks, industries, cargo types, and production chains.",
+      "acceptance": "After mail-stage regression gates.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-005",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add trains, track, signals, stations, and scheduling.",
+      "acceptance": "After road-cargo regression gates.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-006",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add ships and water transportation.",
+      "acceptance": "After rail regression gates.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-007",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add aircraft and multimodal transportation.",
+      "acceptance": "After ship-stage regression gates.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-008",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add competitive companies, AI opponents, and multi-agent evaluation.",
+      "acceptance": "After multimodal single-agent gates.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-009",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Add broad gameplay, generalist policies, larger architectures, and benchmark releases.",
+      "acceptance": "After all preceding expansion gates.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    },
+    {
+      "id": "EXP-010",
+      "mandatory": true,
+      "release_scope": "POST_V1",
+      "summary": "Every expansion preserves executable and evaluable prior stages.",
+      "acceptance": "Full regression matrix at each stage.",
+      "source_sections": [
+        "short:end-goal",
+        "full:expansion-roadmap",
+        "full:non-goals-v1"
+      ],
+      "milestone": "POST_V1",
+      "gate": "POST_V1",
+      "status": "DEFERRED_POST_V1",
+      "implementation": [],
+      "test_ids": [
+        "V1-TEST-EXP"
+      ],
+      "evidence": [],
+      "legacy_evidence": [],
+      "reviewer_note": "Sequential post-V1 work remains forbidden until G12 passes."
+    }
+  ],
+  "tests": [
+    {
+      "id": "V1-TEST-SCOPE",
+      "summary": "Planned requirement verification suite for SCOPE requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "SCOPE-018",
+        "SCOPE-019",
+        "SCOPE-020",
+        "SCOPE-021",
+        "SCOPE-022",
+        "SCOPE-023",
+        "SCOPE-024",
+        "SCOPE-025",
+        "SCOPE-026",
+        "SCOPE-027"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-LIFE",
+      "summary": "Planned requirement verification suite for LIFE requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "LIFE-001",
+        "LIFE-002",
+        "LIFE-004",
+        "LIFE-005",
+        "LIFE-006",
+        "LIFE-007",
+        "LIFE-008",
+        "LIFE-009",
+        "LIFE-010",
+        "LIFE-011",
+        "LIFE-012",
+        "LIFE-013",
+        "LIFE-014",
+        "LIFE-015",
+        "LIFE-016",
+        "LIFE-017"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-STACK",
+      "summary": "Planned requirement verification suite for STACK requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "STACK-001",
+        "STACK-002",
+        "STACK-003",
+        "STACK-004",
+        "STACK-005",
+        "STACK-006",
+        "STACK-007",
+        "STACK-008",
+        "STACK-009",
+        "STACK-010",
+        "STACK-011"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-PPO",
+      "summary": "Planned requirement verification suite for PPO requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "PPO-001",
+        "PPO-002",
+        "PPO-003",
+        "PPO-004",
+        "PPO-005",
+        "PPO-006",
+        "PPO-007",
+        "PPO-008",
+        "PPO-009",
+        "PPO-010",
+        "PPO-011",
+        "PPO-012",
+        "PPO-013",
+        "PPO-014",
+        "PPO-015",
+        "PPO-016",
+        "PPO-017",
+        "PPO-018",
+        "PPO-019",
+        "PPO-020",
+        "PPO-021",
+        "PPO-022"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-OBS",
+      "summary": "Planned requirement verification suite for OBS requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "OBS-001",
+        "OBS-002",
+        "OBS-003",
+        "OBS-004",
+        "OBS-005",
+        "OBS-006",
+        "OBS-007",
+        "OBS-008",
+        "OBS-009",
+        "OBS-010",
+        "OBS-011",
+        "OBS-012",
+        "OBS-013",
+        "OBS-014",
+        "OBS-015",
+        "OBS-016",
+        "OBS-017",
+        "OBS-018"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-ACT",
+      "summary": "Planned requirement verification suite for ACT requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "ACT-001",
+        "ACT-002",
+        "ACT-003",
+        "ACT-004",
+        "ACT-005",
+        "ACT-006",
+        "ACT-007",
+        "ACT-008",
+        "ACT-009",
+        "ACT-010",
+        "ACT-011",
+        "ACT-012",
+        "ACT-013",
+        "ACT-014",
+        "ACT-015",
+        "ACT-016",
+        "ACT-017",
+        "ACT-018",
+        "ACT-019",
+        "ACT-020"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-REW",
+      "summary": "Planned requirement verification suite for REW requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "REW-001",
+        "REW-002",
+        "REW-003",
+        "REW-004",
+        "REW-005",
+        "REW-006",
+        "REW-007",
+        "REW-008"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-AI",
+      "summary": "Planned requirement verification suite for AI requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "AI-001",
+        "AI-002",
+        "AI-003",
+        "AI-004",
+        "AI-005",
+        "AI-006"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-MODEL",
+      "summary": "Planned requirement verification suite for MODEL requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "MODEL-001",
+        "MODEL-002",
+        "MODEL-003",
+        "MODEL-004",
+        "MODEL-005",
+        "MODEL-006",
+        "MODEL-007",
+        "MODEL-008",
+        "MODEL-009",
+        "MODEL-010",
+        "MODEL-011",
+        "MODEL-012",
+        "MODEL-013",
+        "MODEL-014",
+        "MODEL-015",
+        "MODEL-016",
+        "MODEL-017",
+        "MODEL-018"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-RUN",
+      "summary": "Planned requirement verification suite for RUN requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "RUN-001",
+        "RUN-002",
+        "RUN-003",
+        "RUN-004",
+        "RUN-005",
+        "RUN-006",
+        "RUN-007",
+        "RUN-008",
+        "RUN-009",
+        "RUN-010"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-MON",
+      "summary": "Planned requirement verification suite for MON requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "MON-001",
+        "MON-002",
+        "MON-003",
+        "MON-004",
+        "MON-005",
+        "MON-006",
+        "MON-007",
+        "MON-008",
+        "MON-009"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-EVAL",
+      "summary": "Planned requirement verification suite for EVAL requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "EVAL-001",
+        "EVAL-002",
+        "EVAL-003",
+        "EVAL-004",
+        "EVAL-005",
+        "EVAL-006",
+        "EVAL-007",
+        "EVAL-008",
+        "EVAL-009",
+        "EVAL-010",
+        "EVAL-011",
+        "EVAL-012",
+        "EVAL-013"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-REPRO",
+      "summary": "Planned requirement verification suite for REPRO requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "REPRO-001",
+        "REPRO-002",
+        "REPRO-003",
+        "REPRO-004",
+        "REPRO-005",
+        "REPRO-006",
+        "REPRO-007",
+        "REPRO-008",
+        "REPRO-009"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-TEST",
+      "summary": "Planned requirement verification suite for TEST requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "TEST-002",
+        "TEST-003",
+        "TEST-004",
+        "TEST-005",
+        "TEST-006",
+        "TEST-007",
+        "TEST-008",
+        "TEST-009",
+        "TEST-010",
+        "TEST-011",
+        "TEST-012",
+        "TEST-013",
+        "TEST-014",
+        "TEST-015",
+        "TEST-016"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-ARCH",
+      "summary": "Planned requirement verification suite for ARCH requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "ARCH-001",
+        "ARCH-002",
+        "ARCH-003",
+        "ARCH-004",
+        "ARCH-005"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-DONE",
+      "summary": "Planned requirement verification suite for DONE requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "DONE-001",
+        "DONE-002",
+        "DONE-003",
+        "DONE-004",
+        "DONE-005",
+        "DONE-006",
+        "DONE-007",
+        "DONE-008"
+      ],
+      "status": "PLANNED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+    },
+    {
+      "id": "V1-TEST-EXP",
+      "summary": "Planned requirement verification suite for EXP requirements.",
+      "runner": null,
+      "requirement_ids": [
+        "EXP-001",
+        "EXP-002",
+        "EXP-003",
+        "EXP-004",
+        "EXP-005",
+        "EXP-006",
+        "EXP-007",
+        "EXP-008",
+        "EXP-009",
+        "EXP-010"
+      ],
+      "status": "DEFERRED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "This suite remains deferred with the post-V1 requirements."
+    },
+    {
+      "id": "V1-TEST-TRACEABILITY-CONTRACT",
+      "summary": "Validate schemas, Markdown parity, bidirectional mappings, aggregate gates, legacy separation, and defect propagation.",
+      "runner": "scripts/v1/traceability.sh",
+      "requirement_ids": [
+        "TEST-016"
+      ],
+      "status": "IMPLEMENTED",
+      "evidence": [],
+      "mandatory": true,
+      "reviewer_note": "The contract runner exists; TEST-016 remains NOT_STARTED because the complete release quality matrix does not yet exist."
+    },
+    {
+      "id": "V1-TEST-M02-SCENARIO-RESET",
+      "summary": "Verify the frozen M02 scenario, clean/same-process reset, forbidden scope, and scripted passenger-bus trajectory.",
+      "runner": "scripts/v1/run_m02_reset_oracle.py",
+      "requirement_ids": [
+        "SCOPE-001",
+        "SCOPE-002",
+        "SCOPE-003",
+        "SCOPE-004",
+        "SCOPE-005",
+        "SCOPE-006",
+        "SCOPE-007",
+        "SCOPE-008",
+        "SCOPE-009",
+        "SCOPE-010",
+        "SCOPE-011",
+        "SCOPE-012",
+        "SCOPE-013",
+        "SCOPE-014",
+        "SCOPE-015",
+        "SCOPE-016",
+        "SCOPE-017",
+        "LIFE-003",
+        "TEST-001"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "config/v1/m02-reset-oracle.json",
+        "docs/project/G02_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "Two complete offline current-Ubuntu oracle campaigns are byte-identical; all focused mutation tests, 96 upstream unit cases, and two native regressions pass."
+    }
+  ],
+  "aggregate_dependencies": [
+    {
+      "requirement_id": "DONE-001",
+      "dependency_ids": [
+        "SCOPE-001",
+        "SCOPE-002",
+        "SCOPE-003",
+        "SCOPE-004",
+        "SCOPE-005",
+        "SCOPE-006",
+        "SCOPE-007",
+        "SCOPE-008",
+        "SCOPE-009",
+        "SCOPE-010",
+        "SCOPE-011",
+        "SCOPE-012",
+        "SCOPE-013",
+        "SCOPE-014",
+        "SCOPE-015",
+        "SCOPE-016",
+        "SCOPE-017",
+        "SCOPE-018",
+        "SCOPE-019",
+        "SCOPE-020",
+        "SCOPE-021",
+        "SCOPE-022",
+        "SCOPE-023",
+        "SCOPE-024",
+        "SCOPE-025",
+        "SCOPE-026",
+        "SCOPE-027",
+        "LIFE-001",
+        "LIFE-002",
+        "LIFE-003",
+        "LIFE-004",
+        "LIFE-005",
+        "LIFE-006",
+        "LIFE-007",
+        "LIFE-008",
+        "LIFE-009",
+        "LIFE-010",
+        "LIFE-011",
+        "LIFE-012",
+        "LIFE-013",
+        "LIFE-014",
+        "LIFE-015",
+        "LIFE-016",
+        "LIFE-017",
+        "STACK-001",
+        "STACK-002",
+        "STACK-003",
+        "STACK-004",
+        "STACK-005",
+        "STACK-006",
+        "STACK-007",
+        "STACK-008",
+        "STACK-009",
+        "STACK-010",
+        "STACK-011",
+        "PPO-001",
+        "PPO-002",
+        "PPO-003",
+        "PPO-004",
+        "PPO-005",
+        "PPO-006",
+        "PPO-007",
+        "PPO-008",
+        "PPO-009",
+        "PPO-010",
+        "PPO-011",
+        "PPO-012",
+        "PPO-013",
+        "PPO-014",
+        "PPO-015",
+        "PPO-016",
+        "PPO-017",
+        "PPO-018",
+        "PPO-019",
+        "PPO-020",
+        "PPO-021",
+        "PPO-022",
+        "OBS-001",
+        "OBS-002",
+        "OBS-003",
+        "OBS-004",
+        "OBS-005",
+        "OBS-006",
+        "OBS-007",
+        "OBS-008",
+        "OBS-009",
+        "OBS-010",
+        "OBS-011",
+        "OBS-012",
+        "OBS-013",
+        "OBS-014",
+        "OBS-015",
+        "OBS-016",
+        "OBS-017",
+        "OBS-018",
+        "ACT-001",
+        "ACT-002",
+        "ACT-003",
+        "ACT-004",
+        "ACT-005",
+        "ACT-006",
+        "ACT-007",
+        "ACT-008",
+        "ACT-009",
+        "ACT-010",
+        "ACT-011",
+        "ACT-012",
+        "ACT-013",
+        "ACT-014",
+        "ACT-015",
+        "ACT-016",
+        "ACT-017",
+        "ACT-018",
+        "ACT-019",
+        "ACT-020",
+        "REW-001",
+        "REW-002",
+        "REW-003",
+        "REW-004",
+        "REW-005",
+        "REW-006",
+        "REW-007",
+        "REW-008",
+        "AI-001",
+        "AI-002",
+        "AI-003",
+        "AI-004",
+        "AI-005",
+        "AI-006",
+        "MODEL-001",
+        "MODEL-002",
+        "MODEL-003",
+        "MODEL-004",
+        "MODEL-005",
+        "MODEL-006",
+        "MODEL-007",
+        "MODEL-008",
+        "MODEL-009",
+        "MODEL-010",
+        "MODEL-011",
+        "MODEL-012",
+        "MODEL-013",
+        "MODEL-014",
+        "MODEL-015",
+        "MODEL-016",
+        "MODEL-017",
+        "MODEL-018",
+        "RUN-001",
+        "RUN-002",
+        "RUN-003",
+        "RUN-004",
+        "RUN-005",
+        "RUN-006",
+        "RUN-007",
+        "RUN-008",
+        "RUN-009",
+        "RUN-010",
+        "MON-001",
+        "MON-002",
+        "MON-003",
+        "MON-004",
+        "MON-005",
+        "MON-006",
+        "MON-007",
+        "MON-008",
+        "MON-009",
+        "EVAL-001",
+        "EVAL-002",
+        "EVAL-003",
+        "EVAL-004",
+        "EVAL-005",
+        "EVAL-006",
+        "EVAL-007",
+        "EVAL-008",
+        "EVAL-009",
+        "EVAL-010",
+        "EVAL-011",
+        "EVAL-012",
+        "EVAL-013",
+        "REPRO-001",
+        "REPRO-002",
+        "REPRO-003",
+        "REPRO-004",
+        "REPRO-005",
+        "REPRO-006",
+        "REPRO-007",
+        "REPRO-008",
+        "REPRO-009",
+        "TEST-001",
+        "TEST-002",
+        "TEST-003",
+        "TEST-004",
+        "TEST-005",
+        "TEST-006",
+        "TEST-007",
+        "TEST-008",
+        "TEST-009",
+        "TEST-010",
+        "TEST-011",
+        "TEST-012",
+        "TEST-013",
+        "TEST-014",
+        "TEST-015",
+        "TEST-016",
+        "ARCH-001",
+        "ARCH-002",
+        "ARCH-003",
+        "ARCH-004",
+        "ARCH-005"
+      ],
+      "requires_zero_release_blocking_defects": true
+    },
+    {
+      "requirement_id": "DONE-002",
+      "dependency_ids": [
+        "RUN-008",
+        "PPO-018",
+        "PPO-019",
+        "TEST-013"
+      ],
+      "requires_zero_release_blocking_defects": true
+    },
+    {
+      "requirement_id": "DONE-003",
+      "dependency_ids": [
+        "EVAL-012",
+        "EVAL-013"
+      ],
+      "requires_zero_release_blocking_defects": true
+    },
+    {
+      "requirement_id": "DONE-004",
+      "dependency_ids": [
+        "ARCH-001",
+        "ARCH-002",
+        "ARCH-003",
+        "ARCH-004",
+        "ARCH-005",
+        "EVAL-007"
+      ],
+      "requires_zero_release_blocking_defects": true
+    },
+    {
+      "requirement_id": "DONE-005",
+      "dependency_ids": [
+        "AI-001",
+        "AI-002",
+        "AI-003",
+        "AI-004"
+      ],
+      "requires_zero_release_blocking_defects": true
+    },
+    {
+      "requirement_id": "DONE-006",
+      "dependency_ids": [
+        "MODEL-001",
+        "MODEL-002",
+        "MODEL-003",
+        "MODEL-004",
+        "MODEL-005",
+        "MODEL-006",
+        "MODEL-007",
+        "MODEL-008",
+        "MODEL-009",
+        "MODEL-010",
+        "MODEL-011",
+        "MODEL-012",
+        "MODEL-013",
+        "MODEL-014",
+        "MODEL-015",
+        "MODEL-016",
+        "MODEL-017",
+        "MODEL-018",
+        "TEST-011",
+        "TEST-012",
+        "LIFE-013",
+        "LIFE-014",
+        "LIFE-015",
+        "LIFE-016",
+        "LIFE-017"
+      ],
+      "requires_zero_release_blocking_defects": true
+    },
+    {
+      "requirement_id": "DONE-007",
+      "dependency_ids": [
+        "REPRO-009"
+      ],
+      "requires_zero_release_blocking_defects": true
+    },
+    {
+      "requirement_id": "DONE-008",
+      "dependency_ids": [],
+      "requires_zero_release_blocking_defects": true
+    }
+  ],
+  "legacy_evidence_policy": {
+    "legacy_prefix": "evidence/p0/",
+    "fresh_v1_evidence_required_for_pass": true,
+    "legacy_artifacts_cannot_close_bus_requirements": true
+  }
+}

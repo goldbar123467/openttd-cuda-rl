@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m02-scripted-bus-trajectory.schema.json",
+  "title": "OpenTTD RL M02 scripted bus trajectory report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "trajectory"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-m02-scripted-bus-trajectory-1"},
+    "status": {"const": "PASS"},
+    "trajectory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actions",
+        "company",
+        "facilities",
+        "forbidden",
+        "orders",
+        "scenario",
+        "stations",
+        "ticks",
+        "vehicle"
+      ],
+      "properties": {
+        "actions": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {"type": "object"}
+        },
+        "company": {"type": "object"},
+        "facilities": {"type": "object"},
+        "forbidden": {"type": "object"},
+        "orders": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "object"}
+        },
+        "scenario": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scenario_sha256", "seed", "template_id"],
+          "properties": {
+            "scenario_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+            "template_id": {"type": "string", "pattern": "^m02-template-[0-9]{2}$"}
+          }
+        },
+        "stations": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "object"}
+        },
+        "ticks": {"type": "object"},
+        "vehicle": {"type": "object"}
+      }
+    }
+  }
+}

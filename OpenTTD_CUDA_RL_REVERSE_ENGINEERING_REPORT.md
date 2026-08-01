@@ -1,5 +1,12 @@
 # OpenTTD reverse-engineering report and exact C/CUDA RL port plan
 
+> **Superseded-target notice (2026-07-31):** The source research in this report
+> remains historical technical evidence, but its selected exact C/CUDA gameplay
+> port and road-freight MVP are no longer the active project target. The active goal
+> is the actual-OpenTTD, 32 by 32 passenger-bus C++/CUDA PPO platform defined by
+> `GOAL.md`. Any reuse requires the applicability review in
+> `docs/project/LEGACY_P0_TRANSITION.md`.
+
 Prepared: 2026-07-29 UTC  
 Authoritative repository: <https://github.com/OpenTTD/OpenTTD>  
 Analyzed branch: `master`  

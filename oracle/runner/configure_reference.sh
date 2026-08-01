@@ -22,8 +22,9 @@ Creates a fresh Ninja cache for the frozen GCC RelWithDebInfo profile. Build and
 install roots must be distinct proper descendants of artifact-root. Production
 source must be the clean pinned openttd-upstream worktree.
 
-Tests may set P0_TEST_MODE=1 and pass --test-source-override for a fixture Git
-worktree below ARTIFACT_ROOT/test-fixtures. The override is otherwise rejected.
+Tests may set P0_TEST_MODE=1, pass --test-source-override for a fixture Git
+worktree below ARTIFACT_ROOT/test-fixtures, and set P0_TEST_CMAKE_BIN to an
+absolute CMake executable. These overrides are otherwise rejected.
 EOF
     p0_show_common_help_note
 }
@@ -90,7 +91,7 @@ p0_assert_under_root "${INSTALL_ROOT}" "${ARTIFACT_ROOT}" no
 
 p0_initialize 'configure-reference' "${ARTIFACT_ROOT}" 'configure-reference.json'
 p0_write_command_array "${ARTIFACT_ROOT}/commands/configure-reference.json" "$0" "${ORIGINAL_ARGUMENTS[@]}"
-for tool in git cmake ninja gcc g++ ld python3 sha256sum find; do
+for tool in git ninja gcc g++ ld python3 sha256sum find; do
     p0_require_command "${tool}"
 done
 
@@ -118,11 +119,17 @@ p0_log INFO 'resetting only the explicitly dedicated build root for a fresh cach
 p0_safe_reset_dir "${BUILD_ROOT}" "${ARTIFACT_ROOT}"
 mkdir -p -- "${INSTALL_ROOT}" "${ARTIFACT_ROOT}/commands" "${ARTIFACT_ROOT}/manifests"
 
-readonly CMAKE_BIN='/usr/bin/cmake'
+if [[ "${P0_TEST_MODE:-0}" == 1 && ${TEST_SOURCE_OVERRIDE} -eq 1 && -n "${P0_TEST_CMAKE_BIN:-}" ]]; then
+    p0_require_absolute_path "${P0_TEST_CMAKE_BIN}" 'P0_TEST_CMAKE_BIN'
+    CMAKE_BIN=$(p0_realpath "${P0_TEST_CMAKE_BIN}")
+else
+    CMAKE_BIN='/usr/bin/cmake'
+fi
+readonly CMAKE_BIN
 readonly CC_BIN='/usr/bin/gcc'
 readonly CXX_BIN='/usr/bin/g++'
 readonly LINKER_BIN='/usr/bin/ld'
-[[ -x "${CMAKE_BIN}" && -x "${CC_BIN}" && -x "${CXX_BIN}" && -x "${LINKER_BIN}" ]] || p0_die 'frozen tool paths are unavailable' 69
+[[ -f "${CMAKE_BIN}" && -x "${CMAKE_BIN}" && -x "${CC_BIN}" && -x "${CXX_BIN}" && -x "${LINKER_BIN}" ]] || p0_die 'frozen tool paths are unavailable' 69
 
 declare -a configure_command=(
     "${CMAKE_BIN}"

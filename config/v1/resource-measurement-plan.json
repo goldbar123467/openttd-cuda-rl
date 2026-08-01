@@ -1,0 +1,71 @@
+{
+  "aggregation": {
+    "location": "median",
+    "range": "minimum-maximum",
+    "retain_raw_samples": true
+  },
+  "correctness": {
+    "forbidden_diagnostics_regex": "\\b(?:ERROR|FATAL):",
+    "idle_termination": "SIGKILL_AFTER_DECLARED_WINDOW",
+    "normal_exit_code": 0,
+    "reject_early_idle_exit": true,
+    "required_playable_diagnostics": [
+      "Successfully loaded blitter '32bpp-anim'",
+      "SDL2: using driver 'dummy'",
+      "Successfully loaded video driver 'sdl'"
+    ]
+  },
+  "hypothesis": "The accepted M01 binaries establish a repeatable, bounded runtime-resource baseline without changing their behavior or rebuilding them.",
+  "plan_id": "m01-runtime-resource-baseline-v1",
+  "requirements": [
+    "G01-baseline-runtime-resource-measurement"
+  ],
+  "sampling": {
+    "headless_ticks": 8192,
+    "idle_seconds": 3.0,
+    "measurement_repetitions": 5,
+    "timeout_seconds": 30.0,
+    "warmup_repetitions": 1
+  },
+  "schema_version": "openttd-rl-v1-resource-measurement-plan-1",
+  "workloads": [
+    {
+      "id": "headless-startup-shutdown",
+      "metrics": [
+        "wall_seconds",
+        "cpu_seconds",
+        "max_rss_kib"
+      ],
+      "termination": "normal-after-one-tick"
+    },
+    {
+      "id": "headless-tick-throughput",
+      "metrics": [
+        "wall_seconds",
+        "cpu_seconds",
+        "max_rss_kib",
+        "ticks_per_second"
+      ],
+      "termination": "normal-after-declared-ticks"
+    },
+    {
+      "id": "playable-startup-shutdown",
+      "metrics": [
+        "wall_seconds",
+        "cpu_seconds",
+        "max_rss_kib"
+      ],
+      "termination": "normal-game-start-script"
+    },
+    {
+      "id": "playable-paused-idle",
+      "metrics": [
+        "wall_seconds",
+        "cpu_seconds",
+        "cpu_utilization_percent",
+        "max_rss_kib"
+      ],
+      "termination": "runner-sigkill-after-declared-window"
+    }
+  ]
+}

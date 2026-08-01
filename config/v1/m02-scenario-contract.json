@@ -1,0 +1,216 @@
+{
+  "$schema": "../../docs/project/schema/v1-m02-scenario-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m02-scenario-contract-1",
+  "semantic_version": "1.0.0",
+  "status": "FROZEN",
+  "contract_id": "m02-passenger-bus-scenario-v1",
+  "engine": {
+    "build_option": "OPTION_RL_ENVIRONMENT=ON",
+    "composed_source_identity_sha256": "2140e34ccee8534dbf712487acd2225eda4b66d1c807b9e0ce07243ba40afdbd",
+    "map_profile": "rl-32x32-v1",
+    "openttd_version": "15.3",
+    "prepared_tree": "eba8f4bd3c37042c184d968d2f038864184e3132",
+    "source_commit": "14ec60f248547d4d062a1160f0fc26d742319888"
+  },
+  "content": {
+    "ai_scripts": [],
+    "base_graphics": {
+      "installed_name": "opengfx-8.0.tar",
+      "name": "OpenGFX",
+      "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c",
+      "version": "8.0"
+    },
+    "game_script": null,
+    "multiplayer": false,
+    "networking": false,
+    "newgrfs": []
+  },
+  "map": {
+    "border_tile_type": "void",
+    "climate": "temperate",
+    "height": 32,
+    "interior_height": 30,
+    "interior_width": 30,
+    "landscape_id": 0,
+    "terrain": "flat-fixed-template",
+    "terrain_height": 1,
+    "water_policy": "no-interior-water",
+    "width": 32
+  },
+  "time": {
+    "start_day": 1,
+    "start_month": 1,
+    "start_year": 1950,
+    "ticks_per_economy_day": 74,
+    "timekeeping": "calendar"
+  },
+  "economy": {
+    "construction_cost_level": "low",
+    "economy_type": "smooth",
+    "economy_type_id": 1,
+    "inflation": false,
+    "interest_percent": 2,
+    "recessions": false,
+    "subsidies": false,
+    "town_cargo_generation": "bitcount",
+    "town_cargo_scale_percent": 100,
+    "vehicle_running_cost_level": "low"
+  },
+  "company": {
+    "company_count": 1,
+    "company_id": 0,
+    "competitor_count": 0,
+    "infinite_money": false,
+    "initial_balance": 100000,
+    "initial_loan": 100000,
+    "loan_interval": 10000,
+    "maximum_loan": 300000,
+    "money_unit": "OpenTTD internal base-currency unit"
+  },
+  "towns": {
+    "center_manhattan_distance_max": 24,
+    "center_manhattan_distance_min": 10,
+    "count": 2,
+    "growth": "disabled",
+    "passenger_generating_building_required": true,
+    "population_max": 800,
+    "population_min": 250,
+    "road_path_length_max": 48,
+    "road_path_length_min": 8,
+    "stop_catchment_must_cover_passenger_source": true
+  },
+  "vehicle": {
+    "aging": "native-enabled",
+    "available_by_start_year": true,
+    "base_engine_id": 116,
+    "breakdowns": "none",
+    "cargo": "passengers",
+    "capacity": 31,
+    "engine_expiration": "disabled",
+    "max_bus_count": 8,
+    "name": "MPS Regal Bus",
+    "original_road_vehicle_index": 0
+  },
+  "transport_scope": {
+    "agent_reachable": [
+      "bus",
+      "bus-stop",
+      "passenger-service",
+      "road",
+      "road-vehicle-depot"
+    ],
+    "forbidden": [
+      "aircraft",
+      "airport",
+      "dock",
+      "freight-cargo-service",
+      "industry-service",
+      "mail-service",
+      "rail",
+      "ship",
+      "tram",
+      "truck"
+    ],
+    "preexisting": ["road", "town-building"],
+    "starting_owned_infrastructure": [],
+    "starting_vehicles": []
+  },
+  "settings": {
+    "construction.road_stop_on_town_road": true,
+    "difficulty.construction_cost": 0,
+    "difficulty.disasters": false,
+    "difficulty.economy": false,
+    "difficulty.industry_density": 0,
+    "difficulty.initial_interest": 2,
+    "difficulty.max_loan": 300000,
+    "difficulty.max_no_competitors": 0,
+    "difficulty.subsidy_duration": 0,
+    "difficulty.vehicle_breakdowns": 0,
+    "difficulty.vehicle_costs": 0,
+    "economy.allow_town_roads": false,
+    "economy.inflation": false,
+    "economy.town_cargo_scale": 100,
+    "economy.town_cargogen_mode": 1,
+    "economy.town_growth_rate": 0,
+    "economy.type": 1,
+    "game_creation.landscape": 0,
+    "game_creation.map_x": 5,
+    "game_creation.map_y": 5,
+    "game_creation.starting_year": 1950,
+    "linkgraph.distribution_pax": 0,
+    "order.gradual_loading": true,
+    "order.no_servicing_if_no_breakdowns": true,
+    "station.modified_catchment": true,
+    "station.station_spread": 4,
+    "vehicle.max_aircraft": 0,
+    "vehicle.max_roadveh": 8,
+    "vehicle.max_ships": 0,
+    "vehicle.max_trains": 0,
+    "vehicle.never_expire_vehicles": true,
+    "vehicle.road_side": 1,
+    "vehicle.roadveh_acceleration_model": 1
+  },
+  "episode": {
+    "action_horizon": 512,
+    "calendar_day_horizon_ceiling": 886,
+    "terminal_on_bankruptcy": true,
+    "tick_horizon": 65536,
+    "truncation_priority": ["action-horizon", "tick-horizon"]
+  },
+  "corpus_policy": {
+    "development_templates": 2,
+    "final_evaluation_templates": 2,
+    "generation": "fixed-template",
+    "procedural_generation": false,
+    "template_count": 8,
+    "template_id_format": "m02-template-[0-9]{2}",
+    "training_templates": 4
+  },
+  "seed_policy": {
+    "ledger_path": "config/v1/m02-seed-ledger.json",
+    "partitions": ["training", "development", "final-evaluation"],
+    "rejection_policy": "record-and-fail",
+    "retry_policy": "no-implicit-retry",
+    "sets_must_be_disjoint": true,
+    "type": "uint32"
+  },
+  "reset_contract": {
+    "canonical_encoding": "utf-8-sorted-key-compact-json-v1",
+    "comparison": "byte-identical-semantic-projection",
+    "digest": "sha256",
+    "excluded_diagnostics": [
+      "absolute-path",
+      "duration",
+      "process-id",
+      "savegame-unique-session-id",
+      "wall-clock"
+    ],
+    "optimized_mode": "same-process",
+    "oracle_mode": "clean-process",
+    "projection_fields": [
+      "companies",
+      "compatibility",
+      "content",
+      "depots",
+      "economy",
+      "map",
+      "orders",
+      "pools",
+      "rng-streams",
+      "roads",
+      "scenario",
+      "settings",
+      "stations",
+      "time",
+      "towns",
+      "vehicles"
+    ],
+    "same_process_enabled_after_oracle_pass": true
+  },
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "45ec1b3beb4d6d50696bf1de75094e1817c6aa7ef8e0d38fc6696999764e5b0f",
+    "schema_path": "docs/project/schema/v1-m02-scenario-contract.schema.json",
+    "schema_sha256": "26ecec42c314866fcaa83d4ddb0ee38a2084af63fc90e648907cad75bee09543"
+  }
+}

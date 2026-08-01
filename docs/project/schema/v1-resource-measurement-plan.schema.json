@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v1-resource-measurement-plan.schema.json",
+  "title": "OpenTTD RL V1 runtime resource measurement plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "hypothesis",
+    "requirements",
+    "sampling",
+    "aggregation",
+    "correctness",
+    "workloads"
+  ],
+  "properties": {
+    "schema_version": { "const": "openttd-rl-v1-resource-measurement-plan-1" },
+    "plan_id": { "const": "m01-runtime-resource-baseline-v1" },
+    "hypothesis": { "type": "string", "minLength": 1 },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "sampling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headless_ticks",
+        "idle_seconds",
+        "measurement_repetitions",
+        "timeout_seconds",
+        "warmup_repetitions"
+      ],
+      "properties": {
+        "headless_ticks": { "type": "integer", "minimum": 1024 },
+        "idle_seconds": { "type": "number", "minimum": 1 },
+        "measurement_repetitions": { "type": "integer", "minimum": 3 },
+        "timeout_seconds": { "type": "number", "minimum": 5 },
+        "warmup_repetitions": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "aggregation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["location", "range", "retain_raw_samples"],
+      "properties": {
+        "location": { "const": "median" },
+        "range": { "const": "minimum-maximum" },
+        "retain_raw_samples": { "const": true }
+      }
+    },
+    "correctness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "forbidden_diagnostics_regex",
+        "idle_termination",
+        "normal_exit_code",
+        "reject_early_idle_exit",
+        "required_playable_diagnostics"
+      ],
+      "properties": {
+        "forbidden_diagnostics_regex": { "type": "string", "minLength": 1 },
+        "idle_termination": { "const": "SIGKILL_AFTER_DECLARED_WINDOW" },
+        "normal_exit_code": { "const": 0 },
+        "reject_early_idle_exit": { "const": true },
+        "required_playable_diagnostics": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "workloads": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "metrics", "termination"],
+        "properties": {
+          "id": {
+            "enum": [
+              "headless-startup-shutdown",
+              "headless-tick-throughput",
+              "playable-startup-shutdown",
+              "playable-paused-idle"
+            ]
+          },
+          "metrics": {
+            "type": "array",
+            "minItems": 3,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "wall_seconds",
+                "cpu_seconds",
+                "cpu_utilization_percent",
+                "max_rss_kib",
+                "ticks_per_second"
+              ]
+            }
+          },
+          "termination": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

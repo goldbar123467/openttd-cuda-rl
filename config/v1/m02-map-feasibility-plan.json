@@ -1,0 +1,117 @@
+{
+  "build_inputs": {
+    "artifact_count": 34,
+    "lock_path": "config/v1/openttd-build-input-lock.json",
+    "lock_sha256": "099675da5a508cd5a58405767e7713f5dbbc810b7dae52e6fc2687341bbc6985",
+    "offline_only": true
+  },
+  "plan_id": "m02-map-size-feasibility-v1",
+  "profiles": [
+    {
+      "build_type": "Release",
+      "id": "rl-off-assert",
+      "optimization": "-O2",
+      "rl_environment": false,
+      "sanitizer": "none"
+    },
+    {
+      "build_type": "Release",
+      "id": "rl-on-assert",
+      "optimization": "-O2",
+      "rl_environment": true,
+      "sanitizer": "none"
+    },
+    {
+      "build_type": "Release",
+      "id": "rl-on-asan",
+      "optimization": "-O0",
+      "rl_environment": true,
+      "sanitizer": "address"
+    },
+    {
+      "build_type": "Release",
+      "id": "rl-on-ubsan",
+      "optimization": "-O0",
+      "rl_environment": true,
+      "sanitizer": "undefined"
+    }
+  ],
+  "reference": {
+    "artifact_id": "m01-playable-build-20260801-g",
+    "build_identity_sha256": "5e50757e298b5c241655663e94a5ce0dde0a69eb4e5d811c467fe2dc63cf3c7b",
+    "executable_sha256": "f55efe3ebda2b5d7b236ffcaefadb7828cfcb44740ab141bb25e3de720d8a1da"
+  },
+  "schema_sha256": "e704fbe909ad579484481d2e4d6670da07e0c9edc83ab784594f32e3a2f7d1ee",
+  "schema_version": "openttd-rl-v1-m02-map-feasibility-plan-1",
+  "scope": {
+    "forbidden": [
+      "RL bridge",
+      "32 by 32 bus scenario",
+      "PPO trainer",
+      "neural in-game agent"
+    ],
+    "included": [
+      "default-off 32 by 32 map feasibility option",
+      "map allocation and save-load safety",
+      "normal 64 by 64 equivalence",
+      "assertion and sanitizer validation"
+    ]
+  },
+  "source": {
+    "base_preparation_identity_sha256": "17a41503ab80f3c01f4ed8e4e24b7a32b1cc0092644c2ae421096a4b4ddb15df",
+    "base_prepared_tree": "c63a866377547631870efb48ac547948da19916a",
+    "base_profile_path": "config/v1/openttd-source-profile.json",
+    "base_profile_sha256": "563339037626a8bb5a54e2f6a71e69500ccee44c11dfff2ce96bc4a96ef6c6cf",
+    "composed_identity_sha256": "2140e34ccee8534dbf712487acd2225eda4b66d1c807b9e0ce07243ba40afdbd",
+    "delta_directory": "integration/openttd/patches/15.3/m02",
+    "delta_series_path": "integration/openttd/patches/15.3/m02/series",
+    "delta_series_sha256": "e5188dadeb18117a510a9a066a59eabfb779c08340250cff40a9ddea94823d29",
+    "patches": [
+      {
+        "order": 2,
+        "path": "integration/openttd/patches/15.3/m02/0002-rl-environment-32x32-feasibility.patch",
+        "sha256": "8c4c9f8511c4eea96d5ef1d2ca23a68a673c75692972243d8ddb11d91b28207f"
+      }
+    ],
+    "result_tree": "eba8f4bd3c37042c184d968d2f038864184e3132"
+  },
+  "tools": {
+    "cmake": "3.28.3",
+    "ctest": "3.28.3",
+    "gcc": "13.3.0",
+    "gxx": "13.3.0",
+    "ninja": "1.11.1"
+  },
+  "validation": {
+    "build_repetitions": 2,
+    "empty_save_repetitions": 2,
+    "forbidden_diagnostics_regex": "(?:Assertion .* failed|AddressSanitizer|LeakSanitizer|UndefinedBehaviorSanitizer|runtime error:|Fatal error|Crash encountered)",
+    "generated_32_ticks": 65536,
+    "regression_tests": [
+      "regression_regression",
+      "regression_stationlist"
+    ],
+    "required_cmake_components": [
+      "CURL found -- -DWITH_CURL",
+      "FREETYPE found -- -DWITH_FREETYPE",
+      "Fontconfig found -- -DWITH_FONTCONFIG",
+      "Harfbuzz found -- -DWITH_HARFBUZZ",
+      "ICU_i18n found -- -DWITH_ICU_I18N",
+      "ICU_uc found -- -DWITH_ICU_UC",
+      "LIBLZMA found -- -DWITH_LIBLZMA",
+      "PNG found -- -DWITH_PNG",
+      "SDL2 found -- -DWITH_SDL2",
+      "ZLIB found -- -DWITH_ZLIB"
+    ],
+    "seed": 123456789,
+    "soak_ticks": 4194304,
+    "timeout_seconds": 300,
+    "unit_test_assertions": {
+      "rl-off-assert": 2183,
+      "rl-on-asan": 2193,
+      "rl-on-assert": 2193,
+      "rl-on-ubsan": 2193
+    },
+    "unit_test_cases": 96
+  }
+}

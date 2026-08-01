@@ -17,9 +17,10 @@ Usage: test_reference.sh --build-root ABSOLUTE_PATH
                          --artifact-root ABSOLUTE_PATH
                          --baseline-inventory ABSOLUTE_PATH
 
-Tests may set P0_TEST_MODE=1 and pass --test-timeout 1..300 to exercise the
-timeout path without delaying the production suite. Production always uses
-the frozen 300-second timeout.
+Tests may set P0_TEST_MODE=1, pass --test-timeout 1..300 to exercise the
+timeout path without delaying the production suite, and set P0_TEST_CTEST_BIN
+to an absolute CTest executable. Production always uses the frozen 300-second
+timeout and system CTest.
 
 The committed baseline may contain either a test_names array or a tests array
 whose objects contain name and properties (the latter is also the raw CTest JSON
@@ -90,9 +91,18 @@ p0_assert_under_root "${BUILD_ROOT}" "${ARTIFACT_ROOT}" no
 
 p0_initialize 'test-reference' "${ARTIFACT_ROOT}" 'test-reference.json'
 p0_write_command_array "${ARTIFACT_ROOT}/commands/test-reference.json" "$0" "${ORIGINAL_ARGUMENTS[@]}"
-for tool in ctest python3 sha256sum grep; do
+for tool in python3 sha256sum grep; do
     p0_require_command "${tool}"
 done
+if [[ "${P0_TEST_MODE:-0}" == 1 && -n "${P0_TEST_CTEST_BIN:-}" ]]; then
+    p0_require_absolute_path "${P0_TEST_CTEST_BIN}" 'P0_TEST_CTEST_BIN'
+    CTEST_BIN=$(p0_realpath "${P0_TEST_CTEST_BIN}")
+    [[ -f "${CTEST_BIN}" && -x "${CTEST_BIN}" ]] || p0_die 'test CTest path is unavailable' 69
+else
+    CTEST_BIN='ctest'
+    p0_require_command "${CTEST_BIN}"
+fi
+readonly CTEST_BIN
 p0_json_validate "${BASELINE_INVENTORY}"
 [[ -f "${BUILD_ROOT}/CTestTestfile.cmake" ]] || p0_die 'configured build root has no CTestTestfile.cmake' 66
 
@@ -102,7 +112,7 @@ normalized_inventory="${ARTIFACT_ROOT}/inventory/ctest-inventory.normalized.json
 inventory_compare="${ARTIFACT_ROOT}/inventory/ctest-inventory-comparison.json"
 inventory_name_stream="${ARTIFACT_ROOT}/inventory/ctest-inventory.names.txt"
 
-declare -a inventory_command=(ctest --test-dir "${BUILD_ROOT}" -N --show-only=json-v1)
+declare -a inventory_command=("${CTEST_BIN}" --test-dir "${BUILD_ROOT}" -N --show-only=json-v1)
 p0_write_command_array "${ARTIFACT_ROOT}/commands/test-reference-inventory.json" "${inventory_command[@]}"
 p0_log INFO 'enumerating the complete CTest inventory as JSON v1'
 if "${inventory_command[@]}" >"${raw_inventory}" 2>"${ARTIFACT_ROOT}/logs/test-reference.inventory.stderr.log"; then
@@ -231,7 +241,7 @@ p0_assert_under_root "${writable_probe}" "${ARTIFACT_ROOT}" no
 rm -- "${writable_probe}"
 
 declare -a test_command=(
-    ctest
+    "${CTEST_BIN}"
     --test-dir "${BUILD_ROOT}"
     --output-on-failure
     --no-tests=error
@@ -325,6 +335,8 @@ path = pathlib.Path(sys.argv[1])
 actual_inventory_command = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))
 actual_test_command = json.loads(pathlib.Path(sys.argv[3]).read_text(encoding="utf-8"))
 def normalize(command):
+    if not command:
+        raise SystemExit("recorded CTest command is empty")
     try:
         build_root = command[command.index("--test-dir") + 1]
     except (ValueError, IndexError) as exc:
@@ -333,8 +345,8 @@ def normalize(command):
         (build_root, "$BUILD_ROOT"),
         (str(pathlib.Path(sys.argv[9]).parents[1]), "$ARTIFACT_ROOT"),
     ]
-    result = []
-    for argument in command:
+    result = ["ctest"]
+    for argument in command[1:]:
         for concrete, role in replacements:
             argument = argument.replace(concrete, role)
         result.append(argument)

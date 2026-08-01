@@ -154,6 +154,13 @@ class Harness:
         )
         if env:
             command_env.update(env)
+        if command_env.get("P0_TEST_MODE") == "1":
+            cmake = shutil.which("cmake")
+            ctest = shutil.which("ctest")
+            if cmake is None or ctest is None:
+                raise TestFailure("P0 test mode requires CMake and CTest on the harness PATH")
+            command_env["P0_TEST_CMAKE_BIN"] = str(pathlib.Path(cmake).resolve())
+            command_env["P0_TEST_CTEST_BIN"] = str(pathlib.Path(ctest).resolve())
         result = subprocess.run(
             command,
             cwd=str(cwd or self.repository),
@@ -662,10 +669,9 @@ class Harness:
             "--baseline-inventory",
             baseline,
         ]
-        environment = None
+        environment = {"P0_TEST_MODE": "1"}
         if timed_out is not None:
             command.extend(["--test-timeout", "1"])
-            environment = {"P0_TEST_MODE": "1"}
         result = self.run(command, env=environment, timeout=180)
         return result, artifact, build
 

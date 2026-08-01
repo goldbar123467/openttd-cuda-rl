@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v1-resource-measurement-report.schema.json",
+  "title": "OpenTTD RL V1 runtime resource measurement report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan",
+    "binaries",
+    "host",
+    "workloads",
+    "result",
+    "report_identity_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "openttd-rl-v1-resource-measurement-report-1" },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": { "const": "m01-runtime-resource-baseline-v1" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "binaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headless", "playable"],
+      "properties": {
+        "headless": { "$ref": "#/$defs/binary" },
+        "playable": { "$ref": "#/$defs/binary" }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "os"],
+      "properties": {
+        "architecture": { "type": "string", "minLength": 1 },
+        "os": { "const": "ubuntu-24.04" }
+      }
+    },
+    "workloads": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/workload" }
+    },
+    "result": { "const": "PASS" },
+    "report_identity_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nonnegative": { "type": "number", "minimum": 0 },
+    "positive": { "type": "number", "exclusiveMinimum": 0 },
+    "binary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["build_identity_sha256", "sha256", "version"],
+      "properties": {
+        "build_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "version": { "const": "15.3-v1" }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "wall_seconds",
+        "user_seconds",
+        "system_seconds",
+        "cpu_seconds",
+        "max_rss_kib",
+        "exit_code",
+        "termination"
+      ],
+      "properties": {
+        "index": { "type": "integer", "minimum": 1 },
+        "wall_seconds": { "$ref": "#/$defs/positive" },
+        "user_seconds": { "$ref": "#/$defs/nonnegative" },
+        "system_seconds": { "$ref": "#/$defs/nonnegative" },
+        "cpu_seconds": { "$ref": "#/$defs/nonnegative" },
+        "cpu_utilization_percent": { "$ref": "#/$defs/nonnegative" },
+        "max_rss_kib": { "type": "integer", "minimum": 1 },
+        "ticks_per_second": { "$ref": "#/$defs/positive" },
+        "exit_code": { "type": "integer" },
+        "termination": { "enum": ["NORMAL", "SIGKILL_AFTER_DECLARED_WINDOW"] }
+      }
+    },
+    "aggregate_metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["median", "minimum", "maximum"],
+      "properties": {
+        "median": { "$ref": "#/$defs/nonnegative" },
+        "minimum": { "$ref": "#/$defs/nonnegative" },
+        "maximum": { "$ref": "#/$defs/nonnegative" }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command", "warmups", "samples", "aggregate", "result"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "warmups": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sample" }
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/sample" }
+        },
+        "aggregate": {
+          "type": "object",
+          "minProperties": 3,
+          "additionalProperties": { "$ref": "#/$defs/aggregate_metric" }
+        },
+        "result": { "const": "PASS" }
+      }
+    }
+  }
+}

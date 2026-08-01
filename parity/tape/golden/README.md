@@ -7,7 +7,7 @@ is `300e9e37659a88714ca19efeccf3d2870c27845abf81c2de6f5a91bbc04dd72f`.
 tests require exact bidirectional equality rather than trusting either file.
 
 The vector contains a canonical header, `REPLAY_START`, one complete projection
-containing all 645 `authoritative_full` fields in frozen registry order,
+containing all 757 `authoritative_full` fields in frozen registry order,
 checkpoint ID 1, `TERMINAL`, and a valid covered-byte SHA-256 trailer. The
 fixture values are the registry's structural samples (with gameplay RNG field
 1030 set to 42); this is a codec vector, not authoritative OpenTTD run evidence.

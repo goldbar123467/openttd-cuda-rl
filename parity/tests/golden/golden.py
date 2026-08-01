@@ -14,7 +14,7 @@ from typing import Iterable
 REGISTRY = json.loads(
     (Path(__file__).resolve().parents[2] / "schema/fields-v1.json").read_text()
 )
-FIELD_SCHEMA_SHA256 = "7d9703fcf76a315dca7c93fd0514a52b69006c789c5b78292eb4e86ef90b575a"
+FIELD_SCHEMA_SHA256 = "7622144440833e574435ea3633e8692504d8f69cdf27fe54c4b0c39c51684438"
 
 
 def header(backend: str = "oracle", fixture: str = "6" * 64) -> bytes:

@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v1-m02-map-feasibility-plan.schema.json",
+  "title": "OpenTTD RL V1 M02 32 by 32 map feasibility plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_sha256",
+    "plan_id",
+    "scope",
+    "source",
+    "build_inputs",
+    "reference",
+    "tools",
+    "profiles",
+    "validation"
+  ],
+  "properties": {
+    "schema_version": { "const": "openttd-rl-v1-m02-map-feasibility-plan-1" },
+    "schema_sha256": { "$ref": "#/$defs/sha256" },
+    "plan_id": { "const": "m02-map-size-feasibility-v1" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["included", "forbidden"],
+      "properties": {
+        "included": { "$ref": "#/$defs/unique_strings" },
+        "forbidden": { "$ref": "#/$defs/unique_strings" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_profile_path",
+        "base_profile_sha256",
+        "base_preparation_identity_sha256",
+        "base_prepared_tree",
+        "delta_directory",
+        "delta_series_path",
+        "delta_series_sha256",
+        "patches",
+        "result_tree",
+        "composed_identity_sha256"
+      ],
+      "properties": {
+        "base_profile_path": { "const": "config/v1/openttd-source-profile.json" },
+        "base_profile_sha256": { "$ref": "#/$defs/sha256" },
+        "base_preparation_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "base_prepared_tree": { "$ref": "#/$defs/git_sha1" },
+        "delta_directory": { "const": "integration/openttd/patches/15.3/m02" },
+        "delta_series_path": { "const": "integration/openttd/patches/15.3/m02/series" },
+        "delta_series_sha256": { "$ref": "#/$defs/sha256" },
+        "patches": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/patch" }
+        },
+        "result_tree": { "$ref": "#/$defs/git_sha1" },
+        "composed_identity_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "build_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lock_path", "lock_sha256", "artifact_count", "offline_only"],
+      "properties": {
+        "lock_path": { "const": "config/v1/openttd-build-input-lock.json" },
+        "lock_sha256": { "$ref": "#/$defs/sha256" },
+        "artifact_count": { "type": "integer", "minimum": 1 },
+        "offline_only": { "const": true }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "build_identity_sha256", "executable_sha256"],
+      "properties": {
+        "artifact_id": { "const": "m01-playable-build-20260801-g" },
+        "build_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "executable_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cmake", "ctest", "gcc", "gxx", "ninja"],
+      "properties": {
+        "cmake": { "type": "string", "minLength": 1 },
+        "ctest": { "type": "string", "minLength": 1 },
+        "gcc": { "type": "string", "minLength": 1 },
+        "gxx": { "type": "string", "minLength": 1 },
+        "ninja": { "type": "string", "minLength": 1 }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/profile" }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "build_repetitions",
+        "empty_save_repetitions",
+        "generated_32_ticks",
+        "soak_ticks",
+        "seed",
+        "timeout_seconds",
+        "unit_test_cases",
+        "unit_test_assertions",
+        "regression_tests",
+        "required_cmake_components",
+        "forbidden_diagnostics_regex"
+      ],
+      "properties": {
+        "build_repetitions": { "type": "integer", "minimum": 2 },
+        "empty_save_repetitions": { "type": "integer", "minimum": 2 },
+        "generated_32_ticks": { "type": "integer", "minimum": 8192 },
+        "soak_ticks": { "type": "integer", "minimum": 1048576 },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "timeout_seconds": { "type": "integer", "minimum": 30 },
+        "unit_test_cases": { "type": "integer", "minimum": 1 },
+        "unit_test_assertions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rl-off-assert", "rl-on-assert", "rl-on-asan", "rl-on-ubsan"],
+          "properties": {
+            "rl-off-assert": { "type": "integer", "minimum": 1 },
+            "rl-on-assert": { "type": "integer", "minimum": 1 },
+            "rl-on-asan": { "type": "integer", "minimum": 1 },
+            "rl-on-ubsan": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "regression_tests": { "$ref": "#/$defs/unique_strings" },
+        "required_cmake_components": { "$ref": "#/$defs/unique_strings" },
+        "forbidden_diagnostics_regex": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "git_sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "unique_strings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order", "path", "sha256"],
+      "properties": {
+        "order": { "type": "integer", "minimum": 2 },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rl_environment", "sanitizer", "build_type", "optimization"],
+      "properties": {
+        "id": {
+          "enum": ["rl-off-assert", "rl-on-assert", "rl-on-asan", "rl-on-ubsan"]
+        },
+        "rl_environment": { "type": "boolean" },
+        "sanitizer": { "enum": ["none", "address", "undefined"] },
+        "build_type": { "enum": ["Release", "Debug"] },
+        "optimization": { "enum": ["-O2", "-O1", "-O0"] }
+      }
+    }
+  }
+}

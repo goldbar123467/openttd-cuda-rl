@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v1-build-profile-matrix.schema.json",
+  "title": "OpenTTD RL V1 build profile matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "matrix_id",
+    "supported_host",
+    "toolchain",
+    "feature_flags",
+    "worker_runtime_contract",
+    "accepted_baselines",
+    "profiles"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "openttd-rl-v1-build-profile-matrix-1"
+    },
+    "matrix_id": {
+      "const": "ubuntu-24.04-wsl2-x86_64-gcc13-cuda13"
+    },
+    "supported_host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "distribution", "environment"],
+      "properties": {
+        "architecture": { "const": "x86_64" },
+        "distribution": { "const": "ubuntu-24.04" },
+        "environment": { "const": "wsl2" }
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "c_standard",
+        "cmake",
+        "cpp_standard",
+        "cuda",
+        "gcc",
+        "libtorch",
+        "ninja",
+        "onnx_opset",
+        "onnxruntime"
+      ],
+      "properties": {
+        "c_standard": { "const": 17 },
+        "cmake": { "const": "3.28.3" },
+        "cpp_standard": { "const": 20 },
+        "cuda": { "const": "13.0.88" },
+        "gcc": { "const": "13.3.0" },
+        "libtorch": { "const": "2.13.0+cu130" },
+        "ninja": { "const": "1.11.1" },
+        "onnx_opset": { "const": 18 },
+        "onnxruntime": { "const": "1.28.0-cpu" }
+      }
+    },
+    "feature_flags": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/feature_flag" }
+    },
+    "worker_runtime_contract": { "$ref": "#/$defs/worker_contract" },
+    "accepted_baselines": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/baseline" }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/profile" }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "feature_flag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "cmake_option", "default", "activation_gate"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["assertions", "in_game_inference", "rl_bridge", "telemetry"]
+        },
+        "cmake_option": { "type": "string", "pattern": "^OPTION_[A-Z0-9_]+$" },
+        "default": { "type": "boolean" },
+        "activation_gate": { "type": "string", "pattern": "^G(?:0[1-9]|1[0-2])$" }
+      }
+    },
+    "worker_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dedicated_build_allowed",
+        "process_model",
+        "video_driver",
+        "loop_control",
+        "first_activation_gate"
+      ],
+      "properties": {
+        "dedicated_build_allowed": { "const": false },
+        "process_model": { "const": "one-regular-nondedicated-process-per-environment" },
+        "video_driver": { "const": "null" },
+        "loop_control": { "const": "source-integrated-boundary-controller" },
+        "first_activation_gate": { "const": "G03" }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "profile_id",
+        "artifact_role",
+        "worker_eligible",
+        "identity_sha256",
+        "manifest_sha256",
+        "accepted_runs"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" },
+        "kind": { "enum": ["openttd-build", "toolchain-probe"] },
+        "profile_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" },
+        "artifact_role": { "type": "string", "minLength": 1 },
+        "worker_eligible": { "type": "boolean" },
+        "identity_sha256": { "$ref": "#/$defs/sha256" },
+        "manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "accepted_runs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" }
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "purpose",
+        "build_type",
+        "execution_state",
+        "targets",
+        "features",
+        "instrumentation",
+        "dependencies",
+        "mandatory_scope",
+        "activation_gate",
+        "resolution_task"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" },
+        "purpose": { "type": "string", "minLength": 1 },
+        "build_type": { "enum": ["Debug", "Release", "RelWithDebInfo"] },
+        "execution_state": {
+          "enum": ["BASELINE_VALIDATED", "DEFINED_PENDING_TARGET"]
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "openttd-dedicated-build-evidence",
+              "openttd-playable",
+              "openttd-rl-worker",
+              "rl-native-tests",
+              "rl-trainer",
+              "toolchain-probes"
+            ]
+          }
+        },
+        "features": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["assertions", "in_game_inference", "rl_bridge", "telemetry"],
+          "properties": {
+            "assertions": { "type": "boolean" },
+            "in_game_inference": { "type": "boolean" },
+            "rl_bridge": { "type": "boolean" },
+            "telemetry": { "type": "boolean" }
+          }
+        },
+        "instrumentation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["address_sanitizer", "cuda_debug", "undefined_sanitizer"],
+          "properties": {
+            "address_sanitizer": { "type": "boolean" },
+            "cuda_debug": { "type": "boolean" },
+            "undefined_sanitizer": { "type": "boolean" }
+          }
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cuda", "libtorch", "onnxruntime", "python_runtime"],
+          "properties": {
+            "cuda": { "type": "boolean" },
+            "libtorch": { "type": "boolean" },
+            "onnxruntime": { "type": "boolean" },
+            "python_runtime": { "const": false }
+          }
+        },
+        "mandatory_scope": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "activation_gate": { "type": "string", "pattern": "^G(?:0[1-9]|1[0-2])$" },
+        "resolution_task": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

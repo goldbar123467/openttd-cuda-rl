@@ -1,0 +1,44 @@
+{
+  "accepted_artifact_store_subdirectory": "openttd-rl",
+  "outer_repository": {
+    "baseline_commit": "76574e7e65494b72ed3c07cbf973722865c3569f",
+    "condition": "PRESERVED_DIRTY",
+    "snapshot_id": "m00-preservation-20260731T231051Z",
+    "snapshot_sha256": {
+      "openttd-submodule.bundle": "89ba162d23f0493284b15206e0f4b288cad6575102d66b158048b2fec5c2a1ee",
+      "outer-repository.bundle": "8fb8904c57401f2b1075a1bb33d1679a03e52d12cd779b3c8bbbfaa00f975af9",
+      "tracked-working-tree.patch": "e83d889dad2587d3235a5004c073f8c5e0c6ad73a665ebc2068aa925d00ca9bb",
+      "worktree-files.tar.gz": "fd7ff5ca135787dde42b0b1414d78d952a28cf9aee654598c2ab6cb5dff0bcd6"
+    }
+  },
+  "provenance_runs": [
+    {
+      "id": "m01-dependency-provenance-20260801-a",
+      "identity_sha256": "fe9b7a915c0b33d637e45d875dcdc6bb13c918a15826302e020cb516f28a1adc",
+      "manifest_sha256": "d3a567d2cbee1c0e9975ad36424480402b05a3a6f0849f5296056e862cdb1b05"
+    },
+    {
+      "id": "m01-dependency-provenance-20260801-b",
+      "identity_sha256": "fe9b7a915c0b33d637e45d875dcdc6bb13c918a15826302e020cb516f28a1adc",
+      "manifest_sha256": "d3a567d2cbee1c0e9975ad36424480402b05a3a6f0849f5296056e862cdb1b05"
+    }
+  ],
+  "resource_plan_sha256": "2daa2d70d8ab8f178f6f9cc393dc07a9d3f858b0b1b46bb2cd9f96be6b2026b5",
+  "resource_runs": [
+    {
+      "id": "m01-runtime-resources-20260801-c",
+      "identity_sha256": "06937c1d88b9bac47e6b4587d43360e114ae33e2fb2fbe02393238003922b1bd",
+      "report_sha256": "aeb55fdae78cd79a8648e5a5ceb381b916cbf9b3e9c613abb51665dc1294478f"
+    },
+    {
+      "id": "m01-runtime-resources-20260801-d",
+      "identity_sha256": "b0c9dc866be9420b2948e1c8a2c6ef263d7dd2bae5e3256221cb197cb8f2cc1c",
+      "report_sha256": "0c176672f92e4d2d3172ebe845c10e164fa8b83f326302fbfccab787d5ae8b7b"
+    }
+  ],
+  "schema_version": "openttd-rl-v1-g01-evidence-index-1",
+  "submodule": {
+    "commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86",
+    "required_state": "CLEAN"
+  }
+}

@@ -1,0 +1,336 @@
+{
+  "accepted_baselines": [
+    {
+      "accepted_runs": [
+        "m01-headless-build-20260801-k",
+        "m01-headless-build-20260801-l"
+      ],
+      "artifact_role": "Immutable dedicated OpenTTD release-build reproducibility evidence; never an RL worker.",
+      "id": "dedicated-headless-release-evidence",
+      "identity_sha256": "102f07d8595673a06888bb935c809c47ea3326f8d66be158a1588e32ec530de3",
+      "kind": "openttd-build",
+      "manifest_sha256": "235fb2a9eaa3a9569b8b357db7da9f0933af1ec546031e3aa3255cc0d8233778",
+      "profile_id": "cpp-optimized-cpu",
+      "worker_eligible": false
+    },
+    {
+      "accepted_runs": [
+        "m01-playable-build-20260801-f",
+        "m01-playable-build-20260801-g"
+      ],
+      "artifact_role": "Immutable playable release-build evidence with neural inference disabled.",
+      "id": "playable-release-no-inference-evidence",
+      "identity_sha256": "5e50757e298b5c241655663e94a5ce0dde0a69eb4e5d811c467fe2dc63cf3c7b",
+      "kind": "openttd-build",
+      "manifest_sha256": "e9cc12b94ef1eeefd96e7cac2d9a7e2114f463e52470415a571b7c98b5585046",
+      "profile_id": "cpp-optimized-cpu",
+      "worker_eligible": false
+    },
+    {
+      "accepted_runs": [
+        "m01-toolchain-probe-runner-20260731-e",
+        "m01-toolchain-probe-runner-20260731-f"
+      ],
+      "artifact_role": "Immutable optimized CUDA, LibTorch, exporter, and ONNX Runtime ABI/toolchain evidence.",
+      "id": "cuda-onnx-toolchain-evidence",
+      "identity_sha256": "832f1faf8c4927f148bd8933dd43873ef06068afcbeff621481275fb4e6acd3c",
+      "kind": "toolchain-probe",
+      "manifest_sha256": "cce25d7d2dea9e09111a1905d8e29e21e557e1874618e8e3e592dd2827e053de",
+      "profile_id": "cuda-optimized",
+      "worker_eligible": false
+    }
+  ],
+  "feature_flags": [
+    {
+      "activation_gate": "G01",
+      "cmake_option": "OPTION_USE_ASSERTS",
+      "default": true,
+      "id": "assertions"
+    },
+    {
+      "activation_gate": "G10",
+      "cmake_option": "OPTION_RL_IN_GAME_INFERENCE",
+      "default": false,
+      "id": "in_game_inference"
+    },
+    {
+      "activation_gate": "G03",
+      "cmake_option": "OPTION_RL_BRIDGE",
+      "default": false,
+      "id": "rl_bridge"
+    },
+    {
+      "activation_gate": "G03",
+      "cmake_option": "OPTION_RL_TELEMETRY",
+      "default": false,
+      "id": "telemetry"
+    }
+  ],
+  "matrix_id": "ubuntu-24.04-wsl2-x86_64-gcc13-cuda13",
+  "profiles": [
+    {
+      "activation_gate": "G03",
+      "build_type": "Debug",
+      "dependencies": {
+        "cuda": false,
+        "libtorch": false,
+        "onnxruntime": false,
+        "python_runtime": false
+      },
+      "execution_state": "DEFINED_PENDING_TARGET",
+      "features": {
+        "assertions": true,
+        "in_game_inference": false,
+        "rl_bridge": true,
+        "telemetry": true
+      },
+      "id": "cpp-debug-assertions-cpu",
+      "instrumentation": {
+        "address_sanitizer": false,
+        "cuda_debug": false,
+        "undefined_sanitizer": false
+      },
+      "mandatory_scope": [
+        "all-unit-tests",
+        "all-integration-tests",
+        "all-equivalence-tests"
+      ],
+      "purpose": "Deterministic CPU correctness oracle for the source-integrated environment.",
+      "resolution_task": "Execute when the first M03 C++ worker and native environment tests exist.",
+      "targets": [
+        "openttd-rl-worker",
+        "rl-native-tests"
+      ]
+    },
+    {
+      "activation_gate": "G01",
+      "build_type": "Release",
+      "dependencies": {
+        "cuda": false,
+        "libtorch": false,
+        "onnxruntime": false,
+        "python_runtime": false
+      },
+      "execution_state": "BASELINE_VALIDATED",
+      "features": {
+        "assertions": true,
+        "in_game_inference": false,
+        "rl_bridge": false,
+        "telemetry": false
+      },
+      "id": "cpp-optimized-cpu",
+      "instrumentation": {
+        "address_sanitizer": false,
+        "cuda_debug": false,
+        "undefined_sanitizer": false
+      },
+      "mandatory_scope": [
+        "full-upstream-tests",
+        "headless-null-video-smoke",
+        "playable-sdl-main-loop-smoke",
+        "runtime-resource-baseline"
+      ],
+      "purpose": "Reproducible optimized CPU OpenTTD baseline and future production CPU behavior.",
+      "resolution_task": "Re-execute for the regular non-dedicated worker when M03 activates OPTION_RL_BRIDGE.",
+      "targets": [
+        "openttd-dedicated-build-evidence",
+        "openttd-playable"
+      ]
+    },
+    {
+      "activation_gate": "G02",
+      "build_type": "RelWithDebInfo",
+      "dependencies": {
+        "cuda": false,
+        "libtorch": false,
+        "onnxruntime": false,
+        "python_runtime": false
+      },
+      "execution_state": "DEFINED_PENDING_TARGET",
+      "features": {
+        "assertions": true,
+        "in_game_inference": false,
+        "rl_bridge": false,
+        "telemetry": true
+      },
+      "id": "asan",
+      "instrumentation": {
+        "address_sanitizer": true,
+        "cuda_debug": false,
+        "undefined_sanitizer": false
+      },
+      "mandatory_scope": [
+        "all-practical-native-entry-points",
+        "leak-checks",
+        "scenario-soak"
+      ],
+      "purpose": "Native memory and leak safety for owned engine patches and environment code.",
+      "resolution_task": "Execute first against the M02 conditional 32x32 engine patch, then at every changed native gate.",
+      "targets": [
+        "openttd-playable",
+        "rl-native-tests"
+      ]
+    },
+    {
+      "activation_gate": "G02",
+      "build_type": "RelWithDebInfo",
+      "dependencies": {
+        "cuda": false,
+        "libtorch": false,
+        "onnxruntime": false,
+        "python_runtime": false
+      },
+      "execution_state": "DEFINED_PENDING_TARGET",
+      "features": {
+        "assertions": true,
+        "in_game_inference": false,
+        "rl_bridge": false,
+        "telemetry": true
+      },
+      "id": "ubsan",
+      "instrumentation": {
+        "address_sanitizer": false,
+        "cuda_debug": false,
+        "undefined_sanitizer": true
+      },
+      "mandatory_scope": [
+        "all-practical-native-entry-points",
+        "fail-fast-undefined-behavior",
+        "scenario-soak"
+      ],
+      "purpose": "Fail-fast undefined-behavior validation for owned native changes.",
+      "resolution_task": "Execute first against the M02 conditional 32x32 engine patch, then at every changed native gate.",
+      "targets": [
+        "openttd-playable",
+        "rl-native-tests"
+      ]
+    },
+    {
+      "activation_gate": "G08",
+      "build_type": "Debug",
+      "dependencies": {
+        "cuda": true,
+        "libtorch": true,
+        "onnxruntime": false,
+        "python_runtime": false
+      },
+      "execution_state": "DEFINED_PENDING_TARGET",
+      "features": {
+        "assertions": true,
+        "in_game_inference": false,
+        "rl_bridge": false,
+        "telemetry": true
+      },
+      "id": "cuda-debug",
+      "instrumentation": {
+        "address_sanitizer": false,
+        "cuda_debug": true,
+        "undefined_sanitizer": false
+      },
+      "mandatory_scope": [
+        "every-cuda-path",
+        "launch-checks",
+        "memory-correctness",
+        "cpu-cuda-parity"
+      ],
+      "purpose": "Launch, memory, synchronization, and numerical correctness for CUDA training paths.",
+      "resolution_task": "Execute when M08 adds the first measured CUDA training workload; CUDA does not enter OpenTTD simulation.",
+      "targets": [
+        "rl-native-tests",
+        "rl-trainer"
+      ]
+    },
+    {
+      "activation_gate": "G08",
+      "build_type": "Release",
+      "dependencies": {
+        "cuda": true,
+        "libtorch": true,
+        "onnxruntime": false,
+        "python_runtime": false
+      },
+      "execution_state": "BASELINE_VALIDATED",
+      "features": {
+        "assertions": true,
+        "in_game_inference": false,
+        "rl_bridge": false,
+        "telemetry": true
+      },
+      "id": "cuda-optimized",
+      "instrumentation": {
+        "address_sanitizer": false,
+        "cuda_debug": false,
+        "undefined_sanitizer": false
+      },
+      "mandatory_scope": [
+        "cuda-libtorch-abi-probe",
+        "cpu-cuda-parity",
+        "preregistered-performance",
+        "training-soak"
+      ],
+      "purpose": "Pinned optimized CUDA/LibTorch baseline and future production GPU training path.",
+      "resolution_task": "Retain the G01 ABI evidence; execute parity, benefit, and soak only after the M08 CUDA workload exists.",
+      "targets": [
+        "toolchain-probes"
+      ]
+    },
+    {
+      "activation_gate": "G10",
+      "build_type": "Release",
+      "dependencies": {
+        "cuda": false,
+        "libtorch": false,
+        "onnxruntime": true,
+        "python_runtime": false
+      },
+      "execution_state": "DEFINED_PENDING_TARGET",
+      "features": {
+        "assertions": true,
+        "in_game_inference": true,
+        "rl_bridge": false,
+        "telemetry": true
+      },
+      "id": "playable-inference-only",
+      "instrumentation": {
+        "address_sanitizer": false,
+        "cuda_debug": false,
+        "undefined_sanitizer": false
+      },
+      "mandatory_scope": [
+        "package-boundary",
+        "native-onnx-in-game-equivalence",
+        "clean-user-playback",
+        "reject-training-dependencies"
+      ],
+      "purpose": "Normal-game CPU ONNX deployment with no trainer, LibTorch, CUDA, or Python runtime dependency.",
+      "resolution_task": "Execute after G10 produces an accepted ONNX package and before G11 playback acceptance.",
+      "targets": [
+        "openttd-playable"
+      ]
+    }
+  ],
+  "schema_version": "openttd-rl-v1-build-profile-matrix-1",
+  "supported_host": {
+    "architecture": "x86_64",
+    "distribution": "ubuntu-24.04",
+    "environment": "wsl2"
+  },
+  "toolchain": {
+    "c_standard": 17,
+    "cmake": "3.28.3",
+    "cpp_standard": 20,
+    "cuda": "13.0.88",
+    "gcc": "13.3.0",
+    "libtorch": "2.13.0+cu130",
+    "ninja": "1.11.1",
+    "onnx_opset": 18,
+    "onnxruntime": "1.28.0-cpu"
+  },
+  "worker_runtime_contract": {
+    "dedicated_build_allowed": false,
+    "first_activation_gate": "G03",
+    "loop_control": "source-integrated-boundary-controller",
+    "process_model": "one-regular-nondedicated-process-per-environment",
+    "video_driver": "null"
+  }
+}

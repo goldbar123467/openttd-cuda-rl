@@ -1,0 +1,23 @@
+{
+  "$schema": "../../docs/project/schema/v1-m02-seed-ledger.schema.json",
+  "schema_version": "openttd-rl-v1-m02-seed-ledger-1",
+  "contract_compatibility_sha256": "45ec1b3beb4d6d50696bf1de75094e1817c6aa7ef8e0d38fc6696999764e5b0f",
+  "corpus_sha256": "07898d94a56fd080c9cea57dbdf90384e1f0f269e360fb35423de16bc89d2e14",
+  "sets_must_be_disjoint": true,
+  "entries": [
+    {"seed": 1291976705, "split": "training", "template_id": "m02-template-01", "trainer_visible": true},
+    {"seed": 1291976706, "split": "training", "template_id": "m02-template-02", "trainer_visible": true},
+    {"seed": 1291976707, "split": "training", "template_id": "m02-template-03", "trainer_visible": true},
+    {"seed": 1291976708, "split": "training", "template_id": "m02-template-04", "trainer_visible": true},
+    {"seed": 1292029953, "split": "development", "template_id": "m02-template-05", "trainer_visible": true},
+    {"seed": 1292029954, "split": "development", "template_id": "m02-template-06", "trainer_visible": true},
+    {"seed": 1292034049, "split": "final-evaluation", "template_id": "m02-template-07", "trainer_visible": false},
+    {"seed": 1292034050, "split": "final-evaluation", "template_id": "m02-template-08", "trainer_visible": false}
+  ],
+  "identity": {
+    "algorithm": "sha256-canonical-json-v1",
+    "ledger_sha256": "fcfdb820abb6db783df412d6496f68ce41bfd3def630ced637fe1d00dbbcd8ed",
+    "schema_path": "docs/project/schema/v1-m02-seed-ledger.schema.json",
+    "schema_sha256": "da2ae845ccdc349e0cb31e92a14c6236773ccff194901abcb301b5c3e480f3da"
+  }
+}

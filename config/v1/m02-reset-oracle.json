@@ -1,0 +1,78 @@
+{
+  "schema_version": "openttd-rl-v1-m02-reset-oracle-1",
+  "accepted_feasibility": {
+    "composed_source_identity_sha256": "2140e34ccee8534dbf712487acd2225eda4b66d1c807b9e0ce07243ba40afdbd",
+    "result_tree": "eba8f4bd3c37042c184d968d2f038864184e3132"
+  },
+  "native_delta": {
+    "composed_source_identity_sha256": "edc76541bfda23c2916fc85d499e6e0d5a5cefaad09f40bf19972c2d3307385e",
+    "patches": [
+      {
+        "order": 3,
+        "path": "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "sha256": "334edfd7b8eca1b3250a074973071905744e55b669548a293022f4d988fa9425"
+      }
+    ],
+    "result_tree": "551a99fbd33bd1b0f8c9ec35561deb0e893b81fe",
+    "series_path": "integration/openttd/patches/15.3/m02/scenario/series",
+    "series_sha256": "126243b273601afd7ef6e27e9b91915ef396695b10ac531726ef4c98a55ce555"
+  },
+  "content": {
+    "opengfx_archive_sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c",
+    "opengfx_metadata_version": 9499
+  },
+  "report_schema": {
+    "path": "docs/project/schema/v1-m02-reset-projection.schema.json",
+    "sha256": "a154293c19ed4b378e6b6dab5c84aa533244d09f842f4f085b52720b19822d9a"
+  },
+  "trajectory_schema": {
+    "path": "docs/project/schema/v1-m02-scripted-bus-trajectory.schema.json",
+    "sha256": "3629f785be8fbe398a9ce31c2d40850e0de0b660ec1667f9d6ed968f0e2d9399"
+  },
+  "oracle": {
+    "clean_process_repetitions": 2,
+    "same_process_repetitions": 2,
+    "templates": [
+      {
+        "projection_sha256": "2845e3f3d1a1b9eb240c86fb2a60390b7d867bcced5e063790958ff0b9c001c5",
+        "template_id": "m02-template-01",
+        "trajectory_report_sha256": "6d4d0f1fb99f03f506248c8a9fec4bc73a5e47b211142cd681f24367076d7541"
+      },
+      {
+        "projection_sha256": "7388f46079ab4086db3620c167c95e4b87286f728d12e1af89e68e2e8839a71e",
+        "template_id": "m02-template-02",
+        "trajectory_report_sha256": "69d1db9ea51ec1563a625db3bda2f1380ee0b1cdcc451fbe30298d4c63a70825"
+      },
+      {
+        "projection_sha256": "d79e3e55f196ddfb74ed0e1773e3c701f9d84af4becd9ad64267e93398c4d12b",
+        "template_id": "m02-template-03",
+        "trajectory_report_sha256": "b736eb812bda0144ce75916c0c4b32c31de75ef7428fce9530dd020b09c630a1"
+      },
+      {
+        "projection_sha256": "ad77c66de648404d6867d193ba49c28b62b8795b915fb49e7a322d120d096c31",
+        "template_id": "m02-template-04",
+        "trajectory_report_sha256": "d3d1f99c10b3ebdc654a01be49631a8a17ba1b5c6cb9c66e53c619dc3339f561"
+      },
+      {
+        "projection_sha256": "22dacec91244d6c7b4bf5fa3e9bf60c6dd1acfc206f77de799803d4cab92c0ba",
+        "template_id": "m02-template-05",
+        "trajectory_report_sha256": "69f0a959bf903a7274a229fa4dd97642e5c431e41a66aaf92063c357ef779673"
+      },
+      {
+        "projection_sha256": "d3c801cba4ec3001275c583b3c74f4c166da789e89b79566444e9e653f8f532c",
+        "template_id": "m02-template-06",
+        "trajectory_report_sha256": "b81293c4042f4841ee05cee3a786ddb86aaf136346f7aaae285a36eccf711c7f"
+      },
+      {
+        "projection_sha256": "c1b67455fcc5946cd9969ec8ab14f17a46abf7b750e3a8cc78e7079abea605e9",
+        "template_id": "m02-template-07",
+        "trajectory_report_sha256": "05aac7a4697fbb3f502fa812117af62b9815a0370ece3878eaab98f5c16e5b6f"
+      },
+      {
+        "projection_sha256": "6d48d9a54194a50cd57a2532621820bf24a4a7a80c348c91a9ebe6f7a73db531",
+        "template_id": "m02-template-08",
+        "trajectory_report_sha256": "519719cdbd3ac6191b6babf3ed1212d7980ce686703bfc18fa522c41bd4d8be7"
+      }
+    ]
+  }
+}

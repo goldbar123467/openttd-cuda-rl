@@ -1,5 +1,9 @@
 # P0 Forbidden Scope
 
+> **Legacy scope notice (2026-07-31):** These prohibitions remain meaningful for
+> historical P0 runs. Active Version 1 scope and non-goals are defined by
+> `GOAL.md` and `docs/project/REQUIREMENTS.md`.
+
 The following boundaries are hard failures for the P0 branch unless the oracle
 contract itself is revised by explicit human direction. An ADR cannot silently
 expand the phase.

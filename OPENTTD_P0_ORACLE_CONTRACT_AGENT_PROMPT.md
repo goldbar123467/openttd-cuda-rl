@@ -1,5 +1,12 @@
 # Execution Contract: P0 Oracle Harness for Exact OpenTTD Parity
 
+> **Legacy scope notice (2026-07-31):** This is the frozen execution contract for
+> the repository's earlier 64 by 64 road-freight oracle/parity workstream. It does
+> not define the active product goal and must not be used to expand Version 1 into
+> freight, a clean-room gameplay port, or CUDA simulation. `GOAL.md` and
+> `docs/project/REQUIREMENTS.md` govern the active 32 by 32 passenger-bus PPO
+> platform. Preserve this document as historical authority for legacy P0 artifacts.
+
 ## Copy-paste instruction for the implementation agent
 
 You are the implementation owner for the P0 oracle-contract phase of `goldbar123467/openttd-cuda-rl`.

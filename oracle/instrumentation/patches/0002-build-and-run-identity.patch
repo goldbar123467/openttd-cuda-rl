@@ -1,0 +1,391 @@
+From 9bd11457e380a0eaed8cc96e032270daab0f0f34 Mon Sep 17 00:00:00 2001
+From: OpenTTD P0 Instrumentation <p0-instrumentation@example.invalid>
+Date: Thu, 30 Jul 2026 16:31:44 -0400
+Subject: [PATCH] port003: add partial tape identity journal
+
+Validate the canonical tape identity header against the frozen v1 shape, stream exact partial tape framing and records, and durably retain the journal for the independent C17 finalizer.
+
+This patch does not integrate replay or sample gameplay state. Later patches supply the prevalidated command stream and authoritative command/tick records.
+---
+ src/CMakeLists.txt             |   2 +
+ src/p0_trace_journal.cpp       | 154 +++++++++++++++++++++++++++++++++
+ src/p0_trace_journal.h         |  77 +++++++++++++++++
+ src/tests/CMakeLists.txt       |   1 +
+ src/tests/p0_trace_journal.cpp |  95 ++++++++++++++++++++
+ 5 files changed, 329 insertions(+)
+ create mode 100644 src/p0_trace_journal.cpp
+ create mode 100644 src/p0_trace_journal.h
+ create mode 100644 src/tests/p0_trace_journal.cpp
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 1e86dee771..31e17703bc 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -7,6 +7,8 @@ if(OPTION_TOOLS_ONLY)
+ endif()
+ 
+ add_files(
++    p0_trace_journal.cpp
++    p0_trace_journal.h
+     p0_trace_sink.cpp
+     p0_trace_sink.h
+     CONDITION OPTION_P0_ORACLE_TRACE
+diff --git a/src/p0_trace_journal.cpp b/src/p0_trace_journal.cpp
+new file mode 100644
+index 0000000000..65535b435b
+--- /dev/null
++++ b/src/p0_trace_journal.cpp
+@@ -0,0 +1,154 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file p0_trace_journal.cpp Partial tape-v1 framing for the external P0 oracle. */
++
++#include "stdafx.h"
++#include "p0_trace_journal.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++
++#include <array>
++#include <cerrno>
++#include <initializer_list>
++#include <string>
++
++#include "safeguards.h"
++
++namespace P0Trace {
++
++using nlohmann::json;
++
++static bool HasExactKeys(const json &value, std::initializer_list<std::string_view> keys)
++{
++	if (!value.is_object() || value.size() != keys.size()) return false;
++	for (std::string_view key : keys) {
++		if (!value.contains(key)) return false;
++	}
++	return true;
++}
++
++static bool IsLowerHex(const json &value, size_t size)
++{
++	if (!value.is_string()) return false;
++	const std::string &text = value.get_ref<const std::string &>();
++	if (text.size() != size) return false;
++	return std::ranges::all_of(text, [](char character) {
++		return (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f');
++	});
++}
++
++static bool IsSafeCounter(const json &value)
++{
++	return value.is_number_unsigned() && value.get<uint64_t>() <= 9'007'199'254'740'991ULL;
++}
++
++bool ValidateCanonicalTapeHeader(std::string_view header)
++{
++	if (header.empty() || header.size() > MAX_HEADER_BYTES || header.starts_with("\xEF\xBB\xBF")) return false;
++	json value = json::parse(header, nullptr, false, true);
++	if (value.is_discarded() || value.dump() != header) return false;
++	if (!HasExactKeys(value, {"backend_label", "diagnostic_features", "format", "identity", "initial", "limits", "projection_policy"})) return false;
++	if (!value["backend_label"].is_string() || value["backend_label"].get_ref<const std::string &>().empty() || value["backend_label"].get_ref<const std::string &>().size() > 128) return false;
++	if (!value["diagnostic_features"].is_array() || !value["diagnostic_features"].empty()) return false;
++	if (!HasExactKeys(value["format"], {"major", "minor"}) || value["format"]["major"] != 1 || value["format"]["minor"] != 0) return false;
++
++	const json &identity = value["identity"];
++	if (!HasExactKeys(identity, {"build_sha256", "command_input_sha256", "command_schema_sha256", "content_sha256", "executable_sha256", "field_schema_sha256", "fixture_sha256", "instrumentation_sha256", "newgrfs", "settings_sha256", "source_commit"})) return false;
++	for (std::string_view key : {"build_sha256", "command_input_sha256", "command_schema_sha256", "content_sha256", "executable_sha256", "field_schema_sha256", "fixture_sha256", "instrumentation_sha256", "settings_sha256"}) {
++		if (!IsLowerHex(identity[key], 64)) return false;
++	}
++	if (!identity["newgrfs"].is_array() || !identity["newgrfs"].empty()) return false;
++	if (!identity["source_commit"].is_string() || identity["source_commit"] != "29f808ef0022064e6d9a83c8476d1e0f4686af86") return false;
++
++	const json &initial = value["initial"];
++	if (!HasExactKeys(initial, {"calendar_date", "calendar_fraction", "economy_date", "economy_fraction", "gameplay_rng_state", "interactive_rng_state", "native_tick", "public_step", "timers"})) return false;
++	for (std::string_view key : {"calendar_date", "calendar_fraction", "economy_date", "economy_fraction"}) {
++		if (!initial[key].is_number_unsigned() || initial[key].get<uint64_t>() > UINT32_MAX) return false;
++	}
++	if (!IsLowerHex(initial["gameplay_rng_state"], 16) || !IsLowerHex(initial["interactive_rng_state"], 16)) return false;
++	if (!IsSafeCounter(initial["native_tick"]) || !IsSafeCounter(initial["public_step"])) return false;
++	if (!initial["timers"].is_object() || initial["timers"].empty() || initial["timers"].size() > 64) return false;
++	for (const auto &[key, timer] : initial["timers"].items()) {
++		if (key.empty() || key.size() > 64 || key.front() < 'a' || key.front() > 'z' || !std::ranges::all_of(key, [](char character) { return (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '_'; }) || !IsSafeCounter(timer)) return false;
++	}
++
++	const json &limits = value["limits"];
++	if (!HasExactKeys(limits, {"command_count", "field_bytes", "field_count", "header_bytes", "record_count", "record_payload_bytes", "tape_bytes"})) return false;
++	if (limits["command_count"] != 1'000'000 || limits["field_bytes"] != 67'108'864 || limits["field_count"] != 10'000'000 || limits["header_bytes"] != 1'048'576 || limits["record_count"] != 50'000'000 || limits["record_payload_bytes"] != 67'108'864 || limits["tape_bytes"] != 1'099'511'627'776ULL) return false;
++	return value["projection_policy"] == "complete";
++}
++
++/* static */ std::unique_ptr<Journal> Journal::Open(const std::filesystem::path &final_path, std::string_view canonical_header, std::error_code &error)
++{
++	error.clear();
++	if (!ValidateCanonicalTapeHeader(canonical_header)) {
++		error = std::error_code(EINVAL, std::generic_category());
++		return nullptr;
++	}
++	auto sink = Sink::Open(final_path, MAX_TAPE_BYTES, error);
++	if (sink == nullptr) return nullptr;
++	auto journal = std::unique_ptr<Journal>(new Journal(std::move(sink)));
++	if (!journal->WritePrefix(canonical_header)) {
++		error = journal->Error();
++		return nullptr;
++	}
++	return journal;
++}
++
++bool Journal::Fail(int error_value)
++{
++	if (!this->error) this->error = std::error_code(error_value, std::generic_category());
++	return false;
++}
++
++bool Journal::WritePrefix(std::string_view canonical_header)
++{
++	static constexpr std::array<uint8_t, 8> MAGIC{'O', 'T', 'R', 'L', 'T', 'A', 'P', 0};
++	return this->sink->WriteBytes(MAGIC) &&
++		this->sink->WriteU16(1) && this->sink->WriteU16(0) &&
++		this->sink->WriteU8(1) && this->sink->WriteU8(1) &&
++		this->sink->WriteU16(64) &&
++		this->sink->WriteU32(static_cast<uint32_t>(canonical_header.size())) &&
++		this->sink->WriteU32(1) &&
++		this->sink->WriteU64(0) && this->sink->WriteU64(0) &&
++		this->sink->WriteU64(0) && this->sink->WriteU64(0) && this->sink->WriteU64(0) &&
++		this->sink->WriteBytes(std::span<const uint8_t>(reinterpret_cast<const uint8_t *>(canonical_header.data()), canonical_header.size()));
++}
++
++bool Journal::AddRecord(const Record &record)
++{
++	if (this->error || this->sink->Error()) return false;
++	if (this->saw_terminal) return this->Fail(EINVAL);
++	if (record.type < 1 || record.type > 11 || record.version != 1 || record.flags != 1) return this->Fail(EINVAL);
++	if (record.payload.size() > MAX_RECORD_PAYLOAD_BYTES || this->record_count >= MAX_RECORD_COUNT) return this->Fail(EFBIG);
++	if (this->record_count == 0 && record.type != 1) return this->Fail(EINVAL);
++	if (record.public_step < this->prior_public_step || record.native_tick < this->prior_native_tick) return this->Fail(EINVAL);
++	if (!this->sink->WriteU16(record.type) || !this->sink->WriteU16(record.version) ||
++			!this->sink->WriteU32(record.flags) || !this->sink->WriteU64(this->record_count) ||
++			!this->sink->WriteU64(record.public_step) || !this->sink->WriteU64(record.native_tick) ||
++			!this->sink->WriteU32(static_cast<uint32_t>(record.payload.size())) || !this->sink->WriteU32(0) ||
++			!this->sink->WriteBytes(record.payload) || !this->sink->WriteZeroes((-record.payload.size()) & 7)) return false;
++	this->record_count++;
++	this->prior_public_step = record.public_step;
++	this->prior_native_tick = record.native_tick;
++	this->saw_terminal = record.type == 11;
++	return true;
++}
++
++bool Journal::FinishJournal(std::error_code &error)
++{
++	error.clear();
++	if (this->error || this->sink->Error() || !this->saw_terminal) {
++		if (!this->error && !this->sink->Error()) this->Fail(EINVAL);
++		error = this->Error();
++		return false;
++	}
++	return this->sink->FinishJournal(error);
++}
++
++} // namespace P0Trace
+diff --git a/src/p0_trace_journal.h b/src/p0_trace_journal.h
+new file mode 100644
+index 0000000000..62def73849
+--- /dev/null
++++ b/src/p0_trace_journal.h
+@@ -0,0 +1,77 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file p0_trace_journal.h Partial tape-v1 framing for the external P0 oracle. */
++
++#ifndef P0_TRACE_JOURNAL_H
++#define P0_TRACE_JOURNAL_H
++
++#include "p0_trace_sink.h"
++
++#include <cstdint>
++#include <filesystem>
++#include <memory>
++#include <span>
++#include <string_view>
++#include <system_error>
++
++namespace P0Trace {
++
++static constexpr uint32_t MAX_HEADER_BYTES = 1U << 20;
++static constexpr uint32_t MAX_RECORD_PAYLOAD_BYTES = 64U << 20;
++static constexpr uint64_t MAX_RECORD_COUNT = 50'000'000;
++static constexpr uint64_t MAX_TAPE_BYTES = 1ULL << 40;
++
++struct Record {
++	uint16_t type;
++	uint16_t version;
++	uint32_t flags;
++	uint64_t public_step;
++	uint64_t native_tick;
++	std::span<const uint8_t> payload;
++};
++
++/**
++ * Streaming writer for the C++ producer's PARTIAL tape journal.
++ *
++ * FinishJournal() leaves FINAL_PATH.partial for validation and publication by
++ * the independent C17 `tape finalize` command. It never creates FINAL_PATH.
++ */
++class Journal {
++public:
++	static std::unique_ptr<Journal> Open(const std::filesystem::path &final_path, std::string_view canonical_header, std::error_code &error);
++
++	Journal(const Journal &) = delete;
++	Journal(Journal &&) = delete;
++	Journal &operator=(const Journal &) = delete;
++	Journal &operator=(Journal &&) = delete;
++
++	bool AddRecord(const Record &record);
++	bool FinishJournal(std::error_code &error);
++
++	uint64_t RecordCount() const { return this->record_count; }
++	std::error_code Error() const { return this->error ? this->error : this->sink->Error(); }
++
++private:
++	explicit Journal(std::unique_ptr<Sink> sink) : sink(std::move(sink)) {}
++
++	bool Fail(int error_value);
++	bool WritePrefix(std::string_view canonical_header);
++
++	std::unique_ptr<Sink> sink;
++	uint64_t record_count = 0;
++	uint64_t prior_public_step = 0;
++	uint64_t prior_native_tick = 0;
++	std::error_code error;
++	bool saw_terminal = false;
++};
++
++bool ValidateCanonicalTapeHeader(std::string_view header);
++
++} // namespace P0Trace
++
++#endif /* P0_TRACE_JOURNAL_H */
+diff --git a/src/tests/CMakeLists.txt b/src/tests/CMakeLists.txt
+index 2e4cebb56e..1886812b6d 100644
+--- a/src/tests/CMakeLists.txt
++++ b/src/tests/CMakeLists.txt
+@@ -23,6 +23,7 @@ add_test_files(
+ )
+ 
+ add_test_files(
++    p0_trace_journal.cpp
+     p0_trace_sink.cpp
+     CONDITION OPTION_P0_ORACLE_TRACE
+ )
+diff --git a/src/tests/p0_trace_journal.cpp b/src/tests/p0_trace_journal.cpp
+new file mode 100644
+index 0000000000..06678d6c15
+--- /dev/null
++++ b/src/tests/p0_trace_journal.cpp
+@@ -0,0 +1,95 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file p0_trace_journal.cpp Tests for partial tape-v1 framing. */
++
++#include "../stdafx.h"
++#include "../3rdparty/catch2/catch.hpp"
++#include "../3rdparty/fmt/format.h"
++#include "../p0_trace_journal.h"
++
++#include <cerrno>
++#include <fstream>
++#include <unistd.h>
++
++#include "../safeguards.h"
++
++static std::string P0CanonicalHeader()
++{
++	static constexpr std::string_view ZERO_SHA = "0000000000000000000000000000000000000000000000000000000000000000";
++	return fmt::format("{{\"backend_label\":\"oracle\",\"diagnostic_features\":[],\"format\":{{\"major\":1,\"minor\":0}},\"identity\":{{\"build_sha256\":\"{0}\",\"command_input_sha256\":\"{0}\",\"command_schema_sha256\":\"{0}\",\"content_sha256\":\"{0}\",\"executable_sha256\":\"{0}\",\"field_schema_sha256\":\"{0}\",\"fixture_sha256\":\"{0}\",\"instrumentation_sha256\":\"{0}\",\"newgrfs\":[],\"settings_sha256\":\"{0}\",\"source_commit\":\"29f808ef0022064e6d9a83c8476d1e0f4686af86\"}},\"initial\":{{\"calendar_date\":712223,\"calendar_fraction\":0,\"economy_date\":712223,\"economy_fraction\":0,\"gameplay_rng_state\":\"5b9692207657b27e\",\"interactive_rng_state\":\"4952463149524631\",\"native_tick\":0,\"public_step\":0,\"timers\":{{\"calendar_subtick\":0}}}},\"limits\":{{\"command_count\":1000000,\"field_bytes\":67108864,\"field_count\":10000000,\"header_bytes\":1048576,\"record_count\":50000000,\"record_payload_bytes\":67108864,\"tape_bytes\":1099511627776}},\"projection_policy\":\"complete\"}}", ZERO_SHA);
++}
++
++class P0JournalTemporaryDirectory {
++public:
++	P0JournalTemporaryDirectory()
++	{
++		std::filesystem::path pattern = std::filesystem::temp_directory_path() / "openttd-p0-journal-test.XXXXXXXX";
++		std::string storage = pattern.string();
++		storage.push_back('\0');
++		char *created = mkdtemp(storage.data());
++		REQUIRE(created != nullptr);
++		this->path = created;
++	}
++
++	~P0JournalTemporaryDirectory()
++	{
++		std::error_code error;
++		std::filesystem::remove_all(this->path, error);
++	}
++
++	std::filesystem::path path;
++};
++
++TEST_CASE("P0 trace journal writes a durable partial tape for the C17 finalizer")
++{
++	P0JournalTemporaryDirectory temporary;
++	std::filesystem::path final_path = temporary.path / "trace.tape";
++	std::error_code error;
++	std::string header = P0CanonicalHeader();
++	auto journal = P0Trace::Journal::Open(final_path, header, error);
++	REQUIRE(journal != nullptr);
++
++	static constexpr std::array<uint8_t, 12> REPLAY{1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
++	static constexpr std::array<uint8_t, 8> TERMINAL{1, 0, 0, 0, 0, 0, 0, 0};
++	REQUIRE(journal->AddRecord({1, 1, 1, 0, 0, REPLAY}));
++	REQUIRE(journal->AddRecord({11, 1, 1, 0, 0, TERMINAL}));
++	CHECK(journal->RecordCount() == 2);
++	REQUIRE(journal->FinishJournal(error));
++	CHECK(!error);
++	CHECK(!std::filesystem::exists(final_path));
++
++	std::ifstream input(final_path.string() + ".partial", std::ios::binary);
++	std::vector<uint8_t> bytes(std::istreambuf_iterator<char>(input), {});
++	REQUIRE(bytes.size() == 64 + header.size() + 56 + 48);
++	CHECK(std::string_view(reinterpret_cast<const char *>(bytes.data()), 8) == std::string_view("OTRLTAP\0", 8));
++	CHECK(bytes[8] == 1);
++	CHECK(bytes[12] == 1);
++	CHECK(bytes[13] == 1);
++	CHECK(bytes[20] == 1);
++	CHECK(std::string_view(reinterpret_cast<const char *>(bytes.data() + 64), header.size()) == header);
++}
++
++TEST_CASE("P0 trace journal rejects noncanonical identity and invalid lifecycle")
++{
++	P0JournalTemporaryDirectory temporary;
++	std::error_code error;
++	std::string header = P0CanonicalHeader();
++	CHECK(P0Trace::ValidateCanonicalTapeHeader(header));
++	CHECK(!P0Trace::ValidateCanonicalTapeHeader(header + "\n"));
++	CHECK(P0Trace::Journal::Open(temporary.path / "bad.tape", header + "\n", error) == nullptr);
++	CHECK(error.value() == EINVAL);
++	CHECK(!std::filesystem::exists(temporary.path / "bad.tape.partial"));
++
++	auto journal = P0Trace::Journal::Open(temporary.path / "lifecycle.tape", header, error);
++	REQUIRE(journal != nullptr);
++	static constexpr std::array<uint8_t, 8> TERMINAL{1, 0, 0, 0, 0, 0, 0, 0};
++	CHECK(!journal->AddRecord({11, 1, 1, 0, 0, TERMINAL}));
++	CHECK(journal->Error().value() == EINVAL);
++	CHECK(!journal->FinishJournal(error));
++	CHECK(error.value() == EINVAL);
++}
+-- 
+2.43.0
+

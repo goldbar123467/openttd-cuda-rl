@@ -98,6 +98,11 @@ p0_set_deterministic_environment() {
     export LANG='C.UTF-8'
     export TZ='UTC'
     export PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+    if [[ "${P0_TEST_MODE:-0}" == 1 && -n "${P0_TEST_TOOL_DIR:-}" ]]; then
+        [[ "${P0_TEST_TOOL_DIR}" == /* && -d "${P0_TEST_TOOL_DIR}" && ! -L "${P0_TEST_TOOL_DIR}" ]] \
+            || p0_die 'P0_TEST_TOOL_DIR must be an absolute, non-symlink directory' 64
+        export PATH="${P0_TEST_TOOL_DIR}:${PATH}"
+    fi
     export PYTHONHASHSEED='0'
     export SOURCE_DATE_EPOCH="${P0_SOURCE_DATE_EPOCH}"
     export P0_PROFILE="${P0_PROFILE:-local-release}"

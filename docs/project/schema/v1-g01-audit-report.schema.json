@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v1-g01-audit-report.schema.json",
+  "title": "OpenTTD RL V1 G01 audit report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "gate",
+    "profile_matrix",
+    "accepted_baselines",
+    "resource_evidence",
+    "provenance_evidence",
+    "source_state",
+    "checks",
+    "result",
+    "audit_identity_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "openttd-rl-v1-g01-audit-report-1" },
+    "gate": { "const": "G01" },
+    "profile_matrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_sha256", "sha256", "profiles", "pending_profiles"],
+      "properties": {
+        "identity_sha256": { "$ref": "#/$defs/sha256" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "profiles": { "const": 7 },
+        "pending_profiles": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "accepted_baselines": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "identity_sha256", "manifest_sha256", "paired_runs", "result"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "identity_sha256": { "$ref": "#/$defs/sha256" },
+          "manifest_sha256": { "$ref": "#/$defs/sha256" },
+          "paired_runs": { "const": 2 },
+          "result": { "const": "PASS" }
+        }
+      }
+    },
+    "resource_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runs", "workloads", "samples_per_workload", "protocol_equal", "result"],
+      "properties": {
+        "runs": { "const": 2 },
+        "workloads": { "const": 4 },
+        "samples_per_workload": { "const": 5 },
+        "protocol_equal": { "const": true },
+        "result": { "const": "PASS" }
+      }
+    },
+    "provenance_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runs", "byte_identical", "toolchain", "build_overlay", "runtime", "result"],
+      "properties": {
+        "runs": { "const": 2 },
+        "byte_identical": { "const": true },
+        "toolchain": { "const": 25 },
+        "build_overlay": { "const": 34 },
+        "runtime": { "type": "integer", "minimum": 1 },
+        "result": { "const": "PASS" }
+      }
+    },
+    "source_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outer_commit", "outer_worktree", "snapshot_verified", "submodule_commit", "submodule_clean"],
+      "properties": {
+        "outer_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "outer_worktree": { "const": "PRESERVED_DIRTY" },
+        "snapshot_verified": { "const": true },
+        "submodule_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "submodule_clean": { "const": true }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "result"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "result": { "const": "PASS" }
+        }
+      }
+    },
+    "result": { "const": "PASS" },
+    "audit_identity_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

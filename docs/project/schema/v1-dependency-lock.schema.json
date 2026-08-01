@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-dependency-lock.schema.json",
+  "title": "OpenTTD RL V1 external dependency lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_sha256",
+    "profile_id",
+    "host",
+    "policy",
+    "artifacts",
+    "extractions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "openttd-rl-v1-dependency-lock-1"
+    },
+    "schema_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "profile_id": {
+      "const": "ubuntu-24.04-wsl2-x86_64-cuda13"
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "python", "cxx", "cmake", "ninja", "cuda", "gpu_cc"],
+      "properties": {
+        "architecture": { "const": "x86_64" },
+        "python": { "const": "3.12" },
+        "cxx": { "const": "GCC 13.3.0" },
+        "cmake": { "const": "3.28.3" },
+        "ninja": { "const": "1.11.1" },
+        "cuda": { "const": "13.0.88" },
+        "gpu_cc": { "const": "12.0" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "offline_after_acquisition",
+        "reject_unlisted_archives",
+        "publish_external_binaries"
+      ],
+      "properties": {
+        "offline_after_acquisition": { "const": true },
+        "reject_unlisted_archives": { "const": true },
+        "publish_external_binaries": { "const": false }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "extractions": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_id", "relative_root", "required_markers"],
+        "properties": {
+          "artifact_id": { "$ref": "#/$defs/id" },
+          "relative_root": { "$ref": "#/$defs/relative_path" },
+          "required_markers": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/relative_path" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "component",
+        "version",
+        "kind",
+        "relative_cache_path",
+        "url",
+        "size_bytes",
+        "sha256",
+        "license_expression",
+        "license_evidence",
+        "publication_disposition"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "component": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "kind": { "enum": ["zip", "tgz", "wheel", "text"] },
+        "relative_cache_path": { "$ref": "#/$defs/relative_path" },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "license_expression": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "license_evidence": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "publication_disposition": {
+          "const": "not-published; reacquire from pinned upstream URL"
+        }
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9+._/-]+$"
+    }
+  }
+}

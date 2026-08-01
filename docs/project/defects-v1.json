@@ -1,0 +1,18 @@
+{
+  "$schema": "schema/defect-ledger-v1.schema.json",
+  "schema_version": 1,
+  "schema_sha256": "3f1ed7f4a588a78c3719d34fd5af1b5e1b2ef9dd86e5bb4402c6c3273ce4dd2f",
+  "ledger_kind": "openttd-rl-project-defect-ledger",
+  "scope": "V1-and-sequential-post-V1-roadmap",
+  "entries": [],
+  "open_counts": {
+    "defects": 0,
+    "divergences": 0,
+    "release_blocking": 0,
+    "total_nonclosed": 0
+  },
+  "diagnostics": {
+    "last_reviewed_date": "2026-07-31",
+    "review_note": "The V1 implementation ledger starts empty. Historical P0 defects remain in the separate P0 ledger and do not become V1 defects unless an adapted component is shown to affect a V1 requirement."
+  }
+}
