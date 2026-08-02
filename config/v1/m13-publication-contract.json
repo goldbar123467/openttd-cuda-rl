@@ -1,0 +1,106 @@
+{
+  "$schema": "../../docs/project/schema/v1-m13-publication-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m13-publication-contract-1",
+  "milestone": "M13-publication-readiness",
+  "status": "FROZEN",
+  "release": {
+    "tag": "v1.0.0",
+    "name": "OpenTTD RL V1",
+    "repository": "https://github.com/goldbar123467/openttd-cuda-rl",
+    "branch": "main",
+    "license": "GPL-2.0-only",
+    "artifact_name": "openttd-rl-v1.0.0-model-and-evidence.tar.gz",
+    "artifact_root": "openttd-rl-v1.0.0"
+  },
+  "accepted_m12": {
+    "source_commit": "f78843a7c911094243a56159bcc265bf22a5d0f7",
+    "contract_sha256": "e644f6e31163f9eb91008fe0bcb5d6830f3f3bb89104b229f3d974085b287879",
+    "manifest_sha256": "4593f177b21c92d0e789118896cc66f7534f1a516f2d73a125f52d0149374a6b",
+    "manifest_file_sha256": "bca6f399e246229dbe04f0570fa4d828611e95e107556d602b27e257f51e1ba4",
+    "openttd_upstream_commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86",
+    "requirements_passed": 217,
+    "campaigns_passed": 12,
+    "nonclosed_defects": 0
+  },
+  "model_package": {
+    "package_id": "0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9",
+    "architecture": "combined-cnn-mlp-v1",
+    "license": "GPL-2.0-only",
+    "copyright": "Copyright 2026 goldbar123467",
+    "files": {
+      "INSTALL.md": "9d2f8e93d56623ed0e5172984b79add78972dd532af172c9cad7fa2a2cb2786d",
+      "evaluation.json": "e7b4a8b863f8fd89d9880a385aaf5925eb015eee7c4d8583e63c08309d9793ac",
+      "golden.jsonl": "5ec104e5268e1485f368f852071ef52f55da2bd28c57ce9b368de410038f1b51",
+      "manifest.json": "1fd4a80da6c0760536d8ebbe79a6da9b399a9074d2020af890012434c1a9da60",
+      "model.onnx": "10df689ccc6d1cb7f2e98f05f0474f72577cd9328a4589e3b1c7167bcbf08b5b"
+    }
+  },
+  "archive": {
+    "format": "ustar-plus-gzip",
+    "canonicalization": "sorted-members-mtime-zero-uid-gid-zero-empty-owner-gzip-mtime-zero-no-filename",
+    "required_payload_files": [
+      "LICENSE",
+      "README.md",
+      "THIRD_PARTY_NOTICES.md",
+      "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/INSTALL.md",
+      "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/evaluation.json",
+      "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/golden.jsonl",
+      "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/manifest.json",
+      "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/model.onnx"
+    ],
+    "excluded_components": [
+      "openttd-binaries",
+      "openttd-source",
+      "opengfx",
+      "onnxruntime",
+      "libtorch",
+      "cuda-runtime",
+      "nvidia-wheels",
+      "raw-trajectories-and-checkpoints",
+      "private-experiment-state"
+    ]
+  },
+  "repository_surface": {
+    "required_paths": [
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "README.md",
+      "docs/assets/openttd-rl-v1-playback.png",
+      "docs/project/V1_PUBLICATION.md",
+      ".github/workflows/quality.yml",
+      "scripts/v1/setup_and_verify.sh"
+    ],
+    "description": "Reproducible C++/CUDA PPO and in-game ONNX neural control for OpenTTD passenger buses.",
+    "topics": ["openttd", "reinforcement-learning", "cuda", "ppo", "onnx"],
+    "default_quick_check": "bash scripts/v1/setup_and_verify.sh"
+  },
+  "publication_review": {
+    "rebuild_count": 2,
+    "require_clean_main": true,
+    "require_origin_sync": true,
+    "require_safe_paths": true,
+    "require_no_symlinks": true,
+    "require_credential_scan": true,
+    "require_host_path_scan": true,
+    "require_gitleaks": true,
+    "forbidden_text": ["/home/", "/Users/", "BEGIN PRIVATE KEY", "AWS_SECRET_ACCESS_KEY", "GITHUB_TOKEN=", "OPENAI_API_KEY="]
+  },
+  "gates": [
+    "contract-and-foundation",
+    "repository-surface",
+    "license-and-provenance",
+    "accepted-package-identity",
+    "deterministic-archive-repeat",
+    "archive-safety",
+    "credential-and-host-path-scan",
+    "clean-main-publication"
+  ],
+  "identity": {
+    "algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "fddbceda32a440f4f91aae905b9b09785e71d1f22314d0fdb3379b4cdca7efb0",
+    "schema_path": "docs/project/schema/v1-m13-publication-contract.schema.json",
+    "schema_sha256": "863862a258b8d86b530113b26e5fcfb7490c3aa6f2ebfc89a55eeabafeb926e8",
+    "manifest_schema_path": "docs/project/schema/v1-m13-publication-manifest.schema.json",
+    "manifest_schema_sha256": "8eb7622d283f90d54fa667d1d2793e3cbab19ef8ba099cb7c37c8f696d44364e"
+  }
+}

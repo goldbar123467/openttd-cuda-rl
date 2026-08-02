@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.local/schema/v1-m13-publication-manifest.schema.json",
+  "title": "OpenTTD-RL V1 public model-and-evidence manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release", "source", "license", "accepted_evidence", "model_package", "files", "exclusions", "verification", "manifest_sha256"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-publication-manifest-1"},
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tag", "name", "archive", "archive_root"],
+      "properties": {
+        "tag": {"const": "v1.0.0"},
+        "name": {"const": "OpenTTD RL V1"},
+        "archive": {"const": "openttd-rl-v1.0.0-model-and-evidence.tar.gz"},
+        "archive_root": {"const": "openttd-rl-v1.0.0"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "branch", "commit", "openttd_upstream_commit"],
+      "properties": {
+        "repository": {"const": "https://github.com/goldbar123467/openttd-cuda-rl"},
+        "branch": {"const": "main"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "openttd_upstream_commit": {"const": "29f808ef0022064e6d9a83c8476d1e0f4686af86"}
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "model_package", "third_party_notices"],
+      "properties": {
+        "project": {"const": "GPL-2.0-only"},
+        "model_package": {"const": "GPL-2.0-only"},
+        "third_party_notices": {"const": "THIRD_PARTY_NOTICES.md"}
+      }
+    },
+    "accepted_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["m12_contract_sha256", "m12_manifest_sha256", "m12_manifest_file_sha256", "m12_source_commit", "requirements_passed", "campaigns_passed", "nonclosed_defects"],
+      "properties": {
+        "m12_contract_sha256": {"const": "e644f6e31163f9eb91008fe0bcb5d6830f3f3bb89104b229f3d974085b287879"},
+        "m12_manifest_sha256": {"const": "4593f177b21c92d0e789118896cc66f7534f1a516f2d73a125f52d0149374a6b"},
+        "m12_manifest_file_sha256": {"const": "bca6f399e246229dbe04f0570fa4d828611e95e107556d602b27e257f51e1ba4"},
+        "m12_source_commit": {"const": "f78843a7c911094243a56159bcc265bf22a5d0f7"},
+        "requirements_passed": {"const": 217},
+        "campaigns_passed": {"const": 12},
+        "nonclosed_defects": {"const": 0}
+      }
+    },
+    "model_package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_id", "architecture", "onnx_opset", "onnxruntime_version", "files"],
+      "properties": {
+        "package_id": {"const": "0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9"},
+        "architecture": {"const": "combined-cnn-mlp-v1"},
+        "onnx_opset": {"const": 18},
+        "onnxruntime_version": {"const": "1.28.0"},
+        "files": {
+          "type": "object",
+          "minProperties": 5,
+          "maxProperties": 5,
+          "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "required": ["INSTALL.md", "evaluation.json", "golden.jsonl", "manifest.json", "model.onnx"]
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "minProperties": 8,
+      "maxProperties": 8,
+      "propertyNames": {"pattern": "^[A-Za-z0-9._/-]+$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sha256", "size"],
+        "properties": {
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "size": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "uniqueItems": true,
+      "items": {"enum": ["openttd-binaries", "openttd-source", "opengfx", "onnxruntime", "libtorch", "cuda-runtime", "nvidia-wheels", "raw-trajectories-and-checkpoints", "private-experiment-state"]}
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["byte_identical_rebuilds", "safe_archive_paths", "no_symlinks", "credential_scan", "host_path_scan", "canonical_json"],
+      "properties": {
+        "byte_identical_rebuilds": {"const": 2},
+        "safe_archive_paths": {"const": "PASS"},
+        "no_symlinks": {"const": "PASS"},
+        "credential_scan": {"const": "PASS"},
+        "host_path_scan": {"const": "PASS"},
+        "canonical_json": {"const": "PASS"}
+      }
+    },
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
