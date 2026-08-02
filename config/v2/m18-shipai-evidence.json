@@ -1,0 +1,31 @@
+{
+  "m14": {
+    "admission": "SCENARIO_REQUIRED",
+    "evidence_sha256": "89bc4fa6585d2876a654d4dfd25e8432ad43253902b5d5e8099b9b2912ab4739",
+    "outcome": "QUALIFIED_HEALTHY_INACTIVE"
+  },
+  "observations": {
+    "minimum_days": 30,
+    "save_load_restored": true,
+    "ships_after_load": 2,
+    "ships_before_load": 2
+  },
+  "package": {
+    "archive_sha256": "dab9db0f62dd9f1d148effb62673bed51d6105bee8742c0852359ff15d0bda2a",
+    "content_unique_id": "53484950",
+    "name": "ShipAI",
+    "version": 10
+  },
+  "qualification_manifest": {
+    "bytes": 2717,
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m18-shipai-runtime-b/ai-runtime-qualification.json",
+    "sha256": "a6de82f813618551d18ca1394cb1abce8a93051a328423d45cd8ebee9f399b12"
+  },
+  "scenario": {
+    "bytes": 11292,
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m18-shipai-scenario-c/report.json.sav",
+    "sha256": "ab70906c5d4ff06bffca38186ea53d3672f2d60634b1dbc5b74b31b6ff2d3484"
+  },
+  "schema_version": "openttd-rl-v2-m18-shipai-evidence-1",
+  "status": "PASS"
+}

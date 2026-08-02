@@ -246,12 +246,15 @@ def command_for(
     artifact_root: pathlib.Path,
     config_path: pathlib.Path,
     sandbox: str,
+    scenario_save: pathlib.Path | None = None,
 ) -> list[str]:
     port = 3979 if sandbox == "bubblewrap" else acquire_ai_package.reserve_port()
     openttd_command = [
         str(openttd), "-D", f"127.0.0.1:{port}", "-v", "dedicated", "-s", "null", "-m", "null",
         "-x", "-X", "-c", str(config_path),
     ]
+    if scenario_save is not None:
+        openttd_command.extend(("-g", str(scenario_save)))
     if sandbox == "test-none":
         return openttd_command
     bwrap = shutil.which("bwrap")
@@ -341,6 +344,7 @@ def qualify(
     minimum_days: int,
     timeout: float,
     sandbox: str,
+    scenario_save: pathlib.Path | None = None,
 ) -> pathlib.Path:
     root = root.resolve()
     openttd = openttd.resolve()
@@ -349,6 +353,9 @@ def qualify(
     require(0 <= seed <= 0xFFFFFFFF, "generation seed is outside uint32")
     require(minimum_days > 0 and timeout > 0, "minimum days and timeout must be positive")
     require(sandbox in {"bubblewrap", "test-none"}, "unknown sandbox kind")
+    if scenario_save is not None:
+        scenario_save = scenario_save.resolve()
+        require(scenario_save.is_file() and not scenario_save.is_symlink(), "scenario save is missing or a symlink")
     try:
         lock = acquire_ai_package.validate_lock(root, source_lock, openttd=openttd)
     except acquire_ai_package.AIPackageError as exc:
@@ -392,7 +399,7 @@ def qualify(
     started = time.monotonic()
     try:
         process = subprocess.Popen(
-            command_for(openttd, artifact_root, config_path, sandbox),
+            command_for(openttd, artifact_root, config_path, sandbox, scenario_save),
             cwd=openttd.parent,
             env=environment,
             stdin=subprocess.PIPE,
@@ -409,7 +416,7 @@ def qualify(
         rss_thread = threading.Thread(target=monitor_rss, args=(process, rss_stop, max_rss), daemon=True)
         rss_thread.start()
         session.wait_for(
-            lambda line: "Map generated, starting game" in line or line == "FAKE CONTENT READY",
+            lambda line: (line.startswith("Map ") and "starting game" in line) or "Listening on 127.0.0.1:" in line or line == "FAKE CONTENT READY",
             start=0,
             timeout=min(30.0, timeout),
             label="qualification server readiness",
@@ -563,6 +570,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     qualify_parser.add_argument("--minimum-days", type=int, default=7)
     qualify_parser.add_argument("--timeout", type=float, default=90.0)
     qualify_parser.add_argument("--sandbox", choices=["bubblewrap", "test-none"], default="bubblewrap")
+    qualify_parser.add_argument("--scenario-save", type=pathlib.Path)
     validate_parser = subparsers.add_parser("validate")
     validate_parser.add_argument("--manifest", type=pathlib.Path, required=True)
     validate_parser.add_argument("--openttd", type=pathlib.Path)
@@ -582,6 +590,7 @@ def main(argv: list[str] | None = None) -> int:
                 minimum_days=args.minimum_days,
                 timeout=args.timeout,
                 sandbox=args.sandbox,
+                scenario_save=args.scenario_save,
             )
             manifest = load_json(manifest_path)
             print(f"V2_AI_RUNTIME={manifest['outcome']} opponent={manifest['package_lock']['catalog_name']} manifest={manifest_path}")

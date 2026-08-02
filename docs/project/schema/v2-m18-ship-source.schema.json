@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M18 ship source",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "retained_artifact", "base", "source", "patch", "build", "executable"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m18-ship-source-1"},
+    "retained_artifact": {"type": "string"},
+    "base": {"$ref": "#/$defs/revision"},
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["path", "commit", "tree"],
+      "properties": {"path": {"type": "string"}, "commit": {"$ref": "#/$defs/sha1"}, "tree": {"$ref": "#/$defs/sha1"}}
+    },
+    "patch": {"$ref": "#/$defs/file"},
+    "build": {"type": "object"},
+    "executable": {"$ref": "#/$defs/file"}
+  },
+  "$defs": {
+    "sha1": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "revision": {"type": "object", "additionalProperties": false, "required": ["commit", "tree"], "properties": {"commit": {"$ref": "#/$defs/sha1"}, "tree": {"$ref": "#/$defs/sha1"}}},
+    "file": {"type": "object", "additionalProperties": true, "required": ["path", "sha256"], "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/$defs/sha256"}}}
+  }
+}

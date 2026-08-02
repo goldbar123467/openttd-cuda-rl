@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m18-ship-contract.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "action_extension": {
+      "additionalProperties": false,
+      "properties": {
+        "families": {"items": {"type": "string"}, "maxItems": 25, "minItems": 25, "type": "array", "uniqueItems": true},
+        "legality": {"const": "native-command-test-before-execute"},
+        "transaction_failure": {"const": "rollback-or-no-state-change"}
+      },
+      "required": ["families", "legality", "transaction_failure"],
+      "type": "object"
+    },
+    "baseline": {
+      "additionalProperties": false,
+      "properties": {
+        "service_comparators": {"const": ["no-build-zero-service", "no-start-zero-service"]},
+        "specialist": {
+          "additionalProperties": false,
+          "properties": {
+            "content_unique_id": {"const": "53484950"},
+            "m14_outcome": {"const": "QUALIFIED_HEALTHY_INACTIVE"},
+            "m18_requirement": {"const": "water-scenario-qualified-active-with-ship-and-save-load"},
+            "name": {"const": "ShipAI"},
+            "package_version": {"const": 10}
+          },
+          "required": ["content_unique_id", "m14_outcome", "m18_requirement", "name", "package_version"],
+          "type": "object"
+        }
+      },
+      "required": ["service_comparators", "specialist"],
+      "type": "object"
+    },
+    "counts": {
+      "additionalProperties": false,
+      "properties": {
+        "native_cases": {"const": 16},
+        "native_runs": {"const": 32},
+        "probes": {"const": 8},
+        "water_classes": {"const": 3}
+      },
+      "required": ["native_cases", "native_runs", "probes", "water_classes"],
+      "type": "object"
+    },
+    "native_probes": {
+      "additionalProperties": {"minLength": 12, "type": "string"},
+      "maxProperties": 8,
+      "minProperties": 8,
+      "required": ["catalog", "connectivity", "constructed", "construction", "lifecycle", "natural", "recovery", "transfer"],
+      "type": "object"
+    },
+    "observation_extension": {
+      "additionalProperties": false,
+      "properties": {
+        "bounded_tables": {"items": {"type": "string"}, "minItems": 17, "type": "array", "uniqueItems": true},
+        "graph_edges": {"items": {"type": "string"}, "minItems": 7, "type": "array", "uniqueItems": true},
+        "m17_compatibility": {"minLength": 20, "type": "string"}
+      },
+      "required": ["bounded_tables", "graph_edges", "m17_compatibility"],
+      "type": "object"
+    },
+    "schema_version": {"const": "openttd-rl-v2-m18-ship-contract-1"},
+    "semantics": {
+      "additionalProperties": false,
+      "properties": {
+        "competence": {"minLength": 20, "type": "string"},
+        "exact_replay": {"minLength": 20, "type": "string"},
+        "loading_fixture": {"minLength": 20, "type": "string"},
+        "recovery": {"minLength": 20, "type": "string"},
+        "specialist": {"minLength": 20, "type": "string"},
+        "transfer": {"minLength": 20, "type": "string"},
+        "water_classes": {"const": ["sea", "canal", "river"]}
+      },
+      "required": ["competence", "exact_replay", "loading_fixture", "recovery", "specialist", "transfer", "water_classes"],
+      "type": "object"
+    },
+    "version": {"const": "m18-ship-v1"}
+  },
+  "required": ["action_extension", "baseline", "counts", "native_probes", "observation_extension", "schema_version", "semantics", "version"],
+  "type": "object"
+}

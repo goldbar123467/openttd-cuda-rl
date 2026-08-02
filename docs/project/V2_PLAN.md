@@ -9,10 +9,11 @@
 - Machine research baseline: [`config/v2/research-baseline.json`](../../config/v2/research-baseline.json)
 - Pinned setting inventory: [`config/v2/setting-inventory.json`](../../config/v2/setting-inventory.json)
 - Frozen competition protocol: [`config/v2/m14-competition-manifest.json`](../../config/v2/m14-competition-manifest.json)
-- Current gate: [`G17 PASS`](G17_GATE_REPORT.md); stopping point before M18
+- Current gate: [`G18 PASS`](G18_GATE_REPORT.md); stopping point before M19
 - M15 contract: [`M15_SCALABLE_CONTRACT.md`](M15_SCALABLE_CONTRACT.md)
 - M16 contract: [`M16_CARGO_INDUSTRY_CONTRACT.md`](M16_CARGO_INDUSTRY_CONTRACT.md)
 - M17 contract: [`M17_RAIL_NETWORK_CONTRACT.md`](M17_RAIL_NETWORK_CONTRACT.md)
+- M18 contract: [`M18_SHIP_WATERWAY_CONTRACT.md`](M18_SHIP_WATERWAY_CONTRACT.md)
 
 V2 expands V1 to scalable maps, every base-game transport/cargo system,
 multimodal planning and reproducible competition against external OpenTTD AIs.
@@ -120,6 +121,11 @@ Required outputs:
 `G18` requires profitable natural-water and constructed-waterway routes, lock and
 aqueduct traversal, multimodal transfer, full ship action/oracle parity, ShipAI
 qualification, and all earlier regressions.
+
+[`G18_GATE_REPORT.md`](G18_GATE_REPORT.md) records the pass: 16 cases and 32
+exact-twin native runs cover all eight ship/water probes, and the retained
+coastal scenario promotes ShipAI from M14's truthful healthy-inactive disposition
+to scenario-specific active qualification with two ships across save/load.
 
 ### M19 — Aircraft and multimodal generalist
 
@@ -236,14 +242,14 @@ feature does not satisfy V2.
 
 ## Immediate implementation order
 
-M17 is complete and frozen at the requested stopping point. M18 is next in the
+M18 is complete and frozen at the requested stopping point. M19 is next in the
 dependency order but has not started. Its next authorized sequence is:
 
-1. freeze dock, depot, buoy, natural-water, river, canal, lock and aqueduct
+1. freeze airport, helicopter, range, noise, occupancy, vehicle and lifecycle
    contracts;
-2. extend native observations/actions for water connectivity and ship lifecycle;
-3. build deterministic natural- and constructed-water route/recovery corpora;
-4. prove native legality, connectivity, movement, delivery and transfer
-   accounting; and
-5. retain the complete G17 rail, G16 cargo, G15 scalable/passenger and V1
-   compatibility boundaries in every future M18 artifact.
+2. extend native observations/actions for aircraft and airport state;
+3. build deterministic fixed-wing, helicopter, congestion and failure corpora;
+4. prove native legality, movement, delivery, recovery and at least three-mode
+   transfer accounting; and
+5. retain the complete G18 water, G17 rail, G16 cargo, G15 scalable/passenger and
+   V1 compatibility boundaries in every future M19 artifact.

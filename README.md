@@ -8,8 +8,9 @@ runs them as a visible neural company inside normal OpenTTD.
 all base cargo/industry chains and transport modes, multimodal planning, and
 reproducible shared-map competition against byte-pinned OpenTTD AIs. G14 authority
 and opponent qualification, G15 scalable passenger operation, G16 cargo/industry
-accounting, and G17 rail networks have passed. This repository intentionally
-stops at G17; M18 has not started and no V2 release claim has been made.
+accounting, G17 rail networks, and G18 ships/waterways have passed. This
+repository intentionally stops at G18; M19 has not started and no V2 release
+claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -47,6 +48,10 @@ stops at G17; M18 has not started and no V2 release claim has been made.
 · [`M17 rail contract`](config/v2/m17-rail-contract.json)
 · [`M17 rail source evidence`](config/v2/m17-rail-source.json)
 · [`M17 rail matrix evidence`](config/v2/m17-rail-evidence.json)
+· [`M18 ship/waterway contract`](config/v2/m18-ship-contract.json)
+· [`M18 ship source evidence`](config/v2/m18-ship-source.json)
+· [`M18 ShipAI qualification`](config/v2/m18-shipai-evidence.json)
+· [`M18 ship matrix evidence`](config/v2/m18-ship-evidence.json)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
 · [`M14 competition protocol`](docs/project/M14_INVENTORY_AND_COMPETITION.md)
@@ -57,8 +62,10 @@ stops at G17; M18 has not started and no V2 release claim has been made.
 · [`G16 gate report`](docs/project/G16_GATE_REPORT.md)
 · [`M17 rail network contract`](docs/project/M17_RAIL_NETWORK_CONTRACT.md)
 · [`G17 gate report`](docs/project/G17_GATE_REPORT.md)
+· [`M18 ship/waterway contract`](docs/project/M18_SHIP_WATERWAY_CONTRACT.md)
+· [`G18 gate report`](docs/project/G18_GATE_REPORT.md)
 
-## Version 2 implementation through G17
+## Version 2 implementation through G18
 
 The committed V2 work is a gate-controlled expansion, not a release candidate:
 
@@ -77,14 +84,23 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   save/load. Its 14-case/28-run matrix includes profitable passenger and freight
   service and a 32,768-tick, two-train junction-connected soak with no unresolved
   deadlock or unexplained collision; all 14 twins are exact.
+- M18/G18 adds 25 ship/water action families, 17 bounded observation tables,
+  three water classes, and 11 base ship engine entries. Its 16-case/32-run matrix
+  proves construction/removal, independent water-region connectivity, ship
+  lifecycle/save-load, profitable natural sea/river and constructed
+  lock/aqueduct service, exact road-to-ship accounting, and bounded route
+  recovery; all 16 twins are exact. A retained 128 by 128 coastal scenario also
+  qualifies byte-pinned ShipAI v10 as active with two ships before and after
+  save/load.
 
-Cargo packets, sink acceptance, and competence preloading in M16/M17 are bounded
+Cargo packets, sink acceptance, and competence preloading in M16-M18 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
-payment, and the M17 save/load transition are native. The useful-service
-controllers are deterministic qualification oracles, not learned generalist
-policies. Runs truthfully record `rlimit-only` isolation because bubblewrap
-namespaces are unavailable on the WSL host. M18 ships/waterways is the next
-planned stage and is deliberately absent from this stopping-point commit.
+payment, transfers, recovery, and the M17/M18 save/load transitions are native.
+The useful-service controllers are deterministic qualification oracles, not
+learned generalist policies. Runs truthfully record `rlimit-only` isolation
+because bubblewrap namespaces are unavailable on the WSL host. M19 aircraft and
+broader multimodal work is the next planned stage and is deliberately absent
+from this checkpoint.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -242,7 +258,8 @@ independent project and does not imply OpenTTD endorsement.
 | Legal bus action masking | Fixed 41-action catalog, boundary tokens, native command test/execute paths, 614 oracle comparisons, and profitable all-template trajectories | `M05/G05 PASS`; frozen action boundary |
 | V2 scalable environment/policy | Fixed 4,096-row typed actions, all 12 families, exact rollback, 18-run replay through 1024², a 1.24M-parameter recurrent CPU/CUDA policy, and 12-run useful passenger service through held-out rectangle/1024 tiers | `M15/G15 PASS`; frozen scalable passenger boundary |
 | V2 cargo and industries | All 46 four-climate cargo occurrences, 31 labels, 37 industry specs, 24 production edges, 204 exact-twin native runs, shared passenger/mail, subsidies, and exploit-free transfer accounting | `M16/G16 PASS`; frozen cargo/accounting boundary |
-| V2 rail networks | Four rail types, six track orientations, 116 train engine entries, 12 signal variants, native consists/orders/timetables/service/autoreplace/save-load, profitable passenger/freight runs, and a 32,768-tick two-train junction soak | `M17/G17 PASS`; frozen rail boundary; M18 not started |
+| V2 rail networks | Four rail types, six track orientations, 116 train engine entries, 12 signal variants, native consists/orders/timetables/service/autoreplace/save-load, profitable passenger/freight runs, and a 32,768-tick two-train junction soak | `M17/G17 PASS`; frozen rail boundary |
+| V2 ships and waterways | Sea/canal/river semantics, 11 ship engines, native docks/depots/buoys/locks/aqueducts, independent region connectivity, lifecycle/save-load, profitable natural/constructed routes, conserved road transfer, bounded recovery, and ShipAI active with two ships across save/load | `M18/G18 PASS`; frozen water boundary; M19 not started |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

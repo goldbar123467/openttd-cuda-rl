@@ -13,6 +13,6 @@
   },
   "diagnostics": {
     "last_reviewed_date": "2026-08-02",
-    "review_note": "The accepted M14-G17 implementation has zero known V2 code defects or divergences. ChooChoo and SimpleAI are retained audit-pool package rejections, not omitted runs or claims of qualified compatibility; AAAHogEx supplies G17's qualified rail-specialist baseline. Planned M18-M23 requirements are not defects merely because their gates have not run."
+    "review_note": "The accepted M14-G18 implementation has zero known V2 code defects or divergences. ChooChoo and SimpleAI remain retained audit-pool package rejections; AAAHogEx supplies G17's qualified rail baseline, while ShipAI's M14 healthy-inactive result is preserved and supplemented by M18 scenario-specific active evidence. Planned M19-M23 requirements are not defects merely because their gates have not run."
   }
 }

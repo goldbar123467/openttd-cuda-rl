@@ -1,0 +1,108 @@
+{
+  "action_extension": {
+    "families": [
+      "SELECT_WATER_CLASS",
+      "BUILD_CANAL",
+      "REMOVE_CANAL",
+      "BUILD_DOCK",
+      "REMOVE_DOCK",
+      "JOIN_DOCK_STATION",
+      "BUILD_SHIP_DEPOT",
+      "REMOVE_SHIP_DEPOT",
+      "BUILD_BUOY",
+      "REMOVE_BUOY",
+      "BUILD_LOCK",
+      "REMOVE_LOCK",
+      "BUILD_AQUEDUCT",
+      "REMOVE_AQUEDUCT",
+      "BUY_SHIP",
+      "REFIT_SHIP",
+      "CLONE_SHIP",
+      "SELL_SHIP",
+      "SET_SHIP_ORDERS",
+      "SET_SHIP_TIMETABLE",
+      "SET_SHIP_SERVICE_INTERVAL",
+      "SET_SHIP_AUTOREPLACE",
+      "START_STOP_SHIP",
+      "SET_TRANSFER_ORDER",
+      "RECOVER_SHIP_ROUTE"
+    ],
+    "legality": "native-command-test-before-execute",
+    "transaction_failure": "rollback-or-no-state-change"
+  },
+  "baseline": {
+    "service_comparators": [
+      "no-build-zero-service",
+      "no-start-zero-service"
+    ],
+    "specialist": {
+      "content_unique_id": "53484950",
+      "m14_outcome": "QUALIFIED_HEALTHY_INACTIVE",
+      "m18_requirement": "water-scenario-qualified-active-with-ship-and-save-load",
+      "name": "ShipAI",
+      "package_version": 10
+    }
+  },
+  "counts": {
+    "native_cases": 16,
+    "native_runs": 32,
+    "probes": 8,
+    "water_classes": 3
+  },
+  "native_probes": {
+    "catalog": "runtime water-class and ship-engine projection",
+    "connectivity": "native water-region patch projection against an independent tile flood fill before and after disconnection",
+    "constructed": "profitable ship service whose route traverses both a native lock and aqueduct",
+    "construction": "canal, river, sea, dock join, depot, buoy, lock and aqueduct test/execute/remove legality and state",
+    "lifecycle": "ship build, refit, clone, orders, timetable, service interval, autoreplace, native save/load and sale",
+    "natural": "profitable passenger/freight ship service over a controlled natural sea/river route",
+    "recovery": "unreachable-route detection, explicit stopped recovery, reconnection and bounded profitable completion",
+    "transfer": "native road-to-ship transfer with feeder credit, one final payment and cargo conservation"
+  },
+  "observation_extension": {
+    "bounded_tables": [
+      "water_classes",
+      "ship_engines",
+      "water_tiles",
+      "water_regions",
+      "water_region_patches",
+      "coasts",
+      "rivers",
+      "canals",
+      "locks",
+      "aqueducts",
+      "docks",
+      "ship_depots",
+      "buoys",
+      "ships",
+      "ship_orders",
+      "ship_timetables",
+      "ship_route_health"
+    ],
+    "graph_edges": [
+      "water-connects",
+      "region-adjoins",
+      "dock-serves",
+      "order-targets",
+      "transfer-feeds",
+      "lock-connects-levels",
+      "aqueduct-spans"
+    ],
+    "m17_compatibility": "append-only typed extension; M15 tensor/candidate bytes and M16/M17 tables remain unchanged"
+  },
+  "schema_version": "openttd-rl-v2-m18-ship-contract-1",
+  "semantics": {
+    "competence": "natural and constructed passenger/freight service must produce positive final delivery and company income on two deterministic seeds each",
+    "exact_replay": "every native case runs in two fresh processes with normalized byte-identical reports",
+    "loading_fixture": "bounded source packets and otherwise unavailable sink acceptance may be fixture setup; vehicle movement, transfer, delivery and payment remain native",
+    "recovery": "a disconnected route must become observably unreachable, remain safe while stopped, and complete service after a native reconnection action within the frozen horizon",
+    "specialist": "the existing healthy-inactive ShipAI package must be rerun on a byte-pinned water scenario and build at least one ship before G18",
+    "transfer": "intermediate transfer may create feeder credit but not company cash; exactly one final-delivery payment accounts for all delivered cargo",
+    "water_classes": [
+      "sea",
+      "canal",
+      "river"
+    ]
+  },
+  "version": "m18-ship-v1"
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M18 ship evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "artifact_root", "contract_sha256", "source_sha256", "executable_sha256", "execution", "baselines", "aggregate", "cases"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m18-ship-evidence-1"},
+    "status": {"const": "PASS"},
+    "artifact_root": {"type": "string"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "source_sha256": {"$ref": "#/$defs/sha256"},
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "execution": {
+      "type": "object", "additionalProperties": false, "required": ["sandbox", "process_limits", "network_calls"],
+      "properties": {"sandbox": {"enum": ["bubblewrap", "rlimit-only"]}, "process_limits": {"const": true}, "network_calls": {"const": "none"}}
+    },
+    "baselines": {
+      "type": "object", "additionalProperties": false,
+      "required": ["specialist_name", "specialist_qualified", "ships_before_load", "ships_after_load", "qualification_manifest_sha256", "natural_beats_zero_service", "constructed_beats_zero_service"],
+      "properties": {
+        "specialist_name": {"const": "ShipAI"}, "specialist_qualified": {"const": true},
+        "ships_before_load": {"type": "integer", "minimum": 1}, "ships_after_load": {"type": "integer", "minimum": 1},
+        "qualification_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "natural_beats_zero_service": {"const": true}, "constructed_beats_zero_service": {"const": true}
+      }
+    },
+    "aggregate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["cases", "native_runs", "twin_exact_cases", "ship_engine_entries", "water_classes", "probes", "construction_pass", "connectivity_pass", "lifecycle_pass", "natural_pass", "constructed_pass", "transfer_pass", "recovery_pass", "maximum_wall_seconds"],
+      "properties": {
+        "cases": {"const": 16}, "native_runs": {"const": 32}, "twin_exact_cases": {"const": 16},
+        "ship_engine_entries": {"const": 11}, "water_classes": {"const": 3}, "probes": {"const": 8},
+        "construction_pass": {"const": true}, "connectivity_pass": {"const": true}, "lifecycle_pass": {"const": true},
+        "natural_pass": {"const": true}, "constructed_pass": {"const": true}, "transfer_pass": {"const": true}, "recovery_pass": {"const": true},
+        "maximum_wall_seconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "cases": {
+      "type": "array", "minItems": 16, "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["case_id", "cargo", "probe", "seed", "metrics", "twin_exact", "twins"],
+        "properties": {
+          "case_id": {"type": "string"}, "cargo": {"type": "string", "pattern": "^[A-Z0-9_]{4}$"},
+          "probe": {"enum": ["catalog", "construction", "connectivity", "lifecycle", "natural", "constructed", "transfer", "recovery"]},
+          "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295}, "twin_exact": {"const": true},
+          "metrics": {"type": "object", "additionalProperties": false, "required": ["income", "delivered", "ticks"], "properties": {
+            "income": {"type": "integer", "minimum": 0}, "delivered": {"type": "integer", "minimum": 0}, "ticks": {"type": "integer", "minimum": 0}
+          }},
+          "twins": {"type": "array", "minItems": 2, "maxItems": 2, "items": {
+            "type": "object", "additionalProperties": false, "required": ["name", "report_path", "report_sha256", "normalized_sha256", "wall_seconds"],
+            "properties": {"name": {"enum": ["a", "b"]}, "report_path": {"type": "string"}, "report_sha256": {"$ref": "#/$defs/sha256"},
+              "normalized_sha256": {"$ref": "#/$defs/sha256"}, "wall_seconds": {"type": "number", "exclusiveMinimum": 0}}
+          }}
+        }
+      }
+    }
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

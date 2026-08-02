@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M18 ShipAI qualification evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "package", "m14", "scenario", "qualification_manifest", "observations"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m18-shipai-evidence-1"},
+    "status": {"const": "PASS"},
+    "package": {"type": "object", "additionalProperties": false, "required": ["name", "content_unique_id", "version", "archive_sha256"], "properties": {
+      "name": {"const": "ShipAI"}, "content_unique_id": {"const": "53484950"}, "version": {"const": 10}, "archive_sha256": {"$ref": "#/$defs/sha256"}
+    }},
+    "m14": {"type": "object", "additionalProperties": false, "required": ["outcome", "admission", "evidence_sha256"], "properties": {
+      "outcome": {"const": "QUALIFIED_HEALTHY_INACTIVE"}, "admission": {"const": "SCENARIO_REQUIRED"}, "evidence_sha256": {"$ref": "#/$defs/sha256"}
+    }},
+    "scenario": {"$ref": "#/$defs/file"},
+    "qualification_manifest": {"$ref": "#/$defs/file"},
+    "observations": {"type": "object", "additionalProperties": false, "required": ["minimum_days", "ships_before_load", "ships_after_load", "save_load_restored"], "properties": {
+      "minimum_days": {"type": "integer", "minimum": 30}, "ships_before_load": {"type": "integer", "minimum": 1},
+      "ships_after_load": {"type": "integer", "minimum": 1}, "save_load_restored": {"const": true}
+    }}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "file": {"type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"], "properties": {
+      "path": {"type": "string"}, "bytes": {"type": "integer", "minimum": 1}, "sha256": {"$ref": "#/$defs/sha256"}
+    }}
+  }
+}

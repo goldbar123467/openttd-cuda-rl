@@ -1,0 +1,38 @@
+{
+  "base": {
+    "commit": "eb7b769eb9339ecbde7ed69015230079e92d3316",
+    "tree": "c9fd523f51bfb68c8da114e64f8183dc48496abb"
+  },
+  "build": {
+    "cmake_arguments": [
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+      "-DOPTION_RL_ENVIRONMENT=ON",
+      "-DOPTION_RL_NEURAL_AGENT=OFF",
+      "-DOPTION_USE_ASSERTS=ON"
+    ],
+    "open_gfx": {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m18-ship-a/build/baseset/opengfx-8.0.tar",
+      "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c"
+    },
+    "upstream_ctest": {
+      "passed": 98,
+      "total": 98
+    }
+  },
+  "executable": {
+    "bytes": 411995424,
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m18-ship-a/build/openttd",
+    "sha256": "a21afaedc696d25a807b10b920ad14b86886a9d8d9870c35c8636d1234d360a9"
+  },
+  "patch": {
+    "path": "integration/openttd/patches/15.3/m18/ship/0001-Add-native-V2-ship-qualification.patch",
+    "sha256": "1d44884404ac1abf1887ec2fa3e69b85ba8f700ba607370cd75f83c036e97ac4"
+  },
+  "retained_artifact": "/home/thecl/.codex/artifacts/openttd-rl/v2-m18-ship-a",
+  "schema_version": "openttd-rl-v2-m18-ship-source-1",
+  "source": {
+    "commit": "70c13453e2c1c6e122df8323938460778e116f79",
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m18-ship-a/source",
+    "tree": "cb30c85604f73cd29b5a12b6d50990847fc2f5e8"
+  }
+}
