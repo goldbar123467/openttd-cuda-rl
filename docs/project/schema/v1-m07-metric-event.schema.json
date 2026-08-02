@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.example/schemas/v1-m07-metric-event.schema.json",
+  "title": "OpenTTD-RL V1 M07 structured metric event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "best_development_score",
+    "checkpoint_id",
+    "counters",
+    "elapsed_ns",
+    "environment",
+    "event",
+    "run",
+    "schema_version",
+    "sequence",
+    "steps_per_second",
+    "system",
+    "training",
+    "unix_time_ns",
+    "warning_state"
+  ],
+  "properties": {
+    "best_development_score": {"type": ["number", "null"]},
+    "checkpoint_id": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted_samples", "completed_episodes", "completed_updates", "environment_steps", "simulation_ticks"],
+      "properties": {
+        "accepted_samples": {"type": "integer", "minimum": 0},
+        "completed_episodes": {"type": "integer", "minimum": 0},
+        "completed_updates": {"type": "integer", "minimum": 0},
+        "environment_steps": {"type": "integer", "minimum": 0},
+        "simulation_ticks": {"type": "integer", "minimum": 0}
+      }
+    },
+    "elapsed_ns": {"type": "integer", "minimum": 0},
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_profit", "invalid_actions", "mask_violations", "mean_episode_length", "mean_episode_return", "passenger_deliveries", "resets", "routes", "vehicles"],
+      "properties": {
+        "company_profit": {"type": ["number", "null"]},
+        "invalid_actions": {"type": "integer", "minimum": 0},
+        "mask_violations": {"type": "integer", "minimum": 0},
+        "mean_episode_length": {"type": ["number", "null"]},
+        "mean_episode_return": {"type": ["number", "null"]},
+        "passenger_deliveries": {"type": ["number", "null"]},
+        "resets": {"type": "integer", "minimum": 0},
+        "routes": {"type": ["number", "null"]},
+        "vehicles": {"type": ["number", "null"]}
+      }
+    },
+    "event": {"type": "string", "enum": ["ppo_update", "evaluation", "warning", "checkpoint"]},
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device", "environment_count", "environment_version", "openttd_version", "repository_commit", "run_name", "run_seed"],
+      "properties": {
+        "device": {"type": "string", "const": "cpu"},
+        "environment_count": {"type": "integer", "minimum": 1},
+        "environment_version": {"type": "string", "minLength": 1},
+        "openttd_version": {"type": "string", "const": "15.3"},
+        "repository_commit": {"type": "string", "minLength": 1},
+        "run_name": {"type": "string", "minLength": 1},
+        "run_seed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "schema_version": {"type": "string", "const": "openttd-rl-v1-m07-metric-event-1"},
+    "sequence": {"type": "integer", "minimum": 0},
+    "steps_per_second": {"type": ["number", "null"], "minimum": 0},
+    "system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_utilization_percent", "gpu_available", "gpu_memory_bytes", "gpu_utilization_percent", "process_memory_bytes"],
+      "properties": {
+        "cpu_utilization_percent": {"type": ["number", "null"], "minimum": 0},
+        "gpu_available": {"type": "boolean"},
+        "gpu_memory_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "gpu_utilization_percent": {"type": ["number", "null"], "minimum": 0},
+        "process_memory_bytes": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "training": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approximate_kl", "clip_fraction", "entropy", "explained_variance", "gradient_norm", "learning_rate", "policy_loss", "samples", "update", "value_loss"],
+      "properties": {
+        "approximate_kl": {"type": "number"},
+        "clip_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+        "entropy": {"type": "number", "minimum": 0},
+        "explained_variance": {"type": "number"},
+        "gradient_norm": {"type": "number", "minimum": 0},
+        "learning_rate": {"type": "number", "exclusiveMinimum": 0},
+        "policy_loss": {"type": "number"},
+        "samples": {"type": "integer", "minimum": 0},
+        "update": {"type": "integer", "minimum": 0},
+        "value_loss": {"type": "number", "minimum": 0}
+      }
+    },
+    "unix_time_ns": {"type": "integer", "minimum": 0},
+    "warning_state": {"type": "string", "minLength": 1}
+  }
+}

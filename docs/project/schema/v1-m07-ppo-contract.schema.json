@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.example/schemas/v1-m07-ppo-contract.schema.json",
+  "title": "OpenTTD-RL V1 M07 trusted CPU PPO contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "contract_id",
+    "semantic_version",
+    "status",
+    "backend",
+    "compatibility",
+    "architecture",
+    "ppo",
+    "rng",
+    "rollout",
+    "checkpoint",
+    "metrics",
+    "numerics",
+    "verification",
+    "requirements",
+    "identity"
+  ],
+  "properties": {
+    "$schema": {"type": "string", "const": "../../docs/project/schema/v1-m07-ppo-contract.schema.json"},
+    "schema_version": {"type": "string", "const": "openttd-rl-v1-m07-ppo-contract-1"},
+    "contract_id": {"type": "string", "const": "m07-trusted-cpu-ppo-v1"},
+    "semantic_version": {"type": "integer", "const": 1},
+    "status": {"type": "string", "enum": ["FROZEN", "ACCEPTED"]},
+    "backend": {"$ref": "#/$defs/backend"},
+    "compatibility": {"$ref": "#/$defs/compatibility"},
+    "architecture": {"$ref": "#/$defs/architecture"},
+    "ppo": {"$ref": "#/$defs/ppo"},
+    "rng": {"$ref": "#/$defs/rng"},
+    "rollout": {"$ref": "#/$defs/rollout"},
+    "checkpoint": {"$ref": "#/$defs/checkpoint"},
+    "metrics": {"$ref": "#/$defs/metrics"},
+    "numerics": {"$ref": "#/$defs/numerics"},
+    "verification": {"$ref": "#/$defs/verification"},
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Z]+-[0-9]{3}$"}
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compatibility_algorithm", "compatibility_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "compatibility_algorithm": {"type": "string", "const": "sha256-canonical-json-v1"},
+        "compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_path": {"type": "string", "const": "docs/project/schema/v1-m07-ppo-contract.schema.json"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "standard", "tensor_backend", "version", "distribution", "device", "dtype", "mixed_precision", "normal_game_dependency"],
+      "properties": {
+        "language": {"const": "C++"},
+        "standard": {"const": "C++20"},
+        "tensor_backend": {"const": "LibTorch"},
+        "version": {"const": "2.13.0+cu130"},
+        "distribution": {"const": "shared-with-deps-cu130"},
+        "device": {"const": "cpu"},
+        "dtype": {"const": "float32"},
+        "mixed_precision": {"const": false},
+        "normal_game_dependency": {"const": false}
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bridge", "observation", "action", "reward_trajectory"],
+      "properties": {
+        "bridge": {"$ref": "#/$defs/sha256"},
+        "observation": {"$ref": "#/$defs/sha256"},
+        "action": {"$ref": "#/$defs/sha256"},
+        "reward_trajectory": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "input", "trunk", "activation", "policy_head", "value_head", "initialization", "parameter_sharing"],
+      "properties": {
+        "id": {"const": "structured-mlp-v1"},
+        "input": {"type": "object", "additionalProperties": false, "required": ["name", "shape", "dtype"], "properties": {"name": {"const": "structured"}, "shape": {"const": [256]}, "dtype": {"const": "float32"}}},
+        "trunk": {"const": [128, 128]},
+        "activation": {"const": "tanh"},
+        "policy_head": {"type": "object", "additionalProperties": false, "required": ["name", "shape"], "properties": {"name": {"const": "policy_logits"}, "shape": {"const": [41]}}},
+        "value_head": {"type": "object", "additionalProperties": false, "required": ["name", "shape"], "properties": {"name": {"const": "state_value"}, "shape": {"const": [1]}}},
+        "initialization": {"type": "object", "additionalProperties": false, "required": ["weights", "hidden_gain", "policy_gain", "value_gain", "bias"], "properties": {"weights": {"const": "orthogonal"}, "hidden_gain": {"const": 1.4142135623730951}, "policy_gain": {"const": 0.01}, "value_gain": {"const": 1.0}, "bias": {"const": 0.0}}},
+        "parameter_sharing": {"const": "shared-trunk-separate-linear-heads"}
+      }
+    },
+    "ppo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "gamma", "gae_lambda", "clip_epsilon", "value_loss", "value_coefficient", "entropy_coefficient", "optimizer", "learning_rate", "adam_epsilon", "max_gradient_norm", "rollout_length", "environment_count", "minibatch_size", "optimization_epochs", "incomplete_minibatch", "kl_early_stop", "advantage_normalization"],
+      "properties": {
+        "algorithm": {"const": "actor-critic-ppo-clipped-v1"},
+        "gamma": {"type": "number", "minimum": 0, "maximum": 1},
+        "gae_lambda": {"type": "number", "minimum": 0, "maximum": 1},
+        "clip_epsilon": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "value_loss": {"const": "plain-mse"},
+        "value_coefficient": {"type": "number", "minimum": 0},
+        "entropy_coefficient": {"type": "number", "minimum": 0},
+        "optimizer": {"const": "adam"},
+        "learning_rate": {"type": "number", "exclusiveMinimum": 0},
+        "adam_epsilon": {"type": "number", "exclusiveMinimum": 0},
+        "max_gradient_norm": {"type": "number", "exclusiveMinimum": 0},
+        "rollout_length": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "environment_count": {"type": "integer", "minimum": 1, "maximum": 64},
+        "minibatch_size": {"type": "integer", "minimum": 1},
+        "optimization_epochs": {"type": "integer", "minimum": 1},
+        "incomplete_minibatch": {"const": "reject-configuration"},
+        "kl_early_stop": {"const": "disabled"},
+        "advantage_normalization": {"type": "object", "additionalProperties": false, "required": ["variance", "epsilon", "zero_variance"], "properties": {"variance": {"const": "population"}, "epsilon": {"type": "number", "exclusiveMinimum": 0}, "zero_variance": {"const": "all-zero"}}}
+      }
+    },
+    "rng": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "derivation", "streams"],
+      "properties": {
+        "algorithm": {"const": "mt19937_64"},
+        "derivation": {"const": "splitmix64-run-seed-xor-fnv1a64-stream-label"},
+        "streams": {"const": ["parameter_initialization", "action_sampling", "minibatch_shuffle", "environment_episode"]}
+      }
+    },
+    "rollout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layout", "flattening", "fields", "terminal_bootstrap", "truncation_bootstrap", "failure_policy", "ordering"],
+      "properties": {
+        "layout": {"const": "time-major-T-N"},
+        "flattening": {"const": "t-major-then-environment-id"},
+        "fields": {"type": "array", "minItems": 10, "uniqueItems": true, "items": {"type": "string"}},
+        "terminal_bootstrap": {"const": 0},
+        "truncation_bootstrap": {"const": "typed-valid-final-observation-value"},
+        "failure_policy": {"const": "exclude-entire-environment-segment-and-stop-on-integrity-or-nonfinite"},
+        "ordering": {"const": "canonical-independent-of-worker-completion-order"}
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "boundary", "atomicity", "identity", "contents", "corruption_policy"],
+      "properties": {
+        "format": {"const": "openttd-rl-native-checkpoint-v1"},
+        "boundary": {"const": "after-completed-ppo-update-before-next-rollout"},
+        "atomicity": {"const": "create-new-temp-files-fsync-directory-rename-never-overwrite"},
+        "identity": {"const": "sha256-semantic-header-with-model-state-and-adam-semantic-sha256"},
+        "contents": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "string"}},
+        "corruption_policy": {"const": "verify-header-identity-payload-and-compatibility-before-model-mutation"}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "authority", "format", "maximum_event_bytes", "terminal_monitor", "unavailable"],
+      "properties": {
+        "schema_version": {"const": "openttd-rl-v1-m07-metric-event-1"},
+        "authority": {"const": "append-only-structured-event-sink"},
+        "format": {"const": "canonical-json-lines"},
+        "maximum_event_bytes": {"type": "integer", "minimum": 1024, "maximum": 65536},
+        "terminal_monitor": {"const": "render-same-validated-event-no-private-values"},
+        "unavailable": {"const": "json-null-plus-availability-false"}
+      }
+    },
+    "numerics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gae_accumulation", "model_dtype", "checks", "failure_action"],
+      "properties": {
+        "gae_accumulation": {"const": "float64-fixed-reverse-time-order"},
+        "model_dtype": {"const": "float32"},
+        "checks": {"type": "array", "minItems": 10, "uniqueItems": true, "items": {"type": "string"}},
+        "failure_action": {"const": "stop-before-normal-checkpoint-and-write-diagnostic-artifact"}
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["independent_reference", "tiny_problem", "real_environment", "deterministic_tolerance", "differential_tolerance"],
+      "properties": {
+        "independent_reference": {"const": "python3-standard-library-plus-explicit-scalar-formulas"},
+        "tiny_problem": {"const": "masked-two-action-contextual-bandit"},
+        "real_environment": {"const": "frozen-M06-bus-trajectory-and-live-development-suite"},
+        "deterministic_tolerance": {"const": 0},
+        "differential_tolerance": {"type": "number", "exclusiveMinimum": 0}
+      }
+    }
+  }
+}

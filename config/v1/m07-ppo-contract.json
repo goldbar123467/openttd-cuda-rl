@@ -1,0 +1,196 @@
+{
+  "$schema": "../../docs/project/schema/v1-m07-ppo-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m07-ppo-contract-1",
+  "contract_id": "m07-trusted-cpu-ppo-v1",
+  "semantic_version": 1,
+  "status": "FROZEN",
+  "backend": {
+    "language": "C++",
+    "standard": "C++20",
+    "tensor_backend": "LibTorch",
+    "version": "2.13.0+cu130",
+    "distribution": "shared-with-deps-cu130",
+    "device": "cpu",
+    "dtype": "float32",
+    "mixed_precision": false,
+    "normal_game_dependency": false
+  },
+  "compatibility": {
+    "bridge": "4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6",
+    "observation": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb",
+    "action": "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536",
+    "reward_trajectory": "9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e"
+  },
+  "architecture": {
+    "id": "structured-mlp-v1",
+    "input": {"name": "structured", "shape": [256], "dtype": "float32"},
+    "trunk": [128, 128],
+    "activation": "tanh",
+    "policy_head": {"name": "policy_logits", "shape": [41]},
+    "value_head": {"name": "state_value", "shape": [1]},
+    "initialization": {
+      "weights": "orthogonal",
+      "hidden_gain": 1.4142135623730951,
+      "policy_gain": 0.01,
+      "value_gain": 1.0,
+      "bias": 0.0
+    },
+    "parameter_sharing": "shared-trunk-separate-linear-heads"
+  },
+  "ppo": {
+    "algorithm": "actor-critic-ppo-clipped-v1",
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_epsilon": 0.2,
+    "value_loss": "plain-mse",
+    "value_coefficient": 0.5,
+    "entropy_coefficient": 0.01,
+    "optimizer": "adam",
+    "learning_rate": 0.0003,
+    "adam_epsilon": 0.00001,
+    "max_gradient_norm": 0.5,
+    "rollout_length": 128,
+    "environment_count": 1,
+    "minibatch_size": 32,
+    "optimization_epochs": 4,
+    "incomplete_minibatch": "reject-configuration",
+    "kl_early_stop": "disabled",
+    "advantage_normalization": {
+      "variance": "population",
+      "epsilon": 1e-8,
+      "zero_variance": "all-zero"
+    }
+  },
+  "rng": {
+    "algorithm": "mt19937_64",
+    "derivation": "splitmix64-run-seed-xor-fnv1a64-stream-label",
+    "streams": [
+      "parameter_initialization",
+      "action_sampling",
+      "minibatch_shuffle",
+      "environment_episode"
+    ]
+  },
+  "rollout": {
+    "layout": "time-major-T-N",
+    "flattening": "t-major-then-environment-id",
+    "fields": [
+      "structured_observation",
+      "legal_action_mask",
+      "selected_action",
+      "behavior_log_probability",
+      "behavior_value",
+      "scalar_reward",
+      "bootstrap_value",
+      "bootstrap_mask",
+      "continuation_mask",
+      "trainable_mask",
+      "episode_id",
+      "transition_id"
+    ],
+    "terminal_bootstrap": 0,
+    "truncation_bootstrap": "typed-valid-final-observation-value",
+    "failure_policy": "exclude-entire-environment-segment-and-stop-on-integrity-or-nonfinite",
+    "ordering": "canonical-independent-of-worker-completion-order"
+  },
+  "checkpoint": {
+    "format": "openttd-rl-native-checkpoint-v1",
+    "boundary": "after-completed-ppo-update-before-next-rollout",
+    "atomicity": "create-new-temp-files-fsync-directory-rename-never-overwrite",
+    "identity": "sha256-semantic-header-with-model-state-and-adam-semantic-sha256",
+    "contents": [
+      "model-parameters",
+      "optimizer-state",
+      "learning-rate-state",
+      "update-environment-step-simulation-tick-episode-sample-counters",
+      "four-rng-stream-states-and-seed-ledger",
+      "environment-and-model-schema-identities",
+      "normalization-and-ppo-configuration",
+      "source-build-and-dependency-provenance",
+      "parent-checkpoint-and-development-evaluation-metadata"
+    ],
+    "corruption_policy": "verify-header-identity-payload-and-compatibility-before-model-mutation"
+  },
+  "metrics": {
+    "schema_version": "openttd-rl-v1-m07-metric-event-1",
+    "authority": "append-only-structured-event-sink",
+    "format": "canonical-json-lines",
+    "maximum_event_bytes": 16384,
+    "terminal_monitor": "render-same-validated-event-no-private-values",
+    "unavailable": "json-null-plus-availability-false"
+  },
+  "numerics": {
+    "gae_accumulation": "float64-fixed-reverse-time-order",
+    "model_dtype": "float32",
+    "checks": [
+      "preprocessed-observations",
+      "logits",
+      "masked-probabilities",
+      "values",
+      "rewards",
+      "advantages",
+      "returns",
+      "component-losses",
+      "total-loss",
+      "gradients",
+      "gradient-norm",
+      "optimizer-state",
+      "updated-parameters"
+    ],
+    "failure_action": "stop-before-normal-checkpoint-and-write-diagnostic-artifact"
+  },
+  "verification": {
+    "independent_reference": "python3-standard-library-plus-explicit-scalar-formulas",
+    "tiny_problem": "masked-two-action-contextual-bandit",
+    "real_environment": "frozen-M06-bus-trajectory-and-live-development-suite",
+    "deterministic_tolerance": 0,
+    "differential_tolerance": 1e-6
+  },
+  "requirements": [
+    "LIFE-010",
+    "LIFE-012",
+    "PPO-001",
+    "PPO-002",
+    "PPO-003",
+    "PPO-004",
+    "PPO-005",
+    "PPO-006",
+    "PPO-007",
+    "PPO-008",
+    "PPO-009",
+    "PPO-010",
+    "PPO-011",
+    "PPO-012",
+    "PPO-013",
+    "PPO-014",
+    "PPO-015",
+    "PPO-016",
+    "PPO-017",
+    "PPO-018",
+    "PPO-019",
+    "PPO-020",
+    "PPO-022",
+    "RUN-006",
+    "RUN-007",
+    "MON-001",
+    "MON-002",
+    "MON-003",
+    "MON-004",
+    "MON-005",
+    "MON-006",
+    "MON-007",
+    "MON-008",
+    "MON-009",
+    "TEST-009",
+    "TEST-010",
+    "TEST-013",
+    "TEST-014",
+    "ARCH-001"
+  ],
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "1b1f13cfb036afed82a630949ee727f6f20a94241923ab3a1aa60a1ec763f0de",
+    "schema_path": "docs/project/schema/v1-m07-ppo-contract.schema.json",
+    "schema_sha256": "4bcfed9a8643bd3948d77670045e2a37bd0c09d642eab21c8fd67f20230a3f3a"
+  }
+}
