@@ -204,6 +204,12 @@ def compose_m11_source(root: pathlib.Path, output: pathlib.Path) -> str:
     for relative, parent, expected in chain:
         prepare_openttd_source.apply_patches(output, [root / relative], parent)
         require(prepare_openttd_source.git(output, "write-tree") == expected, f"composed source drifted after {relative}")
+    subprocess.run([
+        "git", "-C", str(output), "-c", "user.name=OpenTTD-RL Release",
+        "-c", "user.email=release@openttd-rl.invalid", "commit", "--quiet",
+        "-m", "OpenTTD-RL V1 M11 composed source",
+    ], check=True)
+    require(prepare_openttd_source.git(output, "rev-parse", "HEAD^{tree}") == M11_RESULT_TREE, "committed composed tree drifted")
     return M11_RESULT_TREE
 
 
