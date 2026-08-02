@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m09-final-evaluation.schema.json",
+  "title": "OpenTTD-RL V1 M09 final independent evaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "contract_sha256", "repository_commit", "training_manifest_sha256", "runtime", "selection", "episode_count", "raw_episodes", "metric_registry", "baseline_registry", "training_reward_by_run", "baseline_summaries", "selected_primary_summary", "architecture_statistics", "stochastic_summary", "robustness", "claims", "package_read_only", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-m09-final-evaluation-1"},
+    "status": {"const": "PASS"},
+    "contract_sha256": {"const": "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e"},
+    "repository_commit": {"$ref": "#/$defs/git"},
+    "training_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "runtime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["openttd_executable_sha256", "evaluator_executable_sha256", "optimizer_dependency", "model_state"],
+      "properties": {
+        "openttd_executable_sha256": {"const": "8e61a1325090240cf084ad0a9d82376bf11082564bb0eb17ac4a1c8033158a0c"},
+        "evaluator_executable_sha256": {"$ref": "#/$defs/sha256"},
+        "optimizer_dependency": {"const": false},
+        "model_state": {"const": "read-only-verified"}
+      }
+    },
+    "selection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["split", "final_results_used", "selected_by_architecture", "selected_overall"],
+      "properties": {
+        "split": {"const": "development"},
+        "final_results_used": {"const": false},
+        "selected_by_architecture": {"type": "object"},
+        "selected_overall": {"type": "object"}
+      }
+    },
+    "episode_count": {"type": "integer", "minimum": 36},
+    "raw_episodes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {"path": {"const": "raw-episodes.jsonl"}, "sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "metric_registry": {"type": "array", "minItems": 15, "maxItems": 15},
+    "baseline_registry": {"type": "array", "minItems": 3, "maxItems": 3},
+    "training_reward_by_run": {
+      "type": "array", "minItems": 9, "maxItems": 9,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["architecture", "run_seed", "mean_rollout_reward", "quality_metric"],
+        "properties": {
+          "architecture": {"enum": ["structured-mlp-v1", "spatial-cnn-v1", "combined-cnn-mlp-v1"]},
+          "run_seed": {"type": "integer"},
+          "mean_rollout_reward": {"type": "number"},
+          "quality_metric": {"const": false}
+        }
+      }
+    },
+    "baseline_summaries": {"type": "object"},
+    "selected_primary_summary": {"$ref": "#/$defs/summary"},
+    "architecture_statistics": {"type": "object"},
+    "stochastic_summary": {"$ref": "#/$defs/summary"},
+    "robustness": {
+      "type": "object", "additionalProperties": false,
+      "required": ["summary", "failure_cases"],
+      "properties": {"summary": {"$ref": "#/$defs/summary"}, "failure_cases": {"type": "array", "items": {"type": "string"}}}
+    },
+    "claims": {
+      "type": "object", "additionalProperties": false,
+      "required": ["baseline_superiority", "reliable_profitability", "architecture_superiority", "architecture_disposition", "training_reward_used_as_quality_metric"],
+      "properties": {
+        "baseline_superiority": {"const": true},
+        "reliable_profitability": {"const": true},
+        "architecture_superiority": {"type": "boolean"},
+        "architecture_disposition": {"type": "string", "minLength": 1},
+        "training_reward_used_as_quality_metric": {"const": false}
+      }
+    },
+    "package_read_only": {
+      "type": "object", "additionalProperties": false,
+      "required": ["file_snapshots_sha256", "state_sha256"],
+      "properties": {
+        "file_snapshots_sha256": {"type": "object", "minProperties": 9, "additionalProperties": {"$ref": "#/$defs/sha256"}},
+        "state_sha256": {"type": "object", "minProperties": 9, "additionalProperties": {"$ref": "#/$defs/sha256"}}
+      }
+    },
+    "report_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "nullableNumber": {"type": ["number", "null"]},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["survival", "bankruptcy", "final_balance", "net_profit", "operating_profit", "passenger_deliveries", "route_profit", "profitable_vehicles", "infrastructure_cost", "roi", "coverage", "invalid_actions", "action_efficiency"],
+      "properties": {
+        "survival": {"$ref": "#/$defs/nullableNumber"}, "bankruptcy": {"$ref": "#/$defs/nullableNumber"},
+        "final_balance": {"$ref": "#/$defs/nullableNumber"}, "net_profit": {"$ref": "#/$defs/nullableNumber"},
+        "operating_profit": {"$ref": "#/$defs/nullableNumber"}, "passenger_deliveries": {"$ref": "#/$defs/nullableNumber"},
+        "route_profit": {"$ref": "#/$defs/nullableNumber"}, "profitable_vehicles": {"$ref": "#/$defs/nullableNumber"},
+        "infrastructure_cost": {"$ref": "#/$defs/nullableNumber"}, "roi": {"$ref": "#/$defs/nullableNumber"},
+        "coverage": {"$ref": "#/$defs/nullableNumber"}, "invalid_actions": {"$ref": "#/$defs/nullableNumber"},
+        "action_efficiency": {"$ref": "#/$defs/nullableNumber"}
+      }
+    }
+  }
+}

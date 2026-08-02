@@ -10,3 +10,9 @@ python3 "$REPOSITORY_ROOT/scripts/v1/validate_m09_evaluation_contract.py" \
   "$REPOSITORY_ROOT/config/v1/m09-evaluation-contract.json" \
   "$REPOSITORY_ROOT/docs/project/schema/v1-m09-evaluation-contract.schema.json"
 python3 -m unittest tests.project.traceability.test_v1_m09_evaluation
+
+if [[ -n ${M09_EVALUATION_REPORT:-} ]]; then
+  python3 "$REPOSITORY_ROOT/scripts/v1/validate_m09_evaluation_report.py" \
+    "$M09_EVALUATION_REPORT" \
+    "$REPOSITORY_ROOT/docs/project/schema/v1-m09-final-evaluation.schema.json"
+fi

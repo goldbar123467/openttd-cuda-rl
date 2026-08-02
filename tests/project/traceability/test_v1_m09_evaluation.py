@@ -17,6 +17,7 @@ import run_m02_map_feasibility
 import run_m04_observation
 import run_m05_actions
 import run_m06_reward_trajectory
+import run_m09_evaluation
 import validate_m02_scenario_contract
 import validate_m09_evaluation_contract
 
@@ -131,6 +132,56 @@ class V1M09EvaluationTests(unittest.TestCase):
         self.assertIn("final_evaluation_accessed\": False", runner)
         self.assertIn("Deliberately do not open final_paths", runner)
         self.assertNotIn("reset_evaluation", runner)
+
+    def test_final_runner_is_fail_closed_and_uses_only_development_selection(self) -> None:
+        runner = (self.root / "scripts/v1/run_m09_evaluation.py").read_text(encoding="utf-8")
+        self.assertIn("accepted final evaluation requires a clean committed repository", runner)
+        self.assertIn("development_selection(training)", runner)
+        self.assertIn('"final_results_used": False', runner)
+        self.assertIn("package_snapshot", runner)
+        self.assertIn("in-memory model state changed across episodes", runner)
+        self.assertNotIn("torch.optim", runner)
+
+    def test_development_selection_prefers_eligible_policy_without_final_data(self) -> None:
+        runs = []
+        for architecture in run_m09_evaluation.ARCHITECTURES:
+            for seed in (1, 2, 3):
+                eligible = architecture == "combined-cnn-mlp-v1" and seed == 2
+                runs.append({
+                    "architecture": architecture,
+                    "run_seed": seed,
+                    "package": {"id": f"{architecture}-{seed}", "path": "unused"},
+                    "development": {
+                        "reliably_profitable": eligible,
+                        "mean_operating_profit": 10 if eligible else -seed,
+                        "mean_passenger_deliveries": 5 if eligible else 0,
+                        "mean_final_balance": 100_000 - seed,
+                        "mean_invalid_actions": 0,
+                    },
+                })
+        manifest = {"runs": runs, "selected_on_development": {}}
+        for architecture in run_m09_evaluation.ARCHITECTURES:
+            seed = 2 if architecture == "combined-cnn-mlp-v1" else 1
+            manifest["selected_on_development"][architecture] = {
+                "package": {"id": f"{architecture}-{seed}", "path": "unused"},
+                "run_seed": seed,
+            }
+        selected, overall = run_m09_evaluation.development_selection(manifest)
+        self.assertEqual(selected["combined-cnn-mlp-v1"]["run_seed"], 2)
+        self.assertEqual(overall["architecture"], "combined-cnn-mlp-v1")
+        self.assertEqual(overall["run_seed"], 2)
+
+    def test_seed_statistics_report_student_t_interval_over_run_seeds(self) -> None:
+        episodes = [
+            {"run_seed": seed, "metrics": {"operating_profit": value}}
+            for seed, values in ((1, (1, 3)), (2, (2, 4)), (3, (3, 5)))
+            for value in values
+        ]
+        result = run_m09_evaluation.seed_statistics(episodes, "operating_profit")
+        self.assertEqual(result["status"], "REPORTED")
+        self.assertEqual(result["mean"], 3.0)
+        self.assertEqual(result["sample_standard_deviation"], 1.0)
+        self.assertEqual([item["value"] for item in result["seed_means"]], [2.0, 3.0, 4.0])
 
 
 if __name__ == "__main__":
