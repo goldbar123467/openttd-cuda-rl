@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m05-action-oracle-report.schema.json",
+  "title": "OpenTTD-RL V1 M05 actual-engine action oracle report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action_compatibility_sha256", "action_contract_sha256", "action_families_covered", "executable_sha256", "integration_failure", "mask_differential_states", "schema_version", "status", "templates"],
+  "properties": {
+    "action_compatibility_sha256": {"$ref": "#/$defs/sha256"},
+    "action_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "action_families_covered": {"const": ["ASSIGN_ROUTE", "BUILD_BUS_STOP", "BUILD_ROAD_CONNECTOR", "BUILD_ROAD_DEPOT", "BUY_BUS", "SELECT_TOWNS", "SET_RUNNING", "SET_STOPPED", "WAIT"]},
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "integration_failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "fatal", "stdout", "transition_ordinal"],
+      "properties": {
+        "classification": {"const": "INTEGRATION_FAILURE"},
+        "fatal": {"const": true},
+        "stdout": {"type": "string"},
+        "transition_ordinal": {"const": 0}
+      }
+    },
+    "mask_differential_states": {"type": "integer", "minimum": 512},
+    "schema_version": {"const": "openttd-rl-v1-m05-action-oracle-report-1"},
+    "status": {"const": "PASS"},
+    "templates": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"$ref": "#/$defs/template"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template_id", "scripted", "randomized"],
+      "properties": {
+        "template_id": {"type": "string", "pattern": "^m02-template-0[1-8]$"},
+        "scripted": {"$ref": "#/$defs/scripted"},
+        "randomized": {"$ref": "#/$defs/randomized"}
+      }
+    },
+    "scripted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_families", "action_log_sha256", "delivered_passengers", "final_balance", "income", "mask_differential_states", "native_command_count", "rejections", "route_rollback", "stdout", "transitions", "wait_actions"],
+      "properties": {
+        "action_families": {"const": ["ASSIGN_ROUTE", "BUILD_BUS_STOP", "BUILD_ROAD_CONNECTOR", "BUILD_ROAD_DEPOT", "BUY_BUS", "SELECT_TOWNS", "SET_RUNNING", "SET_STOPPED", "WAIT"]},
+        "action_log_sha256": {"$ref": "#/$defs/sha256"},
+        "delivered_passengers": {"type": "integer", "minimum": 1},
+        "final_balance": {"type": "integer"},
+        "income": {"type": "integer", "minimum": 1},
+        "mask_differential_states": {"type": "integer", "minimum": 32},
+        "native_command_count": {"type": "integer", "minimum": 20},
+        "rejections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["illegal_index", "repeated_mask_identical", "stale_rejected", "wrong_identity_rejected"],
+          "properties": {
+            "illegal_index": {"type": "integer", "minimum": 4, "maximum": 11},
+            "repeated_mask_identical": {"const": true},
+            "stale_rejected": {"const": true},
+            "wrong_identity_rejected": {"const": true}
+          }
+        },
+        "route_rollback": {"const": "PASS"},
+        "stdout": {"type": "string"},
+        "transitions": {"type": "integer", "minimum": 15, "maximum": 511},
+        "wait_actions": {"type": "integer", "minimum": 1}
+      }
+    },
+    "randomized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_indices", "action_indices_sha256", "mask_differential_states", "seed", "stdout"],
+      "properties": {
+        "action_indices": {"type": "array", "minItems": 32, "maxItems": 32, "items": {"type": "integer", "minimum": 0, "maximum": 40}},
+        "action_indices_sha256": {"$ref": "#/$defs/sha256"},
+        "mask_differential_states": {"const": 32},
+        "seed": {"type": "integer", "minimum": 0},
+        "stdout": {"type": "string"}
+      }
+    }
+  }
+}

@@ -14,6 +14,9 @@ accepted source identity.
 
 M02 deltas are isolated under `m02/` and are composed after the accepted M01
 source preparation by the M02 feasibility runner. This keeps the M01 evidence
-auditable while retaining one explicit order for every later delta. Native
-bridge/controller patches enter only with their owning requirements and tests in
-later M03/M11 work.
+auditable while retaining one explicit order for every later delta. M03, M04,
+and M05 deltas are similarly isolated in their milestone directories and apply
+only after the preceding accepted result tree. They freeze the synchronized
+bridge, versioned observation, and explicit action/mask contracts respectively;
+each directory carries its own ordered series, exact hashes, composition tests,
+and gate evidence. The normal-game neural controller remains owned by M11.

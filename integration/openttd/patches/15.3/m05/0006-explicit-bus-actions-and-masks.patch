@@ -1,0 +1,752 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 388bc79ffe77b524266ae9bdca077223438b18a8..e0b6a04f0db312bc3b14c33b8ec9e3dc051ae1bd 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -46,6 +46,8 @@ add_files(
+ )
+ 
+ add_files(
++    rl_action.cpp
++    rl_action.h
+     rl_bridge.cpp
+     rl_bridge.h
+     rl_environment.cpp
+diff --git a/src/rl_action.cpp b/src/rl_action.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..02d429f46d10a0606fc1b64320fb0f6230059ac1
+--- /dev/null
++++ b/src/rl_action.cpp
+@@ -0,0 +1,445 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_action.cpp Authoritative fixed-catalog M05 policy action adapter. */
++
++#include "stdafx.h"
++
++#include "rl_action.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "cargotype.h"
++#include "command_func.h"
++#include "company_base.h"
++#include "depot_base.h"
++#include "map_func.h"
++#include "newgrf_roadstop.h"
++#include "order_base.h"
++#include "order_cmd.h"
++#include "rl_environment.h"
++#include "road_cmd.h"
++#include "road_map.h"
++#include "station_base.h"
++#include "station_cmd.h"
++#include "station_map.h"
++#include "tile_map.h"
++#include "timer/timer_game_tick.h"
++#include "town.h"
++#include "vehicle_base.h"
++#include "vehicle_cmd.h"
++
++#include <stdexcept>
++#include <vector>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++namespace {
++
++static constexpr std::string_view ACTION_COMPATIBILITY_SHA256 = "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536";
++static constexpr EngineID BUS_ENGINE{116};
++static constexpr uint8_t MAX_VEHICLE_SLOTS = 8;
++static constexpr uint16_t WAIT_INDEX = 0;
++static constexpr uint16_t SELECT_OFFSET = 1;
++static constexpr uint16_t CONNECTOR_INDEX = 3;
++static constexpr uint16_t STOP_OFFSET = 4;
++static constexpr uint16_t DEPOT_OFFSET = 12;
++static constexpr uint16_t BUY_INDEX = 16;
++static constexpr uint16_t ROUTE_OFFSET = 17;
++static constexpr uint16_t RUN_OFFSET = 25;
++static constexpr uint16_t STOP_VEHICLE_OFFSET = 33;
++
++enum class ActionFamily : uint8_t {
++	Wait,
++	SelectTowns,
++	BuildRoadConnector,
++	BuildBusStop,
++	BuildRoadDepot,
++	BuyBus,
++	AssignRoute,
++	SetRunning,
++	SetStopped,
++};
++
++struct DecodedAction {
++	ActionFamily family;
++	uint8_t first = 0;
++	uint8_t second = 0;
++};
++
++static DecodedAction Decode(uint16_t index)
++{
++	if (index == WAIT_INDEX) return {ActionFamily::Wait};
++	if (index >= SELECT_OFFSET && index < CONNECTOR_INDEX) {
++		uint8_t origin = static_cast<uint8_t>(index - SELECT_OFFSET);
++		return {ActionFamily::SelectTowns, origin, static_cast<uint8_t>(1 - origin)};
++	}
++	if (index == CONNECTOR_INDEX) return {ActionFamily::BuildRoadConnector};
++	if (index >= STOP_OFFSET && index < DEPOT_OFFSET) {
++		uint8_t value = static_cast<uint8_t>(index - STOP_OFFSET);
++		return {ActionFamily::BuildBusStop, static_cast<uint8_t>(value / 4), static_cast<uint8_t>(value % 4)};
++	}
++	if (index >= DEPOT_OFFSET && index < BUY_INDEX) return {ActionFamily::BuildRoadDepot, static_cast<uint8_t>(index - DEPOT_OFFSET)};
++	if (index == BUY_INDEX) return {ActionFamily::BuyBus};
++	if (index >= ROUTE_OFFSET && index < RUN_OFFSET) return {ActionFamily::AssignRoute, static_cast<uint8_t>(index - ROUTE_OFFSET)};
++	if (index >= RUN_OFFSET && index < STOP_VEHICLE_OFFSET) return {ActionFamily::SetRunning, static_cast<uint8_t>(index - RUN_OFFSET)};
++	if (index >= STOP_VEHICLE_OFFSET && index < RL_ACTION_COUNT) return {ActionFamily::SetStopped, static_cast<uint8_t>(index - STOP_VEHICLE_OFFSET)};
++	throw std::runtime_error(fmt::format("M05 action index {} is outside the fixed catalog", index));
++}
++
++static std::string_view FamilyName(ActionFamily family)
++{
++	switch (family) {
++		case ActionFamily::Wait: return "WAIT";
++		case ActionFamily::SelectTowns: return "SELECT_TOWNS";
++		case ActionFamily::BuildRoadConnector: return "BUILD_ROAD_CONNECTOR";
++		case ActionFamily::BuildBusStop: return "BUILD_BUS_STOP";
++		case ActionFamily::BuildRoadDepot: return "BUILD_ROAD_DEPOT";
++		case ActionFamily::BuyBus: return "BUY_BUS";
++		case ActionFamily::AssignRoute: return "ASSIGN_ROUTE";
++		case ActionFamily::SetRunning: return "SET_RUNNING";
++		case ActionFamily::SetStopped: return "SET_STOPPED";
++	}
++	return "UNKNOWN";
++}
++
++static const Vehicle *GetBus(uint8_t slot)
++{
++	const Vehicle *vehicle = Vehicle::GetIfValid(VehicleID{slot});
++	if (vehicle == nullptr || vehicle->type != VEH_ROAD || vehicle->owner != CompanyID::Begin() || !vehicle->IsPrimaryVehicle()) return nullptr;
++	return vehicle;
++}
++
++static StationID StationForTownSlot(uint8_t slot, const RlEnvironmentActionPlan &plan)
++{
++	if (slot >= plan.stop_tiles.size()) return StationID::Invalid();
++	TileIndex tile{plan.stop_tiles[slot]};
++	if (!IsStationRoadStopTile(tile) || !IsBusStop(tile) || GetTileOwner(tile) != CompanyID::Begin()) return StationID::Invalid();
++	return GetStationIndex(tile);
++}
++
++static bool ConnectorBuilt(const RlEnvironmentActionPlan &plan)
++{
++	TileIndex start{plan.connector_start_tile};
++	TileIndex end{plan.connector_end_tile};
++	if (IsRoadDepotTile(end)) return true;
++	if (!IsNormalRoadTile(start) || !IsNormalRoadTile(end) || !HasTileRoadType(start, RTT_ROAD) || !HasTileRoadType(end, RTT_ROAD)) return false;
++	Axis axis = static_cast<Axis>(plan.connector_axis);
++	return (GetRoadBits(start, RTT_ROAD) & AxisToRoadBits(axis)) != ROAD_NONE &&
++		(GetRoadBits(end, RTT_ROAD) & AxisToRoadBits(axis)) != ROAD_NONE;
++}
++
++static bool RouteMatches(const Vehicle *vehicle, StationID origin, StationID destination)
++{
++	std::array<StationID, 2> observed{StationID::Invalid(), StationID::Invalid()};
++	uint8_t count = 0;
++	for (const Order &order : vehicle->Orders()) {
++		if (!order.IsType(OT_GOTO_STATION)) continue;
++		if (count < observed.size()) observed[count] = order.GetDestination().ToStationID();
++		++count;
++	}
++	return count == 2 && observed[0] == origin && observed[1] == destination;
++}
++
++static Order StationOrder(StationID station)
++{
++	Order order;
++	order.MakeGoToStation(station);
++	order.SetStopLocation(OrderStopLocation::FarEnd);
++	return order;
++}
++
++static bool NativeLegal(const DecodedAction &action, const RlActionSelection &selection)
++{
++	const RlEnvironmentActionPlan plan = GetRlEnvironmentActionPlan();
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	switch (action.family) {
++		case ActionFamily::Wait:
++			return true;
++		case ActionFamily::SelectTowns:
++			return Town::IsValidID(TownID{action.first}) && Town::IsValidID(TownID{action.second}) && action.first != action.second &&
++				(selection.origin_town_slot != action.first || selection.destination_town_slot != action.second);
++		case ActionFamily::BuildRoadConnector: {
++			if (ConnectorBuilt(plan) || IsRoadDepotTile(TileIndex{plan.depot_tile})) return false;
++			CommandCost cost = Command<CMD_BUILD_LONG_ROAD>::Do({}, TileIndex{plan.connector_end_tile}, TileIndex{plan.connector_start_tile},
++				ROADTYPE_ROAD, static_cast<Axis>(plan.connector_axis), DRD_NONE, false, true, true);
++			return cost.Succeeded();
++		}
++		case ActionFamily::BuildBusStop: {
++			if (action.first >= plan.stop_tiles.size() || action.second != plan.stop_directions[action.first]) return false;
++			TileIndex tile{plan.stop_tiles[action.first]};
++			if (IsStationRoadStopTile(tile)) return false;
++			CommandCost cost = Command<CMD_BUILD_ROAD_STOP>::Do({}, tile, 1, 1, RoadStopType::Bus, false,
++				static_cast<DiagDirection>(action.second), ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
++			return cost.Succeeded();
++		}
++		case ActionFamily::BuildRoadDepot: {
++			if (action.first != plan.depot_direction || !ConnectorBuilt(plan) || IsRoadDepotTile(TileIndex{plan.depot_tile})) return false;
++			CommandCost cost = Command<CMD_BUILD_ROAD_DEPOT>::Do({}, TileIndex{plan.depot_tile}, ROADTYPE_ROAD, static_cast<DiagDirection>(action.first));
++			return cost.Succeeded();
++		}
++		case ActionFamily::BuyBus: {
++			if (!IsRoadDepotTile(TileIndex{plan.depot_tile}) || Vehicle::GetNumItems() >= MAX_VEHICLE_SLOTS || !IsValidCargoType(passengers)) return false;
++			auto [cost, vehicle_id, refit_capacity, refit_mail, capacities] = Command<CMD_BUILD_VEHICLE>::Do({}, TileIndex{plan.depot_tile}, BUS_ENGINE, true, passengers, INVALID_CLIENT_ID);
++			(void)vehicle_id; (void)refit_capacity; (void)refit_mail; (void)capacities;
++			return cost.Succeeded();
++		}
++		case ActionFamily::AssignRoute: {
++			const Vehicle *vehicle = GetBus(action.first);
++			if (vehicle == nullptr || selection.origin_town_slot >= 2 || selection.destination_town_slot >= 2 || selection.origin_town_slot == selection.destination_town_slot) return false;
++			StationID origin = StationForTownSlot(selection.origin_town_slot, plan);
++			StationID destination = StationForTownSlot(selection.destination_town_slot, plan);
++			if (!Station::IsValidID(origin) || !Station::IsValidID(destination) || origin == destination || RouteMatches(vehicle, origin, destination)) return false;
++			CommandCost first = Command<CMD_INSERT_ORDER>::Do({}, vehicle->index, VehicleOrderID{0}, StationOrder(origin));
++			CommandCost second = Command<CMD_INSERT_ORDER>::Do({}, vehicle->index, VehicleOrderID{0}, StationOrder(destination));
++			return first.Succeeded() && second.Succeeded();
++		}
++		case ActionFamily::SetRunning: {
++			const Vehicle *vehicle = GetBus(action.first);
++			if (vehicle == nullptr || !vehicle->vehstatus.Test(VehState::Stopped) || vehicle->GetNumManualOrders() != 2) return false;
++			return Command<CMD_START_STOP_VEHICLE>::Do({}, vehicle->index, false).Succeeded();
++		}
++		case ActionFamily::SetStopped: {
++			const Vehicle *vehicle = GetBus(action.first);
++			if (vehicle == nullptr || vehicle->vehstatus.Test(VehState::Stopped)) return false;
++			return Command<CMD_START_STOP_VEHICLE>::Do({}, vehicle->index, false).Succeeded();
++		}
++	}
++	return false;
++}
++
++static json Parameters(uint16_t index)
++{
++	const DecodedAction action = Decode(index);
++	const RlEnvironmentActionPlan plan = GetRlEnvironmentActionPlan();
++	switch (action.family) {
++		case ActionFamily::Wait: return json::object();
++		case ActionFamily::SelectTowns: return {{"destination_town_slot", action.second}, {"origin_town_slot", action.first}};
++		case ActionFamily::BuildRoadConnector: return {{"axis", plan.connector_axis}, {"end_tile", plan.connector_end_tile}, {"start_tile", plan.connector_start_tile}};
++		case ActionFamily::BuildBusStop: return {{"orientation", action.second}, {"site_town_slot", action.first}, {"tile", plan.stop_tiles[action.first]}};
++		case ActionFamily::BuildRoadDepot: return {{"orientation", action.first}, {"tile", plan.depot_tile}};
++		case ActionFamily::BuyBus: return {{"depot_tile", plan.depot_tile}, {"engine_id", BUS_ENGINE.base()}};
++		case ActionFamily::AssignRoute: return {{"vehicle_slot", action.first}};
++		case ActionFamily::SetRunning:
++		case ActionFamily::SetStopped: return {{"vehicle_slot", action.first}};
++	}
++	return json::object();
++}
++
++static json CommandLog(std::string_view command, std::string_view phase, const CommandCost &cost)
++{
++	return {
++		{"command", command},
++		{"cost", cost.Succeeded() ? cost.GetCost().base() : 0},
++		{"error_message_id", static_cast<uint64_t>(cost.GetErrorMessage())},
++		{"extra_error_message_id", static_cast<uint64_t>(cost.GetExtraErrorMessage())},
++		{"phase", phase},
++		{"status", cost.Succeeded() ? "SUCCESS" : "REJECTED"},
++	};
++}
++
++static void RequireRollback(const CommandCost &cost, std::string_view operation)
++{
++	if (cost.Failed()) throw std::runtime_error(fmt::format("M05 route rollback command {} failed error={} extra={}", operation, cost.GetErrorMessage(), cost.GetExtraErrorMessage()));
++}
++
++static void RollbackOrders(VehicleID vehicle_id, const std::vector<Order> &prior, json &commands)
++{
++	CommandCost clear = Command<CMD_DELETE_ORDER>::Do(DoCommandFlag::Execute, vehicle_id, INVALID_VEH_ORDER_ID);
++	commands.push_back(CommandLog("CMD_DELETE_ORDER_ALL", "ROLLBACK", clear));
++	RequireRollback(clear, "clear");
++	for (uint8_t index = 0; index < prior.size(); ++index) {
++		CommandCost restore = Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle_id, VehicleOrderID{index}, prior[index]);
++		commands.push_back(CommandLog("CMD_INSERT_ORDER", "ROLLBACK", restore));
++		RequireRollback(restore, "restore");
++	}
++}
++
++static json SourceProjection(const RlActionSelection &selection)
++{
++	const RlEnvironmentActionPlan plan = GetRlEnvironmentActionPlan();
++	json stops = json::array();
++	for (uint8_t slot = 0; slot < plan.stop_tiles.size(); ++slot) {
++		TileIndex tile{plan.stop_tiles[slot]};
++		bool present = IsStationRoadStopTile(tile) && IsBusStop(tile);
++		stops.push_back({
++			{"actual_direction", present && IsBayRoadStopTile(tile) ? static_cast<int>(GetBayRoadStopDir(tile)) : -1},
++			{"expected_direction", plan.stop_directions[slot]},
++			{"owner", present ? static_cast<int>(GetTileOwner(tile).base()) : -1},
++			{"station_id", present ? static_cast<int>(GetStationIndex(tile).base()) : -1},
++			{"tile", tile.base()},
++			{"town_slot", slot},
++		});
++	}
++	json vehicles = json::array();
++	for (uint8_t slot = 0; slot < MAX_VEHICLE_SLOTS; ++slot) {
++		const Vehicle *vehicle = GetBus(slot);
++		json orders = json::array();
++		if (vehicle != nullptr) {
++			for (const Order &order : vehicle->Orders()) if (order.IsType(OT_GOTO_STATION)) orders.push_back(order.GetDestination().ToStationID().base());
++		}
++		vehicles.push_back({
++			{"orders", std::move(orders)},
++			{"present", vehicle != nullptr},
++			{"running", vehicle != nullptr && !vehicle->vehstatus.Test(VehState::Stopped)},
++			{"slot", slot},
++			{"tile", vehicle == nullptr ? -1 : static_cast<int>(vehicle->tile.base())},
++		});
++	}
++	const Company *company = Company::Get(CompanyID::Begin());
++	TileIndex depot_tile{plan.depot_tile};
++	TileIndex connector_start{plan.connector_start_tile};
++	TileIndex connector_end{plan.connector_end_tile};
++	return {
++		{"company", {{"balance", company->money.base()}, {"id", company->index.base()}}},
++		{"connector", {{"axis", plan.connector_axis}, {"built", ConnectorBuilt(plan)}, {"end_owner", IsRoadDepotTile(connector_end) ? static_cast<int>(GetTileOwner(connector_end).base()) : IsNormalRoadTile(connector_end) ? static_cast<int>(GetRoadOwner(connector_end, RTT_ROAD).base()) : -1}, {"end_tile", plan.connector_end_tile}, {"start_owner", IsNormalRoadTile(connector_start) ? static_cast<int>(GetRoadOwner(connector_start, RTT_ROAD).base()) : -1}, {"start_tile", plan.connector_start_tile}}},
++		{"depot", {{"actual_direction", IsRoadDepotTile(depot_tile) ? static_cast<int>(GetRoadDepotDirection(depot_tile)) : -1}, {"expected_direction", plan.depot_direction}, {"owner", IsRoadDepotTile(depot_tile) ? static_cast<int>(GetTileOwner(depot_tile).base()) : -1}, {"present", IsRoadDepotTile(depot_tile)}, {"tile", plan.depot_tile}}},
++		{"selection", {{"destination_town_slot", selection.destination_town_slot == RL_ACTION_UNSELECTED_TOWN ? -1 : selection.destination_town_slot}, {"origin_town_slot", selection.origin_town_slot == RL_ACTION_UNSELECTED_TOWN ? -1 : selection.origin_town_slot}}},
++		{"stops", std::move(stops)},
++		{"town_slots_present", {Town::IsValidID(TownID{0}), Town::IsValidID(TownID{1})}},
++		{"vehicles", std::move(vehicles)},
++	};
++}
++
++} // namespace
++
++RlActionMask BuildRlActionMask(const RlActionSelection &selection)
++{
++	RlActionMask mask;
++	for (uint16_t index = 0; index < RL_ACTION_COUNT; ++index) mask.legal[index] = NativeLegal(Decode(index), selection) ? 1 : 0;
++	return mask;
++}
++
++std::string SerializeRlActionMask(const RlActionMask &mask, const RlActionSelection &selection, bool include_source_projection)
++{
++	json legal = json::array();
++	uint16_t legal_count = 0;
++	for (uint8_t value : mask.legal) {
++		legal.push_back(value);
++		legal_count += value;
++	}
++	json result = {
++		{"action_count", RL_ACTION_COUNT},
++		{"compatibility_sha256", ACTION_COMPATIBILITY_SHA256},
++		{"dtype", "uint8"},
++		{"legal", std::move(legal)},
++		{"legal_count", legal_count},
++		{"schema_version", "openttd-rl-v1-m05-action-mask-1"},
++	};
++	if (include_source_projection) result["source_projection"] = SourceProjection(selection);
++	return result.dump();
++}
++
++std::string RlActionMaskToken(const RlActionMask &mask, std::string_view boundary_token)
++{
++	uint64_t hash = 1469598103934665603ULL;
++	for (uint8_t value : boundary_token) hash = (hash ^ value) * 1099511628211ULL;
++	for (uint8_t value : mask.legal) hash = (hash ^ value) * 1099511628211ULL;
++	return fmt::format("m05m1:{:016x}", hash);
++}
++
++std::string ExecuteRlAction(uint16_t action_index, RlActionSelection &selection, std::string_view injected_failure)
++{
++	const DecodedAction action = Decode(action_index);
++	const RlEnvironmentActionPlan plan = GetRlEnvironmentActionPlan();
++	Company *company = Company::Get(CompanyID::Begin());
++	json commands = json::array();
++	std::string_view outcome = "SUCCESS";
++	bool rolled_back = false;
++	Money balance_before = company->money;
++	uint64_t tick_before = TimerGameTick::counter;
++	if (!injected_failure.empty() && (injected_failure != "route-after-first-order" || action.family != ActionFamily::AssignRoute)) {
++		throw std::runtime_error(fmt::format("unsupported M05 injected failure hook '{}' for {}", injected_failure, FamilyName(action.family)));
++	}
++
++	auto execute_one = [&commands, &outcome](std::string_view name, auto &&call) {
++		CommandCost cost = call();
++		commands.push_back(CommandLog(name, "EXECUTE", cost));
++		if (cost.Failed()) outcome = "NATIVE_REJECTED";
++		return cost;
++	};
++
++	switch (action.family) {
++		case ActionFamily::Wait:
++			outcome = "NO_OP";
++			break;
++		case ActionFamily::SelectTowns:
++			selection.origin_town_slot = action.first;
++			selection.destination_town_slot = action.second;
++			break;
++		case ActionFamily::BuildRoadConnector:
++			execute_one("CMD_BUILD_LONG_ROAD", [&] { return Command<CMD_BUILD_LONG_ROAD>::Do(DoCommandFlag::Execute,
++				TileIndex{plan.connector_end_tile}, TileIndex{plan.connector_start_tile}, ROADTYPE_ROAD,
++				static_cast<Axis>(plan.connector_axis), DRD_NONE, false, true, true); });
++			break;
++		case ActionFamily::BuildBusStop:
++			execute_one("CMD_BUILD_ROAD_STOP", [&] { return Command<CMD_BUILD_ROAD_STOP>::Do(DoCommandFlag::Execute,
++				TileIndex{plan.stop_tiles[action.first]}, 1, 1, RoadStopType::Bus, false, static_cast<DiagDirection>(action.second),
++				ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false); });
++			break;
++		case ActionFamily::BuildRoadDepot:
++			execute_one("CMD_BUILD_ROAD_DEPOT", [&] { return Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute,
++				TileIndex{plan.depot_tile}, ROADTYPE_ROAD, static_cast<DiagDirection>(action.first)); });
++			break;
++		case ActionFamily::BuyBus: {
++			CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++			auto result = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, TileIndex{plan.depot_tile}, BUS_ENGINE, true, passengers, INVALID_CLIENT_ID);
++			CommandCost cost = std::get<0>(result);
++			commands.push_back(CommandLog("CMD_BUILD_VEHICLE", "EXECUTE", cost));
++			if (cost.Failed()) outcome = "NATIVE_REJECTED";
++			break;
++		}
++		case ActionFamily::AssignRoute: {
++			Vehicle *vehicle = Vehicle::Get(VehicleID{action.first});
++			StationID origin = StationForTownSlot(selection.origin_town_slot, plan);
++			StationID destination = StationForTownSlot(selection.destination_town_slot, plan);
++			std::vector<Order> prior;
++			for (const Order &order : vehicle->Orders()) prior.push_back(order);
++			CommandCost clear = Command<CMD_DELETE_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, INVALID_VEH_ORDER_ID);
++			commands.push_back(CommandLog("CMD_DELETE_ORDER_ALL", "EXECUTE", clear));
++			if (clear.Failed()) {
++				outcome = "NATIVE_REJECTED";
++				break;
++			}
++			CommandCost first = Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, VehicleOrderID{0}, StationOrder(origin));
++			commands.push_back(CommandLog("CMD_INSERT_ORDER", "EXECUTE", first));
++			if (first.Failed() || injected_failure == "route-after-first-order") {
++				RollbackOrders(vehicle->index, prior, commands);
++				rolled_back = true;
++				outcome = "NATIVE_REJECTED";
++				break;
++			}
++			CommandCost second = Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, VehicleOrderID{1}, StationOrder(destination));
++			commands.push_back(CommandLog("CMD_INSERT_ORDER", "EXECUTE", second));
++			if (second.Failed()) {
++				RollbackOrders(vehicle->index, prior, commands);
++				rolled_back = true;
++				outcome = "NATIVE_REJECTED";
++			}
++			break;
++		}
++		case ActionFamily::SetRunning:
++		case ActionFamily::SetStopped:
++			execute_one("CMD_START_STOP_VEHICLE", [&] { return Command<CMD_START_STOP_VEHICLE>::Do(DoCommandFlag::Execute, VehicleID{action.first}, false); });
++			break;
++	}
++
++	return json({
++		{"action_index", action_index},
++		{"balance_after", company->money.base()},
++		{"balance_before", balance_before.base()},
++		{"family", FamilyName(action.family)},
++		{"native_commands", std::move(commands)},
++		{"parameters", Parameters(action_index)},
++		{"rolled_back", rolled_back},
++		{"schema_version", "openttd-rl-v1-m05-action-result-1"},
++		{"status", outcome},
++		{"tick_after_command", TimerGameTick::counter},
++		{"tick_before_command", tick_before},
++	}).dump();
++}
+diff --git a/src/rl_action.h b/src/rl_action.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..0412d6895bd40587cf4e029096f4431bd8137a06
+--- /dev/null
++++ b/src/rl_action.h
+@@ -0,0 +1,35 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_action.h Authoritative fixed-catalog M05 policy action adapter. */
++
++#ifndef RL_ACTION_H
++#define RL_ACTION_H
++
++#include <array>
++#include <cstdint>
++#include <string>
++#include <string_view>
++
++static constexpr uint16_t RL_ACTION_COUNT = 41;
++static constexpr uint8_t RL_ACTION_UNSELECTED_TOWN = 0xFF;
++
++struct RlActionSelection {
++	uint8_t origin_town_slot = RL_ACTION_UNSELECTED_TOWN;
++	uint8_t destination_town_slot = RL_ACTION_UNSELECTED_TOWN;
++};
++
++struct RlActionMask {
++	std::array<uint8_t, RL_ACTION_COUNT> legal{};
++};
++
++RlActionMask BuildRlActionMask(const RlActionSelection &selection);
++std::string SerializeRlActionMask(const RlActionMask &mask, const RlActionSelection &selection, bool include_source_projection);
++std::string ExecuteRlAction(uint16_t action_index, RlActionSelection &selection, std::string_view injected_failure);
++std::string RlActionMaskToken(const RlActionMask &mask, std::string_view boundary_token);
++
++#endif /* RL_ACTION_H */
+diff --git a/src/rl_bridge.cpp b/src/rl_bridge.cpp
+index 0acee1bea27fe4b1583a23d4df6ddec4b5cd39a9..1a2398bf7c744b293fd00fdec216c1a835fa8963 100644
+--- a/src/rl_bridge.cpp
++++ b/src/rl_bridge.cpp
+@@ -14,6 +14,7 @@
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "company_base.h"
+ #include "openttd.h"
++#include "rl_action.h"
+ #include "rl_environment.h"
+ #include "rl_observation.h"
+ #include "timer/timer_game_tick.h"
+@@ -46,7 +47,6 @@ static constexpr uint16_t PROTOCOL_MAJOR = 1;
+ static constexpr uint16_t PROTOCOL_MINOR = 0;
+ static constexpr uint16_t FLAG_RESPONSE = 1;
+ static constexpr uint16_t FLAG_ERROR = 2;
+-static constexpr uint32_t MINIMUM_ACTION_INTERVAL_TICKS = 1;
+ static constexpr uint32_t MAXIMUM_ACTION_INTERVAL_TICKS = 128;
+ static constexpr uint64_t ACTION_HORIZON = 512;
+ static constexpr uint64_t TICK_HORIZON = 65536;
+@@ -271,7 +271,8 @@ private:
+ 	uint64_t last_request_id = 0;
+ 	uint64_t transition_ordinal = 0;
+ 	uint64_t tick_zero = 0;
+-	bool scripted_setup_applied = false;
++	RlActionSelection action_selection;
++	std::string last_mask_token;
+ 	bool truncated = false;
+ 
+ 	void ReadFrame(Frame &frame, bool &header_available)
+@@ -433,7 +434,8 @@ private:
+ 		++this->episode_id;
+ 		this->transition_ordinal = 0;
+ 		this->tick_zero = TimerGameTick::counter;
+-		this->scripted_setup_applied = false;
++		this->action_selection = {};
++		this->last_mask_token.clear();
+ 		this->truncated = false;
+ 		this->lifecycle = Lifecycle::AtBoundary;
+ 		json response = this->ResponseBase();
+@@ -483,62 +485,88 @@ private:
+ 		if (this->lifecycle != Lifecycle::AtBoundary && this->lifecycle != Lifecycle::Paused) {
+ 			throw BridgeError("INVALID_LIFECYCLE", "LEGAL_ACTIONS requires AT_BOUNDARY or PAUSED");
+ 		}
+-		RequireEmptyPayload(payload);
++		if (payload.size() != 2 || !payload.contains("action_compatibility_sha256") ||
++				payload.at("action_compatibility_sha256") != "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536" ||
++				!payload.contains("include_source_projection") || !payload.at("include_source_projection").is_boolean()) {
++			throw BridgeError("BAD_PAYLOAD", "M05 legal-action payload or compatibility identity mismatch");
++		}
+ 		this->ValidateHandle(request);
+ 		this->ValidateCurrentTransition(request);
+-		json actions = json::array();
+-		if (this->lifecycle == Lifecycle::AtBoundary && !this->truncated) {
+-			actions.push_back({{"id", 0}, {"name", "WAIT"}});
+-			if (!this->scripted_setup_applied) actions.push_back({{"id", 1}, {"name", "M02_SCRIPTED_BUS_SETUP"}});
++		uint64_t tick_before = TimerGameTick::counter;
++		std::string snapshot_before = BuildRlEnvironmentBridgeSnapshot();
++		RlActionMask mask;
++		if (this->lifecycle == Lifecycle::AtBoundary && !this->truncated) mask = BuildRlActionMask(this->action_selection);
++		if (TimerGameTick::counter != tick_before || BuildRlEnvironmentBridgeSnapshot() != snapshot_before) {
++			throw BridgeError("INTERNAL_INVARIANT", "M05 mask generation perturbed the synchronized engine snapshot", true);
+ 		}
++		this->last_mask_token = RlActionMaskToken(mask, this->BoundaryToken());
+ 		json response = this->ResponseBase();
+ 		response["boundary_token"] = this->BoundaryToken();
+-		response["legal_actions"] = std::move(actions);
++		response["executable"] = this->lifecycle == Lifecycle::AtBoundary && !this->truncated;
++		response["mask"] = json::parse(SerializeRlActionMask(mask, this->action_selection, payload.at("include_source_projection").get<bool>()));
++		response["mask_token"] = this->last_mask_token;
+ 		return response;
+ 	}
+ 
+ 	json Step(const Frame &request, const json &payload)
+ 	{
+ 		if (this->lifecycle != Lifecycle::AtBoundary) throw BridgeError("INVALID_LIFECYCLE", "STEP requires AT_BOUNDARY");
+-		if (payload.size() != 4 || !payload.contains("action_id") || !payload.contains("action_interval_ticks") || !payload.contains("boundary_token")) {
+-			throw BridgeError("BAD_PAYLOAD", "STEP payload field inventory is invalid");
++		if (payload.size() != 6 || !payload.contains("action_compatibility_sha256") || !payload.contains("action_index") ||
++				!payload.contains("boundary_token") || !payload.contains("bridge_compatibility_sha256") ||
++				!payload.contains("inject_native_failure") || !payload.contains("mask_token")) {
++			throw BridgeError("BAD_PAYLOAD", "M05 STEP payload field inventory is invalid");
+ 		}
+ 		RequireCompatibility(payload);
+-		this->ValidateHandle(request);
+-		if (request.transition_ordinal != this->transition_ordinal + 1) {
+-			throw BridgeError("STALE_BOUNDARY", "STEP transition ordinal is not the next transition");
++		if (payload.at("action_compatibility_sha256") != "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536") {
++			throw BridgeError("BAD_PAYLOAD", "M05 action compatibility identity mismatch");
+ 		}
+-		if (payload.at("boundary_token") != this->BoundaryToken()) throw BridgeError("STALE_BOUNDARY", "STEP boundary token is stale");
+-		if (!payload.at("action_interval_ticks").is_number_unsigned()) {
+-			throw BridgeError("BAD_PAYLOAD", "STEP action interval must be an unsigned integer");
++		if (!payload.at("inject_native_failure").is_null() && !payload.at("inject_native_failure").is_string()) {
++			throw BridgeError("BAD_PAYLOAD", "inject_native_failure must be null or a string");
+ 		}
+-		uint64_t requested_action_interval_ticks = payload.at("action_interval_ticks").get<uint64_t>();
+-		if (requested_action_interval_ticks < MINIMUM_ACTION_INTERVAL_TICKS || requested_action_interval_ticks > MAXIMUM_ACTION_INTERVAL_TICKS) {
+-			throw BridgeError("BAD_PAYLOAD", "STEP action interval must be in 1..128 ticks");
++		this->ValidateHandle(request);
++		if (request.transition_ordinal != this->transition_ordinal + 1) {
++			throw BridgeError("STALE_REJECTED", "STEP transition ordinal is not the next transition");
+ 		}
+-		uint32_t action_interval_ticks = static_cast<uint32_t>(requested_action_interval_ticks);
++		if (payload.at("boundary_token") != this->BoundaryToken()) throw BridgeError("STALE_REJECTED", "STEP boundary token is stale");
++		if (this->last_mask_token.empty() || payload.at("mask_token") != this->last_mask_token) throw BridgeError("STALE_REJECTED", "STEP mask token is stale or was not issued for this boundary");
+ 		if (this->truncated) throw BridgeError("INVALID_ACTION", "episode horizon is already exhausted");
+-		if (!payload.at("action_id").is_number_unsigned()) throw BridgeError("INVALID_ACTION", "action_id must be an unsigned integer");
+-		uint64_t requested_action_id = payload.at("action_id").get<uint64_t>();
+-		if (requested_action_id > 1 || (requested_action_id == 1 && this->scripted_setup_applied)) {
+-			throw BridgeError("INVALID_ACTION", "action_id is not legal at this boundary");
++		if (!payload.at("action_index").is_number_unsigned()) throw BridgeError("INVALID_ACTION", "action_index must be an unsigned integer");
++		uint64_t requested_action_index = payload.at("action_index").get<uint64_t>();
++		if (requested_action_index >= RL_ACTION_COUNT) {
++			json response = this->ResponseBase();
++			response["action_outcome"] = {{"action_index", requested_action_index}, {"status", "ILLEGAL_INPUT"}};
++			response["advanced_ticks"] = 0;
++			response["snapshot"] = this->Snapshot();
++			return response;
++		}
++		uint16_t action_index = static_cast<uint16_t>(requested_action_index);
++		RlActionMask current_mask = BuildRlActionMask(this->action_selection);
++		if (!current_mask.legal[action_index]) {
++			json response = this->ResponseBase();
++			response["action_outcome"] = {{"action_index", action_index}, {"status", "ILLEGAL_INPUT"}};
++			response["advanced_ticks"] = 0;
++			response["snapshot"] = this->Snapshot();
++			return response;
+ 		}
+-		uint32_t action_id = static_cast<uint32_t>(requested_action_id);
+ 
+ 		std::string pre_boundary = this->BoundaryToken();
+ 		uint64_t before = TimerGameTick::counter;
+ 		this->lifecycle = Lifecycle::Executing;
+-		if (action_id == 1) {
+-			ApplyRlEnvironmentBridgeScriptedBusSetup();
+-			this->scripted_setup_applied = true;
++		std::string injected_failure = payload.at("inject_native_failure").is_null() ? "" : payload.at("inject_native_failure").get<std::string>();
++		json action_result;
++		try {
++			action_result = json::parse(ExecuteRlAction(action_index, this->action_selection, injected_failure));
++		} catch (const std::exception &error) {
++			throw BridgeError("INTEGRATION_FAILURE", fmt::format("M05 action adapter failed: {}", error.what()), true);
+ 		}
+ 		this->lifecycle = Lifecycle::Advancing;
+-		for (uint32_t tick = 0; tick < action_interval_ticks; ++tick) StateGameLoop();
++		for (uint32_t tick = 0; tick < MAXIMUM_ACTION_INTERVAL_TICKS; ++tick) StateGameLoop();
+ 		uint64_t after = TimerGameTick::counter;
+-		if (after - before != action_interval_ticks) {
+-			throw BridgeError("INTERNAL_INVARIANT", fmt::format("StateGameLoop advanced {} ticks instead of {}", after - before, action_interval_ticks), true);
++		if (after - before != MAXIMUM_ACTION_INTERVAL_TICKS) {
++			throw BridgeError("INTERNAL_INVARIANT", fmt::format("StateGameLoop advanced {} ticks instead of {}", after - before, MAXIMUM_ACTION_INTERVAL_TICKS), true);
+ 		}
+ 		this->transition_ordinal = request.transition_ordinal;
++		this->last_mask_token.clear();
+ 		uint64_t relative_ticks = after - this->tick_zero;
+ 		bool action_horizon = this->transition_ordinal >= ACTION_HORIZON;
+ 		bool tick_horizon = relative_ticks >= TICK_HORIZON;
+@@ -546,7 +574,7 @@ private:
+ 		this->lifecycle = Lifecycle::AtBoundary;
+ 
+ 		json response = this->ResponseBase();
+-		response["action_outcome"] = { {"action_id", action_id}, {"status", "EXECUTED"} };
++		response["action_outcome"] = std::move(action_result);
+ 		response["advanced_ticks"] = after - before;
+ 		response["post_boundary_token"] = this->BoundaryToken();
+ 		response["pre_boundary_token"] = std::move(pre_boundary);
+diff --git a/src/rl_environment.cpp b/src/rl_environment.cpp
+index 3b03a3b204c3f3b8810c4d2c89da735069328d79..ef70a3ff3e86a6959fc7a6b55364cd2b93f2deb0 100644
+--- a/src/rl_environment.cpp
++++ b/src/rl_environment.cpp
+@@ -837,13 +837,13 @@ std::string BuildRlEnvironmentBridgeSnapshot()
+ {
+ 	Require(bridge_spec != nullptr, "bridge snapshot requested before reset");
+ 	Require(Company::GetNumItems() == 1, "bridge snapshot company count is not one");
+-	Require(Vehicle::GetNumItems() <= 1, "bridge snapshot vehicle count exceeds the M03 fixture bound");
++	Require(Vehicle::GetNumItems() <= 8, "bridge snapshot vehicle count exceeds the M05 policy bound");
+ 	Company *company = Company::Get(CompanyID::Begin());
+ 	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
+ 	Require(IsValidCargoType(passengers), "passenger cargo label is unavailable");
+ 
+ 	json vehicle = nullptr;
+-	if (Vehicle::GetNumItems() == 1) {
++	if (Vehicle::GetNumItems() >= 1) {
+ 		const Vehicle *item = Vehicle::Get(VehicleID{0});
+ 		Require(item->type == VEH_ROAD, "M03 fixture vehicle is not a road vehicle");
+ 		vehicle = {
+@@ -898,6 +898,29 @@ void ApplyRlEnvironmentBridgeScriptedBusSetup()
+ 	Require(actions.size() == 8, "bridge scripted setup did not execute exactly eight commands");
+ }
+ 
++RlEnvironmentActionPlan GetRlEnvironmentActionPlan()
++{
++	Require(bridge_spec != nullptr, "M05 action plan requested before bridge reset");
++	auto depot_front = bridge_spec->depot;
++	DiagDirection depot_direction = ParseCardinalDirection(bridge_spec->depot_entrance);
++	if (bridge_spec->depot_entrance == "north") --depot_front.y;
++	else if (bridge_spec->depot_entrance == "south") ++depot_front.y;
++	else if (bridge_spec->depot_entrance == "east") ++depot_front.x;
++	else --depot_front.x;
++	Axis connector_axis = depot_front.x == bridge_spec->depot.x ? AXIS_Y : AXIS_X;
++	return {
++		static_cast<uint16_t>(TileXY(depot_front.x, depot_front.y).base()),
++		static_cast<uint16_t>(TileXY(bridge_spec->depot.x, bridge_spec->depot.y).base()),
++		static_cast<uint8_t>(connector_axis),
++		{static_cast<uint16_t>(TileXY(bridge_spec->stops[0].point.x, bridge_spec->stops[0].point.y).base()),
++			static_cast<uint16_t>(TileXY(bridge_spec->stops[1].point.x, bridge_spec->stops[1].point.y).base())},
++		{static_cast<uint8_t>(StopRouteEntranceDirection(*bridge_spec, 0)),
++			static_cast<uint8_t>(StopRouteEntranceDirection(*bridge_spec, 1))},
++		static_cast<uint16_t>(TileXY(bridge_spec->depot.x, bridge_spec->depot.y).base()),
++		static_cast<uint8_t>(depot_direction),
++	};
++}
++
+ void RunRlEnvironmentScenario(const std::string &instance_path, const std::string &projection_path, const std::string &trajectory_path, uint32_t repetitions)
+ {
+ 	try {
+diff --git a/src/rl_environment.h b/src/rl_environment.h
+index 94ad8739784ad73bb42dcce087295ad7c3ef52a0..716bbd83667dda0cdad57fbc40749f5820aaae9b 100644
+--- a/src/rl_environment.h
++++ b/src/rl_environment.h
+@@ -10,13 +10,25 @@
+ #ifndef RL_ENVIRONMENT_H
+ #define RL_ENVIRONMENT_H
+ 
++#include <array>
+ #include <cstdint>
+ #include <string>
+ 
++struct RlEnvironmentActionPlan {
++	uint16_t connector_start_tile;
++	uint16_t connector_end_tile;
++	uint8_t connector_axis;
++	std::array<uint16_t, 2> stop_tiles;
++	std::array<uint8_t, 2> stop_directions;
++	uint16_t depot_tile;
++	uint8_t depot_direction;
++};
++
+ bool IsRlEnvironmentScenarioActive();
+ void RunRlEnvironmentScenario(const std::string &instance_path, const std::string &projection_path, const std::string &trajectory_path, uint32_t repetitions);
+ std::string ResetRlEnvironmentBridgeScenario(const std::string &instance_path);
+ std::string BuildRlEnvironmentBridgeSnapshot();
+ void ApplyRlEnvironmentBridgeScriptedBusSetup();
++RlEnvironmentActionPlan GetRlEnvironmentActionPlan();
+ 
+ #endif /* RL_ENVIRONMENT_H */

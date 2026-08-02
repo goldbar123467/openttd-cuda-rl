@@ -310,8 +310,16 @@ bytes are little-endian IEEE-754 float32, structured then spatial.
 
 ### Output representation gate
 
-PPO requires a bounded output distribution. `M05` must select and prove exactly
-one of:
+M05 selects a fixed flat catalog with 41 semantic indices. Its compatibility
+identity is
+`215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536`;
+the normative registry is `config/v1/m05-action-contract.json`. The fixed policy
+head is 41 little-endian float32 logits (164 bytes) and the mask is 41 binary
+`uint8` values (41 bytes). Index meaning does not depend on pool iteration or a
+variable candidate list.
+
+M05 evaluated the three permitted representations before selecting the flat
+catalog:
 
 - a fixed flat action catalog;
 - multiple factored categorical heads with a deterministic validity/joint-action
@@ -319,27 +327,30 @@ one of:
 - a bounded deterministic candidate table with candidate features and a stable
   scorer.
 
-The decision must measure output size, legal-mask density, semantic stability of
-indices, compute/memory cost, ability to express all required bus operations, and
-native/ONNX/in-game support. A variable list whose order can change nondeterministically
-is forbidden.
+The fixed catalog wins because it is the smallest directly shared
+trainer/evaluator/ONNX/in-game representation that expresses the required route,
+has stable indices, and needs no joint-head normalization rule. A variable list
+whose order can change nondeterministically remains forbidden.
 
-### Initial action families
+### Frozen action families
 
-| Family | Required V1 disposition | Minimum semantic content |
+| Family | Accepted V1 disposition | Frozen semantic content |
 |---|---|---|
-| Wait/no-op | Include | fixed tick cost and no engine command |
-| Select town endpoints | Include or encode directly | bounded stable town slots |
-| Build road segment | Include | tile, direction/connectivity, ownership/cost |
-| Build road path | Include or explicitly replace with repeated segments | deterministic planner and transaction semantics |
-| Place bus stop | Include | tile, orientation/type, catchment/authority legality |
-| Build road depot | Include | tile, orientation, ownership |
-| Purchase bus | Include | depot, engine selection, cost, created vehicle identity |
-| Create/assign orders | Include | vehicle/route/station slots, order sequence semantics |
-| Start/stop vehicle | Include | vehicle slot and desired state |
-| Sell vehicle | Review before freeze | ownership, depot/state requirements, proceeds |
-| Remove infrastructure | Review before freeze | owned target, dependency checks, cost/refund |
-| Loan take/repay | Review before freeze | amount step, limits, balance result |
+| Wait/no-op | Included at index 0 | exactly 128 ticks and no engine command |
+| Select town endpoints | Included at indices 1–2 | ordered frozen M02 town slots 0/1 |
+| Build road segment/path | One deterministic macro at index 3 | frozen M02 connector endpoints/axis using `CMD_BUILD_LONG_ROAD` |
+| Place bus stop | Included at indices 4–11 | two planned sites by four explicit orientations |
+| Build road depot | Included at indices 12–15 | one planned site by four explicit orientations |
+| Purchase bus | Included at index 16 | depot 0 and engine 116; created direct vehicle identity |
+| Create/assign orders | Included at indices 17–24 | vehicle IDs 0–7 and selected endpoint stations |
+| Start/stop vehicle | Included at indices 25–40 | direct vehicle IDs 0–7 and explicit desired state |
+| Sell vehicle | `EXCLUDED_V1` | unnecessary for first useful route; requires a later compatibility version |
+| Remove infrastructure | `EXCLUDED_V1` | destructive lifecycle is outside first useful route |
+| Loan take/repay | `EXCLUDED_V1` | frozen scenarios need no policy-controlled loan operation |
+
+Entity candidates come only from the frozen M02 plan. Direct vehicle slots are
+bounded at 0–7 and do not compact or alias during an episode. Episodes allow at
+most 512 accepted actions and 65,536 ticks.
 
 ### Per-action definition
 
@@ -364,14 +375,18 @@ Every registry entry/family defines:
 Masks represent what is known legal at `S_t`. They must not claim that a legal
 action is guaranteed to succeed after asynchronous/stale state; such a failure has
 its own outcome. Mask generation uses deterministic canonical iteration and has a
-frozen resource bound.
+frozen 41-entry resource bound. The production mask first applies cheap gates and
+then normal OpenTTD `Command<...>::Do({})` test mode. Its FNV-1a token covers the
+boundary and all mask bytes; `STEP` rejects a different token or boundary without
+mutation.
 
 The mask application rule must:
 
 - verify identical action schema and length/shape;
 - exclude illegal logits before normalization/sampling;
 - avoid NaN from negative infinity/all-masked cases;
-- define one safe all-masked behavior, expected to be an always-legal wait action;
+- define one safe all-masked behavior: the shared policy adapter selects `WAIT`
+  while the native paused boundary remains explicitly non-executable;
 - validate a sampled action again before execution;
 - count any mask violation as a correctness defect, not ordinary exploration.
 

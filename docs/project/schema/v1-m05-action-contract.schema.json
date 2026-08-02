@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m05-action-contract.schema.json",
+  "title": "OpenTTD-RL V1 M05 action and mask contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "semantic_version",
+    "status",
+    "contract_id",
+    "engine",
+    "representation",
+    "boundary",
+    "slots",
+    "families",
+    "dispositions",
+    "mask",
+    "outcomes",
+    "transaction",
+    "logging",
+    "shared_adapter",
+    "identity"
+  ],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v1-m05-action-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v1-m05-action-contract-1"},
+    "semantic_version": {"const": "1.0.0"},
+    "status": {"const": "FROZEN"},
+    "contract_id": {"const": "m05-explicit-bus-actions-v1"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["openttd_version", "source_commit", "m03_bridge_compatibility_sha256", "m04_observation_compatibility_sha256", "m04_composed_source_identity_sha256"],
+      "properties": {
+        "openttd_version": {"const": "15.3"},
+        "source_commit": {"$ref": "#/$defs/sha1"},
+        "m03_bridge_compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "m04_observation_compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "m04_composed_source_identity_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "representation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected", "action_count", "logit_dtype", "logit_bytes", "mask_dtype", "mask_bytes", "stable_index_rule", "alternatives"],
+      "properties": {
+        "selected": {"const": "fixed-flat-semantic-catalog"},
+        "action_count": {"const": 41},
+        "logit_dtype": {"const": "float32"},
+        "logit_bytes": {"const": 164},
+        "mask_dtype": {"const": "uint8"},
+        "mask_bytes": {"const": 41},
+        "stable_index_rule": {"const": "index-meaning-never-depends-on-pool-iteration-or-current-legality"},
+        "alternatives": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/alternative"}}
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine_boundary", "legal_actions_message_type", "step_message_type", "fixed_tick_cost", "episode_action_budget", "episode_tick_budget", "mask_query_lifecycles", "step_lifecycle", "command_commit_order"],
+      "properties": {
+        "engine_boundary": {"const": "M03-complete-StateGameLoop-boundary"},
+        "legal_actions_message_type": {"const": 3},
+        "step_message_type": {"const": 4},
+        "fixed_tick_cost": {"const": 128},
+        "episode_action_budget": {"const": 512},
+        "episode_tick_budget": {"const": 65536},
+        "mask_query_lifecycles": {"const": ["AT_BOUNDARY", "PAUSED"]},
+        "step_lifecycle": {"const": "AT_BOUNDARY"},
+        "command_commit_order": {"const": "validate-identity-boundary-mask-index-then-command-then-128-StateGameLoop-calls"}
+      }
+    },
+    "slots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["town", "vehicle", "station_site", "depot_site"],
+      "properties": {
+        "town": {"$ref": "#/$defs/slot"},
+        "vehicle": {"$ref": "#/$defs/slot"},
+        "station_site": {"$ref": "#/$defs/slot"},
+        "depot_site": {"$ref": "#/$defs/slot"}
+      }
+    },
+    "families": {"type": "array", "minItems": 9, "maxItems": 9, "items": {"$ref": "#/$defs/family"}},
+    "dispositions": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/disposition"}},
+    "mask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shape", "ordering", "generator", "complete_check", "same_snapshot", "token", "sampling", "all_masked", "violation_policy", "paused_policy", "resource_bound"],
+      "properties": {
+        "shape": {"const": [41]},
+        "ordering": {"const": "action-index-ascending"},
+        "generator": {"const": "BuildRlActionMask"},
+        "complete_check": {"const": "normal-OpenTTD-Command-Do-test-mode-after-cheap-planner-gates"},
+        "same_snapshot": {"const": "same-boundary-token-as-M04-observation-and-step"},
+        "token": {"const": "FNV-1a-64-over-boundary-token-then-41-mask-bytes"},
+        "sampling": {"const": "reject-identity-or-shape-mismatch-set-illegal-probability-zero-softmax-legal-only"},
+        "all_masked": {"const": "adapter-selects-index-0-WAIT-with-fallback-flag-native-active-boundaries-always-mask-WAIT-legal"},
+        "violation_policy": {"const": "ILLEGAL_INPUT-zero-ticks-zero-engine-mutation-correctness-defect"},
+        "paused_policy": {"const": "all-zero-mask-executable-false"},
+        "resource_bound": {"const": "41-decodes-and-at-most-8-native-command-tests"}
+      }
+    },
+    "outcomes": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"$ref": "#/$defs/outcome"}},
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["macro", "policy", "sequence", "failure_injection", "rollback_failure"],
+      "properties": {
+        "macro": {"const": "ASSIGN_ROUTE"},
+        "policy": {"const": "agent-atomic-command-prefix-rollback"},
+        "sequence": {"const": ["snapshot-prior-orders", "CMD_DELETE_ORDER_ALL", "CMD_INSERT_ORDER-origin", "CMD_INSERT_ORDER-destination"]},
+        "failure_injection": {"const": "route-after-first-order"},
+        "rollback_failure": {"const": "INTEGRATION_FAILURE-fatal"}
+      }
+    },
+    "logging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_schema", "native_fields", "action_fields", "rejected_attempts"],
+      "properties": {
+        "action_schema": {"const": "openttd-rl-v1-m05-action-result-1"},
+        "native_fields": {"const": ["command", "phase", "status", "cost", "error_message_id", "extra_error_message_id"]},
+        "action_fields": {"const": ["action_index", "family", "parameters", "status", "rolled_back", "balance_before", "balance_after", "tick_before_command", "tick_after_command", "native_commands"]},
+        "rejected_attempts": {"const": "typed-response-or-error-with-zero-state-mutation"}
+      }
+    },
+    "shared_adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "consumers", "encode_decode", "mask_application", "rng_policy"],
+      "properties": {
+        "path": {"const": "scripts/v1/m05_action_adapter.py"},
+        "consumers": {"const": ["trainer", "evaluator", "onnx-runtime", "in-game-controller", "m05-oracle"]},
+        "encode_decode": {"const": "one-canonical-range-table"},
+        "mask_application": {"const": "one-canonical-stable-softmax-and-external-uniform-sampler"},
+        "rng_policy": {"const": "adapter-consumes-no-RNG-caller-supplies-uniform-in-[0,1)"}
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compatibility_algorithm", "compatibility_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "compatibility_algorithm": {"const": "sha256-canonical-json-v1"},
+        "compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_path": {"const": "docs/project/schema/v1-m05-action-contract.schema.json"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sha1": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "disposition", "measured_output", "rationale"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "disposition": {"enum": ["SELECTED", "REJECTED"]},
+        "measured_output": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 30}
+      }
+    },
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximum", "identity", "deletion", "reuse", "overflow"],
+      "properties": {
+        "maximum": {"type": "integer", "minimum": 1, "maximum": 16},
+        "identity": {"type": "string", "minLength": 1},
+        "deletion": {"type": "string", "minLength": 1},
+        "reuse": {"type": "string", "minLength": 1},
+        "overflow": {"type": "string", "minLength": 1}
+      }
+    },
+    "family": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family_id", "name", "index_start", "index_end", "count", "parameters", "cheap_mask", "complete_legality", "native_operations", "cost_semantics", "tick_semantics", "success_mutation", "failure_modes", "transaction", "reward_effect", "log_encoding", "tests"],
+      "properties": {
+        "family_id": {"type": "string", "pattern": "^FAM-[0-9]{3}$"},
+        "name": {"type": "string", "minLength": 1},
+        "index_start": {"type": "integer", "minimum": 0, "maximum": 40},
+        "index_end": {"type": "integer", "minimum": 0, "maximum": 40},
+        "count": {"type": "integer", "minimum": 1, "maximum": 41},
+        "parameters": {"type": "array", "items": {"type": "string"}},
+        "cheap_mask": {"type": "string", "minLength": 10},
+        "complete_legality": {"type": "string", "minLength": 10},
+        "native_operations": {"type": "array", "items": {"type": "string"}},
+        "cost_semantics": {"type": "string", "minLength": 5},
+        "tick_semantics": {"const": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls"},
+        "success_mutation": {"type": "string", "minLength": 5},
+        "failure_modes": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "transaction": {"type": "string", "minLength": 5},
+        "reward_effect": {"const": "none-in-M05-M06-owns-reward"},
+        "log_encoding": {"type": "string", "minLength": 5},
+        "tests": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate", "disposition", "rationale", "requirements"],
+      "properties": {
+        "candidate": {"enum": ["sell-vehicle", "remove-infrastructure", "loan-take-repay"]},
+        "disposition": {"const": "EXCLUDED_V1"},
+        "rationale": {"type": "string", "minLength": 30},
+        "requirements": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^ACT-[0-9]{3}$"}}
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "mutation", "ticks", "meaning"],
+      "properties": {
+        "name": {"enum": ["SUCCESS", "NO_OP", "STALE_REJECTED", "ILLEGAL_INPUT", "NATIVE_REJECTED", "INTEGRATION_FAILURE"]},
+        "mutation": {"type": "string", "minLength": 1},
+        "ticks": {"type": ["integer", "string"]},
+        "meaning": {"type": "string", "minLength": 10}
+      }
+    }
+  }
+}

@@ -231,9 +231,21 @@ comparisons overall. Observed and no-observation control workers have identical
 post-step snapshots; repeated encodings are byte-identical; wrong compatibility
 identities fail without mutation; and every spatial channel has a positive
 orientation-pattern fixture. Trainer, evaluator, ONNX Runtime, in-game, and
-oracle consumer adapters receive identical canonical native tensor bytes. Action
-mask, random/legal-policy, telemetry, and debug-overlay portions remain owned by
-later gates.
+oracle consumer adapters receive identical canonical native tensor bytes.
+
+`G05` closes the action and mask subset with two byte-identical all-template
+native roots. The fixed and deterministic-random campaigns compare the 41-bit
+production mask with an independent slow oracle at 614 actual-engine states.
+Every accepted step advances exactly 128 ticks; native command costs match company
+balance deltas; ownership, stop/depot/vehicle/order projections match expected
+mutation; and identity, masked-index, and stale-boundary errors commit no
+transition. An injected route failure restores the prior order list, while an
+unsupported internal hook is a fatal `INTEGRATION_FAILURE` at transition zero.
+All nine action families are exercised and each scripted template creates a
+running passenger service with positive delivery and revenue. Extreme-logit,
+single-legal, and all-zero mask sampling share one adapter across trainer,
+evaluator, ONNX, and in-game consumers. Telemetry and debug-overlay portions
+remain owned by later gates.
 
 ## PPO and model verification
 

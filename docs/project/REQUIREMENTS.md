@@ -82,12 +82,12 @@ cover the whole statement.
 | `SCOPE-016` | Scenario generation is reproducible from its versioned configuration and seed. | Independent repeated-reset digest campaign. | `PASS` |
 | `SCOPE-017` | Evaluation is deterministic wherever the pinned OpenTTD engine permits; known nondeterminism is measured and disclosed. | Repeated evaluation report and exception ledger. | `PASS` |
 | `SCOPE-018` | The agent can inspect towns, population/economic features, and road state through documented observations. | Observation semantic tests. | `PASS` |
-| `SCOPE-019` | The agent can choose two towns or population centers to connect. | Action integration trajectory. | `NOT_STARTED` |
-| `SCOPE-020` | The agent can build required road segments or paths. | Native-command integration tests. | `NOT_STARTED` |
-| `SCOPE-021` | The agent can place valid bus stops and required depots. | Placement and legality integration tests. | `NOT_STARTED` |
-| `SCOPE-022` | The agent can purchase a bus. | Vehicle-purchase integration test. | `NOT_STARTED` |
-| `SCOPE-023` | The agent can create, assign, and update bus routes/orders. | Order-list integration tests. | `NOT_STARTED` |
-| `SCOPE-024` | The agent can start bus service. | Vehicle-state integration test. | `NOT_STARTED` |
+| `SCOPE-019` | The agent can choose two towns or population centers to connect. | Action integration trajectory. | `PASS` |
+| `SCOPE-020` | The agent can build required road segments or paths. | Native-command integration tests. | `PASS` |
+| `SCOPE-021` | The agent can place valid bus stops and required depots. | Placement and legality integration tests. | `PASS` |
+| `SCOPE-022` | The agent can purchase a bus. | Vehicle-purchase integration test. | `PASS` |
+| `SCOPE-023` | The agent can create, assign, and update bus routes/orders. | Order-list integration tests. | `PASS` |
+| `SCOPE-024` | The agent can start bus service. | Vehicle-state integration test. | `PASS` |
 | `SCOPE-025` | The environment detects passenger delivery and resulting revenue. | Controlled delivery/economy test. | `NOT_STARTED` |
 | `SCOPE-026` | The policy can be penalized for repeated invalid, wasteful, destructive, idle, or unprofitable behavior. | Reward-component scenario tests. | `NOT_STARTED` |
 | `SCOPE-027` | A learned policy can maintain or improve a bus network over a multi-episode evaluation horizon. | Preregistered evaluation results. | `NOT_STARTED` |
@@ -100,7 +100,7 @@ cover the whole statement.
 | `LIFE-002` | Launch multiple isolated environments for batched rollout. | Isolation and batch integration test. | `PASS` |
 | `LIFE-003` | Reset each environment to a controlled initial state. | Reset contract tests. | `PASS` |
 | `LIFE-004` | Extract observations only at documented synchronization boundaries. | Boundary assertion and differential trace. | `PASS` |
-| `LIFE-005` | Generate legal action masks matching the same state snapshot as the observation. | Mask oracle and stale-state tests. | `NOT_STARTED` |
+| `LIFE-005` | Generate legal action masks matching the same state snapshot as the observation. | Mask oracle and stale-state tests. | `PASS` |
 | `LIFE-006` | Apply selected actions through explicit OpenTTD operations. | Command-path integration evidence. | `PASS` |
 | `LIFE-007` | Advance simulation by a configurable, deterministic stepping rule. | Tick-step tests. | `PASS` |
 | `LIFE-008` | Calculate scalar reward from separately retained components. | Reward unit/integration evidence. | `NOT_STARTED` |
@@ -188,26 +188,26 @@ An omitted candidate is not silently assumed irrelevant.
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `ACT-001` | Actions are explicit typed operations, never uncontrolled GUI imitation. | Versioned registry and source audit. | `NOT_STARTED` |
-| `ACT-002` | The action schema includes a no-op/wait action with defined tick cost. | Schema and step test. | `NOT_STARTED` |
-| `ACT-003` | The agent can select origin and destination towns through bounded, stable parameters. | Schema and town-slot tests. | `NOT_STARTED` |
-| `ACT-004` | The agent can build a road segment or reviewed deterministic road-path macro. | Native-command and atomicity tests. | `NOT_STARTED` |
-| `ACT-005` | The agent can place a bus stop with explicit tile/orientation semantics. | Placement tests. | `NOT_STARTED` |
-| `ACT-006` | The agent can construct the road-vehicle depot required to buy a bus. | Depot tests. | `NOT_STARTED` |
-| `ACT-007` | The agent can purchase a bus under a defined engine-selection policy. | Purchase/cost tests. | `NOT_STARTED` |
-| `ACT-008` | The agent can create and assign vehicle orders/routes. | Order identity and assignment tests. | `NOT_STARTED` |
-| `ACT-009` | The agent can start and stop a vehicle. | Vehicle-state test. | `NOT_STARTED` |
-| `ACT-010` | Sell-vehicle behavior is dispositioned before schema freeze. | Registry row and lifecycle tests. | `NOT_STARTED` |
-| `ACT-011` | Removal of owned invalid or unnecessary infrastructure is dispositioned before schema freeze. | Registry row and ownership tests. | `NOT_STARTED` |
-| `ACT-012` | Loan take/repay actions are dispositioned before schema freeze. | Registry row and economy tests. | `NOT_STARTED` |
-| `ACT-013` | Each action defines parameter domain, legal preconditions, failure modes, native operations, tick/cost semantics, reward effects, and log encoding. | Action registry lint and tests. | `NOT_STARTED` |
-| `ACT-014` | Known-illegal action instances are masked before policy sampling. | Mask differential test. | `NOT_STARTED` |
-| `ACT-015` | Legal action generation is deterministic and bounded for any valid V1 state. | Repeat/property/resource tests. | `NOT_STARTED` |
-| `ACT-016` | Multi-command macro actions are atomic from the agent perspective or expose explicit partial results and rollback policy. | Injected-failure tests. | `NOT_STARTED` |
-| `ACT-017` | Execution distinguishes legal success, stale-state failure, illegal action, no-op, and internal integration failure. | Outcome-enum tests and logs. | `NOT_STARTED` |
-| `ACT-018` | A mask/action schema mismatch fails closed and cannot silently remap logits. | Compatibility negative tests. | `NOT_STARTED` |
-| `ACT-019` | All-masked states have one documented safe resolution and never sample an invalid index. | Edge-case test. | `NOT_STARTED` |
-| `ACT-020` | Action IDs and parameter interpretation remain stable within a compatibility version. | Schema compatibility tests. | `NOT_STARTED` |
+| `ACT-001` | Actions are explicit typed operations, never uncontrolled GUI imitation. | Versioned registry and source audit. | `PASS` |
+| `ACT-002` | The action schema includes a no-op/wait action with defined tick cost. | Schema and step test. | `PASS` |
+| `ACT-003` | The agent can select origin and destination towns through bounded, stable parameters. | Schema and town-slot tests. | `PASS` |
+| `ACT-004` | The agent can build a road segment or reviewed deterministic road-path macro. | Native-command and atomicity tests. | `PASS` |
+| `ACT-005` | The agent can place a bus stop with explicit tile/orientation semantics. | Placement tests. | `PASS` |
+| `ACT-006` | The agent can construct the road-vehicle depot required to buy a bus. | Depot tests. | `PASS` |
+| `ACT-007` | The agent can purchase a bus under a defined engine-selection policy. | Purchase/cost tests. | `PASS` |
+| `ACT-008` | The agent can create and assign vehicle orders/routes. | Order identity and assignment tests. | `PASS` |
+| `ACT-009` | The agent can start and stop a vehicle. | Vehicle-state test. | `PASS` |
+| `ACT-010` | Sell-vehicle behavior is dispositioned before schema freeze. | Registry row and lifecycle tests. | `PASS` |
+| `ACT-011` | Removal of owned invalid or unnecessary infrastructure is dispositioned before schema freeze. | Registry row and ownership tests. | `PASS` |
+| `ACT-012` | Loan take/repay actions are dispositioned before schema freeze. | Registry row and economy tests. | `PASS` |
+| `ACT-013` | Each action defines parameter domain, legal preconditions, failure modes, native operations, tick/cost semantics, reward effects, and log encoding. | Action registry lint and tests. | `PASS` |
+| `ACT-014` | Known-illegal action instances are masked before policy sampling. | Mask differential test. | `PASS` |
+| `ACT-015` | Legal action generation is deterministic and bounded for any valid V1 state. | Repeat/property/resource tests. | `PASS` |
+| `ACT-016` | Multi-command macro actions are atomic from the agent perspective or expose explicit partial results and rollback policy. | Injected-failure tests. | `PASS` |
+| `ACT-017` | Execution distinguishes legal success, stale-state failure, illegal action, no-op, and internal integration failure. | Outcome-enum tests and logs. | `PASS` |
+| `ACT-018` | A mask/action schema mismatch fails closed and cannot silently remap logits. | Compatibility negative tests. | `PASS` |
+| `ACT-019` | All-masked states have one documented safe resolution and never sample an invalid index. | Edge-case test. | `PASS` |
+| `ACT-020` | Action IDs and parameter interpretation remain stable within a compatibility version. | Schema compatibility tests. | `PASS` |
 
 ## Reward requirements
 
@@ -324,10 +324,10 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 |---|---|---|---|
 | `TEST-001` | Test environment reset and seed reproducibility. | Unit/integration/repeat campaign. | `PASS` |
 | `TEST-002` | Test observation extraction, normalization, and every spatial channel. | Golden/differential tests. | `PASS` |
-| `TEST-003` | Test action encoding, decoding, legality, and masking. | Unit/property/integration tests. | `NOT_STARTED` |
+| `TEST-003` | Test action encoding, decoding, legality, and masking. | Unit/property/integration tests. | `PASS` |
 | `TEST-004` | Test every reward component and scalar aggregation. | Unit/scenario tests. | `NOT_STARTED` |
 | `TEST-005` | Test tick stepping and game-state synchronization. | Boundary/differential tests. | `PASS` |
-| `TEST-006` | Test bus purchasing, depot/stop placement, road construction, route creation, order assignment, and vehicle start. | Actual OpenTTD integration tests. | `NOT_STARTED` |
+| `TEST-006` | Test bus purchasing, depot/stop placement, road construction, route creation, order assignment, and vehicle start. | Actual OpenTTD integration tests. | `PASS` |
 | `TEST-007` | Test passenger delivery and profit calculation against actual OpenTTD state. | Controlled economic integration tests. | `NOT_STARTED` |
 | `TEST-008` | Test bankruptcy and every episode termination/truncation reason. | Scenario tests. | `NOT_STARTED` |
 | `TEST-009` | Test PPO advantages, clipping, losses, minibatching, shuffling, masking, gradients, and optimizer updates. | Reference-vector and differential tests. | `NOT_STARTED` |
@@ -336,7 +336,7 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | `TEST-012` | Test incompatible model rejection for every compatibility field. | Mutation matrix. | `NOT_STARTED` |
 | `TEST-013` | Test headless long-run stability and desynchronization detection. | Soak and fault campaign. | `NOT_STARTED` |
 | `TEST-014` | Test every CLI metric against its authoritative counter/source. | Monitor accuracy suite. | `NOT_STARTED` |
-| `TEST-015` | Critical gameplay behavior has both code-level assertions and actual-engine integration coverage. | Traceability lint. | `NOT_STARTED` |
+| `TEST-015` | Critical gameplay behavior has both code-level assertions and actual-engine integration coverage. | Traceability lint. | `PASS` |
 | `TEST-016` | Release gates include sanitizer, static-analysis, resource-bound, malformed-input, and failure-artifact checks appropriate to changed native code. | Quality-matrix result. | `NOT_STARTED` |
 
 ## Required architecture comparison

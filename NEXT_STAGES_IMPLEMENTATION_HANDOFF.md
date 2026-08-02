@@ -25,11 +25,51 @@ scripted bus trajectory that reaches passenger delivery and positive income on
 every template. It remains the frozen scenario/reset prerequisite for M03 and
 later gates.
 
-`M03/G03` now passes as well. The source-integrated bridge freezes inherited-pipe
+`M03/G03` passes as well. The source-integrated bridge freezes inherited-pipe
 framing, typed lifecycle operations, process-based environment isolation, and
-configurable 1-through-128-tick stepping. The immediate next milestone is M04
-observation/preprocessing contract work only; policy actions, rewards, PPO, and
-CUDA training remain downstream.
+configurable 1-through-128-tick stepping.
+
+`M04/G04` now passes. One source-integrated encoder freezes the structured and
+32-channel spatial observation, normalization, missing values, coordinate rules,
+and canonical bytes shared by trainer, evaluator, ONNX, and in-game consumers.
+Two byte-identical campaigns provide 264,192 independent actual-engine semantic
+comparisons and matched-control non-perturbation evidence.
+
+`M05/G05` now passes. The action compatibility freezes 41 stable semantic indices,
+boundary-bound legality masks, shared safe sampling, normal OpenTTD native command
+paths, route rollback, six outcome classes, and detailed subcommand logs. Two
+byte-identical campaigns compare 614 native/oracle masks and build profitable
+passenger service on every template. The immediate next milestone is M06 reward,
+termination, trajectory, and rollout-contract work only; PPO and CUDA training
+remain downstream.
+
+## M05/G05 completion checkpoint — 2026-08-01
+
+The action compatibility identity is
+`215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536`.
+The native patch has SHA-256
+`c512111713b3c03cd9d0fd6c621c69e1881f3aa837efc0d27e78e3f816a2d006`,
+produces tree `ad0575b92f7975ef085e5f35bfe182a504d6cb51`, and has composed source
+identity `9bb57367151fbf4eedcd802d179c946685a911bec9b99d7573501e0f52a3b2bd`.
+
+Two complete roots, `m05-action-oracle-20260801-a` and `-b`, are retained under
+`/home/thecl/.codex/artifacts/openttd-rl/` and are byte-identical. Their common
+manifest SHA-256 is
+`30700cfb8a556ddd7c23eec7463bac7a7f2bf365b9a94742fdeddd982cb2d7b8`.
+All nine action families execute, all 614 production masks match the independent
+oracle, route rollback and fatal failure classification pass, and all eight
+templates deliver passengers and earn positive income. Preserve this boundary
+while beginning M06.
+
+## M04/G04 completion checkpoint — 2026-08-01
+
+The observation compatibility identity is
+`7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb`.
+The accepted result tree is `fe815570b5c816c6b324a9bf63d965157ea425c6`
+and composed source identity is
+`820cf3ee0fb36734c318cb260e6cc4567a2a9acc55c831d5b36d1875341b291e`.
+The repeated native roots and exact evidence are recorded in
+`docs/project/G04_GATE_REPORT.md`; preserve them as M05 and M06 inputs.
 
 ## M03/G03 completion checkpoint — 2026-08-01
 
@@ -199,9 +239,10 @@ Historical G01 resumption point (now completed by the M02 feasibility checkpoint
 4. do not begin the bridge, observations/actions/reward, PPO, CUDA workload, or
    production ONNX integration before their owning gates.
 
-No M02 scenario work, environment bridge, or learning code had started at this
-historical checkpoint. The later map-feasibility and completed scenario/reset
-work are recorded above; the bridge and learning code still have not begun.
+No M02 scenario work, environment bridge, or learning code had started at that
+historical checkpoint. The later completed scenario/reset, bridge, observation,
+and action/mask work is recorded above; rewards, trajectories, and learning code
+have not begun.
 
 ## Authority and read order
 
@@ -277,10 +318,10 @@ authorization to expand scope.
 | `M01` | reproducible V1 OpenTTD/toolchain/headless/playable profile | `PASS` | `G01_GATE_REPORT.md` records the deterministic 15-check closure audit |
 | `M02` | 32x32 passenger-bus scenario/reset | `PASS` | `G02_GATE_REPORT.md` records repeated native reset and scripted trajectory evidence |
 | `M03` | synchronized headless bridge | `PASS` | `G03_GATE_REPORT.md` records repeated lifecycle, tick, isolation, and non-perturbation evidence |
-| `M04` | observation/preprocessing contract | `NOT_STARTED` | no V1 schema/encoder |
-| `M05` | action/mask/execution contract | `NOT_STARTED` | no V1 action representation/adapter |
+| `M04` | observation/preprocessing contract | `PASS` | `G04_GATE_REPORT.md` records exhaustive semantics and non-perturbation |
+| `M05` | action/mask/execution contract | `PASS` | `G05_GATE_REPORT.md` records mask-oracle and useful-service evidence |
 | `M06` | reward/episode/trajectory contract | `NOT_STARTED` | no V1 artifacts |
-| `M07` | CPU PPO and structured MLP | `NOT_STARTED` | environment gates open |
+| `M07` | CPU PPO and structured MLP | `NOT_STARTED` | G06 remains open |
 | `M08` | CNN/combined/measured CUDA | `NOT_STARTED` | PPO/CPU baseline absent |
 | `M09` | independent evaluation/baselines | `NOT_STARTED` | evaluator and policies absent |
 | `M10` | checkpoint/ONNX/package/equivalence | `NOT_STARTED` | model pipeline absent |
@@ -540,9 +581,8 @@ Before handing off:
 
 ## Current next action
 
-Begin M04 only: freeze the versioned policy observation and shared preprocessing
-contract on the accepted M03 snapshot boundary. Prove field and channel values
-against actual engine state and preserve query non-perturbation. Do not reinterpret
-the M03 synchronization snapshot as the policy observation, and do not begin M05
-actions, M06 rewards, PPO, production ONNX, or neural in-game control before their
-owning gates.
+Begin M06 only: freeze reward components, timing, units, aggregation, termination,
+truncation, trajectory records, and rollout storage on the accepted M04/M05
+boundaries. Prove reward deltas against engine state, run exploit policies, and
+retain repeated serialization evidence. Do not begin PPO, production ONNX, or
+neural in-game control before their owning gates.

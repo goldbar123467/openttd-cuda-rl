@@ -66,6 +66,14 @@ or RL progress.
     — frozen lifecycle, framed local protocol, process isolation, and tick policy.
 22. [`docs/project/G03_GATE_REPORT.md`](docs/project/G03_GATE_REPORT.md) — passed
     synchronized-bridge gate and repeated all-template native evidence.
+23. [`docs/project/M04_VERSIONED_OBSERVATION.md`](docs/project/M04_VERSIONED_OBSERVATION.md)
+    — frozen native structured/spatial observation and shared preprocessing.
+24. [`docs/project/G04_GATE_REPORT.md`](docs/project/G04_GATE_REPORT.md) — passed
+    observation semantic, compatibility, and non-perturbation gate.
+25. [`docs/project/M05_EXPLICIT_BUS_ACTIONS.md`](docs/project/M05_EXPLICIT_BUS_ACTIONS.md)
+    — frozen 41-action catalog, masks, typed outcomes, and transactions.
+26. [`docs/project/G05_GATE_REPORT.md`](docs/project/G05_GATE_REPORT.md) — passed
+    action/mask oracle and useful actual-engine bus-service gate.
 
 ## Current status
 
@@ -77,8 +85,9 @@ or RL progress.
 | Legacy tape/parity tooling | C17 library, schemas, tests, and in-progress fixes | Incomplete legacy workstream |
 | 32 by 32 passenger-bus scenario/reset | Frozen contract/corpus/seeds, native reset projection, scope mutations, and repeated scripted delivery/income trajectory | `M02/G02 PASS`; frozen baseline |
 | Headless RL environment API | Versioned local framing, typed lifecycle, process isolation, 1–128 tick stepping, repeated all-template oracle | `M03/G03 PASS`; frozen synchronization boundary |
-| Structured/spatial observations | No V1 schemas or encoder | Not started |
-| Legal bus action masking | No V1 implementation | Not started |
+| Structured/spatial observations | Frozen native encoder, exhaustive semantics, shared bytes, and 264,192 actual-engine comparisons | `M04/G04 PASS`; frozen observation boundary |
+| Legal bus action masking | Fixed 41-action catalog, boundary tokens, native command test/execute paths, 614 oracle comparisons, and profitable all-template trajectories | `M05/G05 PASS`; frozen action boundary |
+| Reward, termination, and trajectories | No V1 implementation | `M06/G06` next |
 | PPO trainer | No implementation | Not started |
 | CUDA training path | No implementation | Not started |
 | Independent evaluation | No V1 evaluator | Not started |

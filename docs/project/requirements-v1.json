@@ -558,14 +558,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "SCOPE-020",
@@ -579,14 +587,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "SCOPE-021",
@@ -600,14 +616,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "SCOPE-022",
@@ -621,14 +645,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "SCOPE-023",
@@ -642,14 +674,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "SCOPE-024",
@@ -663,14 +703,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "SCOPE-025",
@@ -858,14 +906,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "The M03 fixture legal-action list proves boundary synchronization but is explicitly not the M05 policy action-mask contract; acceptance remains pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "LIFE-006",
@@ -2298,14 +2354,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-002",
@@ -2318,14 +2382,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-003",
@@ -2338,14 +2410,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-004",
@@ -2358,14 +2438,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-005",
@@ -2378,14 +2466,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-006",
@@ -2398,14 +2494,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-007",
@@ -2418,14 +2522,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-008",
@@ -2438,14 +2550,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-009",
@@ -2458,14 +2578,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-010",
@@ -2478,14 +2606,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-011",
@@ -2498,14 +2634,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-012",
@@ -2518,14 +2662,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-013",
@@ -2538,14 +2690,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-014",
@@ -2558,14 +2718,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-015",
@@ -2578,14 +2746,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-016",
@@ -2598,14 +2774,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-017",
@@ -2618,14 +2802,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-018",
@@ -2638,14 +2830,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-019",
@@ -2658,14 +2858,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "ACT-020",
@@ -2678,14 +2886,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "REW-001",
@@ -4325,14 +4541,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "TEST-004",
@@ -4396,14 +4620,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "TEST-007",
@@ -4585,14 +4817,22 @@
       ],
       "milestone": "M05",
       "gate": "G05",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m05-action-contract.json",
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "scripts/v1/m05_action_adapter.py",
+        "scripts/v1/run_m05_actions.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M05-ACTIONS"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G05."
+      "reviewer_note": "G05 accepted: the frozen 41-action catalog, native test/execute paths, exact boundary mask tokens, independent oracle, rollback/failure classes, and two byte-identical eight-template actual-engine campaigns pass."
     },
     {
       "id": "TEST-016",
@@ -5111,12 +5351,6 @@
       "summary": "Planned requirement verification suite for SCOPE requirements.",
       "runner": null,
       "requirement_ids": [
-        "SCOPE-019",
-        "SCOPE-020",
-        "SCOPE-021",
-        "SCOPE-022",
-        "SCOPE-023",
-        "SCOPE-024",
         "SCOPE-025",
         "SCOPE-026",
         "SCOPE-027"
@@ -5131,7 +5365,6 @@
       "summary": "Planned requirement verification suite for LIFE requirements.",
       "runner": null,
       "requirement_ids": [
-        "LIFE-005",
         "LIFE-008",
         "LIFE-009",
         "LIFE-010",
@@ -5213,37 +5446,6 @@
       "evidence": [],
       "mandatory": true,
       "reviewer_note": "OBS-001 through OBS-017 moved to the passing M04 suite; OBS-018 remains planned for M09/G09."
-    },
-    {
-      "id": "V1-TEST-ACT",
-      "summary": "Planned requirement verification suite for ACT requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "ACT-001",
-        "ACT-002",
-        "ACT-003",
-        "ACT-004",
-        "ACT-005",
-        "ACT-006",
-        "ACT-007",
-        "ACT-008",
-        "ACT-009",
-        "ACT-010",
-        "ACT-011",
-        "ACT-012",
-        "ACT-013",
-        "ACT-014",
-        "ACT-015",
-        "ACT-016",
-        "ACT-017",
-        "ACT-018",
-        "ACT-019",
-        "ACT-020"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
     },
     {
       "id": "V1-TEST-REW",
@@ -5394,9 +5596,7 @@
       "summary": "Planned requirement verification suite for TEST requirements.",
       "runner": null,
       "requirement_ids": [
-        "TEST-003",
         "TEST-004",
-        "TEST-006",
         "TEST-007",
         "TEST-008",
         "TEST-009",
@@ -5405,7 +5605,6 @@
         "TEST-012",
         "TEST-013",
         "TEST-014",
-        "TEST-015",
         "TEST-016"
       ],
       "status": "PLANNED",
@@ -5573,6 +5772,50 @@
       ],
       "mandatory": true,
       "reviewer_note": "Two complete current-Ubuntu campaigns are byte-identical; all 32 channels have positive fixtures and every scalar/tile transform is independently compared to the engine source projection."
+    },
+    {
+      "id": "V1-TEST-M05-ACTIONS",
+      "summary": "Verify the frozen M05 action catalog, mask semantics, native execution, transaction rollback, typed failures, actual-engine goldens, and useful bus-service trajectory.",
+      "runner": "scripts/v1/run_m05_actions.py",
+      "requirement_ids": [
+        "SCOPE-019",
+        "SCOPE-020",
+        "SCOPE-021",
+        "SCOPE-022",
+        "SCOPE-023",
+        "SCOPE-024",
+        "LIFE-005",
+        "ACT-001",
+        "ACT-002",
+        "ACT-003",
+        "ACT-004",
+        "ACT-005",
+        "ACT-006",
+        "ACT-007",
+        "ACT-008",
+        "ACT-009",
+        "ACT-010",
+        "ACT-011",
+        "ACT-012",
+        "ACT-013",
+        "ACT-014",
+        "ACT-015",
+        "ACT-016",
+        "ACT-017",
+        "ACT-018",
+        "ACT-019",
+        "ACT-020",
+        "TEST-003",
+        "TEST-006",
+        "TEST-015"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/v1/m05-action-goldens.json",
+        "docs/project/G05_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "Two complete current-Ubuntu campaigns are byte-identical; 614 production/native-oracle mask states match and every template constructs service, delivers passengers, and receives revenue."
     }
   ],
   "aggregate_dependencies": [

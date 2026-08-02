@@ -8,13 +8,15 @@ claim later milestones from partial infrastructure.
 
 ## Current-state baseline
 
-As of 2026-08-01, `G00` through `G03` pass. The accepted substrate is a pinned
+As of 2026-08-01, `G00` through `G05` pass. The accepted substrate is a pinned
 and reproducible OpenTTD 15.3 profile, a frozen 32 by 32 passenger-bus
 scenario/reset corpus, and a synchronized source-integrated headless bridge with
-process isolation, exact tick stepping, lifecycle failures, and repeated native
-non-perturbation evidence. No V1 policy observation/action schema, reward,
-trajectory layer, PPO trainer, CUDA trainer, evaluator, ONNX package, or in-game
-neural agent exists.
+process isolation and exact tick stepping. It now also includes a frozen native
+policy observation and preprocessing contract plus a fixed 41-action bus catalog,
+boundary-bound legality masks, transactional route updates, and repeated
+actual-engine profitable-service evidence. No V1 reward/termination/trajectory
+layer, PPO trainer, CUDA trainer, evaluator, ONNX package, or in-game neural agent
+exists.
 
 Legacy P0 completion is not a prerequisite as originally written because its
 freight target conflicts with the active bus-only scope. Its reusable pieces enter
@@ -236,6 +238,10 @@ screen scraping or semantic perturbation.
 
 ## M04 — Versioned observation and preprocessing contract
 
+Status: `PASS` at `G04` on 2026-08-01. The accepted contract and evidence are in
+[`M04_VERSIONED_OBSERVATION.md`](M04_VERSIONED_OBSERVATION.md) and
+[`G04_GATE_REPORT.md`](G04_GATE_REPORT.md).
+
 ### Objective
 
 Freeze the structured vector and spatial tensor consumed identically by trainer,
@@ -265,6 +271,10 @@ evaluator, ONNX, and in-game inference.
 - schema/digest incompatibility is rejected.
 
 ## M05 — Explicit bus actions, masks, and transactional execution
+
+Status: `PASS` at `G05` on 2026-08-01. The accepted contract and evidence are in
+[`M05_EXPLICIT_BUS_ACTIONS.md`](M05_EXPLICIT_BUS_ACTIONS.md) and
+[`G05_GATE_REPORT.md`](G05_GATE_REPORT.md).
 
 ### Objective
 
@@ -552,17 +562,17 @@ retains prior model packages or supplies an explicit migration/rejection policy.
 
 ## Immediate critical path
 
-`G00` through `G03` are recorded as passing. The synchronized bridge now supplies
-the safe read-only boundary required by M04. The next implementation path is:
+`G00` through `G05` are recorded as passing. The next implementation path is:
 
-1. preserve the accepted M01 through M03 source/evidence identities;
-2. begin M04 only by freezing the versioned policy observation and shared
-   preprocessing contract;
-3. prove every observation field/channel against actual engine state without
-   perturbing the M03 boundary;
-4. retain the M02 scripted trajectory and M03 lifecycle oracle as fixed
-   downstream integration fixtures;
-5. do not begin M05 actions, M06 rewards, or PPO before their owning gates.
+1. preserve the accepted M01 through M05 source, compatibility, and evidence
+   identities;
+2. freeze M06 reward components, timing, units, aggregation, termination, and
+   truncation before collecting learning data;
+3. define the trajectory schema and bounded rollout storage against the exact
+   M04 observation and M05 action/mask boundaries;
+4. run reward-exploit, termination, serialization, and repeated actual-engine
+   trajectory campaigns;
+5. do not begin PPO training before G06 passes.
 
 Continuing the legacy freight instrumentation patch series is not on the V1
 critical path unless its transition review identifies a specific bus-platform gate

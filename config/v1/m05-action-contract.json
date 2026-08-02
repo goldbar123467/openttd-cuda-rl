@@ -1,0 +1,324 @@
+{
+  "$schema": "../../docs/project/schema/v1-m05-action-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m05-action-contract-1",
+  "semantic_version": "1.0.0",
+  "status": "FROZEN",
+  "contract_id": "m05-explicit-bus-actions-v1",
+  "engine": {
+    "openttd_version": "15.3",
+    "source_commit": "14ec60f248547d4d062a1160f0fc26d742319888",
+    "m03_bridge_compatibility_sha256": "4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6",
+    "m04_observation_compatibility_sha256": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb",
+    "m04_composed_source_identity_sha256": "820cf3ee0fb36734c318cb260e6cc4567a2a9acc55c831d5b36d1875341b291e"
+  },
+  "representation": {
+    "selected": "fixed-flat-semantic-catalog",
+    "action_count": 41,
+    "logit_dtype": "float32",
+    "logit_bytes": 164,
+    "mask_dtype": "uint8",
+    "mask_bytes": 41,
+    "stable_index_rule": "index-meaning-never-depends-on-pool-iteration-or-current-legality",
+    "alternatives": [
+      {
+        "name": "fixed-flat-semantic-catalog",
+        "disposition": "SELECTED",
+        "measured_output": "41 logits = 164 bytes; 41-byte mask; O(41) decode and masking",
+        "rationale": "The fixed scenario roles and direct entity slots express every V1 bus operation with stable native, ONNX, and in-game indices."
+      },
+      {
+        "name": "tile-expanded-flat-catalog",
+        "disposition": "REJECTED",
+        "measured_output": "approximately 13269 logits = 53076 bytes before probabilities or gradients",
+        "rationale": "Expanding every tile and orientation wastes more than 99 percent of policy outputs on planner-ineligible actions in the frozen 32 by 32 corpus."
+      },
+      {
+        "name": "dynamic-candidate-table",
+        "disposition": "REJECTED",
+        "measured_output": "bounded table requires candidate features and state-dependent row meanings",
+        "rationale": "A changing candidate row would need a new observation input and scorer contract; M04 intentionally froze no candidate feature tensor."
+      }
+    ]
+  },
+  "boundary": {
+    "engine_boundary": "M03-complete-StateGameLoop-boundary",
+    "legal_actions_message_type": 3,
+    "step_message_type": 4,
+    "fixed_tick_cost": 128,
+    "episode_action_budget": 512,
+    "episode_tick_budget": 65536,
+    "mask_query_lifecycles": ["AT_BOUNDARY", "PAUSED"],
+    "step_lifecycle": "AT_BOUNDARY",
+    "command_commit_order": "validate-identity-boundary-mask-index-then-command-then-128-StateGameLoop-calls"
+  },
+  "slots": {
+    "town": {
+      "maximum": 2,
+      "identity": "direct-TownID-0-through-1-equal-M04-town-slots",
+      "deletion": "slot becomes absent and every referencing action is masked",
+      "reuse": "same direct ID replaces the slot only after reset or engine reuse",
+      "overflow": "M02 scope validator rejects more than two towns"
+    },
+    "vehicle": {
+      "maximum": 8,
+      "identity": "direct-VehicleID-0-through-7-equal-M04-vehicle-slots",
+      "deletion": "slot becomes absent and route/start/stop actions are masked",
+      "reuse": "same direct ID names the replacement primary company bus",
+      "overflow": "purchase is masked at eight primary company road vehicles"
+    },
+    "station_site": {
+      "maximum": 2,
+      "identity": "M02-planned-bus-stop-site-for-direct-town-slot-0-or-1",
+      "deletion": "site becomes buildable again only if normal native validation accepts it",
+      "reuse": "station ID is resolved from the authoritative tile at every boundary",
+      "overflow": "only the two reviewed passenger catchment sites are agent-reachable"
+    },
+    "depot_site": {
+      "maximum": 1,
+      "identity": "M02-planned-road-depot-site-and-entrance",
+      "deletion": "excluded V1 removal means deletion is not agent-reachable",
+      "reuse": "depot association is resolved from the authoritative planned tile",
+      "overflow": "exactly one reviewed depot site is agent-reachable"
+    }
+  },
+  "families": [
+    {
+      "family_id": "FAM-001",
+      "name": "WAIT",
+      "index_start": 0,
+      "index_end": 0,
+      "count": 1,
+      "parameters": [],
+      "cheap_mask": "always legal at an active non-truncated AT_BOUNDARY",
+      "complete_legality": "no engine command; lifecycle and horizon are the complete legality check",
+      "native_operations": [],
+      "cost_semantics": "zero OpenTTD money cost",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "no command mutation; ordinary simulation may evolve during the 128 ticks",
+      "failure_modes": ["stale boundary", "invalid lifecycle", "identity mismatch"],
+      "transaction": "single declared no-op",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "index 0 family WAIT status NO_OP and an empty native command list",
+      "tests": ["all-mask fallback", "fixed tick count", "zero command cost"]
+    },
+    {
+      "family_id": "FAM-002",
+      "name": "SELECT_TOWNS",
+      "index_start": 1,
+      "index_end": 2,
+      "count": 2,
+      "parameters": ["origin_town_slot=index-1", "destination_town_slot=1-origin_town_slot"],
+      "cheap_mask": "both direct town slots exist, differ, and are not already the selected ordered pair",
+      "complete_legality": "authoritative Town pool identity check after decode",
+      "native_operations": [],
+      "cost_semantics": "zero OpenTTD money cost",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "bridge-owned causal endpoint selection changes; OpenTTD engine state does not",
+      "failure_modes": ["missing town slot", "same pair already selected", "stale mask"],
+      "transaction": "single bridge-control state assignment",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "ordered origin and destination direct town slots",
+      "tests": ["both ordered pairs", "selection replacement", "town slot stability"]
+    },
+    {
+      "family_id": "FAM-003",
+      "name": "BUILD_ROAD_CONNECTOR",
+      "index_start": 3,
+      "index_end": 3,
+      "count": 1,
+      "parameters": ["start_tile=M02-planned-depot-front", "end_tile=M02-planned-depot-site", "axis=derived-from-adjacent-tiles"],
+      "cheap_mask": "planned connector is absent and no road depot occupies its end tile",
+      "complete_legality": "CMD_BUILD_LONG_ROAD test mode with ROADTYPE_ROAD, full endpoints, fail-on-obstacle AI semantics",
+      "native_operations": ["CMD_BUILD_LONG_ROAD"],
+      "cost_semantics": "exact OpenTTD construction cost debited once by the command wrapper",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "native road bits connect the frozen route front to the depot site; the pre-existing route tile retains its authoritative owner and the new endpoint is company-owned",
+      "failure_modes": ["already built", "obstacle", "authority", "ownership", "insufficient money", "native rejection"],
+      "transaction": "one top-level native command; OpenTTD command semantics are authoritative",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "resolved start/end tile, axis, native cost, and error IDs",
+      "tests": ["all eight templates", "cost and ownership", "repeat masked"]
+    },
+    {
+      "family_id": "FAM-004",
+      "name": "BUILD_BUS_STOP",
+      "index_start": 4,
+      "index_end": 11,
+      "count": 8,
+      "parameters": ["site_town_slot=(index-4)/4", "orientation=(index-4)%4", "tile=M02-planned-stop-site-for-town-slot"],
+      "cheap_mask": "site is empty and orientation equals the reviewed inward route entrance",
+      "complete_legality": "CMD_BUILD_ROAD_STOP test mode for one bay passenger stop on ROADTYPE_ROAD",
+      "native_operations": ["CMD_BUILD_ROAD_STOP"],
+      "cost_semantics": "exact OpenTTD station construction cost debited by the command wrapper",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "owned bus station appears at the resolved tile with the decoded orientation",
+      "failure_modes": ["wrong orientation", "occupied site", "road incompatibility", "authority", "insufficient money", "native rejection"],
+      "transaction": "one top-level native command",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "town slot, resolved tile, orientation, created station identity through post-state",
+      "tests": ["two sites by four orientations", "catchment", "station ownership and cost"]
+    },
+    {
+      "family_id": "FAM-005",
+      "name": "BUILD_ROAD_DEPOT",
+      "index_start": 12,
+      "index_end": 15,
+      "count": 4,
+      "parameters": ["orientation=index-12", "tile=M02-planned-depot-site"],
+      "cheap_mask": "connector exists, depot site is empty, and orientation equals the reviewed route entrance",
+      "complete_legality": "CMD_BUILD_ROAD_DEPOT test mode for ROADTYPE_ROAD",
+      "native_operations": ["CMD_BUILD_ROAD_DEPOT"],
+      "cost_semantics": "exact OpenTTD depot construction cost debited by the command wrapper",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "owned road depot replaces the connector end tile and faces the route",
+      "failure_modes": ["connector absent", "wrong orientation", "occupied site", "authority", "insufficient money", "native rejection"],
+      "transaction": "one top-level native command",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "resolved tile, orientation, native cost, and post-state depot identity",
+      "tests": ["four orientations", "connector dependency", "ownership and cost"]
+    },
+    {
+      "family_id": "FAM-006",
+      "name": "BUY_BUS",
+      "index_start": 16,
+      "index_end": 16,
+      "count": 1,
+      "parameters": ["depot_site=0", "engine_id=116-MPS-Regal-Bus", "cargo=passengers"],
+      "cheap_mask": "owned planned depot exists and fewer than eight primary company road vehicles exist",
+      "complete_legality": "CMD_BUILD_VEHICLE test mode with fixed engine, passenger refit, and authoritative affordability",
+      "native_operations": ["CMD_BUILD_VEHICLE"],
+      "cost_semantics": "exact OpenTTD vehicle purchase/refit cost debited by the command wrapper",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "next free direct VehicleID slot contains a stopped 31-passenger MPS Regal Bus in depot",
+      "failure_modes": ["depot absent", "vehicle limit", "engine unavailable", "insufficient money", "native rejection"],
+      "transaction": "one top-level native command",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "depot tile, engine ID, cost, and created vehicle identity through post-state",
+      "tests": ["engine and capacity", "depot association", "eight-vehicle bound", "purchase cost"]
+    },
+    {
+      "family_id": "FAM-007",
+      "name": "ASSIGN_ROUTE",
+      "index_start": 17,
+      "index_end": 24,
+      "count": 8,
+      "parameters": ["vehicle_slot=index-17", "origin_station=station-at-selected-origin-town-site", "destination_station=station-at-selected-destination-town-site"],
+      "cheap_mask": "vehicle and both selected endpoint stations exist, endpoints differ, and route is not already identical",
+      "complete_legality": "ownership plus independent CMD_INSERT_ORDER test calls for both station orders",
+      "native_operations": ["CMD_DELETE_ORDER", "CMD_INSERT_ORDER", "CMD_INSERT_ORDER"],
+      "cost_semantics": "all order commands have zero OpenTTD money cost",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "vehicle has exactly the ordered origin and destination station orders",
+      "failure_modes": ["missing selection", "missing vehicle or station", "same endpoint", "native rejection", "injected second-prefix failure", "rollback failure"],
+      "transaction": "snapshot prior orders, replace, and fully restore prior orders on any failed prefix; rollback failure is fatal integration failure",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "every execute and rollback subcommand is ordered with phase, cost, error IDs, and rolled_back flag",
+      "tests": ["forward and reverse routes", "route update", "injected rollback", "order identity"]
+    },
+    {
+      "family_id": "FAM-008",
+      "name": "SET_RUNNING",
+      "index_start": 25,
+      "index_end": 32,
+      "count": 8,
+      "parameters": ["vehicle_slot=index-25", "desired_running=true"],
+      "cheap_mask": "owned primary road vehicle is stopped and has exactly two manual orders",
+      "complete_legality": "CMD_START_STOP_VEHICLE test mode against the current vehicle state",
+      "native_operations": ["CMD_START_STOP_VEHICLE"],
+      "cost_semantics": "zero OpenTTD money cost",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "vehicle is running before the first advanced tick",
+      "failure_modes": ["missing vehicle", "already running", "route incomplete", "crashed vehicle", "native rejection"],
+      "transaction": "one top-level native command",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "vehicle slot, desired state, native result, and post-state",
+      "tests": ["stopped-to-running", "route prerequisite", "desired-state masking"]
+    },
+    {
+      "family_id": "FAM-009",
+      "name": "SET_STOPPED",
+      "index_start": 33,
+      "index_end": 40,
+      "count": 8,
+      "parameters": ["vehicle_slot=index-33", "desired_running=false"],
+      "cheap_mask": "owned primary road vehicle is currently running",
+      "complete_legality": "CMD_START_STOP_VEHICLE test mode against the current vehicle state",
+      "native_operations": ["CMD_START_STOP_VEHICLE"],
+      "cost_semantics": "zero OpenTTD money cost",
+      "tick_semantics": "command-phase-zero-ticks-then-128-complete-StateGameLoop-calls",
+      "success_mutation": "vehicle is stopped before the first advanced tick",
+      "failure_modes": ["missing vehicle", "already stopped", "crashed vehicle", "native rejection"],
+      "transaction": "one top-level native command",
+      "reward_effect": "none-in-M05-M06-owns-reward",
+      "log_encoding": "vehicle slot, desired state, native result, and post-state",
+      "tests": ["running-to-stopped", "desired-state masking", "restart lifecycle"]
+    }
+  ],
+  "dispositions": [
+    {
+      "candidate": "sell-vehicle",
+      "disposition": "EXCLUDED_V1",
+      "rationale": "The eight-bus cap and 512-action horizon do not require selling; exclusion avoids destructive value loops before M06 reward exploit tests exist.",
+      "requirements": ["ACT-010"]
+    },
+    {
+      "candidate": "remove-infrastructure",
+      "disposition": "EXCLUDED_V1",
+      "rationale": "The frozen templates need one route, two stops, and one depot; removal adds ownership and destructive-loop surface without being needed for V1 acceptance.",
+      "requirements": ["ACT-011"]
+    },
+    {
+      "candidate": "loan-take-repay",
+      "disposition": "EXCLUDED_V1",
+      "rationale": "The frozen company starts with sufficient balance and loan; explicit loan actions would permit oscillation and are unnecessary for the bounded V1 route task.",
+      "requirements": ["ACT-012"]
+    }
+  ],
+  "mask": {
+    "shape": [41],
+    "ordering": "action-index-ascending",
+    "generator": "BuildRlActionMask",
+    "complete_check": "normal-OpenTTD-Command-Do-test-mode-after-cheap-planner-gates",
+    "same_snapshot": "same-boundary-token-as-M04-observation-and-step",
+    "token": "FNV-1a-64-over-boundary-token-then-41-mask-bytes",
+    "sampling": "reject-identity-or-shape-mismatch-set-illegal-probability-zero-softmax-legal-only",
+    "all_masked": "adapter-selects-index-0-WAIT-with-fallback-flag-native-active-boundaries-always-mask-WAIT-legal",
+    "violation_policy": "ILLEGAL_INPUT-zero-ticks-zero-engine-mutation-correctness-defect",
+    "paused_policy": "all-zero-mask-executable-false",
+    "resource_bound": "41-decodes-and-at-most-8-native-command-tests"
+  },
+  "outcomes": [
+    {"name": "SUCCESS", "mutation": "exact declared action transaction committed", "ticks": 128, "meaning": "A legal action completed and the fixed simulation interval advanced."},
+    {"name": "NO_OP", "mutation": "no command mutation", "ticks": 128, "meaning": "WAIT completed and only ordinary simulation evolution occurred."},
+    {"name": "STALE_REJECTED", "mutation": "none", "ticks": 0, "meaning": "The handle, boundary, transition, or issued mask token no longer names the current state."},
+    {"name": "ILLEGAL_INPUT", "mutation": "none", "ticks": 0, "meaning": "The index, encoding, or current mask membership is invalid and indicates a policy/runtime defect."},
+    {"name": "NATIVE_REJECTED", "mutation": "none after required rollback", "ticks": 128, "meaning": "Native validation or execution rejected an apparently legal action; the attempt consumes one decision interval."},
+    {"name": "INTEGRATION_FAILURE", "mutation": "untrusted process state; worker enters FAILED", "ticks": "zero-or-uncommitted", "meaning": "An invariant, rollback, bridge, I/O, crash, or internal failure invalidated the worker."}
+  ],
+  "transaction": {
+    "macro": "ASSIGN_ROUTE",
+    "policy": "agent-atomic-command-prefix-rollback",
+    "sequence": ["snapshot-prior-orders", "CMD_DELETE_ORDER_ALL", "CMD_INSERT_ORDER-origin", "CMD_INSERT_ORDER-destination"],
+    "failure_injection": "route-after-first-order",
+    "rollback_failure": "INTEGRATION_FAILURE-fatal"
+  },
+  "logging": {
+    "action_schema": "openttd-rl-v1-m05-action-result-1",
+    "native_fields": ["command", "phase", "status", "cost", "error_message_id", "extra_error_message_id"],
+    "action_fields": ["action_index", "family", "parameters", "status", "rolled_back", "balance_before", "balance_after", "tick_before_command", "tick_after_command", "native_commands"],
+    "rejected_attempts": "typed-response-or-error-with-zero-state-mutation"
+  },
+  "shared_adapter": {
+    "path": "scripts/v1/m05_action_adapter.py",
+    "consumers": ["trainer", "evaluator", "onnx-runtime", "in-game-controller", "m05-oracle"],
+    "encode_decode": "one-canonical-range-table",
+    "mask_application": "one-canonical-stable-softmax-and-external-uniform-sampler",
+    "rng_policy": "adapter-consumes-no-RNG-caller-supplies-uniform-in-[0,1)"
+  },
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536",
+    "schema_path": "docs/project/schema/v1-m05-action-contract.schema.json",
+    "schema_sha256": "8548f92fdad6ca1e44af1749212d01609739a7f23889e4d9bc7b057662d74803"
+  }
+}

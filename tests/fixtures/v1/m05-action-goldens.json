@@ -1,0 +1,95 @@
+{
+  "action_compatibility_sha256": "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536",
+  "action_contract_sha256": "33d42081e05abc6e2bb62623a460e3153111e3b253ca90e4b48d39ef9e843d47",
+  "executable_sha256": "ed23eeaea1f9deba1333c7ae3be1a8d16f30c203e706ce61b5a5138241f79094",
+  "integration_failure": {
+    "classification": "INTEGRATION_FAILURE",
+    "fatal": true,
+    "transition_ordinal": 0
+  },
+  "manifest_sha256": "30700cfb8a556ddd7c23eec7463bac7a7f2bf365b9a94742fdeddd982cb2d7b8",
+  "mask_differential_states": 614,
+  "schema_version": "openttd-rl-v1-m05-action-goldens-1",
+  "templates": [
+    {
+      "action_indices_sha256": "b6c090f550e5d8fe3ee45a33065081d61f8f926e1e40d66cefffa13b5092e60e",
+      "action_log_sha256": "0ba91dbb33da1770d2f610bb7cf367775319f06ce07fc7a1acdbd6c68be74057",
+      "delivered_passengers": 26,
+      "final_balance": 93325,
+      "income": 145,
+      "template_id": "m02-template-01",
+      "transitions": 36,
+      "wait_actions": 21
+    },
+    {
+      "action_indices_sha256": "1c2815e09726ceda0dcb3dd63286461c1d0932aa41ab5ed99b7f0935ad1614dd",
+      "action_log_sha256": "1d414fa12de344e00602cc98ea73e2299ac1bfb16047d6b2bcd97e002548fd0d",
+      "delivered_passengers": 20,
+      "final_balance": 93467,
+      "income": 112,
+      "template_id": "m02-template-02",
+      "transitions": 35,
+      "wait_actions": 20
+    },
+    {
+      "action_indices_sha256": "7b74d5652c2a3081da08926c8df8e890001e15eeee73ddb343dc2b5396a29cc5",
+      "action_log_sha256": "e50964820bcaf7d6af9432d8e9b2831dcc395dc079c65c3c8001cff77eec6366",
+      "delivered_passengers": 27,
+      "final_balance": 93331,
+      "income": 151,
+      "template_id": "m02-template-03",
+      "transitions": 36,
+      "wait_actions": 21
+    },
+    {
+      "action_indices_sha256": "5639ff05c9d9bafbdd774b950625754af9d4d53c6cdd12386582e5c4b4071756",
+      "action_log_sha256": "f6e4cde154935aa4f3d7b1e41c9a073bba93ee7961b01ffbee98645a0cdbc184",
+      "delivered_passengers": 28,
+      "final_balance": 93539,
+      "income": 157,
+      "template_id": "m02-template-04",
+      "transitions": 36,
+      "wait_actions": 21
+    },
+    {
+      "action_indices_sha256": "cefa44332a4877df8e61ba97de22d8ce5365f97356624e3ebc8a44ff4acbba42",
+      "action_log_sha256": "bc79c1b520e65a9079b149dd73b97fdfad25dc0cca8e11cf68306b4a59dbffcb",
+      "delivered_passengers": 24,
+      "final_balance": 93377,
+      "income": 172,
+      "template_id": "m02-template-05",
+      "transitions": 39,
+      "wait_actions": 24
+    },
+    {
+      "action_indices_sha256": "4b1429e2d14aad0f36ff004d597f5919bb711473295e0ea283fc1764737c7871",
+      "action_log_sha256": "ebd5a76dab985bbb4c1d3a5ce66c6d43ff00562b9b23f381e0057e26d4b5db9e",
+      "delivered_passengers": 20,
+      "final_balance": 93422,
+      "income": 144,
+      "template_id": "m02-template-06",
+      "transitions": 38,
+      "wait_actions": 23
+    },
+    {
+      "action_indices_sha256": "f23ee1cf2aaa1b2e1f987f5fd0ce10dd06deee8c37f05f83f79436e19a604ad2",
+      "action_log_sha256": "6390ff09d5b3240c0d952ab87fd2a0907d426b9717fa7c7e0354acfb12417fd8",
+      "delivered_passengers": 23,
+      "final_balance": 93286,
+      "income": 138,
+      "template_id": "m02-template-07",
+      "transitions": 37,
+      "wait_actions": 22
+    },
+    {
+      "action_indices_sha256": "03caef4b4d11006a46c4fcb6e8705e19348faafc5b9b46945bde772e80d52783",
+      "action_log_sha256": "adb1442188e66355dfb96c11a8be3634930f39b95161559b1c3d686d6c0776f6",
+      "delivered_passengers": 31,
+      "final_balance": 93334,
+      "income": 186,
+      "template_id": "m02-template-08",
+      "transitions": 37,
+      "wait_actions": 22
+    }
+  ]
+}
