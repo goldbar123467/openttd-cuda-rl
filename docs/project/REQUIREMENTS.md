@@ -88,8 +88,8 @@ cover the whole statement.
 | `SCOPE-022` | The agent can purchase a bus. | Vehicle-purchase integration test. | `PASS` |
 | `SCOPE-023` | The agent can create, assign, and update bus routes/orders. | Order-list integration tests. | `PASS` |
 | `SCOPE-024` | The agent can start bus service. | Vehicle-state integration test. | `PASS` |
-| `SCOPE-025` | The environment detects passenger delivery and resulting revenue. | Controlled delivery/economy test. | `IN_PROGRESS` |
-| `SCOPE-026` | The policy can be penalized for repeated invalid, wasteful, destructive, idle, or unprofitable behavior. | Reward-component scenario tests. | `IN_PROGRESS` |
+| `SCOPE-025` | The environment detects passenger delivery and resulting revenue. | Controlled delivery/economy test. | `PASS` |
+| `SCOPE-026` | The policy can be penalized for repeated invalid, wasteful, destructive, idle, or unprofitable behavior. | Reward-component scenario tests. | `PASS` |
 | `SCOPE-027` | A learned policy can maintain or improve a bus network over a multi-episode evaluation horizon. | Preregistered evaluation results. | `NOT_STARTED` |
 
 ## Complete platform lifecycle
@@ -103,8 +103,8 @@ cover the whole statement.
 | `LIFE-005` | Generate legal action masks matching the same state snapshot as the observation. | Mask oracle and stale-state tests. | `PASS` |
 | `LIFE-006` | Apply selected actions through explicit OpenTTD operations. | Command-path integration evidence. | `PASS` |
 | `LIFE-007` | Advance simulation by a configurable, deterministic stepping rule. | Tick-step tests. | `PASS` |
-| `LIFE-008` | Calculate scalar reward from separately retained components. | Reward unit/integration evidence. | `IN_PROGRESS` |
-| `LIFE-009` | Record complete trajectories with schema and provenance. | Trajectory round-trip and resume tests. | `IN_PROGRESS` |
+| `LIFE-008` | Calculate scalar reward from separately retained components. | Reward unit/integration evidence. | `PASS` |
+| `LIFE-009` | Record complete trajectories with schema and provenance. | Trajectory round-trip and resume tests. | `PASS` |
 | `LIFE-010` | Train actor-critic PPO policies in the production C++/CUDA path. | Trainer convergence and algorithm tests. | `NOT_STARTED` |
 | `LIFE-011` | Evaluate saved policies in a process and dataset independent from training. | Evaluation run artifact. | `NOT_STARTED` |
 | `LIFE-012` | Save native training checkpoints and recover from the declared boundary. | Interrupted-run recovery comparison. | `NOT_STARTED` |
@@ -216,13 +216,13 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `REW-001` | Operating profit, passenger delivery, transported-passenger growth, station-rating improvement, route profitability, utilization, productive expansion, and long-term company value are each reviewed as positive candidates. | Reward design ledger. | `IN_PROGRESS` |
-| `REW-002` | Bankruptcy, invalid action, repeated construction failure, idle vehicle, unused station, excessive infrastructure spend, valueless route duplication, vehicle loss, destructive loops, and excessive no-op behavior are each reviewed as penalty candidates. | Reward design ledger. | `IN_PROGRESS` |
-| `REW-003` | Every included reward component is separately calculated and logged before aggregation. | Component schema and accuracy tests. | `IN_PROGRESS` |
-| `REW-004` | Reward uses deltas over documented boundaries and does not repeatedly pay an unchanged cumulative statistic. | Temporal unit tests. | `IN_PROGRESS` |
-| `REW-005` | Scalar aggregation is versioned, configured, and provenance-recorded. | Config/schema test. | `IN_PROGRESS` |
-| `REW-006` | Reward does not use deployment-unavailable privileged information. | Feature/reward information audit. | `IN_PROGRESS` |
-| `REW-007` | Reward has explicit tests for farming, cycling, construction/destruction, duplication, idling, bankruptcy avoidance, and no-op exploits. | Adversarial scenario suite. | `IN_PROGRESS` |
+| `REW-001` | Operating profit, passenger delivery, transported-passenger growth, station-rating improvement, route profitability, utilization, productive expansion, and long-term company value are each reviewed as positive candidates. | Reward design ledger. | `PASS` |
+| `REW-002` | Bankruptcy, invalid action, repeated construction failure, idle vehicle, unused station, excessive infrastructure spend, valueless route duplication, vehicle loss, destructive loops, and excessive no-op behavior are each reviewed as penalty candidates. | Reward design ledger. | `PASS` |
+| `REW-003` | Every included reward component is separately calculated and logged before aggregation. | Component schema and accuracy tests. | `PASS` |
+| `REW-004` | Reward uses deltas over documented boundaries and does not repeatedly pay an unchanged cumulative statistic. | Temporal unit tests. | `PASS` |
+| `REW-005` | Scalar aggregation is versioned, configured, and provenance-recorded. | Config/schema test. | `PASS` |
+| `REW-006` | Reward does not use deployment-unavailable privileged information. | Feature/reward information audit. | `PASS` |
+| `REW-007` | Reward has explicit tests for farming, cycling, construction/destruction, duplication, idling, bankruptcy avoidance, and no-op exploits. | Adversarial scenario suite. | `PASS` |
 | `REW-008` | Training reward is not accepted as the sole model-quality measure. | Independent evaluation gate. | `NOT_STARTED` |
 
 ## Existing AI and scripted baseline requirements
@@ -325,11 +325,11 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | `TEST-001` | Test environment reset and seed reproducibility. | Unit/integration/repeat campaign. | `PASS` |
 | `TEST-002` | Test observation extraction, normalization, and every spatial channel. | Golden/differential tests. | `PASS` |
 | `TEST-003` | Test action encoding, decoding, legality, and masking. | Unit/property/integration tests. | `PASS` |
-| `TEST-004` | Test every reward component and scalar aggregation. | Unit/scenario tests. | `IN_PROGRESS` |
+| `TEST-004` | Test every reward component and scalar aggregation. | Unit/scenario tests. | `PASS` |
 | `TEST-005` | Test tick stepping and game-state synchronization. | Boundary/differential tests. | `PASS` |
 | `TEST-006` | Test bus purchasing, depot/stop placement, road construction, route creation, order assignment, and vehicle start. | Actual OpenTTD integration tests. | `PASS` |
-| `TEST-007` | Test passenger delivery and profit calculation against actual OpenTTD state. | Controlled economic integration tests. | `IN_PROGRESS` |
-| `TEST-008` | Test bankruptcy and every episode termination/truncation reason. | Scenario tests. | `IN_PROGRESS` |
+| `TEST-007` | Test passenger delivery and profit calculation against actual OpenTTD state. | Controlled economic integration tests. | `PASS` |
+| `TEST-008` | Test bankruptcy and every episode termination/truncation reason. | Scenario tests. | `PASS` |
 | `TEST-009` | Test PPO advantages, clipping, losses, minibatching, shuffling, masking, gradients, and optimizer updates. | Reference-vector and differential tests. | `NOT_STARTED` |
 | `TEST-010` | Test checkpoint save, reload, incompatibility, and interruption recovery. | Round-trip/recovery tests. | `NOT_STARTED` |
 | `TEST-011` | Test ONNX export and native/ONNX/in-game equivalence. | Cross-runtime gate. | `NOT_STARTED` |

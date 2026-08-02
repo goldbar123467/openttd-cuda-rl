@@ -2,10 +2,10 @@
 
 ## Status
 
-M06 is `IN_PROGRESS`; G06 has not passed. This foundation freezes the design and
-the independent scalar/termination reference before the native transition
-projection, trajectory writer, exploit campaign, and actual-engine differential
-evidence are implemented.
+M06 and G06 are `PASS`. This document remains the frozen design record; native
+transition projection, the bounded trajectory writer, exploit campaigns, and
+repeated actual-engine differential evidence are recorded in
+`docs/project/G06_GATE_REPORT.md`.
 
 The normative foundation is
 `config/v1/m06-reward-trajectory-contract.json`.
@@ -112,11 +112,11 @@ and shuffle seeds. The initial unit suite covers hand calculations, all clamps,
 counter regression, strict typing, every outcome family, stable hashes, schema
 drift, duplicate keys, and BOM rejection.
 
-## Next implementation slice
+## Accepted implementation
 
-The next M06 patch must add a read-only lifetime economy projection and integrate
-reward/termination after the M05 step reaches `S_t+1`. It must then prove quarter
-rollover, delivery/profit attribution, horizon bootstrap, bankruptcy/failure,
-trajectory corruption rejection, writer faults, and deliberate wait/idle/failure
-policies against actual OpenTTD. Until that evidence exists, no M06 requirement
-is `PASS` and PPO work remains blocked.
+The M06 patch adds the read-only lifetime economy projection and integrates
+reward/termination after M05 reaches `S_t+1`. Two byte-identical campaigns prove
+quarter rollover, delivery/profit attribution, horizon bootstrap, bankruptcy,
+all eight reward components, trajectory corruption rejection, writer safety, and
+deliberate construction/cycle/duplicate/idle/no-op/failure policies. G06 passes
+and M07 CPU PPO work is unblocked.

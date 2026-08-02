@@ -1,0 +1,466 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index e0b6a04f0db312bc3b14c33b8ec9e3dc051ae1bd..1b7c89d86938ca32ce8991c156bbfcf91f7f7959 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -54,6 +54,8 @@ add_files(
+     rl_environment.h
+     rl_observation.cpp
+     rl_observation.h
++    rl_reward.cpp
++    rl_reward.h
+     CONDITION OPTION_RL_ENVIRONMENT
+ )
+ 
+diff --git a/src/rl_bridge.cpp b/src/rl_bridge.cpp
+index 1a2398bf7c744b293fd00fdec216c1a835fa8963..2ace4a37f35b8252fffecf35442617c01cf70117 100644
+--- a/src/rl_bridge.cpp
++++ b/src/rl_bridge.cpp
+@@ -13,11 +13,14 @@
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "company_base.h"
++#include "command_func.h"
+ #include "openttd.h"
+ #include "rl_action.h"
+ #include "rl_environment.h"
+ #include "rl_observation.h"
++#include "rl_reward.h"
+ #include "timer/timer_game_tick.h"
++#include "vehicle_cmd.h"
+ 
+ #include <array>
+ #include <charconv>
+@@ -274,6 +277,8 @@ private:
+ 	RlActionSelection action_selection;
+ 	std::string last_mask_token;
+ 	bool truncated = false;
++	bool episode_done = false;
++	int64_t cumulative_capital_spend = 0;
+ 
+ 	void ReadFrame(Frame &frame, bool &header_available)
+ 	{
+@@ -437,6 +442,8 @@ private:
+ 		this->action_selection = {};
+ 		this->last_mask_token.clear();
+ 		this->truncated = false;
++		this->episode_done = false;
++		this->cumulative_capital_spend = 0;
+ 		this->lifecycle = Lifecycle::AtBoundary;
+ 		json response = this->ResponseBase();
+ 		response["snapshot"] = this->Snapshot();
+@@ -495,14 +502,14 @@ private:
+ 		uint64_t tick_before = TimerGameTick::counter;
+ 		std::string snapshot_before = BuildRlEnvironmentBridgeSnapshot();
+ 		RlActionMask mask;
+-		if (this->lifecycle == Lifecycle::AtBoundary && !this->truncated) mask = BuildRlActionMask(this->action_selection);
++		if (this->lifecycle == Lifecycle::AtBoundary && !this->episode_done) mask = BuildRlActionMask(this->action_selection);
+ 		if (TimerGameTick::counter != tick_before || BuildRlEnvironmentBridgeSnapshot() != snapshot_before) {
+ 			throw BridgeError("INTERNAL_INVARIANT", "M05 mask generation perturbed the synchronized engine snapshot", true);
+ 		}
+ 		this->last_mask_token = RlActionMaskToken(mask, this->BoundaryToken());
+ 		json response = this->ResponseBase();
+ 		response["boundary_token"] = this->BoundaryToken();
+-		response["executable"] = this->lifecycle == Lifecycle::AtBoundary && !this->truncated;
++		response["executable"] = this->lifecycle == Lifecycle::AtBoundary && !this->episode_done;
+ 		response["mask"] = json::parse(SerializeRlActionMask(mask, this->action_selection, payload.at("include_source_projection").get<bool>()));
+ 		response["mask_token"] = this->last_mask_token;
+ 		return response;
+@@ -511,11 +518,22 @@ private:
+ 	json Step(const Frame &request, const json &payload)
+ 	{
+ 		if (this->lifecycle != Lifecycle::AtBoundary) throw BridgeError("INVALID_LIFECYCLE", "STEP requires AT_BOUNDARY");
+-		if (payload.size() != 6 || !payload.contains("action_compatibility_sha256") || !payload.contains("action_index") ||
++		bool m06_payload = payload.size() == 9;
++		if ((!m06_payload && payload.size() != 6) || !payload.contains("action_compatibility_sha256") || !payload.contains("action_index") ||
+ 				!payload.contains("boundary_token") || !payload.contains("bridge_compatibility_sha256") ||
+ 				!payload.contains("inject_native_failure") || !payload.contains("mask_token")) {
+ 			throw BridgeError("BAD_PAYLOAD", "M05 STEP payload field inventory is invalid");
+ 		}
++		if (m06_payload && (!payload.contains("include_transition_tensors") || !payload.at("include_transition_tensors").is_boolean() ||
++				!payload.contains("inject_episode_outcome") ||
++				(!payload.at("inject_episode_outcome").is_null() && !payload.at("inject_episode_outcome").is_string()) ||
++				!payload.contains("reward_compatibility_sha256") || payload.at("reward_compatibility_sha256") != RL_REWARD_COMPATIBILITY_SHA256)) {
++			throw BridgeError("BAD_PAYLOAD", "M06 STEP payload or reward compatibility identity mismatch");
++		}
++		if (m06_payload && payload.at("inject_episode_outcome").is_string() &&
++				payload.at("inject_episode_outcome") != "bankruptcy" && payload.at("inject_episode_outcome") != "vehicle-loss") {
++			throw BridgeError("BAD_PAYLOAD", "unsupported M06 injected episode outcome");
++		}
+ 		RequireCompatibility(payload);
+ 		if (payload.at("action_compatibility_sha256") != "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536") {
+ 			throw BridgeError("BAD_PAYLOAD", "M05 action compatibility identity mismatch");
+@@ -529,7 +547,7 @@ private:
+ 		}
+ 		if (payload.at("boundary_token") != this->BoundaryToken()) throw BridgeError("STALE_REJECTED", "STEP boundary token is stale");
+ 		if (this->last_mask_token.empty() || payload.at("mask_token") != this->last_mask_token) throw BridgeError("STALE_REJECTED", "STEP mask token is stale or was not issued for this boundary");
+-		if (this->truncated) throw BridgeError("INVALID_ACTION", "episode horizon is already exhausted");
++		if (this->episode_done) throw BridgeError("INVALID_ACTION", "episode is already complete");
+ 		if (!payload.at("action_index").is_number_unsigned()) throw BridgeError("INVALID_ACTION", "action_index must be an unsigned integer");
+ 		uint64_t requested_action_index = payload.at("action_index").get<uint64_t>();
+ 		if (requested_action_index >= RL_ACTION_COUNT) {
+@@ -551,6 +569,7 @@ private:
+ 
+ 		std::string pre_boundary = this->BoundaryToken();
+ 		uint64_t before = TimerGameTick::counter;
++		RlRewardSource reward_pre = CaptureRlRewardSource(this->cumulative_capital_spend);
+ 		this->lifecycle = Lifecycle::Executing;
+ 		std::string injected_failure = payload.at("inject_native_failure").is_null() ? "" : payload.at("inject_native_failure").get<std::string>();
+ 		json action_result;
+@@ -559,8 +578,24 @@ private:
+ 		} catch (const std::exception &error) {
+ 			throw BridgeError("INTEGRATION_FAILURE", fmt::format("M05 action adapter failed: {}", error.what()), true);
+ 		}
++		int64_t capital_spend = RlActionCapitalSpend(action_result.dump());
++		if (capital_spend > std::numeric_limits<int64_t>::max() - this->cumulative_capital_spend) {
++			throw BridgeError("INVALID_STATE", "M06 cumulative capital spend overflow", true);
++		}
++		this->cumulative_capital_spend += capital_spend;
+ 		this->lifecycle = Lifecycle::Advancing;
+ 		for (uint32_t tick = 0; tick < MAXIMUM_ACTION_INTERVAL_TICKS; ++tick) StateGameLoop();
++		if (m06_payload && !payload.at("inject_episode_outcome").is_null()) {
++			std::string injected_outcome = payload.at("inject_episode_outcome").get<std::string>();
++			if (injected_outcome == "bankruptcy") {
++				Company *company = Company::GetIfValid(CompanyID::Begin());
++				if (company == nullptr) throw BridgeError("INVALID_STATE", "M06 bankruptcy fixture has no learning company", true);
++				company->months_of_bankruptcy = 10;
++			} else {
++				CommandCost sold = Command<CMD_SELL_VEHICLE>::Do(DoCommandFlag::Execute, VehicleID{0}, false, false, INVALID_CLIENT_ID);
++				if (sold.Failed()) throw BridgeError("INVALID_STATE", "M06 vehicle-loss fixture could not remove primary bus zero", true);
++			}
++		}
+ 		uint64_t after = TimerGameTick::counter;
+ 		if (after - before != MAXIMUM_ACTION_INTERVAL_TICKS) {
+ 			throw BridgeError("INTERNAL_INVARIANT", fmt::format("StateGameLoop advanced {} ticks instead of {}", after - before, MAXIMUM_ACTION_INTERVAL_TICKS), true);
+@@ -570,17 +605,27 @@ private:
+ 		uint64_t relative_ticks = after - this->tick_zero;
+ 		bool action_horizon = this->transition_ordinal >= ACTION_HORIZON;
+ 		bool tick_horizon = relative_ticks >= TICK_HORIZON;
+-		this->truncated = action_horizon || tick_horizon;
++		RlRewardSource reward_post = CaptureRlRewardSource(this->cumulative_capital_spend, &reward_pre);
++		json reward_transition;
++		try {
++			reward_transition = json::parse(BuildRlRewardTransition(reward_pre, reward_post, action_result.dump(), after - before, action_horizon, tick_horizon));
++		} catch (const std::exception &error) {
++			throw BridgeError("INVALID_STATE", fmt::format("M06 reward projection failed: {}", error.what()), true);
++		}
++		this->truncated = reward_transition.at("termination").at("truncated").get<bool>();
++		this->episode_done = this->truncated || reward_transition.at("termination").at("terminal").get<bool>();
+ 		this->lifecycle = Lifecycle::AtBoundary;
+ 
+ 		json response = this->ResponseBase();
+-		response["action_outcome"] = std::move(action_result);
++		response["action_outcome"] = action_result;
+ 		response["advanced_ticks"] = after - before;
+ 		response["post_boundary_token"] = this->BoundaryToken();
+ 		response["pre_boundary_token"] = std::move(pre_boundary);
+ 		response["snapshot"] = this->Snapshot();
+-		response["terminal"] = false;
+-		response["truncated"] = this->truncated;
++		response["reward"] = reward_transition.at("reward");
++		response["termination"] = reward_transition.at("termination");
++		response["terminal"] = response.at("termination").at("terminal");
++		response["truncated"] = response.at("termination").at("truncated");
+ 		if (action_horizon) {
+ 			response["truncation_reason"] = "action-horizon";
+ 		} else if (tick_horizon) {
+@@ -588,6 +633,20 @@ private:
+ 		} else {
+ 			response["truncation_reason"] = nullptr;
+ 		}
++		if (m06_payload && payload.at("include_transition_tensors").get<bool>()) {
++			RlObservation next_observation = EncodeRlObservation(this->transition_ordinal, this->tick_zero);
++			response["next_observation"] = json::parse(SerializeRlObservation(next_observation, false));
++			RlActionMask next_mask;
++			if (!this->episode_done) next_mask = BuildRlActionMask(this->action_selection);
++			response["next_mask"] = json::parse(SerializeRlActionMask(next_mask, this->action_selection, false));
++			response["next_mask_executable"] = !this->episode_done;
++			if (!this->episode_done) {
++				this->last_mask_token = RlActionMaskToken(next_mask, this->BoundaryToken());
++				response["next_mask_token"] = this->last_mask_token;
++			} else {
++				response["next_mask_token"] = nullptr;
++			}
++		}
+ 		return response;
+ 	}
+ 
+diff --git a/src/rl_reward.cpp b/src/rl_reward.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..f2f4fbbf0d940aa558a52892f7c41bfb9a5ddb3d
+--- /dev/null
++++ b/src/rl_reward.cpp
+@@ -0,0 +1,234 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_reward.cpp Authoritative M06 reward and episode-boundary projection. */
++
++#include "stdafx.h"
++
++#include "rl_reward.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "cargotype.h"
++#include "company_base.h"
++#include "vehicle_base.h"
++
++#include <algorithm>
++#include <array>
++#include <bit>
++#include <cmath>
++#include <limits>
++#include <stdexcept>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++namespace {
++
++static constexpr std::string_view REWARD_SCHEMA_VERSION = "openttd-rl-v1-m06-reward-1";
++static constexpr std::string_view TERMINATION_SCHEMA_VERSION = "openttd-rl-v1-m06-termination-1";
++static constexpr uint8_t MAX_PRIMARY_BUSES = 8;
++
++static json SourceJson(const RlRewardSource &source)
++{
++	return {
++		{"company_present", source.company_present},
++		{"delivered_passengers_total", source.delivered_passengers_total},
++		{"operating_expenses_total", source.operating_expenses_total},
++		{"operating_income_total", source.operating_income_total},
++		{"primary_bus_count", source.primary_bus_count},
++		{"stopped_primary_bus_count", source.stopped_primary_bus_count},
++	};
++}
++
++static std::string Float64Bits(double value)
++{
++	static_assert(sizeof(double) == 8);
++	std::array<uint8_t, sizeof(double)> bytes = std::bit_cast<std::array<uint8_t, sizeof(double)>>(value);
++	if constexpr (std::endian::native == std::endian::big) std::reverse(bytes.begin(), bytes.end());
++	std::string output;
++	for (uint8_t byte : bytes) output += fmt::format("{:02x}", byte);
++	return output;
++}
++
++static void RequireSource(const RlRewardSource &source, std::string_view name)
++{
++	if (source.delivered_passengers_total < 0 || source.operating_income_total < 0 || source.operating_expenses_total > 0) {
++		throw std::runtime_error(fmt::format("M06 {} source has invalid lifetime economy signs", name));
++	}
++	if (source.primary_bus_count < 0 || source.primary_bus_count > MAX_PRIMARY_BUSES ||
++			source.stopped_primary_bus_count < 0 || source.stopped_primary_bus_count > source.primary_bus_count) {
++		throw std::runtime_error(fmt::format("M06 {} source violates the M05 primary-bus bound", name));
++	}
++}
++
++static json TerminationJson(bool bankruptcy, bool action_horizon, bool tick_horizon)
++{
++	std::string_view reason = "NONE";
++	std::string_view kind = "CONTINUE";
++	bool terminal = false;
++	bool truncated = false;
++	bool bootstrap = true;
++	if (bankruptcy) {
++		reason = "BANKRUPTCY";
++		kind = "TERMINAL";
++		terminal = true;
++		bootstrap = false;
++	} else if (action_horizon && tick_horizon) {
++		reason = "ACTION_AND_TICK_HORIZON";
++		kind = "TRUNCATED";
++		truncated = true;
++	} else if (action_horizon) {
++		reason = "ACTION_HORIZON";
++		kind = "TRUNCATED";
++		truncated = true;
++	} else if (tick_horizon) {
++		reason = "TICK_HORIZON";
++		kind = "TRUNCATED";
++		truncated = true;
++	}
++	return {
++		{"bootstrap", bootstrap},
++		{"kind", kind},
++		{"reason", reason},
++		{"schema_version", TERMINATION_SCHEMA_VERSION},
++		{"terminal", terminal},
++		{"trainable", true},
++		{"truncated", truncated},
++	};
++}
++
++} // namespace
++
++int64_t RlActionCapitalSpend(std::string_view serialized_action_outcome)
++{
++	json action = json::parse(serialized_action_outcome);
++	if (!action.is_object() || !action.contains("native_commands") || !action.at("native_commands").is_array()) {
++		throw std::runtime_error("M06 action outcome lacks native_commands");
++	}
++	int64_t capital_spend = 0;
++	for (const json &command : action.at("native_commands")) {
++		if (!command.is_object() || !command.contains("cost") || !command.at("cost").is_number_integer()) {
++			throw std::runtime_error("M06 native command cost is not an integer");
++		}
++		int64_t cost = command.at("cost").get<int64_t>();
++		if (cost > 0) {
++			if (capital_spend > std::numeric_limits<int64_t>::max() - cost) throw std::runtime_error("M06 capital spend overflow");
++			capital_spend += cost;
++		}
++	}
++	return capital_spend;
++}
++
++RlRewardSource CaptureRlRewardSource(int64_t cumulative_capital_spend, const RlRewardSource *absent_fallback)
++{
++	if (cumulative_capital_spend < 0) throw std::runtime_error("M06 cumulative capital spend is negative");
++	/* OpenTTD cur_economy expenses include only running, property, and interest categories;
++	 * command construction and vehicle-purchase costs are already excluded. */
++	const Company *company = Company::GetIfValid(CompanyID::Begin());
++	if (company == nullptr) {
++		if (absent_fallback == nullptr) return {};
++		RlRewardSource result = *absent_fallback;
++		result.company_present = false;
++		result.primary_bus_count = 0;
++		result.stopped_primary_bus_count = 0;
++		return result;
++	}
++
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	if (!IsValidCargoType(passengers)) throw std::runtime_error("M06 passenger cargo is unavailable");
++	RlRewardSource result;
++	/* In single-player OpenTTD preserves the local company at the final native bankruptcy stage. */
++	result.company_present = company->months_of_bankruptcy < 10;
++	auto add_economy = [&result, passengers](const CompanyEconomyEntry &entry) {
++		result.delivered_passengers_total += entry.delivered_cargo[passengers];
++		result.operating_income_total += entry.income.base();
++		result.operating_expenses_total += entry.expenses.base();
++	};
++	add_economy(company->cur_economy);
++	for (uint8_t index = 0; index < company->num_valid_stat_ent; ++index) add_economy(company->old_economy[index]);
++	for (const Vehicle *vehicle : Vehicle::Iterate()) {
++		if (vehicle->owner != CompanyID::Begin() || vehicle->type != VEH_ROAD || !vehicle->IsPrimaryVehicle()) continue;
++		++result.primary_bus_count;
++		if (vehicle->vehstatus.Test(VehState::Stopped)) ++result.stopped_primary_bus_count;
++	}
++	RequireSource(result, "captured");
++	return result;
++}
++
++std::string BuildRlRewardTransition(const RlRewardSource &pre, const RlRewardSource &post,
++		std::string_view serialized_action_outcome, uint64_t advanced_ticks, bool action_horizon, bool tick_horizon)
++{
++	RequireSource(pre, "pre");
++	RequireSource(post, "post");
++	if (advanced_ticks > 128) throw std::runtime_error("M06 advanced tick count exceeds 128");
++	if (post.delivered_passengers_total < pre.delivered_passengers_total || post.operating_income_total < pre.operating_income_total ||
++			post.operating_expenses_total > pre.operating_expenses_total) {
++		throw std::runtime_error("M06 lifetime economy source regressed across a transition");
++	}
++
++	json action = json::parse(serialized_action_outcome);
++	if (!action.contains("status") || !action.at("status").is_string()) throw std::runtime_error("M06 action outcome lacks status");
++	std::string status = action.at("status").get<std::string>();
++	if (status != "SUCCESS" && status != "NO_OP" && status != "NATIVE_REJECTED") {
++		throw std::runtime_error(fmt::format("M06 cannot reward action outcome {}", status));
++	}
++
++	std::array<int64_t, 8> raw = {
++		post.delivered_passengers_total - pre.delivered_passengers_total,
++		post.operating_income_total + post.operating_expenses_total - pre.operating_income_total - pre.operating_expenses_total,
++		RlActionCapitalSpend(serialized_action_outcome),
++		status == "NO_OP" ? 1 : 0,
++		status == "NATIVE_REJECTED" ? 1 : 0,
++		post.stopped_primary_bus_count * static_cast<int64_t>(advanced_ticks),
++		std::max<int64_t>(pre.primary_bus_count - post.primary_bus_count, 0),
++		pre.company_present && !post.company_present ? 1 : 0,
++	};
++	static constexpr std::array<int64_t, 8> minimum = {0, -16384, 0, 0, 0, 0, 0, 0};
++	static constexpr std::array<int64_t, 8> maximum = {128, 16384, 65536, 1, 1, 1024, 8, 1};
++	static constexpr std::array<int64_t, 8> numerator = {1, 1, -1, -1, -1, -1, -2, -8};
++	static constexpr std::array<int64_t, 8> denominator = {16, 4096, 16384, 64, 4, 65536, 1, 1};
++	static constexpr std::array<std::string_view, 8> component_id = {"RC-001", "RC-002", "RC-003", "RC-004", "RC-005", "RC-006", "RC-007", "RC-008"};
++	static constexpr std::array<std::string_view, 8> name = {"passenger_delivery", "operating_profit", "capital_spend", "noop", "native_rejection", "idle_bus_ticks", "vehicle_loss", "bankruptcy"};
++	static constexpr std::array<std::string_view, 8> raw_field = {"delivered_passengers_delta", "operating_profit_delta", "capital_spend", "noop", "native_rejected", "idle_bus_ticks", "vehicle_loss_count", "bankruptcy"};
++
++	json raw_json = json::object();
++	json components = json::array();
++	double scalar = 0.0;
++	for (size_t index = 0; index < raw.size(); ++index) {
++		int64_t clamped = std::clamp(raw[index], minimum[index], maximum[index]);
++		double weighted = static_cast<double>(clamped * numerator[index]) / static_cast<double>(denominator[index]);
++		if (!std::isfinite(weighted)) throw std::runtime_error(fmt::format("M06 {} produced a nonfinite value", component_id[index]));
++		scalar += weighted;
++		if (!std::isfinite(scalar)) throw std::runtime_error("M06 scalar reward became nonfinite");
++		raw_json[raw_field[index]] = raw[index];
++		components.push_back({
++			{"clamped", clamped},
++			{"component_id", component_id[index]},
++			{"name", name[index]},
++			{"order", index},
++			{"raw", raw[index]},
++			{"raw_field", raw_field[index]},
++			{"weighted", weighted},
++			{"weighted_float64_bits", Float64Bits(weighted)},
++		});
++	}
++
++	bool bankruptcy = raw[7] == 1;
++	return json({
++		{"reward", {
++			{"compatibility_sha256", RL_REWARD_COMPATIBILITY_SHA256},
++			{"components", std::move(components)},
++			{"raw", std::move(raw_json)},
++			{"scalar", scalar},
++			{"scalar_float64_bits", Float64Bits(scalar)},
++			{"schema_version", REWARD_SCHEMA_VERSION},
++			{"source", {{"post", SourceJson(post)}, {"pre", SourceJson(pre)}}},
++		}},
++		{"termination", TerminationJson(bankruptcy, action_horizon, tick_horizon)},
++	}).dump();
++}
+diff --git a/src/rl_reward.h b/src/rl_reward.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..bf42509aff4166b4c7e32750e57965bef2b98c22
+--- /dev/null
++++ b/src/rl_reward.h
+@@ -0,0 +1,34 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_reward.h Authoritative M06 reward and episode-boundary projection. */
++
++#ifndef RL_REWARD_H
++#define RL_REWARD_H
++
++#include <cstdint>
++#include <string>
++#include <string_view>
++
++static constexpr std::string_view RL_REWARD_COMPATIBILITY_SHA256 = "9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e";
++
++/** Cumulative, quarter-rotation-safe engine facts at one transition boundary. */
++struct RlRewardSource {
++	bool company_present = false;
++	int64_t delivered_passengers_total = 0;
++	int64_t operating_income_total = 0;
++	int64_t operating_expenses_total = 0;
++	int64_t primary_bus_count = 0;
++	int64_t stopped_primary_bus_count = 0;
++};
++
++int64_t RlActionCapitalSpend(std::string_view serialized_action_outcome);
++RlRewardSource CaptureRlRewardSource(int64_t cumulative_capital_spend, const RlRewardSource *absent_fallback = nullptr);
++std::string BuildRlRewardTransition(const RlRewardSource &pre, const RlRewardSource &post,
++	std::string_view serialized_action_outcome, uint64_t advanced_ticks, bool action_horizon, bool tick_horizon);
++
++#endif /* RL_REWARD_H */

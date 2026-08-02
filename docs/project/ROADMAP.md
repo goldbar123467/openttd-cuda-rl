@@ -8,16 +8,16 @@ claim later milestones from partial infrastructure.
 
 ## Current-state baseline
 
-As of 2026-08-01, `G00` through `G05` pass. The accepted substrate is a pinned
+As of 2026-08-01, `G00` through `G06` pass. The accepted substrate is a pinned
 and reproducible OpenTTD 15.3 profile, a frozen 32 by 32 passenger-bus
 scenario/reset corpus, and a synchronized source-integrated headless bridge with
 process isolation and exact tick stepping. It now also includes a frozen native
 policy observation and preprocessing contract plus a fixed 41-action bus catalog,
 boundary-bound legality masks, transactional route updates, and repeated
-actual-engine profitable-service evidence. The M06 reward/termination/trajectory
-foundation is now frozen and unit-tested, but its native projection, writer,
-exploit campaign, and G06 actual-engine evidence remain in progress. No PPO
-trainer, CUDA trainer, evaluator, ONNX package, or in-game neural agent exists.
+actual-engine profitable-service evidence. It now includes native lifetime-delta
+reward projection, typed episode outcomes, bounded content-addressed trajectories,
+and repeated exploit/rollover evidence. No PPO trainer, CUDA trainer, evaluator,
+ONNX package, or in-game neural agent exists.
 
 Legacy P0 completion is not a prerequisite as originally written because its
 freight target conflicts with the active bus-only scope. Its reusable pieces enter
@@ -317,10 +317,10 @@ bus routes and distinguish every failure class.
 
 ## M06 — Reward, termination, trajectory, and rollout contract
 
-Status: `IN_PROGRESS`. The candidate ledger, exact scalar/termination reference,
-trajectory integrity, and bounded rollout design are frozen in
-[`M06_REWARD_TRAJECTORY_FOUNDATION.md`](M06_REWARD_TRAJECTORY_FOUNDATION.md).
-Native and actual-engine G06 evidence remains open.
+Status: `PASS`. The frozen design is in
+[`M06_REWARD_TRAJECTORY_FOUNDATION.md`](M06_REWARD_TRAJECTORY_FOUNDATION.md), and
+the native, trajectory, exploit, rollover, and repeated actual-engine evidence is
+in [`G06_GATE_REPORT.md`](G06_GATE_REPORT.md).
 
 ### Objective
 

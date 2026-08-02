@@ -57,6 +57,19 @@ class V1M03BridgeProtocolTests(unittest.TestCase):
         self.assertEqual((frame.request_id, frame.transition_ordinal), (19, 3))
         self.assertEqual(frame.payload, {"status": "OK", "value": 1})
 
+    def test_response_canonicality_accepts_cross_language_float_spelling_but_rejects_structure_drift(self) -> None:
+        alternate_float = b'{"status":"OK","value":0.10000000000000001}'
+        frame = self._decode_raw_response(alternate_float)
+        self.assertEqual(frame.payload, {"status": "OK", "value": 0.1})
+        for malformed in (
+            b'{"status": "OK","value":1}',
+            b'{"value":1,"status":"OK"}',
+            b'{"status":"\\u004fK","value":1}',
+        ):
+            with self.subTest(malformed=malformed):
+                with self.assertRaisesRegex(m03_bridge_protocol.M03BridgeProtocolError, "canonical compact"):
+                    self._decode_raw_response(malformed)
+
     def test_decoder_rejects_bad_checksum_duplicate_json_and_timeout(self) -> None:
         bad_checksum = m03_bridge_protocol.encode_frame(
             message_type=m03_bridge_protocol.SNAPSHOT,
@@ -108,6 +121,23 @@ class V1M03BridgeProtocolTests(unittest.TestCase):
         try:
             with self.assertRaises(m03_bridge_protocol.M03BridgeTimeout):
                 m03_bridge_protocol.decode_frame(read_descriptor, 0.01)
+        finally:
+            os.close(read_descriptor)
+            os.close(write_descriptor)
+
+    @staticmethod
+    def _decode_raw_response(payload: bytes) -> m03_bridge_protocol.Frame:
+        header = bytearray(
+            m03_bridge_protocol.HEADER.pack(
+                b"ORL1", 1, 0, m03_bridge_protocol.STEP, m03_bridge_protocol.FLAG_RESPONSE,
+                len(payload), 0, 0, 1, 1, 1, 0,
+            )
+        )
+        struct.pack_into("<I", header, 16, m03_bridge_protocol.crc32c(header + payload))
+        read_descriptor, write_descriptor = os.pipe()
+        try:
+            os.write(write_descriptor, header + payload)
+            return m03_bridge_protocol.decode_frame(read_descriptor, 1.0)
         finally:
             os.close(read_descriptor)
             os.close(write_descriptor)

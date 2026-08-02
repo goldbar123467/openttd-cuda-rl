@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m06-reward-oracle-report.schema.json",
+  "title": "OpenTTD-RL V1 M06 actual-engine reward oracle report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actual_engine_templates",
+    "executable_sha256",
+    "exploit_campaign",
+    "horizon_and_rollover",
+    "native_delta",
+    "reward_compatibility_sha256",
+    "reward_contract_sha256",
+    "schema_version",
+    "status",
+    "trajectory"
+  ],
+  "properties": {
+    "actual_engine_templates": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/template"}
+    },
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "exploit_campaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bankruptcy_bootstrap",
+        "bankruptcy_final_observation_sha256",
+        "bankruptcy_return",
+        "bankruptcy_terminal",
+        "construction_return",
+        "cycling_return",
+        "duplicate_attempt_advanced_ticks",
+        "duplicate_attempt_rewarded",
+        "idle_return",
+        "native_rejection_return",
+        "noop_return",
+        "vehicle_loss_return"
+      ],
+      "properties": {
+        "bankruptcy_bootstrap": {"const": false},
+        "bankruptcy_final_observation_sha256": {"$ref": "#/$defs/sha256"},
+        "bankruptcy_return": {"type": "number", "maximum": -8},
+        "bankruptcy_terminal": {"const": true},
+        "construction_return": {"type": "number", "maximum": 0},
+        "cycling_return": {"type": "number", "maximum": 0},
+        "duplicate_attempt_advanced_ticks": {"const": 0},
+        "duplicate_attempt_rewarded": {"const": false},
+        "idle_return": {"type": "number", "exclusiveMaximum": 0},
+        "native_rejection_return": {"type": "number", "maximum": -0.25},
+        "noop_return": {"type": "number", "exclusiveMaximum": 0},
+        "vehicle_loss_return": {"type": "number", "maximum": -2}
+      }
+    },
+    "horizon_and_rollover": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["final_observation_sha256", "quarter_counter_resets", "reason", "relative_ticks", "transition_ordinal"],
+      "properties": {
+        "final_observation_sha256": {"$ref": "#/$defs/sha256"},
+        "quarter_counter_resets": {"type": "integer", "minimum": 1},
+        "reason": {"const": "ACTION_AND_TICK_HORIZON"},
+        "relative_ticks": {"const": 65536},
+        "transition_ordinal": {"const": 512}
+      }
+    },
+    "native_delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["composed_source_identity_sha256", "patch_sha256", "result_tree", "series_sha256"],
+      "properties": {
+        "composed_source_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "patch_sha256": {"$ref": "#/$defs/sha256"},
+        "result_tree": {"$ref": "#/$defs/git_object"},
+        "series_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "reward_compatibility_sha256": {"const": "9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e"},
+    "reward_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "schema_version": {"const": "openttd-rl-v1-m06-reward-oracle-report-1"},
+    "status": {"const": "PASS"},
+    "trajectory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundle_sha256", "observation_blob_count", "record_count", "round_trip"],
+      "properties": {
+        "bundle_sha256": {"$ref": "#/$defs/sha256"},
+        "observation_blob_count": {"type": "integer", "minimum": 1, "maximum": 129},
+        "record_count": {"const": 128},
+        "round_trip": {"const": "PASS"}
+      }
+    }
+  },
+  "$defs": {
+    "git_object": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "component_hits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["RC-001", "RC-002", "RC-003", "RC-004", "RC-005", "RC-006", "RC-007", "RC-008"],
+      "properties": {
+        "RC-001": {"type": "integer", "minimum": 0},
+        "RC-002": {"type": "integer", "minimum": 0},
+        "RC-003": {"type": "integer", "minimum": 0},
+        "RC-004": {"type": "integer", "minimum": 0},
+        "RC-005": {"type": "integer", "minimum": 0},
+        "RC-006": {"type": "integer", "minimum": 0},
+        "RC-007": {"type": "integer", "minimum": 0},
+        "RC-008": {"type": "integer", "minimum": 0}
+      }
+    },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capital_spend_hits",
+        "delivered_passengers",
+        "delivery_interval_return",
+        "delivery_reward_hits",
+        "income",
+        "operating_profit_hits",
+        "reward_component_hits",
+        "template_id",
+        "transitions_to_service"
+      ],
+      "properties": {
+        "capital_spend_hits": {"type": "integer", "minimum": 1},
+        "delivered_passengers": {"type": "integer", "minimum": 1},
+        "delivery_interval_return": {"type": "number"},
+        "delivery_reward_hits": {"type": "integer", "minimum": 1},
+        "income": {"type": "integer", "minimum": 1},
+        "operating_profit_hits": {"type": "integer", "minimum": 1},
+        "reward_component_hits": {"$ref": "#/$defs/component_hits"},
+        "template_id": {"type": "string", "pattern": "^m02-template-0[1-8]$"},
+        "transitions_to_service": {"type": "integer", "minimum": 1, "maximum": 511}
+      }
+    }
+  }
+}

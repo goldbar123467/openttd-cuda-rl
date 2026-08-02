@@ -58,6 +58,41 @@ def canonical_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
+def _response_is_compact_sorted(value: Any, payload: bytes) -> bool:
+    """Accept cross-language shortest float spellings while retaining canonical structure."""
+    def normalize_numbers(encoded: bytes) -> bytes:
+        output = bytearray()
+        index = 0
+        in_string = False
+        escaped = False
+        while index < len(encoded):
+            byte = encoded[index]
+            if in_string:
+                output.append(byte)
+                if escaped:
+                    escaped = False
+                elif byte == ord("\\"):
+                    escaped = True
+                elif byte == ord('"'):
+                    in_string = False
+                index += 1
+            elif byte == ord('"'):
+                in_string = True
+                output.append(byte)
+                index += 1
+            elif byte == ord("-") or ord("0") <= byte <= ord("9"):
+                output.append(ord("#"))
+                index += 1
+                while index < len(encoded) and encoded[index] in b"0123456789+-.eE":
+                    index += 1
+            else:
+                output.append(byte)
+                index += 1
+        return bytes(output)
+
+    return isinstance(value, dict) and normalize_numbers(payload) == normalize_numbers(canonical_bytes(value))
+
+
 def crc32c(value: bytes | bytearray) -> int:
     crc = 0xFFFFFFFF
     for byte in value:
@@ -194,7 +229,7 @@ def decode_frame(descriptor: int, timeout: float) -> Frame:
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise M03BridgeProtocolError(f"response payload is invalid JSON: {exc}") from exc
-    if not isinstance(payload, dict) or canonical_bytes(payload) != payload_bytes:
+    if not _response_is_compact_sorted(payload, payload_bytes):
         raise M03BridgeProtocolError("response payload is not a canonical compact JSON object")
     return Frame(
         message_type=message_type,
