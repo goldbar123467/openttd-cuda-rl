@@ -796,14 +796,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-SCOPE"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "LIFE-001",
@@ -1125,14 +1146,34 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M09-EVALUATION"
+      ],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "LIFE-012",
@@ -3129,14 +3170,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-OBS"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "ACT-001",
@@ -3926,14 +3988,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-REW"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "AI-001",
@@ -3946,14 +4029,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-AI"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "AI-002",
@@ -3966,14 +4070,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-AI"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "AI-003",
@@ -3986,14 +4111,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-AI"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "AI-004",
@@ -4006,14 +4152,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-AI"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "AI-005",
@@ -4026,14 +4193,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-AI"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "AI-006",
@@ -4046,14 +4234,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-AI"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "MODEL-001",
@@ -4702,14 +4911,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-RUN"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "RUN-009",
@@ -5237,14 +5467,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-002",
@@ -5258,14 +5509,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-003",
@@ -5279,14 +5551,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-004",
@@ -5300,14 +5593,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-005",
@@ -5321,14 +5635,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-006",
@@ -5342,14 +5677,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-007",
@@ -5363,14 +5719,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-008",
@@ -5384,14 +5761,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-009",
@@ -5405,14 +5803,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-010",
@@ -5426,14 +5845,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-011",
@@ -5447,14 +5887,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-012",
@@ -5468,14 +5929,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "EVAL-013",
@@ -5489,14 +5971,35 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
+      ],
       "test_ids": [
+        "V1-TEST-M09-EVALUATION",
         "V1-TEST-EVAL"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "REPRO-001",
@@ -6351,14 +6854,34 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ARCH"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M09-EVALUATION"
+      ],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "ARCH-005",
@@ -6371,14 +6894,34 @@
       ],
       "milestone": "M09",
       "gate": "G09",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ARCH"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M09-EVALUATION"
+      ],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G09."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "DONE-001",
@@ -6434,14 +6977,34 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-DONE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m09-evaluation-contract.json",
+        "config/v1/m09-runtime-lock.json",
+        "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+        "docs/project/schema/v1-m09-runtime-lock.schema.json",
+        "docs/project/schema/v1-m09-final-evaluation.schema.json",
+        "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/evaluation_model.h",
+        "training/v1/src/evaluation_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/tests/m09_native_tests.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/run_m09_training.py",
+        "scripts/v1/run_m09_evaluation.py",
+        "scripts/v1/validate_m09_evaluation_contract.py",
+        "scripts/v1/validate_m09_evaluation_report.py",
+        "tests/project/traceability/test_v1_m09_evaluation.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M09-EVALUATION"
+      ],
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G09 passes with a preregistered final-blind nine-run campaign, optimizer-free read-only evaluator, complete baselines and metric dispositions, seed-level Student-t statistics, unseen final layouts, seeded stochastic evaluation, balance/horizon robustness, and a development-selected combined policy that beats random and trivial while reliably profitable."
     },
     {
       "id": "DONE-004",
@@ -6771,23 +7334,10 @@
   ],
   "tests": [
     {
-      "id": "V1-TEST-SCOPE",
-      "summary": "Planned requirement verification suite for SCOPE requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "SCOPE-027"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
       "id": "V1-TEST-LIFE",
       "summary": "Planned requirement verification suite for LIFE requirements.",
       "runner": null,
       "requirement_ids": [
-        "LIFE-011",
         "LIFE-013",
         "LIFE-014",
         "LIFE-015",
@@ -6828,47 +7378,6 @@
       "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
     },
     {
-      "id": "V1-TEST-OBS",
-      "summary": "Planned matched observation-architecture experiment suite for OBS-018.",
-      "runner": null,
-      "requirement_ids": [
-        "OBS-018"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "OBS-001 through OBS-017 moved to the passing M04 suite; OBS-018 remains planned for M09/G09."
-    },
-    {
-      "id": "V1-TEST-REW",
-      "summary": "Planned requirement verification suite for REW requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "REW-008"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-AI",
-      "summary": "Planned requirement verification suite for AI requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "AI-001",
-        "AI-002",
-        "AI-003",
-        "AI-004",
-        "AI-005",
-        "AI-006"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
       "id": "V1-TEST-MODEL",
       "summary": "Planned requirement verification suite for MODEL requirements.",
       "runner": null,
@@ -6891,42 +7400,6 @@
         "MODEL-016",
         "MODEL-017",
         "MODEL-018"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-RUN",
-      "summary": "Planned requirement verification suite for RUN requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "RUN-008"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-EVAL",
-      "summary": "Planned requirement verification suite for EVAL requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "EVAL-001",
-        "EVAL-002",
-        "EVAL-003",
-        "EVAL-004",
-        "EVAL-005",
-        "EVAL-006",
-        "EVAL-007",
-        "EVAL-008",
-        "EVAL-009",
-        "EVAL-010",
-        "EVAL-011",
-        "EVAL-012",
-        "EVAL-013"
       ],
       "status": "PLANNED",
       "evidence": [],
@@ -6968,26 +7441,12 @@
       "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
     },
     {
-      "id": "V1-TEST-ARCH",
-      "summary": "Planned requirement verification suite for ARCH requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "ARCH-004",
-        "ARCH-005"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
       "id": "V1-TEST-DONE",
       "summary": "Planned requirement verification suite for DONE requirements.",
       "runner": null,
       "requirement_ids": [
         "DONE-001",
         "DONE-002",
-        "DONE-003",
         "DONE-004",
         "DONE-005",
         "DONE-006",
@@ -7273,6 +7732,147 @@
       ],
       "mandatory": true,
       "reviewer_note": "Seven focused Python tests, six native M08 tests, paired CPU/CUDA learning, a 12-cell full benchmark with continuous telemetry, real unavailable/OOM failures, canonical checkpoint moves, and a matched all-architecture live OpenTTD run pass."
+    },
+    {
+      "id": "V1-TEST-M09-EVALUATION",
+      "summary": "Verify M09 preregistration, final-blind matched training, optimizer-free read-only evaluation packages, baseline provenance, economic superiority, seed statistics, stochastic inference, and robustness.",
+      "runner": "scripts/v1/run_m09_foundation_tests.sh",
+      "requirement_ids": [
+        "SCOPE-027",
+        "LIFE-011",
+        "OBS-018",
+        "REW-008",
+        "AI-001",
+        "AI-002",
+        "AI-003",
+        "AI-004",
+        "AI-005",
+        "AI-006",
+        "RUN-008",
+        "EVAL-001",
+        "EVAL-002",
+        "EVAL-003",
+        "EVAL-004",
+        "EVAL-005",
+        "EVAL-006",
+        "EVAL-007",
+        "EVAL-008",
+        "EVAL-009",
+        "EVAL-010",
+        "EVAL-011",
+        "EVAL-012",
+        "EVAL-013",
+        "ARCH-004",
+        "ARCH-005",
+        "DONE-003"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The native evaluator suite, nine focused Python tests, a fair three-architecture by three-seed training campaign, and the validated 36-episode independent final suite pass."
+    },
+    {
+      "id": "V1-TEST-SCOPE",
+      "summary": "Planned requirement verification suite for SCOPE requirements.",
+      "runner": "scripts/v1/run_m09_foundation_tests.sh",
+      "requirement_ids": [
+        "SCOPE-027"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The M09 preregistration, read-only evaluator, matched campaign, baseline matrix, final economic gate, statistical report, and robustness evidence pass."
+    },
+    {
+      "id": "V1-TEST-OBS",
+      "summary": "Planned matched observation-architecture experiment suite for OBS-018.",
+      "runner": "scripts/v1/run_m09_foundation_tests.sh",
+      "requirement_ids": [
+        "OBS-018"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The M09 preregistration, read-only evaluator, matched campaign, baseline matrix, final economic gate, statistical report, and robustness evidence pass."
+    },
+    {
+      "id": "V1-TEST-REW",
+      "summary": "Planned requirement verification suite for REW requirements.",
+      "runner": "scripts/v1/run_m09_foundation_tests.sh",
+      "requirement_ids": [
+        "REW-008"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The M09 preregistration, read-only evaluator, matched campaign, baseline matrix, final economic gate, statistical report, and robustness evidence pass."
+    },
+    {
+      "id": "V1-TEST-AI",
+      "summary": "Planned requirement verification suite for AI requirements.",
+      "runner": "scripts/v1/run_m09_foundation_tests.sh",
+      "requirement_ids": [
+        "AI-001",
+        "AI-002",
+        "AI-003",
+        "AI-004",
+        "AI-005",
+        "AI-006"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The M09 preregistration, read-only evaluator, matched campaign, baseline matrix, final economic gate, statistical report, and robustness evidence pass."
+    },
+    {
+      "id": "V1-TEST-RUN",
+      "summary": "Planned requirement verification suite for RUN requirements.",
+      "runner": "scripts/v1/run_m09_foundation_tests.sh",
+      "requirement_ids": [
+        "RUN-008"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The M09 preregistration, read-only evaluator, matched campaign, baseline matrix, final economic gate, statistical report, and robustness evidence pass."
+    },
+    {
+      "id": "V1-TEST-EVAL",
+      "summary": "Planned requirement verification suite for EVAL requirements.",
+      "runner": "scripts/v1/run_m09_foundation_tests.sh",
+      "requirement_ids": [
+        "EVAL-001",
+        "EVAL-002",
+        "EVAL-003",
+        "EVAL-004",
+        "EVAL-005",
+        "EVAL-006",
+        "EVAL-007",
+        "EVAL-008",
+        "EVAL-009",
+        "EVAL-010",
+        "EVAL-011",
+        "EVAL-012",
+        "EVAL-013"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G09_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The M09 preregistration, read-only evaluator, matched campaign, baseline matrix, final economic gate, statistical report, and robustness evidence pass."
     }
   ],
   "aggregate_dependencies": [

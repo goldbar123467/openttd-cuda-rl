@@ -86,6 +86,8 @@ deterministic tooling and historical evidence, not as bus or RL progress.
     — frozen CNN/combined architectures and measured device policy.
 32. [`docs/project/G08_GATE_REPORT.md`](docs/project/G08_GATE_REPORT.md) — passed
     CPU/CUDA parity, performance, monitoring, and live-integration gate.
+33. [`docs/project/G09_GATE_REPORT.md`](docs/project/G09_GATE_REPORT.md) — passed
+    independent multi-seed evaluation, baselines, profitability, and robustness gate.
 
 ## Current status
 
@@ -103,7 +105,7 @@ deterministic tooling and historical evidence, not as bus or RL progress.
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
 | CUDA training path | All-model numerical parity, measured CNN inference/update benefit, GPU telemetry, and explicit failure classes | `M08/G08 PASS`; enabled only for measured workloads |
-| Independent evaluation | No V1 evaluator | Not started |
+| Independent evaluation | Optimizer-free read-only evaluator, matched nine-run architecture campaign, three baselines, unseen final layouts, stochastic seeds, confidence intervals, and robustness matrix | `M09/G09 PASS`; frozen selected package |
 | ONNX export/equivalence | No implementation | Not started |
 | In-game neural agent | No implementation | Not started |
 

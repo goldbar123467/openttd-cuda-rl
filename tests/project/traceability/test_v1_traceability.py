@@ -92,7 +92,7 @@ class V1TraceabilityTests(unittest.TestCase):
             summary = self.validate_mutation(pathlib.Path(raw))
         self.assertEqual(summary.requirements, 227)
         self.assertEqual(summary.tests, 23)
-        self.assertEqual(summary.requirements_passed, 142)
+        self.assertEqual(summary.requirements_passed, 169)
         self.assertEqual(summary.post_v1_deferred, 10)
         self.assertEqual(summary.nonclosed_defects, 0)
 
@@ -285,10 +285,10 @@ class V1TraceabilityTests(unittest.TestCase):
 
     def test_passing_aggregate_with_nonpassing_dependencies_fails(self) -> None:
         registry = copy.deepcopy(self.registry)
-        self.promote_requirement(registry, "DONE-003")
+        self.requirement(registry, "EVAL-012")["status"] = "NOT_STARTED"
         markdown = self.markdown.replace(
-            "| `DONE-003` | At least one policy passes both baseline superiority (`EVAL-012`) and reliable profitability (`EVAL-013`). | Final independent evaluation report. | `NOT_STARTED` |",
-            "| `DONE-003` | At least one policy passes both baseline superiority (`EVAL-012`) and reliable profitability (`EVAL-013`). | Final independent evaluation report. | `PASS` |",
+            "| `EVAL-012` | At least one learned policy is superior to random and trivial scripted baselines under the preregistered protocol. | Final V1 evaluation gate. | `PASS` |",
+            "| `EVAL-012` | At least one learned policy is superior to random and trivial scripted baselines under the preregistered protocol. | Final V1 evaluation gate. | `NOT_STARTED` |",
             1,
         )
         with tempfile.TemporaryDirectory() as raw:

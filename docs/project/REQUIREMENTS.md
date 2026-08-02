@@ -90,7 +90,7 @@ cover the whole statement.
 | `SCOPE-024` | The agent can start bus service. | Vehicle-state integration test. | `PASS` |
 | `SCOPE-025` | The environment detects passenger delivery and resulting revenue. | Controlled delivery/economy test. | `PASS` |
 | `SCOPE-026` | The policy can be penalized for repeated invalid, wasteful, destructive, idle, or unprofitable behavior. | Reward-component scenario tests. | `PASS` |
-| `SCOPE-027` | A learned policy can maintain or improve a bus network over a multi-episode evaluation horizon. | Preregistered evaluation results. | `NOT_STARTED` |
+| `SCOPE-027` | A learned policy can maintain or improve a bus network over a multi-episode evaluation horizon. | Preregistered evaluation results. | `PASS` |
 
 ## Complete platform lifecycle
 
@@ -106,7 +106,7 @@ cover the whole statement.
 | `LIFE-008` | Calculate scalar reward from separately retained components. | Reward unit/integration evidence. | `PASS` |
 | `LIFE-009` | Record complete trajectories with schema and provenance. | Trajectory round-trip and resume tests. | `PASS` |
 | `LIFE-010` | Train actor-critic PPO policies in the production C++/CUDA path. | Trainer convergence and algorithm tests. | `PASS` |
-| `LIFE-011` | Evaluate saved policies in a process and dataset independent from training. | Evaluation run artifact. | `NOT_STARTED` |
+| `LIFE-011` | Evaluate saved policies in a process and dataset independent from training. | Evaluation run artifact. | `PASS` |
 | `LIFE-012` | Save native training checkpoints and recover from the declared boundary. | Interrupted-run recovery comparison. | `PASS` |
 | `LIFE-013` | Export compatible trained networks to ONNX. | Export gate result. | `NOT_STARTED` |
 | `LIFE-014` | Convert or package an exported model for the in-game inference runtime. | Package schema and install test. | `NOT_STARTED` |
@@ -182,7 +182,7 @@ An omitted candidate is not silently assumed irrelevant.
 | `OBS-015` | Spatial tensors have an explicit coordinate origin, axis order, channel order, and tile-to-index mapping. | Pattern-map orientation tests. | `PASS` |
 | `OBS-016` | Observation extraction has no mutation, RNG consumption, pathfinding side effect, or lazy-state perturbation. | Instrumented non-perturbation test. | `PASS` |
 | `OBS-017` | Training, evaluator, ONNX, and in-game paths use the same encoder implementation or byte-equivalent fixtures. | Cross-runtime golden vectors. | `PASS` |
-| `OBS-018` | MLP, CNN, and combined comparisons use equivalent seeds, settings, budgets, and evaluation protocols. | Matched experiment manifest. | `NOT_STARTED` |
+| `OBS-018` | MLP, CNN, and combined comparisons use equivalent seeds, settings, budgets, and evaluation protocols. | Matched experiment manifest. | `PASS` |
 
 ## Action and legality requirements
 
@@ -223,18 +223,18 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 | `REW-005` | Scalar aggregation is versioned, configured, and provenance-recorded. | Config/schema test. | `PASS` |
 | `REW-006` | Reward does not use deployment-unavailable privileged information. | Feature/reward information audit. | `PASS` |
 | `REW-007` | Reward has explicit tests for farming, cycling, construction/destruction, duplication, idling, bankruptcy avoidance, and no-op exploits. | Adversarial scenario suite. | `PASS` |
-| `REW-008` | Training reward is not accepted as the sole model-quality measure. | Independent evaluation gate. | `NOT_STARTED` |
+| `REW-008` | Training reward is not accepted as the sole model-quality measure. | Independent evaluation gate. | `PASS` |
 
 ## Existing AI and scripted baseline requirements
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `AI-001` | The platform can run an existing OpenTTD AI or scripted agent in at least one isolated baseline/evaluation workflow. | Reproducible baseline run. | `NOT_STARTED` |
-| `AI-002` | Supported uses are dispositioned: economic comparison, learning-progress baseline, demonstrations, imitation data, curriculum, stress test, robustness, shared-map competition, and non-neural baseline. | Baseline registry. | `NOT_STARTED` |
-| `AI-003` | Every external AI record includes name, version, source, configuration, seed, transport support, limitations, scenario, and result. | Schema-valid baseline manifest. | `NOT_STARTED` |
-| `AI-004` | An established AI is not presumed correct; its behavior is measured and limitations are reported. | Baseline review and anomaly log. | `NOT_STARTED` |
-| `AI-005` | Initial PPO training does not depend on competitive multiplayer behavior. | Trainer scenario audit. | `NOT_STARTED` |
-| `AI-006` | Competitive evaluation remains post-single-company-stability work. | Roadmap gate enforcement. | `NOT_STARTED` |
+| `AI-001` | The platform can run an existing OpenTTD AI or scripted agent in at least one isolated baseline/evaluation workflow. | Reproducible baseline run. | `PASS` |
+| `AI-002` | Supported uses are dispositioned: economic comparison, learning-progress baseline, demonstrations, imitation data, curriculum, stress test, robustness, shared-map competition, and non-neural baseline. | Baseline registry. | `PASS` |
+| `AI-003` | Every external AI record includes name, version, source, configuration, seed, transport support, limitations, scenario, and result. | Schema-valid baseline manifest. | `PASS` |
+| `AI-004` | An established AI is not presumed correct; its behavior is measured and limitations are reported. | Baseline review and anomaly log. | `PASS` |
+| `AI-005` | Initial PPO training does not depend on competitive multiplayer behavior. | Trainer scenario audit. | `PASS` |
+| `AI-006` | Competitive evaluation remains post-single-company-stability work. | Roadmap gate enforcement. | `PASS` |
 
 ## Model, package, equivalence, and in-game requirements
 
@@ -270,7 +270,7 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 | `RUN-005` | Environment crashes are detected, classified, and recovered or fail closed without corrupting the run. | Crash fault-injection test. | `PASS` |
 | `RUN-006` | Training resumes from valid checkpoints after process interruption. | Recovery campaign. | `PASS` |
 | `RUN-007` | Logs are structured, schema-versioned, bounded, and usable non-interactively. | Log schema/resource tests. | `PASS` |
-| `RUN-008` | Runtime supports batch evaluation and long unattended runs. | Evaluation and soak results. | `NOT_STARTED` |
+| `RUN-008` | Runtime supports batch evaluation and long unattended runs. | Evaluation and soak results. | `PASS` |
 | `RUN-009` | CPU/GPU/environment performance can be profiled without changing authoritative semantics. | Profile on/off parity test. | `PASS` |
 | `RUN-010` | The OpenTTD/RL interface is stable, versioned, and synchronized. | ABI/API contract tests. | `PASS` |
 | `MON-001` | Interactive monitor remains readable over SSH and in tmux. | Terminal acceptance capture. | `PASS` |
@@ -287,19 +287,19 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `EVAL-001` | Evaluation is independent from training and cannot update policy or normalization state. | Read-only evaluator test. | `NOT_STARTED` |
-| `EVAL-002` | The evaluation suite includes fixed seeds and unseen seeds. | Scenario manifest/results. | `NOT_STARTED` |
-| `EVAL-003` | It includes multiple town layouts and passenger distributions. | Scenario manifest/results. | `NOT_STARTED` |
-| `EVAL-004` | It includes reviewed starting-balance and horizon variations. | Scenario manifest/results. | `NOT_STARTED` |
-| `EVAL-005` | It evaluates greedy and explicitly seeded stochastic policies. | Mode-comparison report. | `NOT_STARTED` |
-| `EVAL-006` | It compares random, trivial scripted, and at least one existing-AI baseline where scenario support permits. | Baseline report. | `NOT_STARTED` |
-| `EVAL-007` | It compares structured MLP, spatial CNN, and combined architectures with matched budgets. | Architecture report. | `NOT_STARTED` |
-| `EVAL-008` | It tests robustness to minor in-scope environment variation. | Robustness report. | `NOT_STARTED` |
-| `EVAL-009` | Metrics disposition survival, bankruptcy, final balance, net/operating profit, passenger deliveries, route profit, profitable vehicles, infrastructure cost, ROI, station rating, coverage, invalid actions, action efficiency, and seed stability. | Metric registry and report. | `NOT_STARTED` |
-| `EVAL-010` | Primary success metrics and superiority thresholds are preregistered before the final comparison. | Reviewed evaluation protocol. | `NOT_STARTED` |
-| `EVAL-011` | Claims report confidence intervals or seed-level dispersion and do not rely on a best seed. | Statistical report lint. | `NOT_STARTED` |
-| `EVAL-012` | At least one learned policy is superior to random and trivial scripted baselines under the preregistered protocol. | Final V1 evaluation gate. | `NOT_STARTED` |
-| `EVAL-013` | At least one learned policy reliably operates profitably across the preregistered deterministic evaluation set, under explicit profit and stability thresholds. | Final profitability/reliability report. | `NOT_STARTED` |
+| `EVAL-001` | Evaluation is independent from training and cannot update policy or normalization state. | Read-only evaluator test. | `PASS` |
+| `EVAL-002` | The evaluation suite includes fixed seeds and unseen seeds. | Scenario manifest/results. | `PASS` |
+| `EVAL-003` | It includes multiple town layouts and passenger distributions. | Scenario manifest/results. | `PASS` |
+| `EVAL-004` | It includes reviewed starting-balance and horizon variations. | Scenario manifest/results. | `PASS` |
+| `EVAL-005` | It evaluates greedy and explicitly seeded stochastic policies. | Mode-comparison report. | `PASS` |
+| `EVAL-006` | It compares random, trivial scripted, and at least one existing-AI baseline where scenario support permits. | Baseline report. | `PASS` |
+| `EVAL-007` | It compares structured MLP, spatial CNN, and combined architectures with matched budgets. | Architecture report. | `PASS` |
+| `EVAL-008` | It tests robustness to minor in-scope environment variation. | Robustness report. | `PASS` |
+| `EVAL-009` | Metrics disposition survival, bankruptcy, final balance, net/operating profit, passenger deliveries, route profit, profitable vehicles, infrastructure cost, ROI, station rating, coverage, invalid actions, action efficiency, and seed stability. | Metric registry and report. | `PASS` |
+| `EVAL-010` | Primary success metrics and superiority thresholds are preregistered before the final comparison. | Reviewed evaluation protocol. | `PASS` |
+| `EVAL-011` | Claims report confidence intervals or seed-level dispersion and do not rely on a best seed. | Statistical report lint. | `PASS` |
+| `EVAL-012` | At least one learned policy is superior to random and trivial scripted baselines under the preregistered protocol. | Final V1 evaluation gate. | `PASS` |
+| `EVAL-013` | At least one learned policy reliably operates profitably across the preregistered deterministic evaluation set, under explicit profit and stability thresholds. | Final profitability/reliability report. | `PASS` |
 
 ## Reproducibility and provenance requirements
 
@@ -346,8 +346,8 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | `ARCH-001` | Baseline A is a structured MLP using company, town, vehicle, route, and simplified map-summary features. | Model definition and train/eval run. | `PASS` |
 | `ARCH-002` | Baseline B is a CNN using the versioned multi-channel 32 by 32 map tensor. | Model definition and train/eval run. | `PASS` |
 | `ARCH-003` | Baseline C combines CNN spatial features with structured numerical features. | Model definition and train/eval run. | `PASS` |
-| `ARCH-004` | The comparison measures economic quality, computational cost, and sample efficiency. | Matched report. | `NOT_STARTED` |
-| `ARCH-005` | No architecture is declared superior without multiple seeds and matched training/evaluation budgets. | Experiment-manifest lint. | `NOT_STARTED` |
+| `ARCH-004` | The comparison measures economic quality, computational cost, and sample efficiency. | Matched report. | `PASS` |
+| `ARCH-005` | No architecture is declared superior without multiple seeds and matched training/evaluation budgets. | Experiment-manifest lint. | `PASS` |
 
 ## V1 release assertions
 
@@ -357,7 +357,7 @@ These rows summarize conjunctions; they do not replace lower-level rows.
 |---|---|---|---|
 | `DONE-001` | All V1 scope, lifecycle, environment, PPO, model, runtime, monitoring, evaluation, reproducibility, and test rows pass. | Machine-generated traceability closure plus review. | `NOT_STARTED` |
 | `DONE-002` | Extended training has no unresolved desynchronization or numerical defect. | Soak reports and zero release-blocking ledger entries. | `NOT_STARTED` |
-| `DONE-003` | At least one policy passes both baseline superiority (`EVAL-012`) and reliable profitability (`EVAL-013`). | Final independent evaluation report. | `NOT_STARTED` |
+| `DONE-003` | At least one policy passes both baseline superiority (`EVAL-012`) and reliable profitability (`EVAL-013`). | Final independent evaluation report. | `PASS` |
 | `DONE-004` | MLP, CNN, and combined models are trainable and the required matched comparison is complete. | Architecture comparison report. | `NOT_STARTED` |
 | `DONE-005` | Existing AI support passes `AI-001` through `AI-004`. | Baseline workflow report. | `NOT_STARTED` |
 | `DONE-006` | The complete model pipeline passes export, package, equivalence, rejection, install, and visible-play gates. | End-to-end acceptance bundle. | `NOT_STARTED` |
