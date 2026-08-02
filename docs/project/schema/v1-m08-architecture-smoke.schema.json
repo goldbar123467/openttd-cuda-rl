@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.local/schema/v1-m08-architecture-smoke.schema.json",
+  "title": "OpenTTD-RL V1 M08 architecture end-to-end smoke report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "compatibility_sha256", "device", "updates", "samples_per_update", "objective_delta", "architectures"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-m08-architecture-smoke-1"},
+    "compatibility_sha256": {"const": "52c8b622b79d793e85ef749822e6886cd7cdda63194a471d38ab25da910e101d"},
+    "device": {"enum": ["cpu", "cuda:0"]},
+    "updates": {"const": 8},
+    "samples_per_update": {"const": 32},
+    "objective_delta": {"const": 0.05},
+    "architectures": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["architecture", "initial_target_log_probability", "final_target_log_probability", "samples_to_objective", "accepted_samples", "elapsed_ns", "parameter_count"],
+        "properties": {
+          "architecture": {"enum": ["structured-mlp-v1", "spatial-cnn-v1", "combined-cnn-mlp-v1"]},
+          "initial_target_log_probability": {"type": "number"},
+          "final_target_log_probability": {"type": "number"},
+          "samples_to_objective": {"type": "integer", "minimum": 1, "maximum": 256},
+          "accepted_samples": {"const": 256},
+          "elapsed_ns": {"type": "integer", "minimum": 1},
+          "parameter_count": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

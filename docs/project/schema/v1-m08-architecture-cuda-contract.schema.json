@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m08-architecture-cuda-contract.schema.json",
+  "title": "OpenTTD-RL V1 M08 architecture and measured CUDA contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "contract_id", "semantic_version", "status", "compatibility", "backend", "inputs", "architectures", "heads", "initialization", "device_semantics", "parity", "profiling", "requirements", "identity"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v1-m08-architecture-cuda-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v1-m08-architecture-cuda-contract-1"},
+    "contract_id": {"const": "m08-spatial-combined-measured-cuda-v1"},
+    "semantic_version": {"const": 1},
+    "status": {"const": "FROZEN"},
+    "compatibility": {"type": "object", "additionalProperties": false, "required": ["observation", "action", "ppo"], "properties": {"observation": {"$ref": "#/$defs/sha256"}, "action": {"$ref": "#/$defs/sha256"}, "ppo": {"$ref": "#/$defs/sha256"}}},
+    "backend": {
+      "type": "object", "additionalProperties": false,
+      "required": ["language", "standard", "tensor_backend", "version", "reference_device", "accelerated_device", "dtype", "mixed_precision", "minimum_compute_capability"],
+      "properties": {"language": {"const": "C++"}, "standard": {"const": "C++20"}, "tensor_backend": {"const": "LibTorch"}, "version": {"const": "2.13.0+cu130"}, "reference_device": {"const": "cpu"}, "accelerated_device": {"const": "cuda:0"}, "dtype": {"const": "float32"}, "mixed_precision": {"const": false}, "minimum_compute_capability": {"const": "12.0"}}
+    },
+    "inputs": {"type": "object", "required": ["structured", "spatial", "legal_mask"]},
+    "architectures": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object", "additionalProperties": false, "required": ["id", "inputs", "encoder", "fusion", "latent_width"], "properties": {"id": {"enum": ["structured-mlp-v1", "spatial-cnn-v1", "combined-cnn-mlp-v1"]}, "inputs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["structured", "spatial"]}}, "encoder": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "fusion": {"type": "string"}, "latent_width": {"const": 128}}}},
+    "heads": {"type": "object", "additionalProperties": false, "required": ["policy", "value", "masking"], "properties": {"policy": {"const": "linear:128:41"}, "value": {"const": "linear:128:1"}, "masking": {"const": "m07-legal-only-categorical"}}},
+    "initialization": {"type": "object", "additionalProperties": false, "required": ["weights", "hidden_gain", "policy_gain", "value_gain", "bias"], "properties": {"weights": {"const": "orthogonal"}, "hidden_gain": {"type": "number"}, "policy_gain": {"const": 0.01}, "value_gain": {"const": 1.0}, "bias": {"const": 0}}},
+    "device_semantics": {"type": "object", "required": ["openttd_simulation", "observation_encoding", "rollout_transport", "checkpoint_canonical_device", "checkpoint_load_target", "unavailable_cuda", "oom"]},
+    "parity": {"type": "object", "required": ["inputs", "forward_absolute", "forward_relative", "loss_absolute", "gradient_absolute", "updated_parameter_absolute", "greedy_action", "checkpoint_round_trip", "seeded_distribution"]},
+    "profiling": {"type": "object", "required": ["semantic_mode", "warmup_iterations", "measurement_iterations", "batch_sizes", "timing", "statistics", "memory", "minimum_accepted_speedup", "accepted_workload", "candidate_dispositions"]},
+    "requirements": {"const": ["STACK-002", "STACK-003", "STACK-004", "STACK-008", "STACK-011", "RUN-009", "ARCH-002", "ARCH-003"]},
+    "identity": {"type": "object", "additionalProperties": false, "required": ["compatibility_algorithm", "compatibility_sha256", "schema_path", "schema_sha256"], "properties": {"compatibility_algorithm": {"const": "sha256-canonical-json-v1"}, "compatibility_sha256": {"$ref": "#/$defs/sha256"}, "schema_path": {"const": "docs/project/schema/v1-m08-architecture-cuda-contract.schema.json"}, "schema_sha256": {"$ref": "#/$defs/sha256"}}}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

@@ -1,0 +1,107 @@
+{
+  "$schema": "../../docs/project/schema/v1-m08-architecture-cuda-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m08-architecture-cuda-contract-1",
+  "contract_id": "m08-spatial-combined-measured-cuda-v1",
+  "semantic_version": 1,
+  "status": "FROZEN",
+  "compatibility": {
+    "observation": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb",
+    "action": "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536",
+    "ppo": "8649da85cee2914d423a7ae8f1bcff0fa6a1c7d749bd04232976fbad6df518c0"
+  },
+  "backend": {
+    "language": "C++",
+    "standard": "C++20",
+    "tensor_backend": "LibTorch",
+    "version": "2.13.0+cu130",
+    "reference_device": "cpu",
+    "accelerated_device": "cuda:0",
+    "dtype": "float32",
+    "mixed_precision": false,
+    "minimum_compute_capability": "12.0"
+  },
+  "inputs": {
+    "structured": {"source_shape": [256], "model_shape": [256], "logical_order": "feature", "bounds": [-1, 1]},
+    "spatial": {"source_shape": [32, 32, 32], "model_shape": [32, 32, 32], "logical_order": "channel-y-x", "bounds": [0, 1], "transfer": "direct-contiguous-no-semantic-transform"},
+    "legal_mask": {"shape": [41], "dtype": "bool", "application": "post-logit-on-model-device"}
+  },
+  "architectures": [
+    {
+      "id": "structured-mlp-v1",
+      "inputs": ["structured"],
+      "encoder": ["linear:256:128", "tanh", "linear:128:128", "tanh"],
+      "fusion": "identity",
+      "latent_width": 128
+    },
+    {
+      "id": "spatial-cnn-v1",
+      "inputs": ["spatial"],
+      "encoder": ["conv2d:32:32:3:1:1", "tanh", "conv2d:32:64:3:2:1", "tanh", "conv2d:64:64:3:2:1", "tanh", "flatten:4096", "linear:4096:128", "tanh"],
+      "fusion": "identity",
+      "latent_width": 128
+    },
+    {
+      "id": "combined-cnn-mlp-v1",
+      "inputs": ["structured", "spatial"],
+      "encoder": ["structured-linear:256:128", "structured-tanh", "spatial-conv2d:32:32:3:1:1", "spatial-tanh", "spatial-conv2d:32:64:3:2:1", "spatial-tanh", "spatial-conv2d:64:64:3:2:1", "spatial-tanh", "spatial-flatten:4096", "spatial-linear:4096:128", "spatial-tanh"],
+      "fusion": "concat:256-linear:128-tanh",
+      "latent_width": 128
+    }
+  ],
+  "heads": {
+    "policy": "linear:128:41",
+    "value": "linear:128:1",
+    "masking": "m07-legal-only-categorical"
+  },
+  "initialization": {
+    "weights": "orthogonal",
+    "hidden_gain": 1.4142135623730951,
+    "policy_gain": 0.01,
+    "value_gain": 1.0,
+    "bias": 0
+  },
+  "device_semantics": {
+    "openttd_simulation": "cpu-only",
+    "observation_encoding": "cpu-only",
+    "rollout_transport": "bounded-host-to-device-at-update-or-batched-inference",
+    "checkpoint_canonical_device": "cpu",
+    "checkpoint_load_target": "validated-runtime-device",
+    "unavailable_cuda": "explicit-error-no-silent-fallback",
+    "oom": "diagnostic-and-stop-before-normal-checkpoint"
+  },
+  "parity": {
+    "inputs": "identical-canonical-float32-bytes",
+    "forward_absolute": 0.0001,
+    "forward_relative": 0.0001,
+    "loss_absolute": 0.00001,
+    "gradient_absolute": 0.0005,
+    "updated_parameter_absolute": 0.0005,
+    "greedy_action": "exact-when-top-two-margin-exceeds-two-forward-tolerances",
+    "checkpoint_round_trip": "cpu-cuda-cpu-within-forward-tolerance",
+    "seeded_distribution": "chi-square-p-value-at-least-0.001"
+  },
+  "profiling": {
+    "semantic_mode": "profile-on-and-off-identical-input-and-output-digests",
+    "warmup_iterations": 20,
+    "measurement_iterations": 100,
+    "batch_sizes": [1, 4, 16, 64, 256, 1024],
+    "timing": "steady-clock-with-device-synchronize-around-sample",
+    "statistics": ["median-ns", "p95-ns", "samples-per-second"],
+    "memory": ["peak-allocated-bytes", "peak-reserved-bytes"],
+    "minimum_accepted_speedup": 1.1,
+    "accepted_workload": "forward-backward-adam-update",
+    "candidate_dispositions": {
+      "neural-forward-backward-update": "measure-and-enable-if-beneficial",
+      "batched-policy-inference": "measure-and-enable-if-beneficial",
+      "observation-preprocessing": "cpu-retained-no-transform-to-accelerate",
+      "openttd-simulation": "cpu-retained-semantic-boundary"
+    }
+  },
+  "requirements": ["STACK-002", "STACK-003", "STACK-004", "STACK-008", "STACK-011", "RUN-009", "ARCH-002", "ARCH-003"],
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "52c8b622b79d793e85ef749822e6886cd7cdda63194a471d38ab25da910e101d",
+    "schema_path": "docs/project/schema/v1-m08-architecture-cuda-contract.schema.json",
+    "schema_sha256": "5ec1d0830d883ddebac87eb659048b8e61529b0c95b1f36742f31080264435d1"
+  }
+}

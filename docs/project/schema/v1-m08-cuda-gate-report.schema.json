@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.local/schema/v1-m08-cuda-gate-report.schema.json",
+  "title": "OpenTTD-RL V1 M08 CPU/CUDA parity and benchmark report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "compatibility_sha256", "mode", "device", "parity", "benchmarks", "production_disposition"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-m08-cuda-gate-report-1"},
+    "compatibility_sha256": {"const": "52c8b622b79d793e85ef749822e6886cd7cdda63194a471d38ab25da910e101d"},
+    "mode": {"enum": ["diagnostic-quick", "contract-full"]},
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "compute_capability", "total_memory_bytes"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "compute_capability": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+        "total_memory_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "parity": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/parity"}
+    },
+    "benchmarks": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/benchmark"}
+    },
+    "production_disposition": {
+      "const": {
+        "openttd_simulation": "cpu-semantic-boundary",
+        "observation_preprocessing": "cpu-direct-copy-no-kernel",
+        "ppo_update": "cuda-for-measured-batches",
+        "batched_inference": "cuda-for-measured-batches",
+        "tf32": false
+      }
+    }
+  },
+  "$defs": {
+    "nonnegativeNumber": {"type": "number", "minimum": 0},
+    "positiveNumber": {"type": "number", "exclusiveMinimum": 0},
+    "parity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "forward_absolute", "forward_relative", "loss_absolute", "gradient_absolute", "updated_parameter_absolute", "checkpoint_absolute", "compared_greedy_actions", "forward_allclose"],
+      "properties": {
+        "architecture": {"enum": ["structured-mlp-v1", "spatial-cnn-v1", "combined-cnn-mlp-v1"]},
+        "forward_absolute": {"$ref": "#/$defs/nonnegativeNumber"},
+        "forward_relative": {"$ref": "#/$defs/nonnegativeNumber"},
+        "loss_absolute": {"$ref": "#/$defs/nonnegativeNumber"},
+        "gradient_absolute": {"$ref": "#/$defs/nonnegativeNumber"},
+        "updated_parameter_absolute": {"$ref": "#/$defs/nonnegativeNumber"},
+        "checkpoint_absolute": {"$ref": "#/$defs/nonnegativeNumber"},
+        "compared_greedy_actions": {"type": "integer", "minimum": 1},
+        "forward_allclose": {"const": true}
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["median_ns", "p95_ns", "samples_per_second"],
+      "properties": {
+        "median_ns": {"$ref": "#/$defs/positiveNumber"},
+        "p95_ns": {"$ref": "#/$defs/positiveNumber"},
+        "samples_per_second": {"$ref": "#/$defs/positiveNumber"}
+      }
+    },
+    "batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["batch_size", "cpu", "cuda", "speedup", "peak_allocated_bytes", "peak_reserved_bytes"],
+      "properties": {
+        "batch_size": {"type": "integer", "minimum": 1},
+        "cpu": {"$ref": "#/$defs/timing"},
+        "cuda": {"$ref": "#/$defs/timing"},
+        "speedup": {"$ref": "#/$defs/positiveNumber"},
+        "peak_allocated_bytes": {"type": "integer", "minimum": 1},
+        "peak_reserved_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "workload", "warmup_iterations", "measurement_iterations", "batches", "minimum_accepted_speedup", "accepted"],
+      "properties": {
+        "architecture": {"const": "combined-cnn-mlp-v1"},
+        "workload": {"enum": ["forward-backward-adam-update", "batched-inference"]},
+        "warmup_iterations": {"type": "integer", "minimum": 2},
+        "measurement_iterations": {"type": "integer", "minimum": 3},
+        "batches": {"type": "array", "minItems": 2, "maxItems": 6, "items": {"$ref": "#/$defs/batch"}},
+        "minimum_accepted_speedup": {"const": 1.1},
+        "accepted": {"const": true}
+      }
+    }
+  }
+}

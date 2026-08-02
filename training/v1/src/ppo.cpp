@@ -21,6 +21,11 @@ void require_cpu(const torch::Tensor &tensor, const char *name)
     }
 }
 
+void require_defined(const torch::Tensor &tensor, const char *name)
+{
+    if (!tensor.defined()) throw std::invalid_argument(std::string(name) + " must be a defined tensor");
+}
+
 void require_same_shape(const torch::Tensor &left, const torch::Tensor &right, const char *message)
 {
     if (left.sizes() != right.sizes()) throw std::invalid_argument(message);
@@ -138,10 +143,13 @@ torch::Tensor normalize_advantages(const torch::Tensor &advantages, double epsil
 
 MaskedPolicy masked_categorical(const torch::Tensor &logits, const torch::Tensor &legal_mask)
 {
-    require_cpu(logits, "policy logits");
-    require_cpu(legal_mask, "legal action mask");
+    require_defined(logits, "policy logits");
+    require_defined(legal_mask, "legal action mask");
     if (logits.dim() != 2 || legal_mask.sizes() != logits.sizes()) {
         throw std::invalid_argument("policy logits and legal masks must have identical [batch,action] shape");
+    }
+    if (logits.device() != legal_mask.device()) {
+        throw std::invalid_argument("policy logits and legal masks must be on the same device");
     }
     require_finite_tensor(logits, "policy logits");
     auto mask = legal_mask.to(torch::kBool);
@@ -167,9 +175,12 @@ LossResult ppo_loss(
 {
     config.validate();
     for (const auto *tensor : {&new_log_probabilities, &old_log_probabilities, &advantages, &new_values, &returns, &entropy}) {
-        require_cpu(*tensor, "PPO loss input");
+        require_defined(*tensor, "PPO loss input");
         if (tensor->dim() != 1) throw std::invalid_argument("PPO loss inputs must be one-dimensional");
         require_same_shape(new_log_probabilities, *tensor, "PPO loss input shapes differ");
+        if (tensor->device() != new_log_probabilities.device()) {
+            throw std::invalid_argument("PPO loss inputs must be on the same device");
+        }
         require_finite_tensor(*tensor, "PPO loss input");
     }
     const auto log_ratio = new_log_probabilities - old_log_probabilities;

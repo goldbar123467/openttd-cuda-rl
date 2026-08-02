@@ -33,6 +33,7 @@ find_library(V1_LIBTORCH_CPU_LIBRARY NAMES torch_cpu PATHS "${V1_LIBTORCH_ROOT}/
 set(kineto_LIBRARY "${V1_LIBTORCH_CPU_LIBRARY}" CACHE FILEPATH "LibTorch bundled Kineto symbol provider" FORCE)
 find_package(Torch 2.13.0 EXACT CONFIG REQUIRED)
 list(REMOVE_ITEM TORCH_LIBRARIES "${V1_LIBTORCH_CPU_LIBRARY}")
+find_package(CUDAToolkit 13.0 EXACT REQUIRED)
 find_package(OpenSSL 3.0 REQUIRED COMPONENTS Crypto)
 
 find_file(V1_CUDNN_LIBRARY NAMES libcudnn.so.9 PATHS "${V1_NVIDIA_RUNTIME_ROOT}/nvidia/cudnn/lib" NO_DEFAULT_PATH REQUIRED)
@@ -53,6 +54,8 @@ add_library(
   src/learning.cpp
   src/metrics.cpp
   src/model.cpp
+  src/multimodal_model.cpp
+  src/multimodal_trainer.cpp
   src/ppo.cpp
   src/rng.cpp
   src/service.cpp
@@ -69,6 +72,24 @@ target_link_libraries(rl_trainer PRIVATE openttd_rl_training)
 v1_enable_strict_warnings(rl_trainer)
 set_target_properties(rl_trainer PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
 target_link_options(rl_trainer PRIVATE "LINKER:--disable-new-dtags")
+
+add_executable(m08_cuda_gate src/m08_cuda_main.cpp)
+target_link_libraries(m08_cuda_gate PRIVATE openttd_rl_training CUDA::cudart)
+v1_enable_strict_warnings(m08_cuda_gate)
+set_target_properties(m08_cuda_gate PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
+target_link_options(m08_cuda_gate PRIVATE "LINKER:--disable-new-dtags")
+
+add_executable(m08_architecture_smoke src/m08_architecture_smoke_main.cpp)
+target_link_libraries(m08_architecture_smoke PRIVATE openttd_rl_training)
+v1_enable_strict_warnings(m08_architecture_smoke)
+set_target_properties(m08_architecture_smoke PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
+target_link_options(m08_architecture_smoke PRIVATE "LINKER:--disable-new-dtags")
+
+add_executable(m08_trainer src/m08_trainer_main.cpp)
+target_link_libraries(m08_trainer PRIVATE openttd_rl_training)
+v1_enable_strict_warnings(m08_trainer)
+set_target_properties(m08_trainer PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
+target_link_options(m08_trainer PRIVATE "LINKER:--disable-new-dtags")
 
 if(BUILD_TESTING)
   find_program(V1_TEST_PYTHON NAMES python3 REQUIRED)
@@ -99,4 +120,12 @@ if(BUILD_TESTING)
   set_tests_properties(rl_metric_sources PROPERTIES LABELS "v1;m07;metrics;monitor;offline" TIMEOUT 120)
   add_test(NAME rl_tiny_bandit COMMAND rl_trainer --tiny-bandit)
   set_tests_properties(rl_tiny_bandit PROPERTIES LABELS "v1;m07;ppo;learning;cpu;offline" TIMEOUT 120)
+
+  add_executable(rl_m08_native_tests tests/m08_native_tests.cpp)
+  target_link_libraries(rl_m08_native_tests PRIVATE openttd_rl_training)
+  v1_enable_strict_warnings(rl_m08_native_tests)
+  set_target_properties(rl_m08_native_tests PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
+  target_link_options(rl_m08_native_tests PRIVATE "LINKER:--disable-new-dtags")
+  add_test(NAME rl_m08_native_tests COMMAND rl_m08_native_tests)
+  set_tests_properties(rl_m08_native_tests PROPERTIES LABELS "v1;m08;architecture;cpu;offline" TIMEOUT 300)
 endif()

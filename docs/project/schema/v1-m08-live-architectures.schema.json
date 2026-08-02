@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.local/schema/v1-m08-live-architectures.schema.json",
+  "title": "OpenTTD-RL V1 M08 live architecture run",
+  "type": "object",
+  "required": ["schema_version", "status", "compatibility", "configuration", "architectures", "environment_semantics", "repository_commit", "manifest_sha256"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-m08-live-architectures-1"},
+    "status": {"const": "PASS"},
+    "compatibility": {
+      "type": "object",
+      "required": ["architecture", "openttd_executable_sha256", "trainer_executable_sha256"],
+      "properties": {
+        "architecture": {"const": "52c8b622b79d793e85ef749822e6886cd7cdda63194a471d38ab25da910e101d"},
+        "openttd_executable_sha256": {"const": "765c108213bfbb23df2712956acb9bbf6bbb5b0a1d446b0ec154a94fbf41876c"},
+        "trainer_executable_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "configuration": {
+      "type": "object",
+      "required": ["environment_count", "evaluation_steps", "minibatch_size", "optimization_epochs", "rollout_length", "run_seed", "updates"],
+      "properties": {
+        "environment_count": {"const": 4},
+        "evaluation_steps": {"type": "integer", "minimum": 1},
+        "minibatch_size": {"const": 32},
+        "optimization_epochs": {"const": 4},
+        "rollout_length": {"const": 32},
+        "run_seed": {"const": 2026080108},
+        "updates": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "architectures": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["architecture", "device", "elapsed_ns", "evaluation", "training"],
+        "properties": {
+          "architecture": {"enum": ["structured-mlp-v1", "spatial-cnn-v1", "combined-cnn-mlp-v1"]},
+          "device": {"enum": ["cpu", "cuda:0"]},
+          "elapsed_ns": {"type": "integer", "minimum": 1},
+          "evaluation": {"type": "object"},
+          "training": {
+            "type": "object",
+            "required": ["accepted_samples", "completed_episodes", "inference_elapsed_ns", "trainer_update_elapsed_ns", "updates"],
+            "properties": {
+              "accepted_samples": {"type": "integer", "minimum": 128},
+              "completed_episodes": {"type": "array"},
+              "inference_elapsed_ns": {"type": "integer", "minimum": 1},
+              "trainer_update_elapsed_ns": {"type": "integer", "minimum": 1},
+              "updates": {"type": "array", "minItems": 1}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "environment_semantics": {
+      "const": {
+        "development_templates": ["m02-template-05", "m02-template-06"],
+        "final_evaluation_accessed": false,
+        "observation_encoding": "cpu-frozen-m04-direct-copy",
+        "openttd_simulation": "cpu-frozen-m06-executable",
+        "training_templates": ["m02-template-01", "m02-template-02", "m02-template-03", "m02-template-04"]
+      }
+    },
+    "repository_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}
