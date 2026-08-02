@@ -228,6 +228,7 @@ class TrainerClient:
         repository_commit: str,
         source_build_identity: str,
         parent_checkpoint: str,
+        development_evaluation_json: str,
     ) -> tuple[str, pathlib.Path]:
         if not root.is_absolute():
             raise M07TrainerClientError("checkpoint root must be absolute")
@@ -235,7 +236,14 @@ class TrainerClient:
             CHECKPOINT,
             b"".join(
                 _string(value)
-                for value in (str(root), run_name, repository_commit, source_build_identity, parent_checkpoint)
+                for value in (
+                    str(root),
+                    run_name,
+                    repository_commit,
+                    source_build_identity,
+                    parent_checkpoint,
+                    development_evaluation_json,
+                )
             ),
         )
         identity, offset = _decode_string(response)

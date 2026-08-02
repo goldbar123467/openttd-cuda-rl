@@ -143,6 +143,23 @@
     "independent_reference": "python3-standard-library-plus-explicit-scalar-formulas",
     "tiny_problem": "masked-two-action-contextual-bandit",
     "real_environment": "frozen-M06-bus-trajectory-and-live-development-suite",
+    "scenario_partitioning": {
+      "training_splits": ["training"],
+      "development_splits": ["development"],
+      "forbidden_splits": ["final-evaluation"]
+    },
+    "development_selection": {
+      "evaluation_interval_updates": 16,
+      "minimum_completed_updates": 16,
+      "score": "mean-return",
+      "eligibility": [
+        "mean-return-above-seeded-random",
+        "mean-delivered-passengers-above-seeded-random",
+        "service-success-on-every-development-template"
+      ],
+      "tie_breakers": ["mean-delivered-passengers", "earlier-update"],
+      "retention": "content-addressed-best-eligible-checkpoint"
+    },
     "deterministic_tolerance": 0,
     "differential_tolerance": 1e-6
   },
@@ -189,8 +206,8 @@
   ],
   "identity": {
     "compatibility_algorithm": "sha256-canonical-json-v1",
-    "compatibility_sha256": "1b1f13cfb036afed82a630949ee727f6f20a94241923ab3a1aa60a1ec763f0de",
+    "compatibility_sha256": "8649da85cee2914d423a7ae8f1bcff0fa6a1c7d749bd04232976fbad6df518c0",
     "schema_path": "docs/project/schema/v1-m07-ppo-contract.schema.json",
-    "schema_sha256": "4bcfed9a8643bd3948d77670045e2a37bd0c09d642eab21c8fd67f20230a3f3a"
+    "schema_sha256": "abbaa1154f4c5bbe81e5830ca83b6401781b4fd57517a81951abd3c5b4cd1ac0"
   }
 }

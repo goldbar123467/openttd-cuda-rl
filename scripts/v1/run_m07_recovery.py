@@ -84,6 +84,7 @@ def checkpoint(
         repository_commit="recovery-fixture",
         source_build_identity="m06-fixture",
         parent_checkpoint=parent,
+        development_evaluation_json="{}",
     )
 
 

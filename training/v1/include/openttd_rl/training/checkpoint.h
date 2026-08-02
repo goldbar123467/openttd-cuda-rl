@@ -9,13 +9,14 @@
 
 namespace openttd_rl::training {
 
-inline constexpr const char *kPpoCompatibilitySha256 = "1b1f13cfb036afed82a630949ee727f6f20a94241923ab3a1aa60a1ec763f0de";
+inline constexpr const char *kPpoCompatibilitySha256 = "8649da85cee2914d423a7ae8f1bcff0fa6a1c7d749bd04232976fbad6df518c0";
 
 struct CheckpointProvenance {
     std::string run_name;
     std::string repository_commit;
     std::string source_build_identity;
     std::string parent_checkpoint;
+    std::string development_evaluation_json;
 };
 
 struct SavedCheckpoint {

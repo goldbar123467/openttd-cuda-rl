@@ -221,7 +221,7 @@ void test_checkpoint_recovery_and_corruption(const std::filesystem::path &tempor
     const auto checkpoint = openttd_rl::training::save_checkpoint(
         temporary_root / "checkpoints",
         uninterrupted,
-        {"native-test", "0123456789abcdef", "m06-source", ""});
+        {"native-test", "0123456789abcdef", "m06-source", "", "{\"mean_return\":1.25}"});
     check(checkpoint.checkpoint_id.size() == 64 && checkpoint.path.filename() == checkpoint.checkpoint_id,
         "checkpoint is not content addressed");
     bool overwrite_rejected = false;
@@ -229,7 +229,7 @@ void test_checkpoint_recovery_and_corruption(const std::filesystem::path &tempor
         (void)openttd_rl::training::save_checkpoint(
             temporary_root / "checkpoints",
             uninterrupted,
-            {"native-test", "0123456789abcdef", "m06-source", ""});
+            {"native-test", "0123456789abcdef", "m06-source", "", "{\"mean_return\":1.25}"});
     } catch (const std::runtime_error &) {
         overwrite_rejected = true;
     }
@@ -237,6 +237,8 @@ void test_checkpoint_recovery_and_corruption(const std::filesystem::path &tempor
 
     auto loaded = openttd_rl::training::load_checkpoint(checkpoint.path);
     check(loaded.checkpoint_id == checkpoint.checkpoint_id, "loaded checkpoint identity changed");
+    check(loaded.provenance.development_evaluation_json == "{\"mean_return\":1.25}",
+        "checkpoint development evaluation metadata did not round trip");
     check(loaded.trainer->counters().completed_updates == 1 && loaded.trainer->counters().simulation_ticks == 2048 &&
         loaded.trainer->counters().completed_episodes == 3, "checkpoint counters did not round trip");
     const auto expected_greedy = uninterrupted.act(rollout.observations, rollout.legal_masks, true);

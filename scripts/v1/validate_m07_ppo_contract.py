@@ -119,6 +119,27 @@ def validate_semantics(contract: dict[str, Any], root: pathlib.Path) -> None:
     if set(contract["numerics"]["checks"]) != required_checks:
         raise M07PpoContractError("nonfinite check inventory is incomplete")
 
+    verification = contract["verification"]
+    if verification["scenario_partitioning"] != {
+        "training_splits": ["training"],
+        "development_splits": ["development"],
+        "forbidden_splits": ["final-evaluation"],
+    }:
+        raise M07PpoContractError("training/development/final scenario partitioning drifted")
+    if verification["development_selection"] != {
+        "evaluation_interval_updates": 16,
+        "minimum_completed_updates": 16,
+        "score": "mean-return",
+        "eligibility": [
+            "mean-return-above-seeded-random",
+            "mean-delivered-passengers-above-seeded-random",
+            "service-success-on-every-development-template",
+        ],
+        "tie_breakers": ["mean-delivered-passengers", "earlier-update"],
+        "retention": "content-addressed-best-eligible-checkpoint",
+    }:
+        raise M07PpoContractError("development checkpoint selection policy drifted")
+
     expected_requirements = {
         "LIFE-010", "LIFE-012", "RUN-006", "RUN-007", "TEST-009", "TEST-010",
         "TEST-013", "TEST-014", "ARCH-001", "PPO-001", "PPO-002", "PPO-003",

@@ -13,12 +13,13 @@ import random
 import subprocess
 import sys
 import time
-from typing import Any
+from typing import Any, Callable
 
 import m07_trainer_client
 import m03_bridge_protocol as protocol
 import run_m06_reward_trajectory
 import validate_m06_reward_contract
+import validate_m07_ppo_contract
 
 
 class M07CpuPpoError(RuntimeError):
@@ -32,7 +33,7 @@ OPTIMIZATION_EPOCHS = 4
 RUN_SEED = 2_026_080_107
 M06_SOURCE_IDENTITY = "98693ab0595fb26612079683a192a12f7bce6bb4cb25a7edf895244c50c568a2"
 M06_EXECUTABLE_SHA256 = "765c108213bfbb23df2712956acb9bbf6bbb5b0a1d446b0ec154a94fbf41876c"
-PPO_COMPATIBILITY_SHA256 = "1b1f13cfb036afed82a630949ee727f6f20a94241923ab3a1aa60a1ec763f0de"
+PPO_COMPATIBILITY_SHA256 = "8649da85cee2914d423a7ae8f1bcff0fa6a1c7d749bd04232976fbad6df518c0"
 
 
 def require(condition: bool, message: str) -> None:
@@ -128,6 +129,7 @@ def train(
     contract: dict[str, Any],
     updates: int,
     timeout: float,
+    on_completed_update: Callable[[int], None],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     environments = [
         start_environment(executable, templates, artifact_root, contract, index, 0, timeout, "train")
@@ -235,6 +237,7 @@ def train(
                 f"reward={record['mean_rollout_reward']:.6f} entropy={metrics.entropy:.6f}",
                 flush=True,
             )
+            on_completed_update(metrics.update)
         summary = {
             "completed_episode_count": len(completed_episodes),
             "latest_company": {
@@ -274,8 +277,8 @@ def evaluate(
     *,
     deterministic_policy: bool,
     evaluation_steps: int,
+    phase: str,
 ) -> dict[str, Any]:
-    mode = "policy" if deterministic_policy else "random"
     generator = random.Random(RUN_SEED ^ 0xE7A1_0000)
     episodes: list[dict[str, Any]] = []
     for index, template in enumerate(templates):
@@ -287,7 +290,7 @@ def evaluate(
             index,
             90_000 + index,
             timeout,
-            f"evaluation-{mode}",
+            f"evaluation-{phase}",
         )
         try:
             for _step in range(evaluation_steps):
@@ -327,22 +330,60 @@ def evaluate(
     }
 
 
+def development_eligible(policy: dict[str, Any], random_baseline: dict[str, Any]) -> bool:
+    return (
+        policy["mean_return"] > random_baseline["mean_return"]
+        and policy["mean_delivered_passengers"] > random_baseline["mean_delivered_passengers"]
+        and policy["service_successes"] == len(policy["episodes"])
+    )
+
+
+def partition_templates(root: pathlib.Path, instance_dir: pathlib.Path) -> tuple[list[pathlib.Path], list[pathlib.Path]]:
+    ledger = validate_m07_ppo_contract.load_strict_json(root / "config/v1/m02-seed-ledger.json")
+    entries = ledger["entries"]
+    require(len(entries) == 8, "M02 seed ledger must contain exactly eight templates")
+    require(
+        all(entry["trainer_visible"] == (entry["split"] != "final-evaluation") for entry in entries),
+        "M02 trainer visibility disagrees with the final-evaluation partition",
+    )
+    training_ids = [entry["template_id"] for entry in entries if entry["split"] == "training"]
+    development_ids = [entry["template_id"] for entry in entries if entry["split"] == "development"]
+    forbidden_ids = [entry["template_id"] for entry in entries if entry["split"] == "final-evaluation"]
+    require(
+        training_ids == [f"m02-template-{index:02d}" for index in range(1, 5)]
+        and development_ids == ["m02-template-05", "m02-template-06"]
+        and forbidden_ids == ["m02-template-07", "m02-template-08"],
+        "M02 scenario partitions drifted",
+    )
+    training = [instance_dir / f"{template_id}.json" for template_id in training_ids]
+    development = [instance_dir / f"{template_id}.json" for template_id in development_ids]
+    require(all(path.is_file() for path in training + development), "trainer-visible M02 instance is missing")
+    return training, development
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     root = args.root.resolve()
     trainer_executable = args.trainer.resolve()
     openttd_executable = args.openttd.resolve()
     instance_dir = args.instance_dir.resolve()
     artifact_root = args.artifact_root.resolve()
-    require(args.updates > 0 and args.evaluation_steps > 0, "updates and evaluation steps must be positive")
+    require(args.updates >= 16 and args.evaluation_steps > 0, "campaign requires at least 16 updates and positive evaluation steps")
     require(trainer_executable.is_file() and openttd_executable.is_file(), "trainer/OpenTTD executable is missing")
     require(sha256_file(openttd_executable) == M06_EXECUTABLE_SHA256, "OpenTTD executable identity drifted")
     require(not artifact_root.exists(), "artifact root already exists")
     artifact_root.mkdir(parents=True)
-    templates = sorted(instance_dir.glob("m02-template-*.json"))
-    require(len(templates) == 8, "live CPU PPO campaign requires all eight M02 templates")
+    training_templates, development_templates = partition_templates(root, instance_dir)
     contract = validate_m06_reward_contract.validate(
         root / "config/v1/m06-reward-trajectory-contract.json",
         root / "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+    )
+    ppo_contract = validate_m07_ppo_contract.validate(
+        root / "config/v1/m07-ppo-contract.json",
+        root / "docs/project/schema/v1-m07-ppo-contract.schema.json",
+    )
+    require(
+        ppo_contract["identity"]["compatibility_sha256"] == PPO_COMPATIBILITY_SHA256,
+        "native/live PPO compatibility identity drifted",
     )
     repository_commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True
@@ -357,56 +398,119 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         diagnostic_root=artifact_root / "diagnostics",
     )
     started = time.monotonic_ns()
+    candidates: list[dict[str, Any]] = []
+    parent_checkpoint = ""
     try:
         random_result = evaluate(
             client,
             openttd_executable,
-            templates[:4],
+            development_templates,
             artifact_root,
             contract,
             args.timeout,
             deterministic_policy=False,
             evaluation_steps=args.evaluation_steps,
+            phase="random-development",
         )
+
+        def retain_candidate(completed_update: int) -> None:
+            nonlocal parent_checkpoint
+            if completed_update % 16 != 0 and completed_update != args.updates:
+                return
+            evaluation = evaluate(
+                client,
+                openttd_executable,
+                development_templates,
+                artifact_root,
+                contract,
+                args.timeout,
+                deterministic_policy=True,
+                evaluation_steps=args.evaluation_steps,
+                phase=f"candidate-{completed_update:06d}",
+            )
+            eligible = development_eligible(evaluation, random_result)
+            metadata = {
+                "eligible": eligible,
+                "evaluation": evaluation,
+                "random_baseline": random_result,
+                "split": "development",
+                "update": completed_update,
+            }
+            checkpoint_id, checkpoint_path = client.checkpoint(
+                artifact_root / "checkpoints",
+                run_name="m07-live-cpu-development-selection",
+                repository_commit=repository_commit,
+                source_build_identity=M06_SOURCE_IDENTITY,
+                parent_checkpoint=parent_checkpoint,
+                development_evaluation_json=canonical_bytes(metadata).decode("utf-8"),
+            )
+            expected_path = artifact_root / "checkpoints" / checkpoint_id
+            require(checkpoint_path == expected_path, "trainer returned a checkpoint outside its content address")
+            candidates.append(
+                {
+                    "checkpoint": {"id": checkpoint_id, "path": f"checkpoints/{checkpoint_id}"},
+                    "eligible": eligible,
+                    "evaluation": evaluation,
+                    "update": completed_update,
+                }
+            )
+            parent_checkpoint = checkpoint_id
+            print(
+                f"M07_CPU_PPO_CANDIDATE update={completed_update} eligible={str(eligible).lower()} "
+                f"return={evaluation['mean_return']:.6f} passengers={evaluation['mean_delivered_passengers']:.3f}",
+                flush=True,
+            )
+
         updates, episodes, training_summary = train(
             client,
             openttd_executable,
-            templates,
+            training_templates,
             artifact_root,
             contract,
             args.updates,
             args.timeout,
-        )
-        policy_result = evaluate(
-            client,
-            openttd_executable,
-            templates[:4],
-            artifact_root,
-            contract,
-            args.timeout,
-            deterministic_policy=True,
-            evaluation_steps=args.evaluation_steps,
-        )
-        checkpoint_id, checkpoint_path = client.checkpoint(
-            artifact_root / "checkpoints",
-            run_name="m07-live-cpu-development",
-            repository_commit=repository_commit,
-            source_build_identity=M06_SOURCE_IDENTITY,
-            parent_checkpoint="",
+            retain_candidate,
         )
         client.close()
     except Exception:
         client.abort()
         raise
-    elapsed_ns = time.monotonic_ns() - started
-    expected_checkpoint_path = artifact_root / "checkpoints" / checkpoint_id
-    require(checkpoint_path == expected_checkpoint_path, "trainer returned a checkpoint outside its content address")
-    improved = (
-        policy_result["mean_return"] > random_result["mean_return"]
-        and policy_result["mean_delivered_passengers"] > random_result["mean_delivered_passengers"]
-        and policy_result["service_successes"] == len(policy_result["episodes"])
-        and policy_result["service_successes"] >= random_result["service_successes"]
+    require(candidates and candidates[-1]["update"] == args.updates, "final update lacks a retained candidate checkpoint")
+    eligible_candidates = [candidate for candidate in candidates if candidate["eligible"]]
+    selection_pool = eligible_candidates or candidates
+    selected = max(
+        selection_pool,
+        key=lambda candidate: (
+            candidate["evaluation"]["mean_return"],
+            candidate["evaluation"]["mean_delivered_passengers"],
+            -candidate["update"],
+        ),
     )
+    selected_path = artifact_root / selected["checkpoint"]["path"]
+    reload_client = m07_trainer_client.TrainerClient.start(
+        trainer_executable,
+        resume=selected_path,
+        diagnostic_root=artifact_root / "diagnostics-selected-reload",
+    )
+    try:
+        reloaded_evaluation = evaluate(
+            reload_client,
+            openttd_executable,
+            development_templates,
+            artifact_root,
+            contract,
+            args.timeout,
+            deterministic_policy=True,
+            evaluation_steps=args.evaluation_steps,
+            phase="selected-reload",
+        )
+        reload_client.close()
+    except Exception:
+        reload_client.abort()
+        raise
+    require(reloaded_evaluation == selected["evaluation"], "selected checkpoint reload changed deterministic evaluation")
+    elapsed_ns = time.monotonic_ns() - started
+    improved = bool(selected["eligible"])
     result = {
         "schema_version": "openttd-rl-v1-m07-live-cpu-run-1",
         "status": "PASS" if improved else "READINESS_NOT_MET",
@@ -425,9 +529,20 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "run_seed": RUN_SEED,
             "updates": args.updates,
         },
-        "checkpoint": {"id": checkpoint_id, "path": f"checkpoints/{checkpoint_id}"},
+        "checkpoint": selected["checkpoint"],
         "elapsed_ns": elapsed_ns,
-        "evaluation": {"improved_over_random": improved, "policy": policy_result, "random": random_result},
+        "evaluation": {
+            "candidates": candidates,
+            "improved_over_random": improved,
+            "random": random_result,
+            "selected": reloaded_evaluation,
+            "selected_update": selected["update"],
+        },
+        "scenario_partitions": {
+            "development": [path.stem for path in development_templates],
+            "final_evaluation_accessed": False,
+            "training": [path.stem for path in training_templates],
+        },
         "repository_commit": repository_commit,
         "training": {
             "completed_episodes": episodes,
@@ -440,8 +555,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     manifest_path.write_bytes(canonical_bytes(result) + b"\n")
     print(
         f"M07_CPU_PPO={'PASS' if improved else 'READINESS_NOT_MET'} "
-        f"random_return={random_result['mean_return']:.6f} policy_return={policy_result['mean_return']:.6f} "
-        f"checkpoint={checkpoint_id}",
+        f"random_return={random_result['mean_return']:.6f} policy_return={reloaded_evaluation['mean_return']:.6f} "
+        f"checkpoint={selected['checkpoint']['id']} selected_update={selected['update']}",
         flush=True,
     )
     return result

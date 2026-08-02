@@ -190,11 +190,34 @@
     "verification": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["independent_reference", "tiny_problem", "real_environment", "deterministic_tolerance", "differential_tolerance"],
+      "required": ["independent_reference", "tiny_problem", "real_environment", "scenario_partitioning", "development_selection", "deterministic_tolerance", "differential_tolerance"],
       "properties": {
         "independent_reference": {"const": "python3-standard-library-plus-explicit-scalar-formulas"},
         "tiny_problem": {"const": "masked-two-action-contextual-bandit"},
         "real_environment": {"const": "frozen-M06-bus-trajectory-and-live-development-suite"},
+        "scenario_partitioning": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["training_splits", "development_splits", "forbidden_splits"],
+          "properties": {
+            "training_splits": {"const": ["training"]},
+            "development_splits": {"const": ["development"]},
+            "forbidden_splits": {"const": ["final-evaluation"]}
+          }
+        },
+        "development_selection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["evaluation_interval_updates", "minimum_completed_updates", "score", "eligibility", "tie_breakers", "retention"],
+          "properties": {
+            "evaluation_interval_updates": {"const": 16},
+            "minimum_completed_updates": {"const": 16},
+            "score": {"const": "mean-return"},
+            "eligibility": {"const": ["mean-return-above-seeded-random", "mean-delivered-passengers-above-seeded-random", "service-success-on-every-development-template"]},
+            "tie_breakers": {"const": ["mean-delivered-passengers", "earlier-update"]},
+            "retention": {"const": "content-addressed-best-eligible-checkpoint"}
+          }
+        },
         "deterministic_tolerance": {"const": 0},
         "differential_tolerance": {"type": "number", "exclusiveMinimum": 0}
       }

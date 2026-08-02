@@ -24,7 +24,7 @@ namespace {
 
 constexpr std::array<char, 8> kStateMagic = {'O', 'T', 'R', 'L', 'S', 'T', '0', '1'};
 constexpr std::array<char, 8> kHeaderMagic = {'O', 'T', 'R', 'L', 'C', 'P', '0', '1'};
-constexpr std::uint32_t kCheckpointVersion = 1;
+constexpr std::uint32_t kCheckpointVersion = 2;
 constexpr std::size_t kMaximumStateBytes = 1024 * 1024;
 constexpr std::size_t kMaximumPayloadBytes = 256 * 1024 * 1024;
 constexpr std::string_view kBridgeSha = "4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6";
@@ -287,6 +287,7 @@ std::vector<std::uint8_t> encode_state(PpoTrainer &trainer, const CheckpointProv
     writer.string(provenance.repository_commit);
     writer.string(provenance.source_build_identity);
     writer.string(provenance.parent_checkpoint);
+    writer.string(provenance.development_evaluation_json);
     if (writer.data().size() > kMaximumStateBytes) throw std::length_error("checkpoint state exceeds bound");
     return writer.data();
 }
@@ -329,6 +330,7 @@ StateData decode_state(const std::vector<std::uint8_t> &data)
     result.provenance.repository_commit = reader.string(256);
     result.provenance.source_build_identity = reader.string(256);
     result.provenance.parent_checkpoint = reader.string(64);
+    result.provenance.development_evaluation_json = reader.string(65535);
     reader.finish();
     for (std::size_t index = 0; index < result.ledger.stream_seeds.size(); ++index) {
         if (result.ledger.stream_seeds[index] != derive_stream_seed(result.ledger.run_seed, kRngStreamNames[index])) {
@@ -461,6 +463,7 @@ std::string manifest_json(
            << "\",\"optimizer_payload_sha256\":\"" << hex_digest(header.optimizer_payload_sha)
            << "\",\"optimizer_semantic_sha256\":\"" << hex_digest(header.optimizer_semantic_sha)
            << "\",\"parent_checkpoint\":" << json_escape(state.provenance.parent_checkpoint)
+           << ",\"development_evaluation_json\":" << json_escape(state.provenance.development_evaluation_json)
            << ",\"ppo_compatibility_sha256\":\"" << kPpoCompatibilitySha256
            << "\",\"repository_commit\":" << json_escape(state.provenance.repository_commit)
            << ",\"run_name\":" << json_escape(state.provenance.run_name)

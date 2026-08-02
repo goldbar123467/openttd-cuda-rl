@@ -274,7 +274,8 @@ std::vector<std::uint8_t> handle_update(PpoTrainer &trainer, Reader &reader)
 std::vector<std::uint8_t> handle_checkpoint(PpoTrainer &trainer, Reader &reader)
 {
     const auto root = std::filesystem::path(reader.string());
-    CheckpointProvenance provenance{reader.string(), reader.string(), reader.string(), reader.string()};
+    CheckpointProvenance provenance{
+        reader.string(), reader.string(), reader.string(), reader.string(), reader.string()};
     reader.finish();
     const auto saved = save_checkpoint(root, trainer, provenance);
     Writer writer;

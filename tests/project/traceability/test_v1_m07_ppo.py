@@ -9,6 +9,7 @@ import pathlib
 import unittest
 
 import m07_ppo_reference
+import run_m07_cpu_ppo
 import validate_m07_metrics
 import validate_m07_ppo_contract
 
@@ -29,6 +30,10 @@ class V1M07PpoTests(unittest.TestCase):
         self.assertEqual(self.contract["architecture"]["input"]["shape"], [256])
         self.assertEqual(self.contract["architecture"]["policy_head"]["shape"], [41])
         self.assertEqual(self.contract["architecture"]["id"], "structured-mlp-v1")
+        self.assertEqual(
+            self.contract["verification"]["scenario_partitioning"]["forbidden_splits"],
+            ["final-evaluation"],
+        )
 
     def test_independent_scalar_oracle_matches_frozen_native_vectors(self) -> None:
         fixture = json.loads(
@@ -62,6 +67,7 @@ class V1M07PpoTests(unittest.TestCase):
             "optimizer_semantic_sha256", "sha256_file", "fsync", "std::filesystem::rename",
             "never overwriting", "checkpoint compatibility identity mismatch",
             "checkpoint tensor payload digest mismatch", "checkpoint optimizer semantic state mismatch",
+            "development_evaluation_json",
         ):
             self.assertIn(token, text)
         self.assertIn("after-completed-ppo-update-before-next-rollout", self.contract["checkpoint"]["boundary"])
@@ -86,6 +92,26 @@ class V1M07PpoTests(unittest.TestCase):
             self.assertIn(token, source)
         self.assertIn("MAXIMUM_FRAME_BYTES", client)
         self.assertIn('struct.pack("<8sIQ"', client)
+
+    def test_live_selection_uses_development_only_and_requires_complete_service(self) -> None:
+        random_baseline = {
+            "episodes": [{}, {}],
+            "mean_delivered_passengers": 10.0,
+            "mean_return": 2.0,
+            "service_successes": 2,
+        }
+        policy = {
+            "episodes": [{}, {}],
+            "mean_delivered_passengers": 11.0,
+            "mean_return": 2.1,
+            "service_successes": 2,
+        }
+        self.assertTrue(run_m07_cpu_ppo.development_eligible(policy, random_baseline))
+        policy["service_successes"] = 1
+        self.assertFalse(run_m07_cpu_ppo.development_eligible(policy, random_baseline))
+        source = (self.root / "scripts/v1/run_m07_cpu_ppo.py").read_text(encoding="utf-8")
+        self.assertIn('final_evaluation_accessed": False', source)
+        self.assertIn('entry["trainer_visible"]', source)
 
 
 if __name__ == "__main__":
