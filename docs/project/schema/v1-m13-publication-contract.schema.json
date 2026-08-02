@@ -42,19 +42,23 @@
     "model_package": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["package_id", "architecture", "license", "copyright", "files"],
+      "required": ["package_id", "source_package_id", "source_model_sha256", "architecture", "license", "copyright", "sanitization", "runtime_equivalence", "files"],
       "properties": {
-        "package_id": {"const": "0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9"},
+        "package_id": {"const": "e41f2016cdb0aaf8da03c6db0149c040e29e455a48adae34e5f77708f641aeb0"},
+        "source_package_id": {"const": "0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9"},
+        "source_model_sha256": {"const": "10df689ccc6d1cb7f2e98f05f0474f72577cd9328a4589e3b1c7167bcbf08b5b"},
         "architecture": {"const": "combined-cnn-mlp-v1"},
         "license": {"const": "GPL-2.0-only"},
         "copyright": {"const": "Copyright 2026 goldbar123467"},
+        "sanitization": {"const": {"kind": "onnx-metadata-removal-only", "removed_fields": ["doc_string", "metadata_props"], "removed_field_values": 155, "graph_semantics": "unchanged", "byte_identical_repeats": 2}},
+        "runtime_equivalence": {"const": {"standalone_cases": 12, "ingame_cases": 12, "outputs": "byte-exact"}},
         "files": {
           "const": {
             "INSTALL.md": "9d2f8e93d56623ed0e5172984b79add78972dd532af172c9cad7fa2a2cb2786d",
             "evaluation.json": "e7b4a8b863f8fd89d9880a385aaf5925eb015eee7c4d8583e63c08309d9793ac",
             "golden.jsonl": "5ec104e5268e1485f368f852071ef52f55da2bd28c57ce9b368de410038f1b51",
-            "manifest.json": "1fd4a80da6c0760536d8ebbe79a6da9b399a9074d2020af890012434c1a9da60",
-            "model.onnx": "10df689ccc6d1cb7f2e98f05f0474f72577cd9328a4589e3b1c7167bcbf08b5b"
+            "manifest.json": "76abb4f30a379ed921db564acb3b4f54284642c3eef85681afda185bf9279b70",
+            "model.onnx": "1f43d430c7fe5c58f4d4e5c9688c4d8a92aef3c82cf999f6dc7c228c9c403d29"
           }
         }
       }
@@ -67,7 +71,7 @@
         "format": {"const": "ustar-plus-gzip"},
         "canonicalization": {"const": "sorted-members-mtime-zero-uid-gid-zero-empty-owner-gzip-mtime-zero-no-filename"},
         "required_payload_files": {
-          "const": ["LICENSE", "README.md", "THIRD_PARTY_NOTICES.md", "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/INSTALL.md", "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/evaluation.json", "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/golden.jsonl", "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/manifest.json", "models/0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9/model.onnx"]
+          "const": ["LICENSE", "README.md", "THIRD_PARTY_NOTICES.md", "models/e41f2016cdb0aaf8da03c6db0149c040e29e455a48adae34e5f77708f641aeb0/INSTALL.md", "models/e41f2016cdb0aaf8da03c6db0149c040e29e455a48adae34e5f77708f641aeb0/evaluation.json", "models/e41f2016cdb0aaf8da03c6db0149c040e29e455a48adae34e5f77708f641aeb0/golden.jsonl", "models/e41f2016cdb0aaf8da03c6db0149c040e29e455a48adae34e5f77708f641aeb0/manifest.json", "models/e41f2016cdb0aaf8da03c6db0149c040e29e455a48adae34e5f77708f641aeb0/model.onnx"]
         },
         "excluded_components": {
           "const": ["openttd-binaries", "openttd-source", "opengfx", "onnxruntime", "libtorch", "cuda-runtime", "nvidia-wheels", "raw-trajectories-and-checkpoints", "private-experiment-state"]

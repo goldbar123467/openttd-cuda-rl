@@ -8,21 +8,19 @@ claim later milestones from partial infrastructure.
 
 ## Current-state baseline
 
-As of 2026-08-01, `G00` through `G08` pass. The accepted substrate is a pinned
-and reproducible OpenTTD 15.3 profile, a frozen 32 by 32 passenger-bus
-scenario/reset corpus, and a synchronized source-integrated headless bridge with
-process isolation and exact tick stepping. It now also includes a frozen native
-policy observation and preprocessing contract plus a fixed 41-action bus catalog,
-boundary-bound legality masks, transactional route updates, and repeated
-actual-engine profitable-service evidence. It now includes native lifetime-delta
-reward projection, typed episode outcomes, bounded content-addressed trajectories,
-and repeated exploit/rollover evidence. It now includes a trusted C++/LibTorch CPU
-PPO implementation, a structured actor-critic MLP, exact native recovery,
-structured monitoring, and a development-selected checkpoint that improves over
-random after an 8,192-transition soak. It now includes the spatial CNN and
-combined actor-critic, all-model CPU/CUDA parity, paired sample-efficiency smoke,
-measured CUDA inference/update benefit, GPU telemetry, and live OpenTTD training.
-No independent evaluator, ONNX package, or in-game neural agent exists.
+As of 2026-08-02, `G00` through `G12` pass and the frozen passenger-bus Version 1
+is complete. The accepted system includes reproducible OpenTTD 15.3 builds; a
+controlled 32 by 32 environment; synchronized native observations, actions,
+rewards, trajectories, and episode semantics; trusted C++ PPO; MLP, CNN, and
+combined policies; measured CUDA training; independent profitable-policy
+evaluation; content-addressed ONNX packages; visible normal-game neural control;
+and a fresh-clone 12-campaign release reproduction with 217 applicable
+requirements passing and zero nonclosed defects.
+
+`M13` is the active publication-readiness milestone. It adds a concise public
+surface, explicit license/notices, CI, one-command source verification, a
+path-neutral model derivative, and a deterministic reviewed GitHub release
+archive. It does not alter V1 gameplay or learning semantics.
 
 Legacy P0 completion is not a prerequisite as originally written because its
 freight target conflicts with the active bus-only scope. Its reusable pieces enter
@@ -58,6 +56,7 @@ M00 authority + legacy triage
   -> M10 checkpoint/export/package equivalence
   -> M11 normal-game inference + inspection
   -> M12 full reproduction + V1 release
+  -> M13 public distribution readiness
 ```
 
 `M04` and early `M05` design work may overlap after `M03` supplies a read-only
@@ -393,6 +392,9 @@ before adding CNN/CUDA complexity.
 
 ## M08 — Spatial CNN, combined model, batching, and measured CUDA
 
+Status: `PASS` at `G08` on 2026-08-01. Accepted evidence is in
+[`G08_GATE_REPORT.md`](G08_GATE_REPORT.md).
+
 ### Objective
 
 Complete all required architectures and accelerate proven bottlenecks while
@@ -424,6 +426,9 @@ preserving CPU-reference semantics.
 
 ## M09 — Independent evaluator, baselines, and architecture comparison
 
+Status: `PASS` at `G09` on 2026-08-02. Accepted evidence is in
+[`G09_GATE_REPORT.md`](G09_GATE_REPORT.md).
+
 ### Objective
 
 Measure actual policy quality using a preregistered suite that training cannot
@@ -454,6 +459,9 @@ mutate or tune after results are observed.
 
 ## M10 — Checkpoint, ONNX, package, and three-runtime equivalence
 
+Status: `PASS` at `G10` on 2026-08-02. Accepted evidence is in
+[`G10_GATE_REPORT.md`](G10_GATE_REPORT.md).
+
 ### Objective
 
 Produce a portable, self-describing model package that fails closed on drift and
@@ -482,6 +490,10 @@ has equivalent native, ONNX, and in-game computations.
 - an inference-only build loads and executes the package.
 
 ## M11 — Normal-game neural agent, inspection, and visible playback
+
+Status: `PASS` at `G11` on 2026-08-02. The operating guide and evidence are in
+[`M11_NORMAL_GAME_PLAYBACK.md`](M11_NORMAL_GAME_PLAYBACK.md) and
+[`G11_GATE_REPORT.md`](G11_GATE_REPORT.md).
 
 ### Objective
 
@@ -512,6 +524,10 @@ watch, inspect, pause, and diagnose the trained bus policy.
 - normal playback has no training dependency.
 
 ## M12 — Full workflow reproduction and Version 1 release
+
+Status: `PASS` at `G12` on 2026-08-02. The accepted release evidence and full
+operator workflow are in [`G12_GATE_REPORT.md`](G12_GATE_REPORT.md) and
+[`V1_RELEASE_REPRODUCTION.md`](V1_RELEASE_REPRODUCTION.md).
 
 ### Objective
 
@@ -553,6 +569,38 @@ register is `PASS`, every result is backed by retained authoritative evidence, a
 no contradiction or unverified completion claim remains. Only then may Version 1
 be called complete and the post-V1 roadmap activate.
 
+## M13 — Public distribution readiness
+
+Status: `IN_PROGRESS` on 2026-08-02. The frozen contract identity is
+`692e91fde04ae8069e89aa2c363e571a8b59724290f704bdc41b20b72150983c`.
+
+### Objective
+
+Publish the accepted V1 result without leaking private paths, redistributing
+unreviewed third-party dependencies, or presenting retained research evidence as
+a runnable OpenTTD binary distribution.
+
+### Required outputs
+
+- root GPL-2.0-only license and complete third-party/non-endorsement notices;
+- actual accepted playback media and a concise evidence-backed README;
+- one-command Ubuntu source verification and pinned GitHub Actions quality check;
+- deterministic path-neutral model-and-evidence archive with canonical manifest
+  and checksums;
+- metadata-only ONNX sanitization with exact standalone/in-game equivalence;
+- gitleaks, host-path, archive traversal, symlink, inventory, and repeat-build
+  rejection gates; and
+- source tag, GitHub release, reviewed assets, description, topics, and green CI.
+
+### Exit gate `G13`
+
+Two clean builds from the same synchronized `main` commit produce byte-identical
+archives; every staged file has an explicit license/provenance disposition; the
+published ONNX is path-neutral and byte-exact at all accepted runtime outputs;
+the release contains no excluded dependency/data class; all security/archive
+checks pass; the source tag and release assets match the gate report; and the
+public repository quality workflow passes.
+
 ## Post-Version 1 roadmap
 
 The expansion sequence is governed by `EXP-001` through `EXP-010`. Each stage
@@ -577,17 +625,13 @@ retains prior model packages or supplies an explicit migration/rejection policy.
 
 ## Immediate critical path
 
-`G00` through `G08` are recorded as passing. The next implementation path is:
+`G00` through `G12` are recorded as passing. The immediate path is to close `M13`:
 
-1. preserve the accepted M01 through M08 source, compatibility, and evidence
-   identities;
-2. freeze the independent M09 evaluator protocol and matched experiment
-   manifests before inspecting final-evaluation results;
-3. implement random, trivial scripted, and existing-AI workflow baselines;
-4. run matched multi-seed MLP/CNN/combined experiments with economic,
-   computational, and sample-efficiency reporting;
-5. keep final-evaluation templates inaccessible to training and model selection.
+1. preserve the accepted M12 manifest and M10 source-package identities;
+2. derive and prove the path-neutral ONNX package without changing graph outputs;
+3. pass two independent deterministic archive builds plus publication scans;
+4. tag the exact passing source commit and publish only the approved assets; and
+5. confirm the public GitHub quality workflow before considering `EXP-001`.
 
-Continuing the legacy freight instrumentation patch series is not on the V1
-critical path unless its transition review identifies a specific bus-platform gate
-that it uniquely and economically satisfies.
+Gameplay expansion and the legacy freight instrumentation series are not on the
+publication critical path.

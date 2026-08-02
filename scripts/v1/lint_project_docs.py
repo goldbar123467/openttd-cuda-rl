@@ -44,6 +44,14 @@ ACTIVE_FIXED = (
     "docs/project/G07_GATE_REPORT.md",
     "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
     "docs/project/G08_GATE_REPORT.md",
+    "docs/project/G09_GATE_REPORT.md",
+    "docs/project/G10_GATE_REPORT.md",
+    "docs/project/M11_NORMAL_GAME_PLAYBACK.md",
+    "docs/project/G11_GATE_REPORT.md",
+    "docs/project/V1_RELEASE_REPRODUCTION.md",
+    "docs/project/G12_GATE_REPORT.md",
+    "docs/project/V1_PUBLICATION.md",
+    "THIRD_PARTY_NOTICES.md",
 )
 V1_ADR_NUMBERS = tuple(range(7, 14))
 LEGACY_BANNER_FILES = (
@@ -90,6 +98,14 @@ REQUIRED_NAVIGATION_TARGETS = (
     "docs/project/G07_GATE_REPORT.md",
     "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
     "docs/project/G08_GATE_REPORT.md",
+    "docs/project/G09_GATE_REPORT.md",
+    "docs/project/G10_GATE_REPORT.md",
+    "docs/project/M11_NORMAL_GAME_PLAYBACK.md",
+    "docs/project/G11_GATE_REPORT.md",
+    "docs/project/V1_RELEASE_REPRODUCTION.md",
+    "docs/project/G12_GATE_REPORT.md",
+    "docs/project/V1_PUBLICATION.md",
+    "THIRD_PARTY_NOTICES.md",
     "docs/decisions/",
 )
 

@@ -61,6 +61,18 @@ class V1M13PublicationTests(unittest.TestCase):
         )
         self.assertEqual(contract["model_package"]["license"], "GPL-2.0-only")
         self.assertEqual(len(contract["archive"]["required_payload_files"]), 8)
+        self.assertNotEqual(
+            contract["model_package"]["package_id"],
+            contract["model_package"]["source_package_id"],
+        )
+        self.assertEqual(
+            contract["model_package"]["sanitization"]["kind"],
+            "onnx-metadata-removal-only",
+        )
+        self.assertEqual(
+            contract["model_package"]["runtime_equivalence"],
+            {"standalone_cases": 12, "ingame_cases": 12, "outputs": "byte-exact"},
+        )
 
     def test_publication_builder_owns_every_gate(self) -> None:
         runner_path = self.root / "scripts/v1/build_v1_publication.py"

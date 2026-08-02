@@ -1,18 +1,43 @@
 # OpenTTD Reinforcement Learning Platform
 
-This repository is being developed into a reproducible, headless C++/CUDA
-reinforcement-learning platform for OpenTTD. Version 1 is deliberately narrow: a
-single learning company must learn profitable passenger-bus operation on controlled
-32 by 32 maps with PPO, then export a policy that can be watched inside OpenTTD.
+OpenTTD RL is a source-integrated C++/CUDA reinforcement-learning platform that
+trains PPO policies for controlled passenger-bus games, exports them to ONNX, and
+runs them as a visible neural company inside normal OpenTTD.
 
-Version 1 is complete. Its accepted implementation passes M00 through M12:
-reproducible OpenTTD, the controlled passenger-bus environment, frozen
-observations/actions/rewards, trusted C++ PPO, all three initial model
-architectures, measured CUDA training, independent profitable-policy evaluation,
-portable ONNX packages with three-runtime equivalence, visible normal-game
-neural control, and clean supported-host release reproduction. The
-unfinished legacy P0 64 by 64 road-freight workstream remains retained for
-deterministic tooling and historical evidence, not as bus or RL progress.
+![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
+
+**Version 1 is complete.** The clean M12 release gate passed 12 campaigns, all
+217 applicable requirements, and zero nonclosed defects. The selected combined
+CNN/MLP policy averaged 150 delivered passengers and 424 operating profit on its
+independent final suite; visible final playback earned positive income on both
+held-out layouts.
+
+## Verify the source
+
+The quick check targets Ubuntu 24.04 x86_64 and repairs missing apt-provided
+dependencies when requested:
+
+```bash
+git clone --recurse-submodules https://github.com/goldbar123467/openttd-cuda-rl.git
+cd openttd-cuda-rl
+bash scripts/v1/setup_and_verify.sh --bootstrap
+```
+
+This validates the full project traceability suite, frozen M12/M13 contracts,
+ShellCheck, Bash syntax, Python compilation, the pinned OpenTTD commit, and Git
+whitespace. It intentionally does not download the CUDA training stack or rerun
+the 6.7 GiB clean-room training/playback campaign. See the
+[`V1 publication guide`](docs/project/V1_PUBLICATION.md) for the reviewed model
+archive and [`V1 reproduction guide`](docs/project/V1_RELEASE_REPRODUCTION.md)
+for the full supported-host workflow.
+
+The unfinished legacy P0 64 by 64 road-freight workstream is retained only for
+deterministic tooling and historical evidence; it is not V1 bus/RL progress.
+
+OpenTTD RL is distributed under [`GPL-2.0-only`](LICENSE). OpenTTD, OpenGFX,
+ONNX Runtime, PyTorch/LibTorch, CUDA, and other dependencies retain their own
+terms; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). This is an
+independent project and does not imply OpenTTD endorsement.
 
 ## Start here
 
@@ -103,6 +128,8 @@ deterministic tooling and historical evidence, not as bus or RL progress.
     troubleshooting guide.
 38. [`docs/project/G12_GATE_REPORT.md`](docs/project/G12_GATE_REPORT.md) — passed
     final release, traceability, defect, quality, and fresh-root reproduction gate.
+39. [`docs/project/V1_PUBLICATION.md`](docs/project/V1_PUBLICATION.md) — M13 public
+    release boundary, privacy repair, approved assets, claims, and publication gate.
 
 ## Current status
 
@@ -135,7 +162,7 @@ buses, roads, bus stops, required road-vehicle depots, PPO, MLP/CNN/combined
 baselines, headless training, structured monitoring, independent evaluation,
 ONNX packaging, and visible in-game playback.
 
-Excluded until Version 1 passes: mail, trucks, industries, trains, ships,
+Post-V1 only: mail, trucks, industries, trains, ships,
 aircraft, larger maps, multiplayer or competitive training, NewGRFs, arbitrary
 mods, additional RL algorithms, screenshot vision, GUI input imitation, and
 distributed multi-machine training.

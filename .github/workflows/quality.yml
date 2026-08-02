@@ -1,0 +1,28 @@
+name: Source quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quick-verification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out pinned source and submodule
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: Install source-check dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck python3-jsonschema
+      - name: Verify source contracts and quality
+        run: bash scripts/v1/setup_and_verify.sh --no-submodule-update

@@ -74,6 +74,12 @@ nonclosed defects, and is documented in
 must begin as an explicitly contracted post-V1 milestone rather than extending
 the frozen V1 boundary.
 
+`M13` is that explicit milestone. It packages the accepted model/evidence for
+public distribution, removes path-bearing ONNX metadata without changing graph
+outputs, adds the public license/notices/README/CI surface, and requires
+deterministic archive, secret, path, provenance, and GitHub release gates. It does
+not add gameplay scope.
+
 ## M05/G05 completion checkpoint — 2026-08-01
 
 The action compatibility identity is
@@ -354,10 +360,11 @@ authorization to expand scope.
 | `M06` | reward/episode/trajectory contract | `PASS` | `G06_GATE_REPORT.md` records native reward, typed termination, and trajectory evidence |
 | `M07` | CPU PPO and structured MLP | `PASS` | `G07_GATE_REPORT.md` records trusted PPO, exact recovery, and development readiness |
 | `M08` | CNN/combined/measured CUDA | `PASS` | `G08_GATE_REPORT.md` records all-model parity, live training, and measured CUDA benefit |
-| `M09` | independent evaluation/baselines | `NOT_STARTED` | evaluator and policies absent |
-| `M10` | checkpoint/ONNX/package/equivalence | `NOT_STARTED` | model pipeline absent |
-| `M11` | normal-game neural agent/inspection | `NOT_STARTED` | inference package absent |
-| `M12` | clean reproduction and V1 release | `NOT_STARTED` | all preceding gates open |
+| `M09` | independent evaluation/baselines | `PASS` | `G09_GATE_REPORT.md` records final-blind multi-seed evaluation and baseline wins |
+| `M10` | checkpoint/ONNX/package/equivalence | `PASS` | `G10_GATE_REPORT.md` records reproducible packages, equivalence, and mutations |
+| `M11` | normal-game neural agent/inspection | `PASS` | `G11_GATE_REPORT.md` records visible playback and fail-closed inference |
+| `M12` | clean reproduction and V1 release | `PASS` | `G12_GATE_REPORT.md` records 12 campaigns, 217 passing requirements, and zero nonclosed defects |
+| `M13` | public distribution readiness | `IN_PROGRESS` | frozen contract; public archive/tag/release gate not yet accepted |
 
 ## Completed work package: M00
 
@@ -612,9 +619,8 @@ Before handing off:
 
 ## Current next action
 
-Continue M06 only: implement the read-only lifetime economy projection, integrate
-reward/termination after the accepted M05 step boundary, add the atomic trajectory
-writer, and prove quarterly rollover, bankruptcy/failure, horizon bootstrap,
-corruption rejection, writer faults, and exploit policies against actual OpenTTD.
-Do not begin PPO, production ONNX, or neural in-game control before their owning
-gates.
+Close M13 only: verify the metadata-sanitized content-addressed package against
+the accepted M10 package in both inference adapters, build the release archive
+twice from clean synchronized `main`, pass secret/path/archive/license checks,
+then publish tag `v1.0.0` and only the approved model/evidence assets. Do not begin
+`EXP-001` gameplay expansion until the public release and CI are accepted.

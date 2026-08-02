@@ -20,7 +20,7 @@ class M13ContractError(ValueError):
     """The M13 contract or publication manifest is invalid."""
 
 
-EXPECTED_COMPATIBILITY = "fddbceda32a440f4f91aae905b9b09785e71d1f22314d0fdb3379b4cdca7efb0"
+EXPECTED_COMPATIBILITY = "692e91fde04ae8069e89aa2c363e571a8b59724290f704bdc41b20b72150983c"
 EXPECTED_GATES = [
     "contract-and-foundation",
     "repository-surface",

@@ -56,12 +56,16 @@
     "model_package": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["package_id", "architecture", "onnx_opset", "onnxruntime_version", "files"],
+      "required": ["package_id", "source_package_id", "source_model_sha256", "architecture", "onnx_opset", "onnxruntime_version", "sanitization", "runtime_equivalence", "files"],
       "properties": {
-        "package_id": {"const": "0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9"},
+        "package_id": {"const": "e41f2016cdb0aaf8da03c6db0149c040e29e455a48adae34e5f77708f641aeb0"},
+        "source_package_id": {"const": "0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9"},
+        "source_model_sha256": {"const": "10df689ccc6d1cb7f2e98f05f0474f72577cd9328a4589e3b1c7167bcbf08b5b"},
         "architecture": {"const": "combined-cnn-mlp-v1"},
         "onnx_opset": {"const": 18},
         "onnxruntime_version": {"const": "1.28.0"},
+        "sanitization": {"const": "onnx-metadata-removal-only"},
+        "runtime_equivalence": {"const": {"standalone_cases": 12, "ingame_cases": 12, "outputs": "byte-exact"}},
         "files": {
           "type": "object",
           "minProperties": 5,
