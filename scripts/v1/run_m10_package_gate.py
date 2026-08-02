@@ -423,11 +423,28 @@ def graph_mutation(
     shutil.copytree(source, destination)
     script = (
         "import onnx,sys\n"
+        "from onnx import TensorProto,helper\n"
         "p=sys.argv[1]; k=sys.argv[2]; m=onnx.load(p)\n"
         "x=m.graph.input[0] if k.startswith('input') else m.graph.output[0]\n"
         "if k.endswith('name'): x.name='mutated_tensor'\n"
-        "elif k.endswith('shape'): x.type.tensor_type.shape.dim[-1].dim_value=99\n"
-        "elif k.endswith('dtype'): x.type.tensor_type.elem_type=7\n"
+        "elif k.startswith('input') and k.endswith('shape'): x.type.tensor_type.shape.dim[-1].dim_value=99\n"
+        "elif k.startswith('input') and k.endswith('dtype'): x.type.tensor_type.elem_type=7\n"
+        "elif k=='output-shape':\n"
+        "  raw=x.name+'_raw'\n"
+        "  for n in m.graph.node:\n"
+        "    for i,v in enumerate(n.output):\n"
+        "      if v==x.name: n.output[i]=raw\n"
+        "  m.graph.node.append(helper.make_node('Flatten',[raw],[x.name],axis=0))\n"
+        "  del x.type.tensor_type.shape.dim[:]\n"
+        "  x.type.tensor_type.shape.dim.add().dim_value=1\n"
+        "  x.type.tensor_type.shape.dim.add().dim_param='mutated'\n"
+        "elif k=='output-dtype':\n"
+        "  raw=x.name+'_raw'\n"
+        "  for n in m.graph.node:\n"
+        "    for i,v in enumerate(n.output):\n"
+        "      if v==x.name: n.output[i]=raw\n"
+        "  m.graph.node.append(helper.make_node('Cast',[raw],[x.name],to=TensorProto.INT64))\n"
+        "  x.type.tensor_type.elem_type=TensorProto.INT64\n"
         "onnx.save(m,p)\n"
     )
     subprocess.run([str(args.exporter_python), "-c", script, str(destination / "model.onnx"), kind], check=True)
@@ -548,9 +565,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     export_a = args.artifact_root / "exports-a"
     export_b = args.artifact_root / "exports-b"
     packages_root = args.artifact_root / "packages"
+    repeat_packages_root = args.artifact_root / ".packages-repeat"
     export_a.mkdir()
     export_b.mkdir()
     packages_root.mkdir()
+    repeat_packages_root.mkdir()
     architecture_reports: list[dict[str, Any]] = []
     package_paths: dict[str, pathlib.Path] = {}
     maximums = {"logit": 0.0, "probability": 0.0, "value": 0.0}
@@ -566,6 +585,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         package = create_package(
             args=args, contract=contract, model=model, export=first, golden=golden,
             commit=commit, destination_root=packages_root,
+        )
+        repeat_package = create_package(
+            args=args, contract=contract, model=model, export=second, golden=golden,
+            commit=commit, destination_root=repeat_packages_root,
+        )
+        require(repeat_package.name == package.name, "independent package IDs differ")
+        require(
+            all((repeat_package / name).read_bytes() == (package / name).read_bytes() for name in (
+                "manifest.json", "model.onnx", "golden.jsonl", "evaluation.json", "INSTALL.md"
+            )),
+            "independent package bytes differ",
         )
         package_paths[architecture] = package
         standalone = inspect_deployment(args, package, golden, "standalone")
@@ -599,6 +629,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         json.loads((package_paths["combined-cnn-mlp-v1"] / "golden.jsonl").read_text().splitlines()[1]),
     )
     dependency_evidence = validate_inference_only_binary(args)
+    shutil.rmtree(repeat_packages_root)
     require(not close_enough(0.0, contract["tolerances"]["policy_logits"]["absolute"] * 2.0, **contract["tolerances"]["policy_logits"]), "negative tolerance self-test failed")
     report: dict[str, Any] = {
         "schema_version": "openttd-rl-v1-m10-package-gate-report-1",
@@ -618,7 +649,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "inference_only_binary": dependency_evidence,
         "training_state_in_packages": False,
         "source_packages_read_only": True,
-        "repeat_package_ids": "implied-by-byte-identical-onnx-and-canonical-identical-inputs",
+        "repeat_package_ids": "exact-across-two-independent-export-and-package-roots",
     }
     report["report_sha256"] = hashlib.sha256(canonical_bytes(report)).hexdigest()
     (args.artifact_root / "m10-package-gate-report.json").write_bytes(canonical_bytes(report) + b"\n")
