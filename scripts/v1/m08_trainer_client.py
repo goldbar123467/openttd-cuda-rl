@@ -14,6 +14,7 @@ REQUEST_MAGIC = b"OTRLMS01"
 RESPONSE_MAGIC = b"OTRLMR01"
 ACT = 1
 UPDATE = 2
+EXPORT = 3
 CLOSE = 4
 MAXIMUM_FRAME_BYTES = 64 * 1024 * 1024
 STRUCTURED_FEATURES = 256
@@ -207,6 +208,44 @@ class TrainerClient:
         if len(response) != 80:
             raise M08TrainerClientError("UPDATE response shape is invalid")
         return UpdateResult(*struct.unpack("<8dQQ", response))
+
+    @staticmethod
+    def _pack_string(value: str) -> bytes:
+        encoded = value.encode("utf-8")
+        if len(encoded) > 65_535:
+            raise M08TrainerClientError("trainer string exceeds bound")
+        return struct.pack("<I", len(encoded)) + encoded
+
+    @staticmethod
+    def _unpack_string(payload: bytes, offset: int) -> tuple[str, int]:
+        if len(payload) - offset < 4:
+            raise M08TrainerClientError("EXPORT response string is truncated")
+        length = struct.unpack_from("<I", payload, offset)[0]
+        offset += 4
+        if length > 65_535 or len(payload) - offset < length:
+            raise M08TrainerClientError("EXPORT response string length is invalid")
+        return payload[offset:offset + length].decode("utf-8"), offset + length
+
+    def export_evaluation_model(
+        self,
+        package_root: pathlib.Path,
+        *,
+        repository_commit: str,
+        training_mean_reward: float,
+    ) -> tuple[str, pathlib.Path]:
+        if not package_root.is_absolute() or len(repository_commit) != 40:
+            raise M08TrainerClientError("invalid evaluation-model export configuration")
+        payload = (
+            self._pack_string(str(package_root))
+            + self._pack_string(repository_commit)
+            + struct.pack("<d", training_mean_reward)
+        )
+        response = self._request(EXPORT, payload)
+        package_id, offset = self._unpack_string(response, 0)
+        package_path, offset = self._unpack_string(response, offset)
+        if offset != len(response) or len(package_id) != 64:
+            raise M08TrainerClientError("EXPORT response shape is invalid")
+        return package_id, pathlib.Path(package_path)
 
     def close(self, timeout: float = 30.0) -> None:
         self._request(CLOSE, b"")

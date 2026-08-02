@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m09-runtime-lock.schema.json",
+  "title": "OpenTTD-RL V1 M09 evaluation runtime lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "evaluation_compatibility_sha256", "native_delta", "runtime", "identity"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v1-m09-runtime-lock.schema.json"},
+    "schema_version": {"const": "openttd-rl-v1-m09-runtime-lock-1"},
+    "evaluation_compatibility_sha256": {"const": "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e"},
+    "native_delta": {
+      "type": "object", "additionalProperties": false,
+      "required": ["parent_composed_source_identity_sha256", "patch_path", "patch_sha256", "series_path", "series_sha256", "result_tree", "composed_source_identity_sha256"],
+      "properties": {
+        "parent_composed_source_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "patch_path": {"const": "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch"},
+        "patch_sha256": {"$ref": "#/$defs/sha256"},
+        "series_path": {"const": "integration/openttd/patches/15.3/m09/series"},
+        "series_sha256": {"$ref": "#/$defs/sha256"},
+        "result_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "composed_source_identity_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "runtime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["openttd_executable_sha256", "opengfx_sha256", "default_reset_regression", "evaluation_override_matrix"],
+      "properties": {
+        "openttd_executable_sha256": {"$ref": "#/$defs/sha256"},
+        "opengfx_sha256": {"$ref": "#/$defs/sha256"},
+        "default_reset_regression": {"const": "must-match-M06-for-identical-requests"},
+        "evaluation_override_matrix": {"const": {"starting_balances": [75000, 100000, 125000], "action_horizons": [64, 128, 256], "tick_multiplier": 128}}
+      }
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["algorithm", "compatibility_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "algorithm": {"const": "sha256-canonical-json-v1"},
+        "compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_path": {"const": "docs/project/schema/v1-m09-runtime-lock.schema.json"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

@@ -18,6 +18,7 @@
 #include <torch/torch.h>
 
 #include "openttd_rl/training/checkpoint.h"
+#include "openttd_rl/training/evaluation_model.h"
 #include "openttd_rl/training/multimodal_trainer.h"
 
 namespace {
@@ -26,6 +27,7 @@ constexpr std::array<char, 8> kRequestMagic = {'O', 'T', 'R', 'L', 'M', 'S', '0'
 constexpr std::array<char, 8> kResponseMagic = {'O', 'T', 'R', 'L', 'M', 'R', '0', '1'};
 constexpr std::uint32_t kAct = 1;
 constexpr std::uint32_t kUpdate = 2;
+constexpr std::uint32_t kExport = 3;
 constexpr std::uint32_t kExit = 4;
 constexpr std::size_t kMaximumFrameBytes = 64U * 1024U * 1024U;
 
@@ -78,6 +80,15 @@ public:
     std::int64_t i64() { return std::bit_cast<std::int64_t>(u64()); }
     double f64() { return std::bit_cast<double>(u64()); }
     float f32() { return std::bit_cast<float>(u32()); }
+    std::string string(std::size_t maximum = 65536U)
+    {
+        const auto length = static_cast<std::size_t>(u32());
+        if (length > maximum) throw std::length_error("service string exceeds bound");
+        require(length);
+        std::string value(reinterpret_cast<const char *>(data_.data() + offset_), length);
+        offset_ += length;
+        return value;
+    }
     void finish() const
     {
         if (offset_ != data_.size()) throw std::invalid_argument("service request has trailing bytes");
@@ -299,6 +310,30 @@ std::vector<std::uint8_t> handle_update(openttd_rl::training::MultiModalPpoTrain
     return writer.data();
 }
 
+std::vector<std::uint8_t> handle_export(openttd_rl::training::MultiModalPpoTrainer &trainer, Reader &reader)
+{
+    const std::filesystem::path package_root(reader.string(4096));
+    const std::string repository_commit = reader.string(64);
+    const double training_mean_reward = reader.f64();
+    reader.finish();
+    const auto &counters = trainer.counters();
+    const auto saved = openttd_rl::training::save_evaluation_model(
+        package_root,
+        trainer.model(),
+        trainer.architecture(),
+        {
+            repository_commit,
+            trainer.rng().ledger().run_seed,
+            counters.completed_updates,
+            counters.accepted_samples,
+            training_mean_reward,
+        });
+    Writer writer;
+    writer.string(saved.package_id);
+    writer.string(saved.path.string());
+    return writer.data();
+}
+
 int run_service(
     openttd_rl::training::MultiModalPpoTrainer &trainer,
     const std::filesystem::path &diagnostic_root)
@@ -325,6 +360,7 @@ int run_service(
             std::vector<std::uint8_t> response;
             if (type == kAct) response = handle_act(trainer, reader);
             else if (type == kUpdate) response = handle_update(trainer, reader);
+            else if (type == kExport) response = handle_export(trainer, reader);
             else if (type == kExit) {
                 reader.finish();
                 send_response(STDOUT_FILENO, type, 0, {});
@@ -339,7 +375,7 @@ int run_service(
                     (void)openttd_rl::training::write_numerical_diagnostic(
                         diagnostic_root,
                         trainer.counters(),
-                        type == kUpdate ? "m08-trainer-update" : "m08-trainer-act",
+                        type == kUpdate ? "m08-trainer-update" : (type == kExport ? "m09-model-export" : "m08-trainer-act"),
                         error.what());
                 } catch (const std::exception &diagnostic_error) {
                     error_message += "; diagnostic publication failed: ";

@@ -96,6 +96,8 @@ class Controller:
         self.current_observation: dict[str, Any] | None = None
         self.reward_component_hits = {f"RC-{index:03d}": 0 for index in range(1, 9)}
         self.scalar_return = 0.0
+        self.action_horizon = 512
+        self.tick_horizon = 65_536
 
     def _request(self, message_type: int, transition: int, payload: dict[str, Any]) -> protocol.Frame:
         self.request_id += 1
@@ -112,6 +114,45 @@ class Controller:
         frame = self._request(protocol.RESET, 0, {"bridge_compatibility_sha256": m06_trajectory.BRIDGE_COMPATIBILITY_SHA256})
         require(frame.payload["status"] == "OK", f"RESET failed: {frame.payload}")
         snapshot = frame.payload["snapshot"]
+        self.action_horizon = 512
+        self.tick_horizon = 65_536
+        self.tick_zero = snapshot["tick"]
+        self.boundary = snapshot["boundary_token"]
+        if observe:
+            self.current_observation = self.observe()
+        return snapshot
+
+    def reset_evaluation(
+        self,
+        *,
+        evaluation_contract_sha256: str,
+        starting_balance: int,
+        action_horizon: int,
+        observe: bool = False,
+    ) -> dict[str, Any]:
+        """Use the bounded M09-only scenario variation entrypoint."""
+        require(
+            evaluation_contract_sha256 == "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e"
+            and starting_balance in (75_000, 100_000, 125_000)
+            and action_horizon in (64, 128, 256),
+            "evaluation reset is outside the preregistered M09 matrix",
+        )
+        frame = self._request(
+            protocol.RESET,
+            0,
+            {
+                "bridge_compatibility_sha256": m06_trajectory.BRIDGE_COMPATIBILITY_SHA256,
+                "evaluation_action_horizon": action_horizon,
+                "evaluation_contract_sha256": evaluation_contract_sha256,
+                "evaluation_starting_balance": starting_balance,
+                "evaluation_tick_horizon": action_horizon * 128,
+            },
+        )
+        require(frame.payload["status"] == "OK", f"M09 evaluation RESET failed: {frame.payload}")
+        snapshot = frame.payload["snapshot"]
+        require(snapshot["company"]["balance"] == starting_balance, "M09 starting-balance override did not apply")
+        self.action_horizon = action_horizon
+        self.tick_horizon = action_horizon * 128
         self.tick_zero = snapshot["tick"]
         self.boundary = snapshot["boundary_token"]
         if observe:
@@ -234,8 +275,8 @@ class Controller:
         expected_termination = m06_reward_reference.classify_termination(
             self.contract,
             bankruptcy=bool(raw["bankruptcy"]),
-            action_horizon=self.transition >= 512,
-            tick_horizon=result["snapshot"]["tick"] - self.tick_zero >= 65_536,
+            action_horizon=self.transition >= self.action_horizon,
+            tick_horizon=result["snapshot"]["tick"] - self.tick_zero >= self.tick_horizon,
         )
         for name, value in dataclasses.asdict(expected_termination).items():
             require(termination[name] == value, f"native termination {name} drifted: {termination[name]} != {value}")

@@ -49,20 +49,30 @@ set(V1_NVIDIA_LIBRARY_PATHS
 )
 
 add_library(
+  openttd_rl_inference
+  src/evaluation_model.cpp
+  src/model.cpp
+  src/multimodal_model.cpp
+  src/ppo.cpp
+  src/rng.cpp
+)
+target_include_directories(openttd_rl_inference PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(openttd_rl_inference PUBLIC "${TORCH_LIBRARIES}" ${V1_NVIDIA_LIBRARIES} OpenSSL::Crypto)
+v1_enable_strict_warnings(openttd_rl_inference)
+set_property(TARGET openttd_rl_inference PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_target_properties(openttd_rl_inference PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
+
+add_library(
   openttd_rl_training
   src/checkpoint.cpp
   src/learning.cpp
   src/metrics.cpp
-  src/model.cpp
-  src/multimodal_model.cpp
   src/multimodal_trainer.cpp
-  src/ppo.cpp
-  src/rng.cpp
   src/service.cpp
   src/trainer.cpp
 )
 target_include_directories(openttd_rl_training PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(openttd_rl_training PUBLIC "${TORCH_LIBRARIES}" ${V1_NVIDIA_LIBRARIES} OpenSSL::Crypto)
+target_link_libraries(openttd_rl_training PUBLIC openttd_rl_inference)
 v1_enable_strict_warnings(openttd_rl_training)
 set_property(TARGET openttd_rl_training PROPERTY POSITION_INDEPENDENT_CODE ON)
 set_target_properties(openttd_rl_training PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
@@ -90,6 +100,12 @@ target_link_libraries(m08_trainer PRIVATE openttd_rl_training)
 v1_enable_strict_warnings(m08_trainer)
 set_target_properties(m08_trainer PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
 target_link_options(m08_trainer PRIVATE "LINKER:--disable-new-dtags")
+
+add_executable(m09_evaluator src/m09_evaluator_main.cpp)
+target_link_libraries(m09_evaluator PRIVATE openttd_rl_inference)
+v1_enable_strict_warnings(m09_evaluator)
+set_target_properties(m09_evaluator PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
+target_link_options(m09_evaluator PRIVATE "LINKER:--disable-new-dtags")
 
 if(BUILD_TESTING)
   find_program(V1_TEST_PYTHON NAMES python3 REQUIRED)
@@ -128,4 +144,12 @@ if(BUILD_TESTING)
   target_link_options(rl_m08_native_tests PRIVATE "LINKER:--disable-new-dtags")
   add_test(NAME rl_m08_native_tests COMMAND rl_m08_native_tests)
   set_tests_properties(rl_m08_native_tests PROPERTIES LABELS "v1;m08;architecture;cpu;offline" TIMEOUT 300)
+
+  add_executable(rl_m09_native_tests tests/m09_native_tests.cpp)
+  target_link_libraries(rl_m09_native_tests PRIVATE openttd_rl_inference)
+  v1_enable_strict_warnings(rl_m09_native_tests)
+  set_target_properties(rl_m09_native_tests PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
+  target_link_options(rl_m09_native_tests PRIVATE "LINKER:--disable-new-dtags")
+  add_test(NAME rl_m09_native_tests COMMAND rl_m09_native_tests)
+  set_tests_properties(rl_m09_native_tests PROPERTIES LABELS "v1;m09;evaluation;read-only;offline" TIMEOUT 300)
 endif()

@@ -83,6 +83,30 @@ def validate(contract_path: pathlib.Path, schema_path: pathlib.Path) -> dict[str
     return contract
 
 
+def validate_runtime_lock(lock_path: pathlib.Path, schema_path: pathlib.Path) -> dict[str, Any]:
+    lock = validate_m07_ppo_contract.load_strict_json(lock_path)
+    schema = validate_m07_ppo_contract.load_strict_json(schema_path)
+    jsonschema.Draft202012Validator.check_schema(schema)
+    jsonschema.Draft202012Validator(schema).validate(lock)
+    if hashlib.sha256(schema_path.read_bytes()).hexdigest() != lock["identity"]["schema_sha256"]:
+        raise M09ContractError("M09 runtime-lock schema identity drifted")
+    if compatibility_sha256(lock) != lock["identity"]["compatibility_sha256"]:
+        raise M09ContractError("M09 runtime-lock compatibility identity drifted")
+    root = lock_path.resolve().parents[2]
+    native = lock["native_delta"]
+    patch = root / native["patch_path"]
+    series = root / native["series_path"]
+    if hashlib.sha256(patch.read_bytes()).hexdigest() != native["patch_sha256"]:
+        raise M09ContractError("M09 native patch identity drifted")
+    if hashlib.sha256(series.read_bytes()).hexdigest() != native["series_sha256"]:
+        raise M09ContractError("M09 native series identity drifted")
+    if series.read_text(encoding="utf-8") != patch.name + "\n":
+        raise M09ContractError("M09 native series inventory drifted")
+    if lock["evaluation_compatibility_sha256"] != "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e":
+        raise M09ContractError("M09 runtime/evaluation compatibility drifted")
+    return lock
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("contract", type=pathlib.Path)
@@ -90,6 +114,10 @@ def main() -> int:
     args = parser.parse_args()
     try:
         contract = validate(args.contract, args.schema)
+        validate_runtime_lock(
+            args.contract.resolve().with_name("m09-runtime-lock.json"),
+            args.schema.resolve().with_name("v1-m09-runtime-lock.schema.json"),
+        )
     except (M09ContractError, OSError, ValueError, jsonschema.ValidationError) as exc:
         print(f"M09_EVALUATION_CONTRACT=FAIL {exc}", file=sys.stderr)
         return 1

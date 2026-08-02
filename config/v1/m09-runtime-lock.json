@@ -1,0 +1,26 @@
+{
+  "$schema": "../../docs/project/schema/v1-m09-runtime-lock.schema.json",
+  "schema_version": "openttd-rl-v1-m09-runtime-lock-1",
+  "evaluation_compatibility_sha256": "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e",
+  "native_delta": {
+    "parent_composed_source_identity_sha256": "98693ab0595fb26612079683a192a12f7bce6bb4cb25a7edf895244c50c568a2",
+    "patch_path": "integration/openttd/patches/15.3/m09/0008-evaluation-only-scenario-overrides.patch",
+    "patch_sha256": "1d668a08b0fa17c1525bbaa4c5fc8d7f8912295ebd160550271b1b5effbfd464",
+    "series_path": "integration/openttd/patches/15.3/m09/series",
+    "series_sha256": "c8a169e7c4a949e25a4eef336b93accda2d3ef3aa446fee6de08e3f971f980d3",
+    "result_tree": "a73dd3d6eb38cbdb8db7b67413f12375509c0466",
+    "composed_source_identity_sha256": "7989fc49c0f689e0f305f5e3ab07f860e82f824903482f8edc92dfefb31b6356"
+  },
+  "runtime": {
+    "openttd_executable_sha256": "8e61a1325090240cf084ad0a9d82376bf11082564bb0eb17ac4a1c8033158a0c",
+    "opengfx_sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c",
+    "default_reset_regression": "must-match-M06-for-identical-requests",
+    "evaluation_override_matrix": {"starting_balances": [75000, 100000, 125000], "action_horizons": [64, 128, 256], "tick_multiplier": 128}
+  },
+  "identity": {
+    "algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "3d112ce0c3970059c8c40858d42918c6ca9eeec021ff4d45e70b21b718e25e92",
+    "schema_path": "docs/project/schema/v1-m09-runtime-lock.schema.json",
+    "schema_sha256": "562cd40181f3b998640a1871e36a91872275bd73d5e65830bdb6a0cbdb9fbdfe"
+  }
+}

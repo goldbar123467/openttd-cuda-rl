@@ -1,0 +1,78 @@
+diff --git a/src/rl_bridge.cpp b/src/rl_bridge.cpp
+index 2ace4a3..46d8074 100644
+--- a/src/rl_bridge.cpp
++++ b/src/rl_bridge.cpp
+@@ -51,8 +51,9 @@ static constexpr uint16_t PROTOCOL_MINOR = 0;
+ static constexpr uint16_t FLAG_RESPONSE = 1;
+ static constexpr uint16_t FLAG_ERROR = 2;
+ static constexpr uint32_t MAXIMUM_ACTION_INTERVAL_TICKS = 128;
+-static constexpr uint64_t ACTION_HORIZON = 512;
+-static constexpr uint64_t TICK_HORIZON = 65536;
++static constexpr uint64_t DEFAULT_ACTION_HORIZON = 512;
++static constexpr uint64_t DEFAULT_TICK_HORIZON = 65536;
++static constexpr std::string_view M09_EVALUATION_COMPATIBILITY_SHA256 = "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e";
+ 
+ enum class MessageType : uint16_t {
+ 	Reset = 1,
+@@ -274,6 +275,8 @@ private:
+ 	uint64_t last_request_id = 0;
+ 	uint64_t transition_ordinal = 0;
+ 	uint64_t tick_zero = 0;
++	uint64_t action_horizon = DEFAULT_ACTION_HORIZON;
++	uint64_t tick_horizon = DEFAULT_TICK_HORIZON;
+ 	RlActionSelection action_selection;
+ 	std::string last_mask_token;
+ 	bool truncated = false;
+@@ -418,8 +421,28 @@ private:
+ 		if (this->lifecycle != Lifecycle::Ready && this->lifecycle != Lifecycle::AtBoundary) {
+ 			throw BridgeError("INVALID_LIFECYCLE", "RESET requires READY or AT_BOUNDARY");
+ 		}
+-		if (payload.size() != 1) throw BridgeError("BAD_PAYLOAD", "RESET payload contains unexpected fields");
+ 		RequireCompatibility(payload);
++		bool evaluation_override = payload.contains("evaluation_contract_sha256");
++		int64_t starting_balance = 100000;
++		uint64_t requested_action_horizon = DEFAULT_ACTION_HORIZON;
++		uint64_t requested_tick_horizon = DEFAULT_TICK_HORIZON;
++		if (evaluation_override) {
++			if (payload.size() != 5 || payload.at("evaluation_contract_sha256") != M09_EVALUATION_COMPATIBILITY_SHA256 ||
++				!payload.contains("evaluation_starting_balance") || !payload.contains("evaluation_action_horizon") ||
++				!payload.contains("evaluation_tick_horizon")) {
++				throw BridgeError("BAD_PAYLOAD", "M09 evaluation RESET override is incomplete or incompatible");
++			}
++			starting_balance = payload.at("evaluation_starting_balance").get<int64_t>();
++			requested_action_horizon = payload.at("evaluation_action_horizon").get<uint64_t>();
++			requested_tick_horizon = payload.at("evaluation_tick_horizon").get<uint64_t>();
++			if ((starting_balance != 75000 && starting_balance != 100000 && starting_balance != 125000) ||
++				(requested_action_horizon != 64 && requested_action_horizon != 128 && requested_action_horizon != 256) ||
++				requested_tick_horizon != requested_action_horizon * MAXIMUM_ACTION_INTERVAL_TICKS) {
++				throw BridgeError("BAD_PAYLOAD", "M09 evaluation RESET override is outside the preregistered matrix");
++			}
++		} else if (payload.size() != 1) {
++			throw BridgeError("BAD_PAYLOAD", "RESET payload contains unexpected fields");
++		}
+ 		if (request.session_id == 0 || request.transition_ordinal != 0) {
+ 			throw BridgeError("STALE_HANDLE", "RESET requires nonzero session_id and transition ordinal zero");
+ 		}
+@@ -435,6 +458,11 @@ private:
+ 		this->lifecycle = Lifecycle::Resetting;
+ 		json scenario = json::parse(ResetRlEnvironmentBridgeScenario(this->instance_path));
+ 		(void)scenario;
++		Company *company = Company::GetIfValid(CompanyID::Begin());
++		if (company == nullptr) throw BridgeError("INVALID_STATE", "RESET created no learning company", true);
++		company->money = starting_balance;
++		this->action_horizon = requested_action_horizon;
++		this->tick_horizon = requested_tick_horizon;
+ 		if (this->session_id == 0) this->session_id = request.session_id;
+ 		++this->episode_id;
+ 		this->transition_ordinal = 0;
+@@ -603,8 +631,8 @@ private:
+ 		this->transition_ordinal = request.transition_ordinal;
+ 		this->last_mask_token.clear();
+ 		uint64_t relative_ticks = after - this->tick_zero;
+-		bool action_horizon = this->transition_ordinal >= ACTION_HORIZON;
+-		bool tick_horizon = relative_ticks >= TICK_HORIZON;
++		bool action_horizon = this->transition_ordinal >= this->action_horizon;
++		bool tick_horizon = relative_ticks >= this->tick_horizon;
+ 		RlRewardSource reward_post = CaptureRlRewardSource(this->cumulative_capital_spend, &reward_pre);
+ 		json reward_transition;
+ 		try {
