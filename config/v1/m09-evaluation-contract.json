@@ -1,0 +1,94 @@
+{
+  "$schema": "../../docs/project/schema/v1-m09-evaluation-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m09-evaluation-contract-1",
+  "contract_id": "m09-independent-policy-quality-v1",
+  "semantic_version": 1,
+  "status": "FROZEN",
+  "compatibility": {
+    "reward_trajectory": "9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e",
+    "architecture_cuda": "52c8b622b79d793e85ef749822e6886cd7cdda63194a471d38ab25da910e101d",
+    "seed_ledger": "fcfdb820abb6db783df412d6496f68ce41bfd3def630ced637fe1d00dbbcd8ed"
+  },
+  "independence": {
+    "executable": "m09_evaluator",
+    "optimizer_dependency": false,
+    "model_state": "read-only",
+    "normalization_state": "none-frozen-preprocessing",
+    "final_access": "only-after-frozen-contract-is-committed",
+    "package_format": "openttd-rl-evaluation-model-v1"
+  },
+  "partitions": {
+    "training": ["m02-template-01", "m02-template-02", "m02-template-03", "m02-template-04"],
+    "development": ["m02-template-05", "m02-template-06"],
+    "final_evaluation": ["m02-template-07", "m02-template-08"],
+    "trainer_visible": ["training", "development"]
+  },
+  "training_budget": {
+    "architectures": ["structured-mlp-v1", "spatial-cnn-v1", "combined-cnn-mlp-v1"],
+    "run_seeds": [2026090101, 2026090102, 2026090103],
+    "updates": 16,
+    "rollout_length": 32,
+    "environment_count": 4,
+    "minibatch_size": 32,
+    "optimization_epochs": 4,
+    "accepted_samples_per_run": 2048,
+    "budget_check": "fail-closed-exact-equality-before-comparison"
+  },
+  "evaluation_suite": {
+    "primary": {"split": "final-evaluation", "policy_mode": "greedy", "starting_balance": 100000, "action_horizon": 128, "templates": ["m02-template-07", "m02-template-08"]},
+    "stochastic": {"split": "final-evaluation", "policy_mode": "explicitly-seeded-stochastic", "sampling_seeds": [2026090901, 2026090902], "starting_balance": 100000, "action_horizon": 128, "templates": ["m02-template-07", "m02-template-08"]},
+    "robustness": {"split": "final-evaluation", "policy_mode": "greedy", "starting_balances": [75000, 125000], "action_horizons": [64, 256], "templates": ["m02-template-07", "m02-template-08"]},
+    "layout_and_passenger_variation": "native-distinct-frozen-template-town-layouts-and-generated-passenger-populations",
+    "starting_balance_override": "evaluation-only-bridge-reset-field",
+    "horizon_override": "evaluation-only-bridge-reset-field"
+  },
+  "baselines": [
+    {"id": "seeded-random-legal-v1", "kind": "random", "version": "1", "source": "scripts/v1/run_m09_evaluation.py", "seed_policy": "explicit-mt19937-compatible-python-Random-seed-per-episode", "limitations": ["legal-action reference only", "not an economic heuristic"], "competitive_multiplayer": false},
+    {"id": "wait-only-trivial-v1", "kind": "trivial-scripted", "version": "1", "source": "scripts/v1/run_m09_evaluation.py", "seed_policy": "deterministic-action-zero", "limitations": ["never constructs transport", "measures survival without useful service"], "competitive_multiplayer": false},
+    {"id": "m05-scripted-bus-v1", "kind": "existing-scripted-agent", "version": "1", "source": "scripts/v1/run_m05_actions.py", "seed_policy": "deterministic-template-derived-action-sequence", "limitations": ["uses frozen template coordinates", "single bus and single route", "isolated company only"], "competitive_multiplayer": false}
+  ],
+  "metrics": [
+    {"id": "survival", "availability": "direct", "definition": "episode ends without bankruptcy or integration failure", "unit": "boolean", "role": "primary"},
+    {"id": "bankruptcy", "availability": "direct", "definition": "BANKRUPTCY terminal reason observed", "unit": "boolean", "role": "primary"},
+    {"id": "final-balance", "availability": "direct", "definition": "final native company balance", "unit": "OpenTTD-money", "role": "primary"},
+    {"id": "net-profit", "availability": "derived", "definition": "final balance minus evaluation starting balance", "unit": "OpenTTD-money", "role": "secondary"},
+    {"id": "operating-profit", "availability": "derived", "definition": "native company income plus signed native company expenses", "unit": "OpenTTD-money", "role": "primary"},
+    {"id": "passenger-deliveries", "availability": "direct", "definition": "native company delivered passenger total", "unit": "passengers", "role": "primary"},
+    {"id": "route-profit", "availability": "proxy", "definition": "company operating profit because V1 permits exactly one route", "unit": "OpenTTD-money", "role": "secondary"},
+    {"id": "profitable-vehicles", "availability": "proxy", "definition": "one when the sole V1 bus exists and route-profit is positive, otherwise zero", "unit": "vehicles", "role": "diagnostic"},
+    {"id": "infrastructure-cost", "availability": "derived", "definition": "sum of native per-transition capital_spend reward source", "unit": "OpenTTD-money", "role": "secondary"},
+    {"id": "roi", "availability": "derived", "definition": "operating-profit divided by infrastructure-cost when cost is positive", "unit": "ratio", "role": "secondary"},
+    {"id": "station-rating", "availability": "unavailable", "definition": "not exposed by frozen M04/M06 state; no station-rating claim", "unit": "unavailable", "role": "disposition-only"},
+    {"id": "coverage", "availability": "proxy", "definition": "fraction of M04 station-catchment spatial cells active at final observation", "unit": "ratio", "role": "diagnostic"},
+    {"id": "invalid-actions", "availability": "direct", "definition": "native rejected action count", "unit": "actions", "role": "secondary"},
+    {"id": "action-efficiency", "availability": "derived", "definition": "non-WAIT non-rejected actions divided by total actions", "unit": "ratio", "role": "secondary"},
+    {"id": "seed-stability", "availability": "derived", "definition": "sample standard deviation and range across matched training-run seeds", "unit": "metric-native", "role": "primary"}
+  ],
+  "statistics": {
+    "unit": "training-run-seed",
+    "reported": ["raw-episode", "seed-mean", "mean", "sample-standard-deviation", "minimum", "maximum", "two-sided-confidence-interval"],
+    "confidence_level": 0.95,
+    "interval": "student-t-df-n-minus-one",
+    "best_seed_claims": false
+  },
+  "selection": {
+    "split": "development",
+    "score": "mean-operating-profit-then-passenger-deliveries",
+    "eligibility": "positive-profit-and-deliveries-on-both-development-templates",
+    "tie_breakers": ["mean-final-balance", "lower-invalid-actions", "lower-run-seed"],
+    "final_results_used": false
+  },
+  "success": {
+    "superiority": ["mean-passenger-deliveries-greater-than-random-and-trivial", "mean-operating-profit-greater-than-random-and-trivial"],
+    "reliable_profitability": ["all-primary-episodes-survive", "all-primary-episodes-positive-operating-profit", "all-primary-episodes-positive-passenger-deliveries", "all-primary-episodes-positive-final-balance"],
+    "architecture_claim": "only-if-matched-three-seed-confidence-report-supports-it-otherwise-no-superiority-claim",
+    "training_reward": "reported-secondary-never-model-quality-substitute"
+  },
+  "requirements": ["SCOPE-027", "LIFE-011", "OBS-018", "REW-008", "AI-001", "AI-002", "AI-003", "AI-004", "AI-005", "AI-006", "RUN-008", "EVAL-001", "EVAL-002", "EVAL-003", "EVAL-004", "EVAL-005", "EVAL-006", "EVAL-007", "EVAL-008", "EVAL-009", "EVAL-010", "EVAL-011", "EVAL-012", "EVAL-013", "ARCH-004", "ARCH-005"],
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e",
+    "schema_path": "docs/project/schema/v1-m09-evaluation-contract.schema.json",
+    "schema_sha256": "c252ab652cf232d61992372839ccfb2b1453a89bafe9d06f48c3e4b46e958f7b"
+  }
+}

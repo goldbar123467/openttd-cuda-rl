@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m09-evaluation-contract.schema.json",
+  "title": "OpenTTD-RL V1 M09 independent evaluation contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "contract_id", "semantic_version", "status", "compatibility", "independence", "partitions", "training_budget", "evaluation_suite", "baselines", "metrics", "statistics", "selection", "success", "requirements", "identity"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v1-m09-evaluation-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v1-m09-evaluation-contract-1"},
+    "contract_id": {"const": "m09-independent-policy-quality-v1"},
+    "semantic_version": {"const": 1},
+    "status": {"const": "FROZEN"},
+    "compatibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reward_trajectory", "architecture_cuda", "seed_ledger"],
+      "properties": {
+        "reward_trajectory": {"$ref": "#/$defs/sha256"},
+        "architecture_cuda": {"$ref": "#/$defs/sha256"},
+        "seed_ledger": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "independence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["executable", "optimizer_dependency", "model_state", "normalization_state", "final_access", "package_format"],
+      "properties": {
+        "executable": {"const": "m09_evaluator"},
+        "optimizer_dependency": {"const": false},
+        "model_state": {"const": "read-only"},
+        "normalization_state": {"const": "none-frozen-preprocessing"},
+        "final_access": {"const": "only-after-frozen-contract-is-committed"},
+        "package_format": {"const": "openttd-rl-evaluation-model-v1"}
+      }
+    },
+    "partitions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["training", "development", "final_evaluation", "trainer_visible"],
+      "properties": {
+        "training": {"const": ["m02-template-01", "m02-template-02", "m02-template-03", "m02-template-04"]},
+        "development": {"const": ["m02-template-05", "m02-template-06"]},
+        "final_evaluation": {"const": ["m02-template-07", "m02-template-08"]},
+        "trainer_visible": {"const": ["training", "development"]}
+      }
+    },
+    "training_budget": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architectures", "run_seeds", "updates", "rollout_length", "environment_count", "minibatch_size", "optimization_epochs", "accepted_samples_per_run", "budget_check"],
+      "properties": {
+        "architectures": {"const": ["structured-mlp-v1", "spatial-cnn-v1", "combined-cnn-mlp-v1"]},
+        "run_seeds": {"const": [2026090101, 2026090102, 2026090103]},
+        "updates": {"const": 16},
+        "rollout_length": {"const": 32},
+        "environment_count": {"const": 4},
+        "minibatch_size": {"const": 32},
+        "optimization_epochs": {"const": 4},
+        "accepted_samples_per_run": {"const": 2048},
+        "budget_check": {"const": "fail-closed-exact-equality-before-comparison"}
+      }
+    },
+    "evaluation_suite": {
+      "type": "object", "additionalProperties": false,
+      "required": ["primary", "stochastic", "robustness", "layout_and_passenger_variation", "starting_balance_override", "horizon_override"],
+      "properties": {
+        "primary": {"type": "object", "required": ["split", "policy_mode", "starting_balance", "action_horizon", "templates"]},
+        "stochastic": {"type": "object", "required": ["split", "policy_mode", "sampling_seeds", "starting_balance", "action_horizon", "templates"]},
+        "robustness": {"type": "object", "required": ["split", "policy_mode", "starting_balances", "action_horizons", "templates"]},
+        "layout_and_passenger_variation": {"const": "native-distinct-frozen-template-town-layouts-and-generated-passenger-populations"},
+        "starting_balance_override": {"const": "evaluation-only-bridge-reset-field"},
+        "horizon_override": {"const": "evaluation-only-bridge-reset-field"}
+      }
+    },
+    "baselines": {
+      "type": "array", "minItems": 3, "maxItems": 3,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "kind", "version", "source", "seed_policy", "limitations", "competitive_multiplayer"],
+        "properties": {
+          "id": {"enum": ["seeded-random-legal-v1", "wait-only-trivial-v1", "m05-scripted-bus-v1"]},
+          "kind": {"enum": ["random", "trivial-scripted", "existing-scripted-agent"]},
+          "version": {"type": "string", "minLength": 1},
+          "source": {"type": "string", "minLength": 1},
+          "seed_policy": {"type": "string", "minLength": 1},
+          "limitations": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "competitive_multiplayer": {"const": false}
+        }
+      }
+    },
+    "metrics": {
+      "type": "array", "minItems": 15, "maxItems": 15,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "availability", "definition", "unit", "role"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "availability": {"enum": ["direct", "derived", "proxy", "unavailable"]},
+          "definition": {"type": "string", "minLength": 1},
+          "unit": {"type": "string", "minLength": 1},
+          "role": {"enum": ["primary", "secondary", "diagnostic", "disposition-only"]}
+        }
+      }
+    },
+    "statistics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["unit", "reported", "confidence_level", "interval", "best_seed_claims"],
+      "properties": {
+        "unit": {"const": "training-run-seed"},
+        "reported": {"const": ["raw-episode", "seed-mean", "mean", "sample-standard-deviation", "minimum", "maximum", "two-sided-confidence-interval"]},
+        "confidence_level": {"const": 0.95},
+        "interval": {"const": "student-t-df-n-minus-one"},
+        "best_seed_claims": {"const": false}
+      }
+    },
+    "selection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["split", "score", "eligibility", "tie_breakers", "final_results_used"],
+      "properties": {
+        "split": {"const": "development"},
+        "score": {"const": "mean-operating-profit-then-passenger-deliveries"},
+        "eligibility": {"const": "positive-profit-and-deliveries-on-both-development-templates"},
+        "tie_breakers": {"const": ["mean-final-balance", "lower-invalid-actions", "lower-run-seed"]},
+        "final_results_used": {"const": false}
+      }
+    },
+    "success": {
+      "type": "object", "additionalProperties": false,
+      "required": ["superiority", "reliable_profitability", "architecture_claim", "training_reward"],
+      "properties": {
+        "superiority": {"const": ["mean-passenger-deliveries-greater-than-random-and-trivial", "mean-operating-profit-greater-than-random-and-trivial"]},
+        "reliable_profitability": {"const": ["all-primary-episodes-survive", "all-primary-episodes-positive-operating-profit", "all-primary-episodes-positive-passenger-deliveries", "all-primary-episodes-positive-final-balance"]},
+        "architecture_claim": {"const": "only-if-matched-three-seed-confidence-report-supports-it-otherwise-no-superiority-claim"},
+        "training_reward": {"const": "reported-secondary-never-model-quality-substitute"}
+      }
+    },
+    "requirements": {"const": ["SCOPE-027", "LIFE-011", "OBS-018", "REW-008", "AI-001", "AI-002", "AI-003", "AI-004", "AI-005", "AI-006", "RUN-008", "EVAL-001", "EVAL-002", "EVAL-003", "EVAL-004", "EVAL-005", "EVAL-006", "EVAL-007", "EVAL-008", "EVAL-009", "EVAL-010", "EVAL-011", "EVAL-012", "EVAL-013", "ARCH-004", "ARCH-005"]},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["compatibility_algorithm", "compatibility_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "compatibility_algorithm": {"const": "sha256-canonical-json-v1"},
+        "compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_path": {"const": "docs/project/schema/v1-m09-evaluation-contract.schema.json"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}
