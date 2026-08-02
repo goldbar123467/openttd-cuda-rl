@@ -1,0 +1,30 @@
+{
+  "$schema": "../../docs/project/schema/v1-m12-release-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m12-release-contract-1",
+  "release_id": "openttd-rl-v1-release-1",
+  "semantic_version": 1,
+  "status": "FROZEN",
+  "supported_host": {"os_id": "ubuntu", "os_version": "24.04", "architecture": "x86_64", "clean_repository": "fresh-local-clone-at-accepted-commit", "clean_output_roots": "all-build-test-and-playback-output-outside-repository", "gpu": "NVIDIA-CUDA-13.0-sm120-release-path"},
+  "source": {"outer_repository": "current-clean-main-commit-recorded-by-gate", "dirty_policy": "forbidden", "remote_policy": "local-main-equals-origin-main-before-and-after-gate", "openttd_upstream_commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86", "m11_result_tree": "e1151f41b131a41c1d450f741c8922da1a119e18"},
+  "compatibility": {"scenario": "45ec1b3beb4d6d50696bf1de75094e1817c6aa7ef8e0d38fc6696999764e5b0f", "bridge": "4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6", "observation": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb", "action_and_mask": "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536", "reward_trajectory": "9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e", "ppo": "8649da85cee2914d423a7ae8f1bcff0fa6a1c7d749bd04232976fbad6df518c0", "architecture": "52c8b622b79d793e85ef749822e6886cd7cdda63194a471d38ab25da910e101d", "evaluation": "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e", "model_package": "e77edf9be1343970a55becbb05da96a6b9a17edbd8df2c7999701dd8fa1f33b6", "playback": "3f331f7852b0174714de30b8ab6015178d7e01d4691832f8af2085d32bb01e42"},
+  "accepted_evidence": [
+    {"id": "m01-build", "argument": "--m01-root", "relative_file": "g01-audit.json", "sha256": "e5db84ff30ac2b09e6dd1516e672ad153773674070c7335464893e50d325cd78"},
+    {"id": "m02-reset", "argument": "--m02-root", "relative_file": "manifest.json", "sha256": "8baeea1e49b04936f3403fec338392aa0ade7c8b1171a6e8fb15ce758ba869ca"},
+    {"id": "m03-bridge", "argument": "--m03-root", "relative_file": "manifest.json", "sha256": "0a0664be8345ef79f6d01a7de404ad0f7427071849661a5e6dabd3025a960877"},
+    {"id": "m04-observation", "argument": "--m04-root", "relative_file": "manifest.json", "sha256": "a80aa42cbbb3b38e473e48023f04cda4aad5a1a84e8b059619c3d92155ff3485"},
+    {"id": "m05-action", "argument": "--m05-root", "relative_file": "manifest.json", "sha256": "30700cfb8a556ddd7c23eec7463bac7a7f2bf365b9a94742fdeddd982cb2d7b8"},
+    {"id": "m06-reward", "argument": "--m06-root", "relative_file": "manifest.json", "sha256": "6b72ac4e4a21667bcbc40ae4dde6a0b2e16ebad53109b45f4d03c4939c6dfce7"},
+    {"id": "m07-training", "argument": "--m07-root", "relative_file": "run-manifest.json", "sha256": "c45d3b62521f22986cab284ffd66d0e73e7025313bcf8301ecdc15ffa792c648"},
+    {"id": "m07-recovery", "argument": "--m07-recovery-root", "relative_file": "recovery-report.json", "sha256": "ae933f91d367ab0c398b5965492d0a140395642952c3ce6b3a8aa1025f972fbf"},
+    {"id": "m08-architecture", "argument": "--m08-root", "relative_file": "run-manifest.json", "sha256": "df2632870401a2dd364c32120324f06af9bcff13e835b2b4c24e3ab548ab0214"},
+    {"id": "m08-cuda", "argument": "--m08-cuda-root", "relative_file": "cuda-report.json", "sha256": "c1add8dffba12915e36bf48a685e68d00c28e5a9892b8f86547780710ca539a0"},
+    {"id": "m09-training", "argument": "--m09-training-root", "relative_file": "training-manifest.json", "sha256": "4913865a6c33d35214327337d6eec60aa77ca5663d8f0314ae25fc920ca78b5b"},
+    {"id": "m09-evaluation", "argument": "--m09-root", "relative_file": "final-evaluation-report.json", "sha256": "0eafc1924456ef9a752d4b6c149b29677dd2d427f2d06f6257bad5de46f09731"},
+    {"id": "m10-package", "argument": "--m10-root", "relative_file": "m10-package-gate-report.json", "sha256": "3dc1615f2a54fae568a8e731853aab2ff710b05baf1a835b826f2a17a29d49de"},
+    {"id": "m11-playback", "argument": "--m11-root", "relative_file": "m11-playback-gate-report.json", "sha256": "3e01e4c3316e76fa861f11905be2955015a6f67e66a8d767078c338f1ff9f879"}
+  ],
+  "campaigns": ["clean-dual-build", "scenario-reset-reproduction", "cpu-cuda-training", "checkpoint-recovery", "independent-evaluation", "onnx-package-equivalence", "visible-playback", "long-run-soak", "quality-matrix", "clean-operator-documentation", "traceability-defect-closure", "fresh-root-release-repeat"],
+  "release_manifest": {"schema_version": "openttd-rl-v1-m12-release-manifest-1", "schema_path": "docs/project/schema/v1-m12-release-manifest.schema.json", "schema_sha256": "42274a2d75e42667502855c1728922fc24913a1968ba12bbd3446175912dcac7", "canonical_encoding": "compact-sorted-json-plus-one-LF", "required_sections": ["source", "host", "builds", "dependencies", "contracts", "seeds", "counters", "artifacts", "campaigns", "quality", "traceability", "defects", "reproduction"]},
+  "requirements": ["REPRO-001", "REPRO-002", "REPRO-003", "REPRO-004", "REPRO-005", "REPRO-006", "REPRO-007", "REPRO-008", "REPRO-009", "TEST-016", "DONE-001", "DONE-002", "DONE-003", "DONE-004", "DONE-005", "DONE-006", "DONE-007", "DONE-008"],
+  "identity": {"compatibility_algorithm": "sha256-canonical-json-v1", "compatibility_sha256": "e644f6e31163f9eb91008fe0bcb5d6830f3f3bb89104b229f3d974085b287879", "schema_path": "docs/project/schema/v1-m12-release-contract.schema.json", "schema_sha256": "0c30952fd82c821e7c4919b7fb07506ba78300a8ac35e50a072b2b41ee6a7ea5"}
+}

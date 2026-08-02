@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.local/schema/v1-m12-release-manifest.schema.json",
+  "title": "OpenTTD-RL V1 M12 release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "release_id", "repository_commit", "contract_sha256", "source", "host", "builds", "dependencies", "contracts", "seeds", "counters", "artifacts", "campaigns", "quality", "traceability", "defects", "reproduction", "manifest_sha256"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-m12-release-manifest-1"},
+    "status": {"const": "PASS"},
+    "release_id": {"const": "openttd-rl-v1-release-1"},
+    "repository_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {"type": "object", "minProperties": 6},
+    "host": {"type": "object", "minProperties": 7},
+    "builds": {"type": "array", "minItems": 3},
+    "dependencies": {"type": "array", "minItems": 3},
+    "contracts": {"type": "object", "minProperties": 10},
+    "seeds": {"type": "object", "minProperties": 5},
+    "counters": {"type": "object", "minProperties": 5},
+    "artifacts": {"type": "array", "minItems": 14},
+    "campaigns": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "evidence"],
+        "properties": {
+          "id": {"type": "string"},
+          "status": {"const": "PASS"},
+          "evidence": {"type": ["object", "array", "string", "number", "boolean"]}
+        }
+      }
+    },
+    "quality": {"type": "object", "minProperties": 7},
+    "traceability": {"type": "object", "minProperties": 4},
+    "defects": {"type": "object", "required": ["release_blocking", "total_nonclosed"], "properties": {"release_blocking": {"const": 0}, "total_nonclosed": {"const": 0}}},
+    "reproduction": {"type": "object", "required": ["clean_clone", "fresh_output_roots", "repeat_pass", "operator_documentation"], "properties": {"clean_clone": {"const": true}, "fresh_output_roots": {"const": true}, "repeat_pass": {"const": true}, "operator_documentation": {"const": true}}},
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
