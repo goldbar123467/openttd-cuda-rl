@@ -104,8 +104,8 @@ def live_cases(args: argparse.Namespace, contract: dict[str, Any]) -> list[dict[
             args.artifact_root / ".live-runs",
             reward_contract,
             session + template_number,
-            60_000,
-            16,
+            75_000,
+            64,
             args.timeout,
         )
         try:
