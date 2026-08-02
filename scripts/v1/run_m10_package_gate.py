@@ -96,7 +96,8 @@ def live_cases(args: argparse.Namespace, contract: dict[str, Any]) -> list[dict[
     cases: list[dict[str, Any]] = []
     session = 202610100100
     for template_number in (7, 8):
-        template = args.templates / f"m02-template-{template_number:02d}"
+        template = args.templates / f"m02-template-{template_number:02d}.json"
+        require(template.is_file() and not template.is_symlink(), "retained live scenario instance is missing")
         environment = m09.start_environment(
             args.openttd,
             template,
