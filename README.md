@@ -12,6 +12,10 @@ CNN/MLP policy averaged 150 delivered passengers and 424 operating profit on its
 independent final suite; visible final playback earned positive income on both
 held-out layouts.
 
+[`Download V1`](https://github.com/goldbar123467/openttd-cuda-rl/releases/tag/v1.0.0)
+· [`Source quality: passing`](https://github.com/goldbar123467/openttd-cuda-rl/actions/runs/30746165828)
+· [`G13 publication evidence`](docs/project/G13_GATE_REPORT.md)
+
 ## Verify the source
 
 The quick check targets Ubuntu 24.04 x86_64 and repairs missing apt-provided
@@ -130,6 +134,8 @@ independent project and does not imply OpenTTD endorsement.
     final release, traceability, defect, quality, and fresh-root reproduction gate.
 39. [`docs/project/V1_PUBLICATION.md`](docs/project/V1_PUBLICATION.md) — M13 public
     release boundary, privacy repair, approved assets, claims, and publication gate.
+40. [`docs/project/G13_GATE_REPORT.md`](docs/project/G13_GATE_REPORT.md) — passed
+    deterministic publication, privacy/license, GitHub asset, and hosted-CI gate.
 
 ## Current status
 
@@ -151,6 +157,7 @@ independent project and does not imply OpenTTD endorsement.
 | ONNX export/equivalence | Reproducible opset 18 exports/packages for all architectures, 36 native/standalone/in-game golden cases, sampled distributions, 30 rejection mutations, and inference-only dependency closure | `M10/G10 PASS`; frozen portable package boundary |
 | In-game neural agent | Source-integrated C++ controller, accepted combined ONNX policy, greedy/seeded modes, 128–1024 tick interval, native inspection/pause/step controls, canonical logs, visible paid-service evidence, and fail-closed dependency audit | `M11/G11 PASS`; frozen playback boundary |
 | V1 release/reproduction | Fresh clean clone, dual OpenTTD builds, C++/CUDA/ONNX rebuild, 12 release campaigns, full quality matrix, complete provenance manifest, zero nonclosed defects, and clean operator guide | `M12/G12 PASS`; Version 1 complete |
+| Public distribution | Path-neutral inference-equivalent ONNX package, deterministic reviewed archive, explicit license/notices, public source verifier, release tag/assets, round-trip verification, and hosted CI | `M13/G13 PASS`; V1 published |
 
 This table is intentionally conservative. A legacy freight fixture, a buildable
 OpenTTD submodule, or a passing tape test does not prove a V1 bus-platform item.

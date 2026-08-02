@@ -51,6 +51,7 @@ ACTIVE_FIXED = (
     "docs/project/V1_RELEASE_REPRODUCTION.md",
     "docs/project/G12_GATE_REPORT.md",
     "docs/project/V1_PUBLICATION.md",
+    "docs/project/G13_GATE_REPORT.md",
     "THIRD_PARTY_NOTICES.md",
 )
 V1_ADR_NUMBERS = tuple(range(7, 14))
@@ -105,6 +106,7 @@ REQUIRED_NAVIGATION_TARGETS = (
     "docs/project/V1_RELEASE_REPRODUCTION.md",
     "docs/project/G12_GATE_REPORT.md",
     "docs/project/V1_PUBLICATION.md",
+    "docs/project/G13_GATE_REPORT.md",
     "THIRD_PARTY_NOTICES.md",
     "docs/decisions/",
 )

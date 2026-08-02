@@ -364,7 +364,7 @@ authorization to expand scope.
 | `M10` | checkpoint/ONNX/package/equivalence | `PASS` | `G10_GATE_REPORT.md` records reproducible packages, equivalence, and mutations |
 | `M11` | normal-game neural agent/inspection | `PASS` | `G11_GATE_REPORT.md` records visible playback and fail-closed inference |
 | `M12` | clean reproduction and V1 release | `PASS` | `G12_GATE_REPORT.md` records 12 campaigns, 217 passing requirements, and zero nonclosed defects |
-| `M13` | public distribution readiness | `IN_PROGRESS` | frozen contract; public archive/tag/release gate not yet accepted |
+| `M13` | public distribution readiness | `PASS` | `G13_GATE_REPORT.md` records deterministic archive, privacy/license scans, GitHub release, asset round-trip, and green CI |
 
 ## Completed work package: M00
 
@@ -619,8 +619,7 @@ Before handing off:
 
 ## Current next action
 
-Close M13 only: verify the metadata-sanitized content-addressed package against
-the accepted M10 package in both inference adapters, build the release archive
-twice from clean synchronized `main`, pass secret/path/archive/license checks,
-then publish tag `v1.0.0` and only the approved model/evidence assets. Do not begin
-`EXP-001` gameplay expansion until the public release and CI are accepted.
+There is no open Version 1 or publication task. Preserve tag `v1.0.0`, the G12
+and G13 identities, and the frozen compatibility boundaries. Begin `EXP-001` only
+after an explicit new contract defines its gameplay scope, migrations, and full
+regression/evaluation gate.

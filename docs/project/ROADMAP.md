@@ -571,8 +571,9 @@ be called complete and the post-V1 roadmap activate.
 
 ## M13 — Public distribution readiness
 
-Status: `IN_PROGRESS` on 2026-08-02. The frozen contract identity is
+Status: `PASS` at `G13` on 2026-08-02. The frozen contract identity is
 `692e91fde04ae8069e89aa2c363e571a8b59724290f704bdc41b20b72150983c`.
+Accepted publication evidence is in [`G13_GATE_REPORT.md`](G13_GATE_REPORT.md).
 
 ### Objective
 
@@ -625,13 +626,8 @@ retains prior model packages or supplies an explicit migration/rejection policy.
 
 ## Immediate critical path
 
-`G00` through `G12` are recorded as passing. The immediate path is to close `M13`:
-
-1. preserve the accepted M12 manifest and M10 source-package identities;
-2. derive and prove the path-neutral ONNX package without changing graph outputs;
-3. pass two independent deterministic archive builds plus publication scans;
-4. tag the exact passing source commit and publish only the approved assets; and
-5. confirm the public GitHub quality workflow before considering `EXP-001`.
-
-Gameplay expansion and the legacy freight instrumentation series are not on the
-publication critical path.
+`G00` through `G13` are recorded as passing. No Version 1 or publication critical
+path remains. The source/model release is tagged, the approved assets round-trip
+exactly, and hosted CI is green. Any next implementation must begin with an
+explicit post-V1 contract—normally `EXP-001`—rather than silently broadening the
+accepted V1 compatibility boundary.
