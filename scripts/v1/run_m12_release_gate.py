@@ -170,6 +170,7 @@ def fresh_clone(args: argparse.Namespace, commit: str, recorder: CommandRecorder
     recorder.run("checkout-outer", ["git", "checkout", "--quiet", "--detach", commit], cwd=destination, timeout=args.timeout)
     recorder.run("clone-openttd", ["git", "clone", "--quiet", "--no-hardlinks", str(args.openttd_object_repository), str(destination / "openttd-upstream")], cwd=destination, timeout=args.timeout)
     recorder.run("checkout-openttd", ["git", "checkout", "--quiet", "--detach", UPSTREAM_COMMIT], cwd=destination / "openttd-upstream", timeout=args.timeout)
+    recorder.run("normalize-openttd-origin", ["git", "remote", "set-url", "origin", "https://github.com/OpenTTD/OpenTTD.git"], cwd=destination / "openttd-upstream", timeout=args.timeout)
     require(not git(destination, "status", "--porcelain"), "fresh outer clone is dirty")
     require(git(destination, "rev-parse", "HEAD") == commit, "fresh clone commit drifted")
     return destination
