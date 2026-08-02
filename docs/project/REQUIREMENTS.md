@@ -105,9 +105,9 @@ cover the whole statement.
 | `LIFE-007` | Advance simulation by a configurable, deterministic stepping rule. | Tick-step tests. | `PASS` |
 | `LIFE-008` | Calculate scalar reward from separately retained components. | Reward unit/integration evidence. | `PASS` |
 | `LIFE-009` | Record complete trajectories with schema and provenance. | Trajectory round-trip and resume tests. | `PASS` |
-| `LIFE-010` | Train actor-critic PPO policies in the production C++/CUDA path. | Trainer convergence and algorithm tests. | `NOT_STARTED` |
+| `LIFE-010` | Train actor-critic PPO policies in the production C++/CUDA path. | Trainer convergence and algorithm tests. | `PASS` |
 | `LIFE-011` | Evaluate saved policies in a process and dataset independent from training. | Evaluation run artifact. | `NOT_STARTED` |
-| `LIFE-012` | Save native training checkpoints and recover from the declared boundary. | Interrupted-run recovery comparison. | `NOT_STARTED` |
+| `LIFE-012` | Save native training checkpoints and recover from the declared boundary. | Interrupted-run recovery comparison. | `PASS` |
 | `LIFE-013` | Export compatible trained networks to ONNX. | Export gate result. | `NOT_STARTED` |
 | `LIFE-014` | Convert or package an exported model for the in-game inference runtime. | Package schema and install test. | `NOT_STARTED` |
 | `LIFE-015` | Load the package in a normal playable OpenTTD build. | In-game load/compatibility test. | `NOT_STARTED` |
@@ -134,28 +134,28 @@ cover the whole statement.
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `PPO-001` | The first trusted learner is actor-critic PPO. | Model/trainer design and smoke run. | `NOT_STARTED` |
-| `PPO-002` | PPO implements the clipped policy objective. | Reference-vector unit and gradient test. | `NOT_STARTED` |
-| `PPO-003` | PPO implements a configurable value-function loss. | Unit and optimization test. | `NOT_STARTED` |
-| `PPO-004` | PPO implements entropy regularization. | Unit and configuration test. | `NOT_STARTED` |
-| `PPO-005` | PPO implements Generalized Advantage Estimation. | Hand-computed and randomized differential tests. | `NOT_STARTED` |
-| `PPO-006` | Advantages are normalized with defined zero-variance behavior. | Numerical edge-case test. | `NOT_STARTED` |
-| `PPO-007` | Rollout length is configurable and recorded. | Configuration/trajectory test. | `NOT_STARTED` |
-| `PPO-008` | Minibatch size is configurable and validated against rollout shape. | Boundary and shuffle tests. | `NOT_STARTED` |
-| `PPO-009` | Optimization epoch count is configurable and recorded. | Trainer configuration test. | `NOT_STARTED` |
-| `PPO-010` | Gradient clipping is implemented and measured. | Synthetic-gradient test and metric. | `NOT_STARTED` |
-| `PPO-011` | Learning rate is configurable and logged. | Scheduler/configuration test. | `NOT_STARTED` |
-| `PPO-012` | Native checkpoints include model, optimizer, counters, RNG state, schemas, and configuration. | Checkpoint schema/round-trip test. | `NOT_STARTED` |
-| `PPO-013` | Checkpoint recovery resumes from a precisely documented update boundary. | Interrupted/uninterrupted comparison. | `NOT_STARTED` |
-| `PPO-014` | Evaluation mode disables training updates and supports deterministic greedy action selection. | Read-only evaluation and repeat test. | `NOT_STARTED` |
-| `PPO-015` | Rollout collection supports batched environments. | Batch-shape/isolation test. | `NOT_STARTED` |
-| `PPO-016` | Illegal actions receive no sampling probability after masking. | Extreme-logit and all-mask edge tests. | `NOT_STARTED` |
-| `PPO-017` | All PPO-owned RNG streams have reproducible independent seeds. | Seed-sweep determinism test. | `NOT_STARTED` |
-| `PPO-018` | Losses, activations, gradients, parameters, advantages, and returns are checked for NaN and infinity. | Fault-injection tests. | `NOT_STARTED` |
-| `PPO-019` | Numerical failures stop safely and retain a diagnostic checkpoint/artifact. | Failure-path integration test. | `NOT_STARTED` |
-| `PPO-020` | Training and evaluation metrics are emitted to structured logs. | Metrics-schema and accuracy tests. | `NOT_STARTED` |
+| `PPO-001` | The first trusted learner is actor-critic PPO. | Model/trainer design and smoke run. | `PASS` |
+| `PPO-002` | PPO implements the clipped policy objective. | Reference-vector unit and gradient test. | `PASS` |
+| `PPO-003` | PPO implements a configurable value-function loss. | Unit and optimization test. | `PASS` |
+| `PPO-004` | PPO implements entropy regularization. | Unit and configuration test. | `PASS` |
+| `PPO-005` | PPO implements Generalized Advantage Estimation. | Hand-computed and randomized differential tests. | `PASS` |
+| `PPO-006` | Advantages are normalized with defined zero-variance behavior. | Numerical edge-case test. | `PASS` |
+| `PPO-007` | Rollout length is configurable and recorded. | Configuration/trajectory test. | `PASS` |
+| `PPO-008` | Minibatch size is configurable and validated against rollout shape. | Boundary and shuffle tests. | `PASS` |
+| `PPO-009` | Optimization epoch count is configurable and recorded. | Trainer configuration test. | `PASS` |
+| `PPO-010` | Gradient clipping is implemented and measured. | Synthetic-gradient test and metric. | `PASS` |
+| `PPO-011` | Learning rate is configurable and logged. | Scheduler/configuration test. | `PASS` |
+| `PPO-012` | Native checkpoints include model, optimizer, counters, RNG state, schemas, and configuration. | Checkpoint schema/round-trip test. | `PASS` |
+| `PPO-013` | Checkpoint recovery resumes from a precisely documented update boundary. | Interrupted/uninterrupted comparison. | `PASS` |
+| `PPO-014` | Evaluation mode disables training updates and supports deterministic greedy action selection. | Read-only evaluation and repeat test. | `PASS` |
+| `PPO-015` | Rollout collection supports batched environments. | Batch-shape/isolation test. | `PASS` |
+| `PPO-016` | Illegal actions receive no sampling probability after masking. | Extreme-logit and all-mask edge tests. | `PASS` |
+| `PPO-017` | All PPO-owned RNG streams have reproducible independent seeds. | Seed-sweep determinism test. | `PASS` |
+| `PPO-018` | Losses, activations, gradients, parameters, advantages, and returns are checked for NaN and infinity. | Fault-injection tests. | `PASS` |
+| `PPO-019` | Numerical failures stop safely and retain a diagnostic checkpoint/artifact. | Failure-path integration test. | `PASS` |
+| `PPO-020` | Training and evaluation metrics are emitted to structured logs. | Metrics-schema and accuracy tests. | `PASS` |
 | `PPO-021` | The trainer exports inference networks and required metadata. | Model pipeline gate. | `NOT_STARTED` |
-| `PPO-022` | No second RL algorithm is implemented before PPO and V1 gates pass. | Dependency/source audit. | `NOT_STARTED` |
+| `PPO-022` | No second RL algorithm is implemented before PPO and V1 gates pass. | Dependency/source audit. | `PASS` |
 
 ## Observation requirements
 
@@ -268,20 +268,20 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 | `RUN-003` | Runtime supports controlled pause, resume, and reset. | State-machine tests. | `PASS` |
 | `RUN-004` | Runtime supports seeded scenario generation. | Reproducibility campaign. | `PASS` |
 | `RUN-005` | Environment crashes are detected, classified, and recovered or fail closed without corrupting the run. | Crash fault-injection test. | `PASS` |
-| `RUN-006` | Training resumes from valid checkpoints after process interruption. | Recovery campaign. | `NOT_STARTED` |
-| `RUN-007` | Logs are structured, schema-versioned, bounded, and usable non-interactively. | Log schema/resource tests. | `NOT_STARTED` |
+| `RUN-006` | Training resumes from valid checkpoints after process interruption. | Recovery campaign. | `PASS` |
+| `RUN-007` | Logs are structured, schema-versioned, bounded, and usable non-interactively. | Log schema/resource tests. | `PASS` |
 | `RUN-008` | Runtime supports batch evaluation and long unattended runs. | Evaluation and soak results. | `NOT_STARTED` |
 | `RUN-009` | CPU/GPU/environment performance can be profiled without changing authoritative semantics. | Profile on/off parity test. | `NOT_STARTED` |
 | `RUN-010` | The OpenTTD/RL interface is stable, versioned, and synchronized. | ABI/API contract tests. | `PASS` |
-| `MON-001` | Interactive monitor remains readable over SSH and in tmux. | Terminal acceptance capture. | `NOT_STARTED` |
-| `MON-002` | Monitor shows run name, repository commit, OpenTTD version, environment version, seed, environment count, and device. | Metric-source accuracy test. | `NOT_STARTED` |
-| `MON-003` | Monitor shows elapsed time, environment steps, simulation ticks, steps/second, and updates. | Counter accuracy test. | `NOT_STARTED` |
-| `MON-004` | Monitor shows policy loss, value loss, entropy, approximate KL, clip fraction, explained variance, and learning rate. | Trainer-metric test. | `NOT_STARTED` |
-| `MON-005` | Monitor shows mean episodic return/length, company profit, passenger deliveries, vehicles, routes, invalid actions, mask violations, and resets. | Aggregation accuracy test. | `NOT_STARTED` |
-| `MON-006` | Monitor shows checkpoint, best evaluation score, GPU utilization/memory when available, CPU utilization, process memory, and warning state. | System/metric-source tests. | `NOT_STARTED` |
-| `MON-007` | Missing hardware telemetry is shown as unavailable, never fabricated or coerced to zero. | No-GPU/permission negative tests. | `NOT_STARTED` |
-| `MON-008` | Every important monitor value is also written to structured logs. | Display/log correspondence test. | `NOT_STARTED` |
-| `MON-009` | Non-interactive mode is suitable for files, CI, automated experiments, and external trackers. | Pipe/file/CI acceptance tests. | `NOT_STARTED` |
+| `MON-001` | Interactive monitor remains readable over SSH and in tmux. | Terminal acceptance capture. | `PASS` |
+| `MON-002` | Monitor shows run name, repository commit, OpenTTD version, environment version, seed, environment count, and device. | Metric-source accuracy test. | `PASS` |
+| `MON-003` | Monitor shows elapsed time, environment steps, simulation ticks, steps/second, and updates. | Counter accuracy test. | `PASS` |
+| `MON-004` | Monitor shows policy loss, value loss, entropy, approximate KL, clip fraction, explained variance, and learning rate. | Trainer-metric test. | `PASS` |
+| `MON-005` | Monitor shows mean episodic return/length, company profit, passenger deliveries, vehicles, routes, invalid actions, mask violations, and resets. | Aggregation accuracy test. | `PASS` |
+| `MON-006` | Monitor shows checkpoint, best evaluation score, GPU utilization/memory when available, CPU utilization, process memory, and warning state. | System/metric-source tests. | `PASS` |
+| `MON-007` | Missing hardware telemetry is shown as unavailable, never fabricated or coerced to zero. | No-GPU/permission negative tests. | `PASS` |
+| `MON-008` | Every important monitor value is also written to structured logs. | Display/log correspondence test. | `PASS` |
+| `MON-009` | Non-interactive mode is suitable for files, CI, automated experiments, and external trackers. | Pipe/file/CI acceptance tests. | `PASS` |
 
 ## Evaluation and research requirements
 
@@ -330,12 +330,12 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | `TEST-006` | Test bus purchasing, depot/stop placement, road construction, route creation, order assignment, and vehicle start. | Actual OpenTTD integration tests. | `PASS` |
 | `TEST-007` | Test passenger delivery and profit calculation against actual OpenTTD state. | Controlled economic integration tests. | `PASS` |
 | `TEST-008` | Test bankruptcy and every episode termination/truncation reason. | Scenario tests. | `PASS` |
-| `TEST-009` | Test PPO advantages, clipping, losses, minibatching, shuffling, masking, gradients, and optimizer updates. | Reference-vector and differential tests. | `NOT_STARTED` |
-| `TEST-010` | Test checkpoint save, reload, incompatibility, and interruption recovery. | Round-trip/recovery tests. | `NOT_STARTED` |
+| `TEST-009` | Test PPO advantages, clipping, losses, minibatching, shuffling, masking, gradients, and optimizer updates. | Reference-vector and differential tests. | `PASS` |
+| `TEST-010` | Test checkpoint save, reload, incompatibility, and interruption recovery. | Round-trip/recovery tests. | `PASS` |
 | `TEST-011` | Test ONNX export and native/ONNX/in-game equivalence. | Cross-runtime gate. | `NOT_STARTED` |
 | `TEST-012` | Test incompatible model rejection for every compatibility field. | Mutation matrix. | `NOT_STARTED` |
-| `TEST-013` | Test headless long-run stability and desynchronization detection. | Soak and fault campaign. | `NOT_STARTED` |
-| `TEST-014` | Test every CLI metric against its authoritative counter/source. | Monitor accuracy suite. | `NOT_STARTED` |
+| `TEST-013` | Test headless long-run stability and desynchronization detection. | Soak and fault campaign. | `PASS` |
+| `TEST-014` | Test every CLI metric against its authoritative counter/source. | Monitor accuracy suite. | `PASS` |
 | `TEST-015` | Critical gameplay behavior has both code-level assertions and actual-engine integration coverage. | Traceability lint. | `PASS` |
 | `TEST-016` | Release gates include sanitizer, static-analysis, resource-bound, malformed-input, and failure-artifact checks appropriate to changed native code. | Quality-matrix result. | `NOT_STARTED` |
 
@@ -343,7 +343,7 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `ARCH-001` | Baseline A is a structured MLP using company, town, vehicle, route, and simplified map-summary features. | Model definition and train/eval run. | `NOT_STARTED` |
+| `ARCH-001` | Baseline A is a structured MLP using company, town, vehicle, route, and simplified map-summary features. | Model definition and train/eval run. | `PASS` |
 | `ARCH-002` | Baseline B is a CNN using the versioned multi-channel 32 by 32 map tensor. | Model definition and train/eval run. | `NOT_STARTED` |
 | `ARCH-003` | Baseline C combines CNN spatial features with structured numerical features. | Model definition and train/eval run. | `NOT_STARTED` |
 | `ARCH-004` | The comparison measures economic quality, computational cost, and sample efficiency. | Matched report. | `NOT_STARTED` |

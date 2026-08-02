@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m07-recovery-report.schema.json",
+  "title": "OpenTTD-RL V1 M07 exact recovery report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "configuration", "first_actions", "first_checkpoint_id", "first_update", "recovered_actions", "recovered_checkpoint_id", "recovered_update", "uninterrupted_checkpoint_id", "uninterrupted_update", "numerical_failure", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-m07-recovery-report-1"},
+    "status": {"const": "PASS"},
+    "configuration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["environment_count", "minibatch_size", "optimization_epochs", "rollout_length", "run_seed"],
+      "properties": {"environment_count": {"const": 4}, "minibatch_size": {"const": 8}, "optimization_epochs": {"const": 2}, "rollout_length": {"const": 8}, "run_seed": {"const": 2026080107}}
+    },
+    "first_actions": {"$ref": "#/$defs/actions"},
+    "first_checkpoint_id": {"$ref": "#/$defs/sha256"},
+    "first_update": {"$ref": "#/$defs/update"},
+    "recovered_actions": {"$ref": "#/$defs/actions"},
+    "recovered_checkpoint_id": {"$ref": "#/$defs/sha256"},
+    "recovered_update": {"$ref": "#/$defs/update"},
+    "uninterrupted_checkpoint_id": {"$ref": "#/$defs/sha256"},
+    "uninterrupted_update": {"$ref": "#/$defs/update"},
+    "numerical_failure": {
+      "type": "object", "additionalProperties": false, "required": ["diagnostic", "normal_checkpoint_published", "service_terminated"],
+      "properties": {"diagnostic": {"type": "string", "pattern": "^numerical-failure/diagnostic-[0-9a-f]{64}/diagnostic.json$"}, "normal_checkpoint_published": {"const": false}, "service_terminated": {"const": true}}
+    },
+    "report_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "actions": {"type": "array", "minItems": 32, "maxItems": 32, "items": {"type": "integer", "minimum": 0, "maximum": 40}},
+    "update": {
+      "type": "object", "additionalProperties": false,
+      "required": ["policy_loss", "value_loss", "entropy", "approximate_kl", "clip_fraction", "gradient_norm", "explained_variance", "learning_rate", "update", "samples"],
+      "properties": {
+        "policy_loss": {"type": "number"}, "value_loss": {"type": "number"}, "entropy": {"type": "number"}, "approximate_kl": {"type": "number"},
+        "clip_fraction": {"type": "number"}, "gradient_norm": {"type": "number"}, "explained_variance": {"type": "number"}, "learning_rate": {"type": "number"},
+        "update": {"type": "integer", "minimum": 1}, "samples": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

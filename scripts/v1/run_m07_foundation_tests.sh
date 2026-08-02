@@ -13,3 +13,14 @@ python3 "$REPOSITORY_ROOT/scripts/v1/validate_m07_metrics.py" \
     --schema "$REPOSITORY_ROOT/docs/project/schema/v1-m07-metric-event.schema.json" \
     --sources "$REPOSITORY_ROOT/config/v1/m07-metric-sources.json"
 python3 -m unittest tests.project.traceability.test_v1_m07_ppo
+if [[ -n ${M07_LIVE_MANIFEST:-} || -n ${M07_RECOVERY_REPORT:-} ]]; then
+    [[ -n ${M07_LIVE_MANIFEST:-} && -n ${M07_RECOVERY_REPORT:-} ]] || {
+        echo "M07_LIVE_MANIFEST and M07_RECOVERY_REPORT must be supplied together" >&2
+        exit 2
+    }
+    python3 "$REPOSITORY_ROOT/scripts/v1/validate_m07_evidence.py" \
+        --live "$M07_LIVE_MANIFEST" \
+        --live-schema "$REPOSITORY_ROOT/docs/project/schema/v1-m07-live-cpu-run.schema.json" \
+        --recovery "$M07_RECOVERY_REPORT" \
+        --recovery-schema "$REPOSITORY_ROOT/docs/project/schema/v1-m07-recovery-report.schema.json"
+fi

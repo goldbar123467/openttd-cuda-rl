@@ -10,6 +10,7 @@ import unittest
 
 import m07_ppo_reference
 import run_m07_cpu_ppo
+import validate_m07_evidence
 import validate_m07_metrics
 import validate_m07_ppo_contract
 
@@ -112,6 +113,22 @@ class V1M07PpoTests(unittest.TestCase):
         source = (self.root / "scripts/v1/run_m07_cpu_ppo.py").read_text(encoding="utf-8")
         self.assertIn('final_evaluation_accessed": False', source)
         self.assertIn('entry["trainer_visible"]', source)
+
+    def test_retained_live_and_recovery_evidence_passes_when_available(self) -> None:
+        live_path = os.environ.get("M07_LIVE_MANIFEST")
+        recovery_path = os.environ.get("M07_RECOVERY_REPORT")
+        if not live_path or not recovery_path:
+            return
+        live = validate_m07_evidence.validate_document(
+            pathlib.Path(live_path),
+            self.root / "docs/project/schema/v1-m07-live-cpu-run.schema.json",
+        )
+        recovery = validate_m07_evidence.validate_document(
+            pathlib.Path(recovery_path),
+            self.root / "docs/project/schema/v1-m07-recovery-report.schema.json",
+        )
+        validate_m07_evidence.validate_live(live)
+        validate_m07_evidence.validate_recovery(recovery)
 
 
 if __name__ == "__main__":

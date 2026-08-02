@@ -8,7 +8,7 @@ claim later milestones from partial infrastructure.
 
 ## Current-state baseline
 
-As of 2026-08-01, `G00` through `G06` pass. The accepted substrate is a pinned
+As of 2026-08-01, `G00` through `G07` pass. The accepted substrate is a pinned
 and reproducible OpenTTD 15.3 profile, a frozen 32 by 32 passenger-bus
 scenario/reset corpus, and a synchronized source-integrated headless bridge with
 process isolation and exact tick stepping. It now also includes a frozen native
@@ -16,8 +16,11 @@ policy observation and preprocessing contract plus a fixed 41-action bus catalog
 boundary-bound legality masks, transactional route updates, and repeated
 actual-engine profitable-service evidence. It now includes native lifetime-delta
 reward projection, typed episode outcomes, bounded content-addressed trajectories,
-and repeated exploit/rollover evidence. No PPO trainer, CUDA trainer, evaluator,
-ONNX package, or in-game neural agent exists.
+and repeated exploit/rollover evidence. It now includes a trusted C++/LibTorch CPU
+PPO implementation, a structured actor-critic MLP, exact native recovery,
+structured monitoring, and a development-selected checkpoint that improves over
+random after an 8,192-transition soak. No CNN/combined or measured CUDA trainer,
+independent evaluator, ONNX package, or in-game neural agent exists.
 
 Legacy P0 completion is not a prerequisite as originally written because its
 freight target conflicts with the active bus-only scope. Its reusable pieces enter
@@ -352,6 +355,10 @@ or ambiguous episode semantics.
   do not produce unintended positive return.
 
 ## M07 — Trusted CPU PPO and structured MLP baseline
+
+Status: `PASS` on 2026-08-01. The frozen design is in
+[`M07_TRUSTED_CPU_PPO.md`](M07_TRUSTED_CPU_PPO.md), and acceptance evidence is in
+[`G07_GATE_REPORT.md`](G07_GATE_REPORT.md).
 
 ### Objective
 

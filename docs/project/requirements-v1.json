@@ -1074,14 +1074,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "LIFE-011",
@@ -1114,14 +1145,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "LIFE-013",
@@ -1462,14 +1524,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-002",
@@ -1482,14 +1575,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-003",
@@ -1502,14 +1626,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-004",
@@ -1522,14 +1677,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-005",
@@ -1542,14 +1728,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-006",
@@ -1562,14 +1779,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-007",
@@ -1582,14 +1830,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-008",
@@ -1602,14 +1881,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-009",
@@ -1622,14 +1932,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-010",
@@ -1642,14 +1983,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-011",
@@ -1662,14 +2034,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-012",
@@ -1682,14 +2085,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-013",
@@ -1702,14 +2136,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-014",
@@ -1722,14 +2187,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-015",
@@ -1742,14 +2238,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-016",
@@ -1762,14 +2289,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-017",
@@ -1782,14 +2340,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-018",
@@ -1802,14 +2391,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-019",
@@ -1822,14 +2442,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-020",
@@ -1842,14 +2493,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "PPO-021",
@@ -1882,14 +2564,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "OBS-001",
@@ -3849,14 +4562,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "RUN-007",
@@ -3869,14 +4613,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "RUN-008",
@@ -3957,14 +4732,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "MON-002",
@@ -3977,14 +4783,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "MON-003",
@@ -3997,14 +4834,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "MON-004",
@@ -4017,14 +4885,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "MON-005",
@@ -4037,14 +4936,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "MON-006",
@@ -4057,14 +4987,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "MON-007",
@@ -4077,14 +5038,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "MON-008",
@@ -4097,14 +5089,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "MON-009",
@@ -4117,14 +5140,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MON"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "EVAL-001",
@@ -4845,14 +5899,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "TEST-010",
@@ -4866,14 +5951,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "TEST-011",
@@ -4929,14 +6045,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "TEST-014",
@@ -4950,14 +6097,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "TEST-015",
@@ -5021,14 +6199,45 @@
       ],
       "milestone": "M07",
       "gate": "G07",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ARCH"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m07-ppo-contract.json",
+        "docs/project/schema/v1-m07-ppo-contract.schema.json",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/training/checkpoint.h",
+        "training/v1/include/openttd_rl/training/metrics.h",
+        "training/v1/include/openttd_rl/training/model.h",
+        "training/v1/include/openttd_rl/training/ppo.h",
+        "training/v1/include/openttd_rl/training/rng.h",
+        "training/v1/include/openttd_rl/training/service.h",
+        "training/v1/include/openttd_rl/training/trainer.h",
+        "training/v1/src/checkpoint.cpp",
+        "training/v1/src/learning.cpp",
+        "training/v1/src/metrics.cpp",
+        "training/v1/src/model.cpp",
+        "training/v1/src/ppo.cpp",
+        "training/v1/src/rng.cpp",
+        "training/v1/src/service.cpp",
+        "training/v1/src/trainer.cpp",
+        "training/v1/src/trainer_main.cpp",
+        "scripts/v1/m07_ppo_reference.py",
+        "scripts/v1/m07_trainer_client.py",
+        "scripts/v1/run_m07_cpu_ppo.py",
+        "scripts/v1/run_m07_recovery.py",
+        "scripts/v1/validate_m07_evidence.py",
+        "scripts/v1/validate_m07_metrics.py",
+        "scripts/v1/validate_m07_ppo_contract.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M07-PPO"
+      ],
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G07."
+      "reviewer_note": "G07 passes with independent PPO differential vectors, native optimizer/checkpoint tests, exact fresh-process recovery, numerical fault diagnostics, authoritative structured monitoring, an 8,192-transition four-worker CPU soak, and a development-selected structured MLP checkpoint that reproducibly improves over seeded random without exposing final-evaluation templates."
     },
     {
       "id": "ARCH-002",
@@ -5517,9 +6726,7 @@
       "summary": "Planned requirement verification suite for LIFE requirements.",
       "runner": null,
       "requirement_ids": [
-        "LIFE-010",
         "LIFE-011",
-        "LIFE-012",
         "LIFE-013",
         "LIFE-014",
         "LIFE-015",
@@ -5557,28 +6764,7 @@
       "summary": "Planned requirement verification suite for PPO requirements.",
       "runner": null,
       "requirement_ids": [
-        "PPO-001",
-        "PPO-002",
-        "PPO-003",
-        "PPO-004",
-        "PPO-005",
-        "PPO-006",
-        "PPO-007",
-        "PPO-008",
-        "PPO-009",
-        "PPO-010",
-        "PPO-011",
-        "PPO-012",
-        "PPO-013",
-        "PPO-014",
-        "PPO-015",
-        "PPO-016",
-        "PPO-017",
-        "PPO-018",
-        "PPO-019",
-        "PPO-020",
-        "PPO-021",
-        "PPO-022"
+        "PPO-021"
       ],
       "status": "PLANNED",
       "evidence": [],
@@ -5660,30 +6846,8 @@
       "summary": "Planned requirement verification suite for RUN requirements.",
       "runner": null,
       "requirement_ids": [
-        "RUN-006",
-        "RUN-007",
         "RUN-008",
         "RUN-009"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-MON",
-      "summary": "Planned requirement verification suite for MON requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "MON-001",
-        "MON-002",
-        "MON-003",
-        "MON-004",
-        "MON-005",
-        "MON-006",
-        "MON-007",
-        "MON-008",
-        "MON-009"
       ],
       "status": "PLANNED",
       "evidence": [],
@@ -5739,12 +6903,8 @@
       "summary": "Planned requirement verification suite for TEST requirements.",
       "runner": null,
       "requirement_ids": [
-        "TEST-009",
-        "TEST-010",
         "TEST-011",
         "TEST-012",
-        "TEST-013",
-        "TEST-014",
         "TEST-016"
       ],
       "status": "PLANNED",
@@ -5757,7 +6917,6 @@
       "summary": "Planned requirement verification suite for ARCH requirements.",
       "runner": null,
       "requirement_ids": [
-        "ARCH-001",
         "ARCH-002",
         "ARCH-003",
         "ARCH-004",
@@ -5980,11 +7139,65 @@
       "status": "PASS",
       "evidence": [
         "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md",
-      "tests/fixtures/v1/m06-reward-goldens.json",
-      "docs/project/G06_GATE_REPORT.md"
+        "tests/fixtures/v1/m06-reward-goldens.json",
+        "docs/project/G06_GATE_REPORT.md"
       ],
       "mandatory": true,
       "reviewer_note": "Twenty-one focused tests, 98 native CTest entries, and two complete byte-identical eight-template campaigns pass; actual 128-transition bundles, quarterly rollover, combined horizon, bankruptcy, vehicle loss, and adversarial returns are retained."
+    },
+    {
+      "id": "V1-TEST-M07-PPO",
+      "summary": "Verify trusted native CPU PPO math, structured MLP learning, masking, numerics, monitoring, exact recovery, development selection, and extended live OpenTTD stability.",
+      "runner": "scripts/v1/run_m07_foundation_tests.sh",
+      "requirement_ids": [
+        "LIFE-010",
+        "LIFE-012",
+        "PPO-001",
+        "PPO-002",
+        "PPO-003",
+        "PPO-004",
+        "PPO-005",
+        "PPO-006",
+        "PPO-007",
+        "PPO-008",
+        "PPO-009",
+        "PPO-010",
+        "PPO-011",
+        "PPO-012",
+        "PPO-013",
+        "PPO-014",
+        "PPO-015",
+        "PPO-016",
+        "PPO-017",
+        "PPO-018",
+        "PPO-019",
+        "PPO-020",
+        "PPO-022",
+        "RUN-006",
+        "RUN-007",
+        "MON-001",
+        "MON-002",
+        "MON-003",
+        "MON-004",
+        "MON-005",
+        "MON-006",
+        "MON-007",
+        "MON-008",
+        "MON-009",
+        "TEST-009",
+        "TEST-010",
+        "TEST-013",
+        "TEST-014",
+        "ARCH-001"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/M07_TRUSTED_CPU_PPO.md",
+        "tests/fixtures/v1/m07-ppo-reference-vectors.json",
+        "docs/project/G07_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "Eight focused Python tests, four native CTest targets, a 14-vector scalar differential, tiny deterministic learning, exact interrupted/uninterrupted recovery, numerical injection, and the retained 64-update/8,192-transition live campaign pass."
     }
   ],
   "aggregate_dependencies": [
