@@ -61,6 +61,25 @@ class V1M10ModelPackageTests(unittest.TestCase):
         self.assertGreaterEqual(contract["sampled_distribution"]["samples_per_case_per_runtime"], 100_000)
         self.assertGreaterEqual(len(contract["rejection_matrix"]), 30)
 
+    def test_inference_only_build_boundary_is_explicit(self) -> None:
+        cmake = (self.root / "training/v1/CMakeLists.txt").read_text(encoding="utf-8")
+        deployment_header = (self.root / "training/v1/include/openttd_rl/deployment/deployment_model.h").read_text(encoding="utf-8")
+        deployment_source = (self.root / "training/v1/src/deployment_model.cpp").read_text(encoding="utf-8")
+        self.assertIn("option(V1_DEPLOYMENT_ONLY", cmake)
+        self.assertIn("if(V1_DEPLOYMENT_ONLY)\n  return()", cmake)
+        self.assertIn("onnxruntime_cxx_api.h", deployment_header)
+        for forbidden in ("torch/", "cuda", "optimizer", "checkpoint.h"):
+            self.assertNotIn(forbidden, deployment_header.lower())
+            self.assertNotIn(forbidden, deployment_source.lower())
+
+    def test_gate_owns_complete_frozen_mutation_matrix(self) -> None:
+        contract = validate_m10_model_package_contract.validate(self.contract_path, self.schema_path)
+        gate = (self.root / "scripts/v1/run_m10_package_gate.py").read_text(encoding="utf-8")
+        for mutation in contract["rejection_matrix"]:
+            self.assertIn(f'"{mutation}"', gate)
+        self.assertIn('specification["samples_per_case_per_runtime"]', gate)
+        self.assertTrue((self.root / "docs/decisions/0014-v1-onnx-equivalence-tolerances.md").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

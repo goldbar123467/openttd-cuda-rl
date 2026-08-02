@@ -22,6 +22,50 @@ function(v1_enable_strict_warnings target)
   )
 endfunction()
 
+option(V1_DEPLOYMENT_ONLY "Build only the inference-only ONNX Runtime deployment evaluator" OFF)
+
+if(V1_DEPLOYMENT_ONLY OR DEFINED V1_ONNXRUNTIME_ROOT)
+  if(NOT DEFINED V1_ONNXRUNTIME_ROOT OR NOT IS_DIRECTORY "${V1_ONNXRUNTIME_ROOT}")
+    message(FATAL_ERROR "V1_ONNXRUNTIME_ROOT must name the pinned extracted ONNX Runtime dependency root")
+  endif()
+  find_path(
+    V1_ONNXRUNTIME_INCLUDE_DIR
+    NAMES onnxruntime_cxx_api.h
+    PATHS "${V1_ONNXRUNTIME_ROOT}/include"
+    NO_DEFAULT_PATH
+    REQUIRED
+  )
+  find_library(
+    V1_ONNXRUNTIME_LIBRARY
+    NAMES onnxruntime
+    PATHS "${V1_ONNXRUNTIME_ROOT}/lib"
+    NO_DEFAULT_PATH
+    REQUIRED
+  )
+  find_package(OpenSSL 3.0 REQUIRED COMPONENTS Crypto)
+
+  add_library(openttd_rl_deployment src/deployment_model.cpp)
+  target_include_directories(
+    openttd_rl_deployment
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  )
+  target_include_directories(openttd_rl_deployment SYSTEM PUBLIC "${V1_ONNXRUNTIME_INCLUDE_DIR}")
+  target_link_libraries(openttd_rl_deployment PUBLIC "${V1_ONNXRUNTIME_LIBRARY}" OpenSSL::Crypto)
+  v1_enable_strict_warnings(openttd_rl_deployment)
+  set_property(TARGET openttd_rl_deployment PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(openttd_rl_deployment PROPERTIES BUILD_RPATH "${V1_ONNXRUNTIME_ROOT}/lib")
+
+  add_executable(m10_onnx_evaluator src/m10_onnx_evaluator_main.cpp)
+  target_link_libraries(m10_onnx_evaluator PRIVATE openttd_rl_deployment)
+  v1_enable_strict_warnings(m10_onnx_evaluator)
+  set_target_properties(m10_onnx_evaluator PROPERTIES BUILD_RPATH "${V1_ONNXRUNTIME_ROOT}/lib")
+  target_link_options(m10_onnx_evaluator PRIVATE "LINKER:--disable-new-dtags")
+endif()
+
+if(V1_DEPLOYMENT_ONLY)
+  return()
+endif()
+
 if(NOT DEFINED V1_NVIDIA_RUNTIME_ROOT OR NOT IS_DIRECTORY "${V1_NVIDIA_RUNTIME_ROOT}")
   message(FATAL_ERROR "V1_NVIDIA_RUNTIME_ROOT must name the pinned extracted LibTorch runtime dependency root")
 endif()
@@ -106,6 +150,12 @@ target_link_libraries(m09_evaluator PRIVATE openttd_rl_inference)
 v1_enable_strict_warnings(m09_evaluator)
 set_target_properties(m09_evaluator PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
 target_link_options(m09_evaluator PRIVATE "LINKER:--disable-new-dtags")
+
+add_executable(m10_export_orchestrator src/m10_export_orchestrator_main.cpp)
+target_link_libraries(m10_export_orchestrator PRIVATE openttd_rl_inference)
+v1_enable_strict_warnings(m10_export_orchestrator)
+set_target_properties(m10_export_orchestrator PROPERTIES BUILD_RPATH "${V1_NVIDIA_LIBRARY_PATHS}")
+target_link_options(m10_export_orchestrator PRIVATE "LINKER:--disable-new-dtags")
 
 if(BUILD_TESTING)
   find_program(V1_TEST_PYTHON NAMES python3 REQUIRED)

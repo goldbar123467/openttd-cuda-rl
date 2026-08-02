@@ -18,12 +18,14 @@
 #include <torch/torch.h>
 
 #include "openttd_rl/training/evaluation_model.h"
+#include "openttd_rl/training/ppo.h"
 
 namespace {
 
 constexpr std::array<char, 8> kRequestMagic = {'O', 'T', 'R', 'L', 'E', 'S', '0', '1'};
 constexpr std::array<char, 8> kResponseMagic = {'O', 'T', 'R', 'L', 'E', 'R', '0', '1'};
 constexpr std::uint32_t kAct = 1;
+constexpr std::uint32_t kInspect = 2;
 constexpr std::uint32_t kExit = 4;
 constexpr std::size_t kMaximumFrameBytes = 64U * 1024U * 1024U;
 
@@ -204,6 +206,44 @@ std::vector<std::uint8_t> handle_act(openttd_rl::training::ReadOnlyEvaluationPol
     return writer.data();
 }
 
+std::vector<std::uint8_t> handle_inspect(openttd_rl::training::ReadOnlyEvaluationPolicy &policy, Reader &reader)
+{
+    const auto samples = static_cast<std::int64_t>(reader.u32());
+    if (samples <= 0 || samples > 64) throw std::invalid_argument("evaluator INSPECT batch is outside [1,64]");
+    const auto deterministic = reader.u8();
+    if (deterministic > 1U) throw std::invalid_argument("evaluator INSPECT mode is not boolean");
+    const auto structured = read_structured(reader, samples);
+    const auto spatial = read_spatial(reader, samples);
+    const auto masks = read_masks(reader, samples);
+    reader.finish();
+    const auto result = policy.act(structured, spatial, masks, deterministic != 0U);
+    const auto masked = openttd_rl::training::masked_categorical(result.logits, masks);
+    const auto action_tensor = result.actions.contiguous();
+    const auto log_tensor = result.log_probabilities.to(torch::kFloat64).contiguous();
+    const auto value_tensor = result.values.to(torch::kFloat64).contiguous();
+    const auto logits_tensor = result.logits.to(torch::kFloat64).contiguous();
+    const auto probabilities_tensor = masked.probabilities.to(torch::kFloat64).contiguous();
+    const auto actions = action_tensor.accessor<std::int64_t, 1>();
+    const auto log_probabilities = log_tensor.accessor<double, 1>();
+    const auto values = value_tensor.accessor<double, 1>();
+    const auto logits = logits_tensor.accessor<double, 2>();
+    const auto probabilities = probabilities_tensor.accessor<double, 2>();
+    Writer writer;
+    writer.u32(static_cast<std::uint32_t>(samples));
+    for (std::int64_t sample = 0; sample < samples; ++sample) {
+        writer.i64(actions[sample]);
+        writer.f64(log_probabilities[sample]);
+        writer.f64(values[sample]);
+        for (std::int64_t action = 0; action < openttd_rl::training::kActionCount; ++action) {
+            writer.f64(logits[sample][action]);
+        }
+        for (std::int64_t action = 0; action < openttd_rl::training::kActionCount; ++action) {
+            writer.f64(probabilities[sample][action]);
+        }
+    }
+    return writer.data();
+}
+
 int run_service(openttd_rl::training::ReadOnlyEvaluationPolicy &policy)
 {
     if constexpr (std::endian::native != std::endian::little) {
@@ -227,6 +267,7 @@ int run_service(openttd_rl::training::ReadOnlyEvaluationPolicy &policy)
             Reader reader(payload);
             std::vector<std::uint8_t> response;
             if (type == kAct) response = handle_act(policy, reader);
+            else if (type == kInspect) response = handle_inspect(policy, reader);
             else if (type == kExit) {
                 reader.finish();
                 const auto final_state = policy.state_sha256();
