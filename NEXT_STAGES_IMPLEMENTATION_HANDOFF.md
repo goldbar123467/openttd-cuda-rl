@@ -328,9 +328,9 @@ authorization to expand scope.
 | `M03` | synchronized headless bridge | `PASS` | `G03_GATE_REPORT.md` records repeated lifecycle, tick, isolation, and non-perturbation evidence |
 | `M04` | observation/preprocessing contract | `PASS` | `G04_GATE_REPORT.md` records exhaustive semantics and non-perturbation |
 | `M05` | action/mask/execution contract | `PASS` | `G05_GATE_REPORT.md` records mask-oracle and useful-service evidence |
-| `M06` | reward/episode/trajectory contract | `IN_PROGRESS` | foundation frozen; native projection, writer, exploit, and actual-engine evidence pending |
-| `M07` | CPU PPO and structured MLP | `NOT_STARTED` | G06 remains open |
-| `M08` | CNN/combined/measured CUDA | `NOT_STARTED` | PPO/CPU baseline absent |
+| `M06` | reward/episode/trajectory contract | `PASS` | `G06_GATE_REPORT.md` records native reward, typed termination, and trajectory evidence |
+| `M07` | CPU PPO and structured MLP | `PASS` | `G07_GATE_REPORT.md` records trusted PPO, exact recovery, and development readiness |
+| `M08` | CNN/combined/measured CUDA | `PASS` | `G08_GATE_REPORT.md` records all-model parity, live training, and measured CUDA benefit |
 | `M09` | independent evaluation/baselines | `NOT_STARTED` | evaluator and policies absent |
 | `M10` | checkpoint/ONNX/package/equivalence | `NOT_STARTED` | model pipeline absent |
 | `M11` | normal-game neural agent/inspection | `NOT_STARTED` | inference package absent |

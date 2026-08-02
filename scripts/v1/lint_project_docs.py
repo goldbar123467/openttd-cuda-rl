@@ -34,6 +34,16 @@ ACTIVE_FIXED = (
     "docs/project/G02_GATE_REPORT.md",
     "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
     "docs/project/G03_GATE_REPORT.md",
+    "docs/project/M04_VERSIONED_OBSERVATION.md",
+    "docs/project/G04_GATE_REPORT.md",
+    "docs/project/M05_EXPLICIT_BUS_ACTIONS.md",
+    "docs/project/G05_GATE_REPORT.md",
+    "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md",
+    "docs/project/G06_GATE_REPORT.md",
+    "docs/project/M07_TRUSTED_CPU_PPO.md",
+    "docs/project/G07_GATE_REPORT.md",
+    "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+    "docs/project/G08_GATE_REPORT.md",
 )
 V1_ADR_NUMBERS = tuple(range(7, 14))
 LEGACY_BANNER_FILES = (
@@ -70,6 +80,16 @@ REQUIRED_NAVIGATION_TARGETS = (
     "docs/project/G02_GATE_REPORT.md",
     "docs/project/M03_SYNCHRONIZED_BRIDGE.md",
     "docs/project/G03_GATE_REPORT.md",
+    "docs/project/M04_VERSIONED_OBSERVATION.md",
+    "docs/project/G04_GATE_REPORT.md",
+    "docs/project/M05_EXPLICIT_BUS_ACTIONS.md",
+    "docs/project/G05_GATE_REPORT.md",
+    "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md",
+    "docs/project/G06_GATE_REPORT.md",
+    "docs/project/M07_TRUSTED_CPU_PPO.md",
+    "docs/project/G07_GATE_REPORT.md",
+    "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+    "docs/project/G08_GATE_REPORT.md",
     "docs/decisions/",
 )
 

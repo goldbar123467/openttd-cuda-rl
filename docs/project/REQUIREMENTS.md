@@ -119,16 +119,16 @@ cover the whole statement.
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
 | `STACK-001` | C++ owns core environment integration, control, training infrastructure, evaluation, export, and inference. | Build graph and source ownership audit. | `NOT_STARTED` |
-| `STACK-002` | CUDA accelerates only workloads with a measured correctness-preserving benefit. | CPU baseline, profile, parity, and speed report. | `NOT_STARTED` |
-| `STACK-003` | CUDA may cover batched inference, PPO optimization, tensor preprocessing, rollout processing, state encoding, evaluation, or CNN execution. | Per-kernel design and benchmark evidence. | `NOT_STARTED` |
-| `STACK-004` | OpenTTD simulation remains on CPU unless an explicit semantic-parity gate approves a subsystem. | Architecture audit and parity result. | `NOT_STARTED` |
+| `STACK-002` | CUDA accelerates only workloads with a measured correctness-preserving benefit. | CPU baseline, profile, parity, and speed report. | `PASS` |
+| `STACK-003` | CUDA may cover batched inference, PPO optimization, tensor preprocessing, rollout processing, state encoding, evaluation, or CNN execution. | Per-kernel design and benchmark evidence. | `PASS` |
+| `STACK-004` | OpenTTD simulation remains on CPU unless an explicit semantic-parity gate approves a subsystem. | Architecture audit and parity result. | `PASS` |
 | `STACK-005` | Python remains auxiliary and is not the production environment or training authority. | Packaging/build/source audit. | `NOT_STARTED` |
 | `STACK-006` | ONNX is the primary portable neural-network interchange format. | Export/package schema. | `NOT_STARTED` |
 | `STACK-007` | The ONNX execution backend is pinned and explicitly validated. | Dependency manifest and equivalence tests. | `NOT_STARTED` |
-| `STACK-008` | Initial spatial policies use CNNs; new architecture families require baseline validation first. | Model registry and roadmap gate. | `NOT_STARTED` |
+| `STACK-008` | Initial spatial policies use CNNs; new architecture families require baseline validation first. | Model registry and roadmap gate. | `PASS` |
 | `STACK-009` | The OpenTTD/RL interface does not depend on screen scraping, simulated input, or menu navigation. | Source audit and integration design review. | `PASS` |
 | `STACK-010` | Training-only dependencies are not required for normal in-game inference. | Clean inference-only build/install test. | `NOT_STARTED` |
-| `STACK-011` | The accepted production training path uses at least one correctness-validated CUDA-accelerated neural/tensor workload with a measured benefit over its CPU reference on declared hardware. | CUDA parity and benchmark report. | `NOT_STARTED` |
+| `STACK-011` | The accepted production training path uses at least one correctness-validated CUDA-accelerated neural/tensor workload with a measured benefit over its CPU reference on declared hardware. | CUDA parity and benchmark report. | `PASS` |
 
 ## PPO algorithm and operational requirements
 
@@ -271,7 +271,7 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 | `RUN-006` | Training resumes from valid checkpoints after process interruption. | Recovery campaign. | `PASS` |
 | `RUN-007` | Logs are structured, schema-versioned, bounded, and usable non-interactively. | Log schema/resource tests. | `PASS` |
 | `RUN-008` | Runtime supports batch evaluation and long unattended runs. | Evaluation and soak results. | `NOT_STARTED` |
-| `RUN-009` | CPU/GPU/environment performance can be profiled without changing authoritative semantics. | Profile on/off parity test. | `NOT_STARTED` |
+| `RUN-009` | CPU/GPU/environment performance can be profiled without changing authoritative semantics. | Profile on/off parity test. | `PASS` |
 | `RUN-010` | The OpenTTD/RL interface is stable, versioned, and synchronized. | ABI/API contract tests. | `PASS` |
 | `MON-001` | Interactive monitor remains readable over SSH and in tmux. | Terminal acceptance capture. | `PASS` |
 | `MON-002` | Monitor shows run name, repository commit, OpenTTD version, environment version, seed, environment count, and device. | Metric-source accuracy test. | `PASS` |
@@ -344,8 +344,8 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
 | `ARCH-001` | Baseline A is a structured MLP using company, town, vehicle, route, and simplified map-summary features. | Model definition and train/eval run. | `PASS` |
-| `ARCH-002` | Baseline B is a CNN using the versioned multi-channel 32 by 32 map tensor. | Model definition and train/eval run. | `NOT_STARTED` |
-| `ARCH-003` | Baseline C combines CNN spatial features with structured numerical features. | Model definition and train/eval run. | `NOT_STARTED` |
+| `ARCH-002` | Baseline B is a CNN using the versioned multi-channel 32 by 32 map tensor. | Model definition and train/eval run. | `PASS` |
+| `ARCH-003` | Baseline C combines CNN spatial features with structured numerical features. | Model definition and train/eval run. | `PASS` |
 | `ARCH-004` | The comparison measures economic quality, computational cost, and sample efficiency. | Matched report. | `NOT_STARTED` |
 | `ARCH-005` | No architecture is declared superior without multiple seeds and matched training/evaluation budgets. | Experiment-manifest lint. | `NOT_STARTED` |
 

@@ -1316,14 +1316,22 @@
       ],
       "milestone": "M08",
       "gate": "G08",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m08-architecture-cuda-contract.json",
+        "training/v1/src/m08_cuda_main.cpp",
+        "scripts/v1/run_m08_cuda_gate.py",
+        "scripts/v1/validate_m08_cuda_report.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M08-ARCH-CUDA"
+      ],
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+      "reviewer_note": "G08 passes with frozen three-architecture contracts, exact M07 preservation, all-model CPU/CUDA PPO parity, measured update and inference benefit, paired sample-efficiency learning, GPU telemetry, explicit CUDA failure classes, canonical checkpoint device moves, and matched live OpenTTD training without final-seed exposure."
     },
     {
       "id": "STACK-003",
@@ -1336,14 +1344,22 @@
       ],
       "milestone": "M08",
       "gate": "G08",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m08-architecture-cuda-contract.json",
+        "training/v1/src/multimodal_model.cpp",
+        "training/v1/src/multimodal_trainer.cpp",
+        "training/v1/src/m08_cuda_main.cpp"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M08-ARCH-CUDA"
+      ],
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+      "reviewer_note": "G08 passes with frozen three-architecture contracts, exact M07 preservation, all-model CPU/CUDA PPO parity, measured update and inference benefit, paired sample-efficiency learning, GPU telemetry, explicit CUDA failure classes, canonical checkpoint device moves, and matched live OpenTTD training without final-seed exposure."
     },
     {
       "id": "STACK-004",
@@ -1356,14 +1372,21 @@
       ],
       "milestone": "M08",
       "gate": "G08",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m08-architecture-cuda-contract.json",
+        "scripts/v1/run_m08_live_architectures.py",
+        "scripts/v1/validate_m08_live_architectures.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M08-ARCH-CUDA"
+      ],
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+      "reviewer_note": "G08 passes with frozen three-architecture contracts, exact M07 preservation, all-model CPU/CUDA PPO parity, measured update and inference benefit, paired sample-efficiency learning, GPU telemetry, explicit CUDA failure classes, canonical checkpoint device moves, and matched live OpenTTD training without final-seed exposure."
     },
     {
       "id": "STACK-005",
@@ -1436,14 +1459,22 @@
       ],
       "milestone": "M08",
       "gate": "G08",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m08-architecture-cuda-contract.json",
+        "training/v1/include/openttd_rl/training/multimodal_model.h",
+        "training/v1/src/multimodal_model.cpp",
+        "training/v1/tests/m08_native_tests.cpp"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M08-ARCH-CUDA"
+      ],
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+      "reviewer_note": "G08 passes with frozen three-architecture contracts, exact M07 preservation, all-model CPU/CUDA PPO parity, measured update and inference benefit, paired sample-efficiency learning, GPU telemetry, explicit CUDA failure classes, canonical checkpoint device moves, and matched live OpenTTD training without final-seed exposure."
     },
     {
       "id": "STACK-009",
@@ -1504,14 +1535,21 @@
       ],
       "milestone": "M08",
       "gate": "G08",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "training/v1/src/m08_cuda_main.cpp",
+        "scripts/v1/run_m08_cuda_gate.py",
+        "scripts/v1/validate_m08_cuda_report.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M08-ARCH-CUDA"
+      ],
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+      "reviewer_note": "G08 passes with frozen three-architecture contracts, exact M07 preservation, all-model CPU/CUDA PPO parity, measured update and inference benefit, paired sample-efficiency learning, GPU telemetry, explicit CUDA failure classes, canonical checkpoint device moves, and matched live OpenTTD training without final-seed exposure."
     },
     {
       "id": "PPO-001",
@@ -4684,14 +4722,21 @@
       ],
       "milestone": "M08",
       "gate": "G08",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-RUN"
+      "status": "PASS",
+      "implementation": [
+        "training/v1/src/m08_cuda_main.cpp",
+        "scripts/v1/run_m08_cuda_gate.py",
+        "scripts/v1/run_m08_live_architectures.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M08-ARCH-CUDA"
+      ],
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+      "reviewer_note": "G08 passes with frozen three-architecture contracts, exact M07 preservation, all-model CPU/CUDA PPO parity, measured update and inference benefit, paired sample-efficiency learning, GPU telemetry, explicit CUDA failure classes, canonical checkpoint device moves, and matched live OpenTTD training without final-seed exposure."
     },
     {
       "id": "RUN-010",
@@ -6250,14 +6295,22 @@
       ],
       "milestone": "M08",
       "gate": "G08",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ARCH"
+      "status": "PASS",
+      "implementation": [
+        "training/v1/src/multimodal_model.cpp",
+        "training/v1/src/multimodal_trainer.cpp",
+        "training/v1/src/m08_architecture_smoke_main.cpp",
+        "training/v1/src/m08_trainer_main.cpp"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M08-ARCH-CUDA"
+      ],
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+      "reviewer_note": "G08 passes with frozen three-architecture contracts, exact M07 preservation, all-model CPU/CUDA PPO parity, measured update and inference benefit, paired sample-efficiency learning, GPU telemetry, explicit CUDA failure classes, canonical checkpoint device moves, and matched live OpenTTD training without final-seed exposure."
     },
     {
       "id": "ARCH-003",
@@ -6270,14 +6323,22 @@
       ],
       "milestone": "M08",
       "gate": "G08",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-ARCH"
+      "status": "PASS",
+      "implementation": [
+        "training/v1/src/multimodal_model.cpp",
+        "training/v1/src/multimodal_trainer.cpp",
+        "training/v1/src/m08_architecture_smoke_main.cpp",
+        "training/v1/src/m08_trainer_main.cpp"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M08-ARCH-CUDA"
+      ],
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G08."
+      "reviewer_note": "G08 passes with frozen three-architecture contracts, exact M07 preservation, all-model CPU/CUDA PPO parity, measured update and inference benefit, paired sample-efficiency learning, GPU telemetry, explicit CUDA failure classes, canonical checkpoint device moves, and matched live OpenTTD training without final-seed exposure."
     },
     {
       "id": "ARCH-004",
@@ -6744,15 +6805,10 @@
       "runner": null,
       "requirement_ids": [
         "STACK-001",
-        "STACK-002",
-        "STACK-003",
-        "STACK-004",
         "STACK-005",
         "STACK-006",
         "STACK-007",
-        "STACK-008",
-        "STACK-010",
-        "STACK-011"
+        "STACK-010"
       ],
       "status": "PLANNED",
       "evidence": [],
@@ -6846,8 +6902,7 @@
       "summary": "Planned requirement verification suite for RUN requirements.",
       "runner": null,
       "requirement_ids": [
-        "RUN-008",
-        "RUN-009"
+        "RUN-008"
       ],
       "status": "PLANNED",
       "evidence": [],
@@ -6917,8 +6972,6 @@
       "summary": "Planned requirement verification suite for ARCH requirements.",
       "runner": null,
       "requirement_ids": [
-        "ARCH-002",
-        "ARCH-003",
         "ARCH-004",
         "ARCH-005"
       ],
@@ -7198,6 +7251,28 @@
       ],
       "mandatory": true,
       "reviewer_note": "Eight focused Python tests, four native CTest targets, a 14-vector scalar differential, tiny deterministic learning, exact interrupted/uninterrupted recovery, numerical injection, and the retained 64-update/8,192-transition live campaign pass."
+    },
+    {
+      "id": "V1-TEST-M08-ARCH-CUDA",
+      "summary": "Verify frozen M08 MLP/CNN/combined models, multimodal PPO, CPU/CUDA equivalence, measured workloads, device failures, monitoring, checkpoints, sample efficiency, and live OpenTTD semantics.",
+      "runner": "scripts/v1/run_m08_foundation_tests.sh",
+      "requirement_ids": [
+        "STACK-002",
+        "STACK-003",
+        "STACK-004",
+        "STACK-008",
+        "STACK-011",
+        "RUN-009",
+        "ARCH-002",
+        "ARCH-003"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "Seven focused Python tests, six native M08 tests, paired CPU/CUDA learning, a 12-cell full benchmark with continuous telemetry, real unavailable/OOM failures, canonical checkpoint moves, and a matched all-architecture live OpenTTD run pass."
     }
   ],
   "aggregate_dependencies": [

@@ -8,7 +8,7 @@ claim later milestones from partial infrastructure.
 
 ## Current-state baseline
 
-As of 2026-08-01, `G00` through `G07` pass. The accepted substrate is a pinned
+As of 2026-08-01, `G00` through `G08` pass. The accepted substrate is a pinned
 and reproducible OpenTTD 15.3 profile, a frozen 32 by 32 passenger-bus
 scenario/reset corpus, and a synchronized source-integrated headless bridge with
 process isolation and exact tick stepping. It now also includes a frozen native
@@ -19,8 +19,10 @@ reward projection, typed episode outcomes, bounded content-addressed trajectorie
 and repeated exploit/rollover evidence. It now includes a trusted C++/LibTorch CPU
 PPO implementation, a structured actor-critic MLP, exact native recovery,
 structured monitoring, and a development-selected checkpoint that improves over
-random after an 8,192-transition soak. No CNN/combined or measured CUDA trainer,
-independent evaluator, ONNX package, or in-game neural agent exists.
+random after an 8,192-transition soak. It now includes the spatial CNN and
+combined actor-critic, all-model CPU/CUDA parity, paired sample-efficiency smoke,
+measured CUDA inference/update benefit, GPU telemetry, and live OpenTTD training.
+No independent evaluator, ONNX package, or in-game neural agent exists.
 
 Legacy P0 completion is not a prerequisite as originally written because its
 freight target conflicts with the active bus-only scope. Its reusable pieces enter
@@ -575,17 +577,16 @@ retains prior model packages or supplies an explicit migration/rejection policy.
 
 ## Immediate critical path
 
-`G00` through `G05` are recorded as passing. The next implementation path is:
+`G00` through `G08` are recorded as passing. The next implementation path is:
 
-1. preserve the accepted M01 through M05 source, compatibility, and evidence
+1. preserve the accepted M01 through M08 source, compatibility, and evidence
    identities;
-2. freeze M06 reward components, timing, units, aggregation, termination, and
-   truncation before collecting learning data;
-3. define the trajectory schema and bounded rollout storage against the exact
-   M04 observation and M05 action/mask boundaries;
-4. run reward-exploit, termination, serialization, and repeated actual-engine
-   trajectory campaigns;
-5. do not begin PPO training before G06 passes.
+2. freeze the independent M09 evaluator protocol and matched experiment
+   manifests before inspecting final-evaluation results;
+3. implement random, trivial scripted, and existing-AI workflow baselines;
+4. run matched multi-seed MLP/CNN/combined experiments with economic,
+   computational, and sample-efficiency reporting;
+5. keep final-evaluation templates inaccessible to training and model selection.
 
 Continuing the legacy freight instrumentation patch series is not on the V1
 critical path unless its transition review identifies a specific bus-platform gate

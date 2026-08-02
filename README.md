@@ -5,12 +5,12 @@ reinforcement-learning platform for OpenTTD. Version 1 is deliberately narrow: a
 single learning company must learn profitable passenger-bus operation on controlled
 32 by 32 maps with PPO, then export a policy that can be watched inside OpenTTD.
 
-The repository is not at Version 1 yet. Its accepted V1 substrate now includes
-the reproducible M01 source/toolchain/build profile, the completed M02 32 by 32
-passenger-bus scenario/reset gate, and the completed M03 synchronized headless
-environment bridge. The unfinished legacy P0 64 by 64 road-freight workstream
-remains retained for deterministic tooling and historical evidence, not as bus
-or RL progress.
+The repository is not at Version 1 yet. Its accepted V1 substrate now passes
+M00 through M08: reproducible OpenTTD, the controlled passenger-bus environment,
+frozen observations/actions/rewards, trusted C++ PPO, all three initial model
+architectures, and a correctness-validated measured CUDA training path. The
+unfinished legacy P0 64 by 64 road-freight workstream remains retained for
+deterministic tooling and historical evidence, not as bus or RL progress.
 
 ## Start here
 
@@ -75,7 +75,17 @@ or RL progress.
 26. [`docs/project/G05_GATE_REPORT.md`](docs/project/G05_GATE_REPORT.md) — passed
     action/mask oracle and useful actual-engine bus-service gate.
 27. [`docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md`](docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md)
-    — in-progress candidate, scalar, termination, integrity, and rollout freeze.
+    — frozen native reward, termination, integrity, and trajectory foundation.
+28. [`docs/project/G06_GATE_REPORT.md`](docs/project/G06_GATE_REPORT.md) — passed
+    reward, episode, and byte-exact trajectory gate.
+29. [`docs/project/M07_TRUSTED_CPU_PPO.md`](docs/project/M07_TRUSTED_CPU_PPO.md)
+    — trusted C++ PPO, structured MLP, monitoring, and exact recovery.
+30. [`docs/project/G07_GATE_REPORT.md`](docs/project/G07_GATE_REPORT.md) — passed
+    PPO reference, recovery, soak, and development-readiness gate.
+31. [`docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md`](docs/project/M08_SPATIAL_COMBINED_MEASURED_CUDA.md)
+    — frozen CNN/combined architectures and measured device policy.
+32. [`docs/project/G08_GATE_REPORT.md`](docs/project/G08_GATE_REPORT.md) — passed
+    CPU/CUDA parity, performance, monitoring, and live-integration gate.
 
 ## Current status
 
@@ -89,9 +99,10 @@ or RL progress.
 | Headless RL environment API | Versioned local framing, typed lifecycle, process isolation, 1–128 tick stepping, repeated all-template oracle | `M03/G03 PASS`; frozen synchronization boundary |
 | Structured/spatial observations | Frozen native encoder, exhaustive semantics, shared bytes, and 264,192 actual-engine comparisons | `M04/G04 PASS`; frozen observation boundary |
 | Legal bus action masking | Fixed 41-action catalog, boundary tokens, native command test/execute paths, 614 oracle comparisons, and profitable all-template trajectories | `M05/G05 PASS`; frozen action boundary |
-| Reward, termination, and trajectories | Frozen 18-candidate ledger, eight-component scalar reference, 13 typed outcomes, integrity hashes, and bounded rollout contract | `M06 IN_PROGRESS`; native/G06 evidence pending |
-| PPO trainer | No implementation | Not started |
-| CUDA training path | No implementation | Not started |
+| Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
+| PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
+| CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
+| CUDA training path | All-model numerical parity, measured CNN inference/update benefit, GPU telemetry, and explicit failure classes | `M08/G08 PASS`; enabled only for measured workloads |
 | Independent evaluation | No V1 evaluator | Not started |
 | ONNX export/equivalence | No implementation | Not started |
 | In-game neural agent | No implementation | Not started |
