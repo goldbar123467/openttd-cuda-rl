@@ -101,7 +101,7 @@ def live_cases(args: argparse.Namespace, contract: dict[str, Any]) -> list[dict[
         environment = m09.start_environment(
             args.openttd,
             template,
-            args.artifact_root / ".live-runs",
+            args.artifact_root / ".live-runs" / f"template-{template_number:02d}",
             reward_contract,
             session + template_number,
             75_000,
