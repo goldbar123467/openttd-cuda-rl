@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.local/schema/v1-m11-playback-config.schema.json",
+  "title": "OpenTTD-RL V1 M11 normal-game playback configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "contract_sha256", "package_path", "scenario_instance",
+    "inference", "logging", "inspection", "controls", "acceptance"
+  ],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v1-m11-playback-config-1"},
+    "contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "package_path": {"type": "string", "minLength": 2, "maxLength": 4096, "pattern": "^/"},
+    "scenario_instance": {"type": "string", "minLength": 2, "maxLength": 4096, "pattern": "^/"},
+    "inference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "sampling_seed", "interval_ticks"],
+      "properties": {
+        "mode": {"enum": ["greedy", "seeded-stochastic"]},
+        "sampling_seed": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "interval_ticks": {"type": "integer", "minimum": 128, "maximum": 1024, "multipleOf": 128}
+      }
+    },
+    "logging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actions", "path", "maximum_records"],
+      "properties": {
+        "actions": {"type": "boolean"},
+        "path": {"type": "string", "minLength": 2, "maxLength": 4096, "pattern": "^/"},
+        "maximum_records": {"type": "integer", "minimum": 1, "maximum": 4096}
+      }
+    },
+    "inspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["window", "debug_overlay", "report_path"],
+      "properties": {
+        "window": {"type": "boolean"},
+        "debug_overlay": {"type": "boolean"},
+        "report_path": {"type": "string", "minLength": 2, "maxLength": 4096, "pattern": "^/"}
+      }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_agent_paused", "native_pause_button", "agent_step_button"],
+      "properties": {
+        "start_agent_paused": {"type": "boolean"},
+        "native_pause_button": {"const": true},
+        "agent_step_button": {"const": true}
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximum_actions", "exit_when_complete"],
+      "properties": {
+        "maximum_actions": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "exit_when_complete": {"type": "boolean"}
+      }
+    }
+  }
+}

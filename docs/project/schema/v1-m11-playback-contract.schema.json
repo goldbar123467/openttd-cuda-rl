@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.local/schema/v1-m11-playback-contract.schema.json",
+  "title": "OpenTTD-RL V1 M11 normal-game playback contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema", "schema_version", "contract_id", "semantic_version", "status",
+    "compatibility", "accepted_package", "configuration", "controller", "inspection",
+    "controls", "failure_policy", "equivalence", "clean_playback", "dependency_boundary",
+    "requirements", "identity"
+  ],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v1-m11-playback-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v1-m11-playback-contract-1"},
+    "contract_id": {"const": "m11-normal-game-neural-playback-v1"},
+    "semantic_version": {"const": 1},
+    "status": {"const": "FROZEN"},
+    "compatibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observation", "action_and_mask", "reward_trajectory", "evaluation", "model_package"],
+      "properties": {
+        "observation": {"const": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb"},
+        "action_and_mask": {"const": "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536"},
+        "reward_trajectory": {"const": "9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e"},
+        "evaluation": {"const": "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e"},
+        "model_package": {"const": "e77edf9be1343970a55becbb05da96a6b9a17edbd8df2c7999701dd8fa1f33b6"}
+      }
+    },
+    "accepted_package": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architecture_id", "package_id", "model_sha256", "selection"],
+      "properties": {
+        "architecture_id": {"const": "combined-cnn-mlp-v1"},
+        "package_id": {"const": "0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9"},
+        "model_sha256": {"const": "10df689ccc6d1cb7f2e98f05f0474f72577cd9328a4589e3b1c7167bcbf08b5b"},
+        "selection": {"const": "M09-development-selected-primary-and-M10-accepted"}
+      }
+    },
+    "configuration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entrypoint", "schema_version", "schema_path", "schema_sha256", "canonical_encoding", "paths"],
+      "properties": {
+        "entrypoint": {"const": "openttd -A <absolute-playback-config.json>"},
+        "schema_version": {"const": "openttd-rl-v1-m11-playback-config-1"},
+        "schema_path": {"const": "docs/project/schema/v1-m11-playback-config.schema.json"},
+        "schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "canonical_encoding": {"const": "compact-sorted-json-plus-one-LF"},
+        "paths": {"const": "absolute-existing-inputs-absolute-nonexisting-or-regular-output-files"}
+      }
+    },
+    "controller": {
+      "type": "object", "additionalProperties": false,
+      "required": ["owner", "encoder", "mask", "action_adapter", "inference_adapter", "modes", "interval"],
+      "properties": {
+        "owner": {"const": "C++20-source-integrated-normal-game-controller"},
+        "encoder": {"const": "EncodeRlObservation-shared-native"},
+        "mask": {"const": "BuildRlActionMask-shared-native"},
+        "action_adapter": {"const": "ExecuteRlAction-shared-native"},
+        "inference_adapter": {"const": "M10-InGamePolicyAdapter-shared-source"},
+        "modes": {"const": ["greedy", "seeded-stochastic"]},
+        "interval": {
+          "type": "object", "additionalProperties": false,
+          "required": ["minimum_ticks", "maximum_ticks", "multiple_ticks", "first_action"],
+          "properties": {
+            "minimum_ticks": {"const": 128}, "maximum_ticks": {"const": 1024},
+            "multiple_ticks": {"const": 128}, "first_action": {"const": "tick-zero-before-normal-game-loop"}
+          }
+        }
+      }
+    },
+    "inspection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["required_fields", "structured_log", "window", "debug_overlay"],
+      "properties": {
+        "required_fields": {"const": ["current_action", "confidence", "value", "legal_action_count", "reward_relevant_state", "route_target", "model_name", "model_version"]},
+        "structured_log": {"const": "canonical-bounded-JSONL-optional"},
+        "window": {"const": "native-playable-window-values-byte-derived-from-latest-structured-record"},
+        "debug_overlay": {"const": "optional-native-window-and-debug-console-action-line"}
+      }
+    },
+    "controls": {
+      "type": "object", "additionalProperties": false,
+      "required": ["game_pause", "agent_pause", "agent_step", "disposition"],
+      "properties": {
+        "game_pause": {"const": "native-OpenTTD-pause-command-and-toolbar"},
+        "agent_pause": {"const": "inspection-window-toggle-stops-policy-only"},
+        "agent_step": {"const": "one-boundary-action-while-agent-paused-and-game-running"},
+        "disposition": {"const": "engine-tick-single-step-while-native-game-paused-is-not-supported-in-V1-because-game-commands-are-pause-gated"}
+      }
+    },
+    "failure_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["startup", "runtime", "fallback", "required_rejections"],
+      "properties": {
+        "startup": {"const": "actionable-user-error-before-control"},
+        "runtime": {"const": "disable-controller-retain-game-write-failed-report"},
+        "fallback": {"const": "forbidden-no-policy-substitution"},
+        "required_rejections": {"const": ["missing-config", "invalid-config", "missing-package", "incompatible-package", "corrupt-model", "runtime-output-failure"]}
+      }
+    },
+    "equivalence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["golden_cases", "live_cases", "outputs", "tolerances"],
+      "properties": {
+        "golden_cases": {"const": 12}, "live_cases": {"const": 4},
+        "outputs": {"const": ["policy_logits", "masked_probabilities", "value", "legal_mask", "greedy_action", "seeded_stochastic_action"]},
+        "tolerances": {"const": "M10-ADR-0014-unchanged"}
+      }
+    },
+    "clean_playback": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scenarios", "minimum_actions", "required_outcomes", "visible_evidence"],
+      "properties": {
+        "scenarios": {"const": ["m02-template-07", "m02-template-08"]},
+        "minimum_actions": {"const": 12},
+        "required_outcomes": {"const": ["route-built", "bus-purchased", "route-assigned", "bus-running", "positive-operating-income"]},
+        "visible_evidence": {"const": "playable-video-driver-screenshot-plus-inspection-report"}
+      }
+    },
+    "dependency_boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["required", "forbidden", "python_role"],
+      "properties": {
+        "required": {"const": ["OpenTTD-runtime", "ONNX-Runtime-CPU", "OpenSSL-Crypto"]},
+        "forbidden": {"const": ["LibTorch", "Python-runtime", "CUDA", "optimizer", "trainer"]},
+        "python_role": {"const": "auxiliary-contract-validation-and-acceptance-orchestration-only"}
+      }
+    },
+    "requirements": {
+      "const": ["LIFE-015", "LIFE-016", "STACK-001", "STACK-005", "STACK-010", "MODEL-010", "MODEL-011", "MODEL-012", "MODEL-013", "MODEL-014", "MODEL-015", "MODEL-016", "MODEL-017", "MODEL-018"]
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["compatibility_algorithm", "compatibility_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "compatibility_algorithm": {"const": "sha256-canonical-json-v1"},
+        "compatibility_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "schema_path": {"const": "docs/project/schema/v1-m11-playback-contract.schema.json"},
+        "schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}
