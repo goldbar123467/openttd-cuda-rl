@@ -62,9 +62,24 @@ def load_json(path: pathlib.Path) -> dict[str, Any]:
 
 def load_jsonl(path: pathlib.Path) -> list[dict[str, Any]]:
     require(path.is_file(), f"missing action log: {path}")
-    lines = path.read_bytes().splitlines()
-    result = [json.loads(line) for line in lines]
-    require(all(canonical_bytes(item) == line for item, line in zip(result, lines, strict=True)), f"non-canonical JSONL: {path}")
+    payload = path.read_bytes()
+    require(payload.endswith(b"\n") and not payload.endswith(b"\n\n") and b"\r" not in payload, f"non-canonical JSONL framing: {path}")
+    lines = payload.splitlines()
+    result = [json.loads(line, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value))) for line in lines]
+
+    def sorted_objects(value: Any) -> bool:
+        if isinstance(value, dict):
+            return list(value) == sorted(value) and all(sorted_objects(item) for item in value.values())
+        if isinstance(value, list):
+            return all(sorted_objects(item) for item in value)
+        return True
+
+    # nlohmann::json and Python use different shortest-round-trip spellings for
+    # a few IEEE-754 values, so byte reserialization is not a valid canonicality
+    # test across languages. The native format contract is sorted objects,
+    # compact one-record-per-line JSON, finite values, and LF framing.
+    require(all(sorted_objects(item) for item in result), f"non-canonical JSON object ordering: {path}")
+    require(all(b" " not in line and b"\t" not in line for line in lines), f"non-compact JSONL: {path}")
     return result
 
 
