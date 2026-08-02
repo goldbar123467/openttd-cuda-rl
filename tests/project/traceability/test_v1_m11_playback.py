@@ -11,6 +11,12 @@ import unittest
 
 import jsonschema
 
+import prepare_openttd_source
+import run_m02_map_feasibility
+import run_m04_observation
+import run_m05_actions
+import run_m06_reward_trajectory
+import validate_m02_scenario_contract
 import validate_m11_playback_contract
 
 
@@ -86,11 +92,48 @@ class V1M11PlaybackTests(unittest.TestCase):
             self.assertIn(symbol, source)
         for field in ("current_action", "confidence", "value", "legal_action_count", "reward_relevant_state", "route_target", "model_name", "model_version"):
             self.assertIn(field, source)
-        self.assertIn("-A <playback-config>", source)
+        self.assertIn("-A playback_config", source)
         gate = (self.root / "scripts/v1/run_m11_playback_gate.py").read_text(encoding="utf-8")
         self.assertIn("LibTorch", gate)
         self.assertIn("golden.jsonl", gate)
         self.assertIn("missing-package", gate)
+
+    def test_m11_delta_applies_exactly_after_accepted_m09_tree(self) -> None:
+        patch = self.root / "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch"
+        series = self.root / "integration/openttd/patches/15.3/m11/series"
+        self.assertEqual(validate_m11_playback_contract.sha256_file(patch), "0bf0a46d725c46b65993b8ae244b10033f93607f8153b829b8d85a75975a4249")
+        self.assertEqual(validate_m11_playback_contract.sha256_file(series), "959a1fbeebe9aef5c992734ff57ff47db7bd02dc6f5c9b5245f8dc607fcaf1fb")
+        self.assertEqual(series.read_text(encoding="utf-8"), "0009-normal-game-neural-agent.patch\n")
+        plan = run_m02_map_feasibility.load_strict_json(self.root / "config/v1/m02-map-feasibility-plan.json")
+        oracle = validate_m02_scenario_contract.load_strict_json(self.root / "config/v1/m02-reset-oracle.json")
+        m09_lock = validate_m02_scenario_contract.load_strict_json(self.root / "config/v1/m09-runtime-lock.json")
+        with tempfile.TemporaryDirectory() as raw:
+            temporary = pathlib.Path(raw)
+            source = temporary / "source"
+            prepare_openttd_source.prepare(
+                root=self.root,
+                profile_path=self.root / plan["source"]["base_profile_path"],
+                profile_schema_path=self.root / "docs/project/schema/v1-source-profile.schema.json",
+                manifest_schema_path=self.root / "docs/project/schema/v1-prepared-source-manifest.schema.json",
+                object_repository_override=self.root / "openttd-upstream",
+                output=source,
+                manifest_path=temporary / "base.json",
+            )
+            _, patches, _ = run_m02_map_feasibility.validate_delta_series(self.root, plan["source"])
+            prepare_openttd_source.apply_patches(source, patches, run_m02_map_feasibility.SOURCE_TREE)
+            self.assertEqual(prepare_openttd_source.git(source, "write-tree"), plan["source"]["result_tree"])
+            chain = [
+                (oracle["native_delta"]["patches"][0]["path"], plan["source"]["result_tree"], oracle["native_delta"]["result_tree"]),
+                ("integration/openttd/patches/15.3/m03/0004-synchronized-environment-bridge.patch", oracle["native_delta"]["result_tree"], run_m04_observation.M03_RESULT_TREE),
+                ("integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch", run_m04_observation.M03_RESULT_TREE, run_m05_actions.M04_RESULT_TREE),
+                ("integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch", run_m05_actions.M04_RESULT_TREE, run_m06_reward_trajectory.M05_RESULT_TREE),
+                ("integration/openttd/patches/15.3/m06/0007-native-reward-termination.patch", run_m06_reward_trajectory.M05_RESULT_TREE, run_m06_reward_trajectory.M06_RESULT_TREE),
+                (m09_lock["native_delta"]["patch_path"], run_m06_reward_trajectory.M06_RESULT_TREE, m09_lock["native_delta"]["result_tree"]),
+                ("integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch", m09_lock["native_delta"]["result_tree"], "e1151f41b131a41c1d450f741c8922da1a119e18"),
+            ]
+            for relative, parent_tree, expected_tree in chain:
+                prepare_openttd_source.apply_patches(source, [self.root / relative], parent_tree)
+                self.assertEqual(prepare_openttd_source.git(source, "write-tree"), expected_tree)
 
 
 if __name__ == "__main__":

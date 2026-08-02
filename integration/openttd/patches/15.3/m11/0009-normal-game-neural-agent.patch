@@ -1,0 +1,830 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2891bee..cd23186 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -287,6 +287,26 @@ if(ANDROID)
+     target_link_libraries(openttd_test PRIVATE log)
+ endif()
+ 
++if(OPTION_RL_NEURAL_AGENT)
++    if(NOT IS_ABSOLUTE "${OPENTTD_RL_PROJECT_ROOT}" OR NOT EXISTS "${OPENTTD_RL_PROJECT_ROOT}/training/v1/src/deployment_model.cpp")
++        message(FATAL_ERROR "OPENTTD_RL_PROJECT_ROOT must be the absolute OpenTTD-RL repository root")
++    endif()
++    if(NOT IS_ABSOLUTE "${OPENTTD_RL_ONNXRUNTIME_ROOT}" OR NOT EXISTS "${OPENTTD_RL_ONNXRUNTIME_ROOT}/include/onnxruntime_cxx_api.h")
++        message(FATAL_ERROR "OPENTTD_RL_ONNXRUNTIME_ROOT must be an absolute ONNX Runtime 1.28.0 installation")
++    endif()
++    find_library(OPENTTD_RL_ONNXRUNTIME_LIBRARY onnxruntime PATHS "${OPENTTD_RL_ONNXRUNTIME_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
++    find_package(OpenSSL 3.0 REQUIRED COMPONENTS Crypto)
++    target_sources(openttd_lib PRIVATE "${OPENTTD_RL_PROJECT_ROOT}/training/v1/src/deployment_model.cpp")
++    target_include_directories(openttd_lib PRIVATE
++        "${OPENTTD_RL_PROJECT_ROOT}/training/v1/include"
++        "${OPENTTD_RL_ONNXRUNTIME_ROOT}/include"
++    )
++    target_link_libraries(openttd "${OPENTTD_RL_ONNXRUNTIME_LIBRARY}" OpenSSL::Crypto)
++    target_link_libraries(openttd_test PRIVATE "${OPENTTD_RL_ONNXRUNTIME_LIBRARY}" OpenSSL::Crypto)
++    set_property(TARGET openttd APPEND PROPERTY BUILD_RPATH "${OPENTTD_RL_ONNXRUNTIME_ROOT}/lib")
++    set_property(TARGET openttd_test APPEND PROPERTY BUILD_RPATH "${OPENTTD_RL_ONNXRUNTIME_ROOT}/lib")
++endif()
++
+ include(Catch)
+ catch_discover_tests(openttd_test)
+ 
+diff --git a/cmake/Options.cmake b/cmake/Options.cmake
+index a3bff37..71e151c 100644
+--- a/cmake/Options.cmake
++++ b/cmake/Options.cmake
+@@ -56,6 +56,7 @@ function(set_options)
+ 
+     option(OPTION_DEDICATED "Build dedicated server only (no GUI)" OFF)
+     option(OPTION_RL_ENVIRONMENT "Enable the experimental 32x32 RL environment map profile" OFF)
++    option(OPTION_RL_NEURAL_AGENT "Enable the inference-only OpenTTD-RL normal-game neural agent" OFF)
+     option(OPTION_INSTALL_FHS "Install with Filesystem Hierarchy Standard folders" ${DEFAULT_OPTION_INSTALL_FHS})
+     option(OPTION_USE_ASSERTS "Use assertions; leave enabled for nightlies, betas, and RCs" OFF)
+     option(OPTION_USE_NSIS "Use NSIS to create windows installer; enable only for stable releases" OFF)
+@@ -78,6 +79,7 @@ function(show_options)
+     message(STATUS "Option Package Dependencies - ${OPTION_PACKAGE_DEPENDENCIES}")
+     message(STATUS "Option Dedicated - ${OPTION_DEDICATED}")
+     message(STATUS "Option RL Environment - ${OPTION_RL_ENVIRONMENT}")
++    message(STATUS "Option RL Neural Agent - ${OPTION_RL_NEURAL_AGENT}")
+     message(STATUS "Option Install FHS - ${OPTION_INSTALL_FHS}")
+     message(STATUS "Option Use assert - ${OPTION_USE_ASSERTS}")
+     message(STATUS "Option Use NSIS - ${OPTION_USE_NSIS}")
+@@ -107,6 +109,16 @@ function(add_definitions_based_on_options)
+         add_definitions(-DWITH_RL_ENVIRONMENT)
+     endif()
+ 
++    if(OPTION_RL_NEURAL_AGENT)
++        if(NOT OPTION_RL_ENVIRONMENT)
++            message(FATAL_ERROR "OPTION_RL_NEURAL_AGENT requires OPTION_RL_ENVIRONMENT")
++        endif()
++        if(OPTION_DEDICATED)
++            message(FATAL_ERROR "OPTION_RL_NEURAL_AGENT is a playable GUI build and forbids OPTION_DEDICATED")
++        endif()
++        add_definitions(-DWITH_RL_NEURAL_AGENT)
++    endif()
++
+     if(OPTION_USE_ASSERTS)
+         add_definitions(-DWITH_ASSERT)
+     else()
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 1b7c89d..80aaa83 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -59,6 +59,13 @@ add_files(
+     CONDITION OPTION_RL_ENVIRONMENT
+ )
+ 
++add_files(
++    rl_neural_agent.cpp
++    rl_neural_agent.h
++    rl_neural_agent_gui.cpp
++    CONDITION OPTION_RL_NEURAL_AGENT
++)
++
+ add_files(
+     soundloader_opus.cpp
+     CONDITION OpusFile_FOUND
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index fbae255..886c81b 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -86,6 +86,9 @@
+ #	include "rl_bridge.h"
+ #	include "rl_environment.h"
+ #endif
++#ifdef WITH_RL_NEURAL_AGENT
++#	include "rl_neural_agent.h"
++#endif
+ 
+ #include "linkgraph/linkgraphschedule.h"
+ 
+@@ -199,6 +202,9 @@ static void ShowHelp()
+ 		"  -Y output_file      = Write the deterministic M02 reset projection report\n"
+ 		"  -T output_file      = Execute and write the deterministic M02 scripted bus trajectory\n"
+ 		"  -R count            = Repeat the M02 reset in-process (1..16, default 1)\n"
++#endif
++#ifdef WITH_RL_NEURAL_AGENT
++		"  -A playback_config  = Start the M11 normal-game neural agent from a canonical config\n"
+ #endif
+ 		"\n";
+ 
+@@ -402,6 +408,9 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_trajectory_output;           ///< Optional destination for the scripted bus trajectory.
+ 	uint32_t rl_reset_repetitions = 1;          ///< Number of resets in this process.
+ #endif
++#ifdef WITH_RL_NEURAL_AGENT
++	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
++#endif
+ 
+ 	/**
+ 	 * Create a new callback.
+@@ -478,6 +487,17 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		}
+ #endif
+ 
++#ifdef WITH_RL_NEURAL_AGENT
++		if (!rl_neural_agent_config.empty()) {
++			try {
++				StartRlNeuralAgent(rl_neural_agent_config);
++			} catch (const std::exception &e) {
++				UserError("M11 neural agent: {}", e.what());
++			}
++			_save_config = false;
++		}
++#endif
++
+ 		/* Make sure _settings is filled with _settings_newgame if we switch to a game directly */
+ 		if (_switch_mode != SM_NONE) MakeNewgameSettingsLive();
+ 
+@@ -525,6 +545,9 @@ static std::vector<OptionData> CreateOptions()
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+ 			"BRTYZ"
++#endif
++#ifdef WITH_RL_NEURAL_AGENT
++			"A"
+ #endif
+ 		) options.push_back({ .type = ODF_HAS_VALUE, .id = c, .shortname = c });
+ 
+@@ -703,6 +726,9 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'T': scanner->rl_trajectory_output = mgo.opt; break;
+ 		case 'Y': scanner->rl_projection_output = mgo.opt; break;
+ 		case 'Z': scanner->rl_scenario_instance = mgo.opt; break;
++#endif
++#ifdef WITH_RL_NEURAL_AGENT
++		case 'A': scanner->rl_neural_agent_config = mgo.opt; break;
+ #endif
+ 		case 'x': scanner->save_config = false; break;
+ 		case 'X': only_local_path = true; break;
+@@ -753,6 +779,16 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ #endif
+ 
++#ifdef WITH_RL_NEURAL_AGENT
++	if (!scanner->rl_neural_agent_config.empty()) {
++		if (!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty()) {
++			fmt::print(stderr, "M11 -A playback mode forbids bridge/scenario batch mode, dedicated mode, and networking\n");
++			return 1;
++		}
++		_switch_mode = SM_NONE;
++	}
++#endif
++
+ 	DeterminePaths(arguments[0], only_local_path);
+ 	TarScanner::DoScan(TarScanner::Mode::Baseset);
+ 
+@@ -1369,6 +1405,9 @@ void StateGameLoop()
+ 		CallWindowGameTickEvent();
+ 		NewsLoop();
+ 		cur_company.Restore();
++#ifdef WITH_RL_NEURAL_AGENT
++		RlNeuralAgentGameLoop();
++#endif
+ 	}
+ 
+ 	assert(IsLocalCompany());
+diff --git a/src/rl_neural_agent.cpp b/src/rl_neural_agent.cpp
+new file mode 100644
+index 0000000..6b1be11
+--- /dev/null
++++ b/src/rl_neural_agent.cpp
+@@ -0,0 +1,453 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_neural_agent.cpp M11 inference-only normal-game neural controller. */
++
++#include "stdafx.h"
++
++#include "rl_neural_agent.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "command_func.h"
++#include "core/backup_type.hpp"
++#include "debug.h"
++#include "gfx_func.h"
++#include "misc_cmd.h"
++#include "network/network.h"
++#include "openttd.h"
++#include "rl_action.h"
++#include "rl_environment.h"
++#include "rl_observation.h"
++#include "rl_reward.h"
++#include "screenshot.h"
++#include "timer/timer_game_tick.h"
++#include "viewport_func.h"
++#include "window_func.h"
++
++#include "openttd_rl/deployment/deployment_model.h"
++
++#include <algorithm>
++#include <cstdlib>
++#include <filesystem>
++#include <fstream>
++#include <limits>
++#include <memory>
++#include <set>
++#include <stdexcept>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++using openttd_rl::deployment::DeploymentPolicy;
++using openttd_rl::deployment::InGamePolicyAdapter;
++
++namespace {
++
++static constexpr std::string_view M11_COMPATIBILITY_SHA256 = "3f331f7852b0174714de30b8ab6015178d7e01d4691832f8af2085d32bb01e42";
++static constexpr std::string_view ACCEPTED_PACKAGE_ID = "0334e6a9da8d5b87d48ecdcd859dc3a5be6b1f7913511bf3336f8d3cf1feeeb9";
++static constexpr std::string_view ACCEPTED_MODEL_SHA256 = "10df689ccc6d1cb7f2e98f05f0474f72577cd9328a4589e3b1c7167bcbf08b5b";
++static constexpr std::string_view PLAYBACK_SCHEMA = "openttd-rl-v1-m11-playback-config-1";
++static constexpr std::string_view REPORT_SCHEMA = "openttd-rl-v1-m11-playback-report-1";
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) throw std::runtime_error(fmt::format("M11 playback: {}", message));
++}
++
++static void RequireKeys(const json &value, std::initializer_list<std::string_view> expected, std::string_view name)
++{
++	Require(value.is_object(), fmt::format("{} must be an object", name));
++	std::set<std::string> observed;
++	for (const auto &[key, item] : value.items()) {
++		(void)item;
++		observed.insert(key);
++	}
++	std::set<std::string> required;
++	for (const auto key : expected) required.emplace(key);
++	Require(observed == required, fmt::format("{} field inventory drifted", name));
++}
++
++static std::string ReadCanonicalJson(const std::filesystem::path &path)
++{
++	Require(path.is_absolute(), "configuration path must be absolute");
++	Require(std::filesystem::is_regular_file(path) && !std::filesystem::is_symlink(path), "configuration must be a regular nonsymlink file");
++	const auto size = std::filesystem::file_size(path);
++	Require(size > 1 && size <= 1024U * 1024U, "configuration size is outside bounds");
++	std::ifstream input(path, std::ios::binary);
++	Require(static_cast<bool>(input), "cannot open configuration");
++	std::string bytes(static_cast<std::size_t>(size), '\0');
++	input.read(bytes.data(), static_cast<std::streamsize>(bytes.size()));
++	Require(static_cast<bool>(input) && input.peek() == std::ifstream::traits_type::eof(), "cannot read exact configuration bytes");
++	Require(bytes.back() == '\n' && (bytes.size() < 2 || bytes[bytes.size() - 2] != '\r'), "configuration must end in exactly one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n', "configuration has noncanonical trailing whitespace");
++	json parsed = json::parse(bytes);
++	Require(parsed.dump() == bytes, "configuration must be compact sorted JSON plus one LF");
++	return bytes;
++}
++
++static std::filesystem::path AbsolutePath(const json &value, std::string_view name)
++{
++	Require(value.is_string(), fmt::format("{} must be a string", name));
++	std::filesystem::path path(value.get<std::string>());
++	Require(path.is_absolute() && path.string().size() <= 4096U, fmt::format("{} must be a bounded absolute path", name));
++	return path;
++}
++
++static void ValidateOutputPath(const std::filesystem::path &path, std::string_view name)
++{
++	Require(std::filesystem::is_directory(path.parent_path()), fmt::format("{} parent directory does not exist", name));
++	if (std::filesystem::exists(path)) {
++		Require(std::filesystem::is_regular_file(path) && !std::filesystem::is_symlink(path), fmt::format("{} is not a regular nonsymlink file", name));
++	}
++}
++
++struct PlaybackConfig {
++	std::filesystem::path package_path;
++	std::filesystem::path scenario_instance;
++	bool deterministic = true;
++	uint64_t sampling_seed = 0;
++	uint64_t interval_ticks = 128;
++	bool action_logging = false;
++	std::filesystem::path action_log_path;
++	uint64_t maximum_records = 1;
++	bool inspection_window = true;
++	bool debug_overlay = false;
++	std::filesystem::path report_path;
++	bool start_agent_paused = false;
++	uint64_t maximum_actions = 0;
++	bool exit_when_complete = false;
++};
++
++static PlaybackConfig ParseConfig(const std::filesystem::path &path)
++{
++	json config = json::parse(ReadCanonicalJson(path));
++	RequireKeys(config, {"acceptance", "contract_sha256", "controls", "inference", "inspection", "logging", "package_path", "scenario_instance", "schema_version"}, "configuration");
++	Require(config.at("schema_version") == PLAYBACK_SCHEMA, "configuration schema_version is incompatible");
++	Require(config.at("contract_sha256") == M11_COMPATIBILITY_SHA256, "configuration contract_sha256 is incompatible");
++
++	PlaybackConfig result;
++	result.package_path = AbsolutePath(config.at("package_path"), "package_path");
++	result.scenario_instance = AbsolutePath(config.at("scenario_instance"), "scenario_instance");
++	Require(std::filesystem::is_directory(result.package_path) && !std::filesystem::is_symlink(result.package_path), "package_path must be an existing nonsymlink directory");
++	Require(std::filesystem::is_regular_file(result.scenario_instance) && !std::filesystem::is_symlink(result.scenario_instance), "scenario_instance must be an existing nonsymlink file");
++
++	const json &inference = config.at("inference");
++	RequireKeys(inference, {"interval_ticks", "mode", "sampling_seed"}, "inference");
++	Require(inference.at("mode").is_string(), "inference.mode must be a string");
++	const std::string mode = inference.at("mode").get<std::string>();
++	Require(mode == "greedy" || mode == "seeded-stochastic", "inference.mode is unsupported");
++	result.deterministic = mode == "greedy";
++	result.sampling_seed = inference.at("sampling_seed").get<uint64_t>();
++	result.interval_ticks = inference.at("interval_ticks").get<uint64_t>();
++	Require(result.interval_ticks >= 128 && result.interval_ticks <= 1024 && result.interval_ticks % 128 == 0, "inference.interval_ticks is outside the safe 128..1024 multiple-of-128 boundary");
++
++	const json &logging = config.at("logging");
++	RequireKeys(logging, {"actions", "maximum_records", "path"}, "logging");
++	result.action_logging = logging.at("actions").get<bool>();
++	result.action_log_path = AbsolutePath(logging.at("path"), "logging.path");
++	result.maximum_records = logging.at("maximum_records").get<uint64_t>();
++	Require(result.maximum_records >= 1 && result.maximum_records <= 4096, "logging.maximum_records is outside 1..4096");
++	ValidateOutputPath(result.action_log_path, "logging.path");
++
++	const json &inspection = config.at("inspection");
++	RequireKeys(inspection, {"debug_overlay", "report_path", "window"}, "inspection");
++	result.inspection_window = inspection.at("window").get<bool>();
++	result.debug_overlay = inspection.at("debug_overlay").get<bool>();
++	result.report_path = AbsolutePath(inspection.at("report_path"), "inspection.report_path");
++	ValidateOutputPath(result.report_path, "inspection.report_path");
++
++	const json &controls = config.at("controls");
++	RequireKeys(controls, {"agent_step_button", "native_pause_button", "start_agent_paused"}, "controls");
++	Require(controls.at("native_pause_button") == true && controls.at("agent_step_button") == true, "M11 native-pause and agent-step controls cannot be disabled");
++	result.start_agent_paused = controls.at("start_agent_paused").get<bool>();
++
++	const json &acceptance = config.at("acceptance");
++	RequireKeys(acceptance, {"exit_when_complete", "maximum_actions"}, "acceptance");
++	result.maximum_actions = acceptance.at("maximum_actions").get<uint64_t>();
++	Require(result.maximum_actions <= 4096, "acceptance.maximum_actions exceeds 4096");
++	result.exit_when_complete = acceptance.at("exit_when_complete").get<bool>();
++	Require(!result.exit_when_complete || result.maximum_actions > 0, "exit_when_complete requires a positive maximum_actions");
++	return result;
++}
++
++class NeuralAgentController {
++public:
++	explicit NeuralAgentController(const std::filesystem::path &config_path) : config_(ParseConfig(config_path))
++	{
++		this->policy_ = std::make_unique<DeploymentPolicy>(this->config_.package_path, this->config_.sampling_seed);
++		Require(this->policy_->package_id() == ACCEPTED_PACKAGE_ID, "package is valid but is not the M09/M10 accepted combined policy");
++		Require(this->policy_->model_sha256() == ACCEPTED_MODEL_SHA256, "accepted package model identity drifted");
++		this->adapter_ = std::make_unique<InGamePolicyAdapter>(*this->policy_);
++
++		ResetRlEnvironmentBridgeScenario(this->config_.scenario_instance.string());
++		const json initial = json::parse(BuildRlEnvironmentBridgeSnapshot());
++		const std::string template_id = initial.at("scenario").at("template_id").get<std::string>();
++		Require(template_id == "m02-template-07" || template_id == "m02-template-08", "normal-game acceptance supports only frozen final templates 07 and 08");
++		this->tick_zero_ = TimerGameTick::counter;
++		this->next_tick_ = this->tick_zero_;
++		this->paused_ = this->config_.start_agent_paused;
++		this->active_ = true;
++		this->status_ = "READY";
++		if (this->config_.exit_when_complete) ChangeGameSpeed(true);
++		if (this->config_.action_logging) {
++			this->action_log_.open(this->config_.action_log_path, std::ios::binary | std::ios::trunc);
++			Require(static_cast<bool>(this->action_log_), "cannot open bounded action log");
++		}
++		this->WriteReport(nullptr);
++		ScrollMainWindowToTile(TileIndex{GetRlEnvironmentActionPlan().connector_start_tile}, true);
++		if (!this->paused_) this->RunOne();
++	}
++
++	void GameLoop()
++	{
++		if (this->pending_exit_) {
++			if (!this->screenshot_requested_) {
++				MakeScreenshot(SC_VIEWPORT, "m11-playback");
++				this->screenshot_requested_ = true;
++				return;
++			}
++			if (_full_screenshot_path.empty()) return;
++			_exit_game = true;
++			return;
++		}
++		if (!this->active_ || this->paused_ || TimerGameTick::counter < this->next_tick_) return;
++		this->RunSafely();
++	}
++
++	void TogglePause()
++	{
++		if (!this->active_) return;
++		this->paused_ = !this->paused_;
++		this->status_ = this->paused_ ? "AGENT_PAUSED" : "RUNNING";
++		if (!this->paused_) this->next_tick_ = std::max<uint64_t>(this->next_tick_, TimerGameTick::counter);
++		this->WriteReport(this->latest_.is_null() ? nullptr : &this->latest_);
++	}
++
++	void StepOnce()
++	{
++		if (!this->active_) return;
++		Require(this->paused_, "agent step is available only while the agent is paused");
++		Require(_pause_mode.None(), "agent step requires the native game to be running; OpenTTD game commands are pause-gated");
++		this->RunSafely();
++		this->paused_ = this->active_;
++		if (this->active_) this->status_ = "AGENT_PAUSED";
++	}
++
++	[[nodiscard]] bool active() const { return this->active_; }
++	[[nodiscard]] bool paused() const { return this->paused_; }
++	[[nodiscard]] bool show_window() const { return this->config_.inspection_window; }
++
++	std::vector<std::string> InspectionLines() const
++	{
++		std::vector<std::string> lines;
++		lines.push_back(fmt::format("Status: {} | Agent: {} | Game: {}", this->status_, this->paused_ ? "paused" : "running", _pause_mode.Any() ? "paused" : "running"));
++		lines.push_back(fmt::format("Model: combined-cnn-mlp-v1 v1 | package {}...", this->policy_->package_id().substr(0, 12)));
++		lines.push_back(fmt::format("Mode: {} | interval: {} ticks | actions: {}", this->config_.deterministic ? "greedy" : "seeded-stochastic", this->config_.interval_ticks, this->transition_ordinal_));
++		if (this->latest_.is_null()) {
++			lines.emplace_back("Current action: none");
++			return lines;
++		}
++		const json &action = this->latest_.at("current_action");
++		const json &state = this->latest_.at("reward_relevant_state");
++		lines.push_back(fmt::format("Action: {} {} | confidence: {:.6f} | value: {:.6f}", action.at("index").get<uint16_t>(), action.at("family").get<std::string>(), this->latest_.at("confidence").get<double>(), this->latest_.at("value").get<double>()));
++		lines.push_back(fmt::format("Legal actions: {} | tick: {}", this->latest_.at("legal_action_count").get<uint16_t>(), this->latest_.at("tick").get<uint64_t>()));
++		lines.push_back(fmt::format("Balance: {} | passengers: {} | income: {} | expenses: {}", state.at("balance").get<int64_t>(), state.at("delivered_passengers").get<int64_t>(), state.at("income").get<int64_t>(), state.at("expenses").get<int64_t>()));
++		const json &route = this->latest_.at("route_target");
++		lines.push_back(fmt::format("Route: town {} -> {} | stops [{}, {}] | depot {}", route.at("origin_town_slot").get<int>(), route.at("destination_town_slot").get<int>(), route.at("stop_tiles")[0].get<uint16_t>(), route.at("stop_tiles")[1].get<uint16_t>(), route.at("depot_tile").get<uint16_t>()));
++		return lines;
++	}
++
++private:
++	void RunSafely()
++	{
++		try {
++			this->RunOne();
++		} catch (const std::exception &e) {
++			this->active_ = false;
++			this->paused_ = true;
++			this->status_ = "FAILED";
++			this->failure_ = e.what();
++			Debug(misc, 0, "M11 neural agent disabled after runtime failure: {}", e.what());
++			this->WriteReport(this->latest_.is_null() ? nullptr : &this->latest_);
++		}
++	}
++
++	void RunOne()
++	{
++		Require(this->transition_ordinal_ < 4096, "controller action bound exhausted");
++#ifdef WITH_ASSERT
++		const char *fault = std::getenv("OPENTTD_RL_M11_FAULT_INJECT_AFTER_ACTION");
++		if (fault != nullptr && std::string_view(fault) == "1" && this->transition_ordinal_ == 1) {
++			throw std::runtime_error("M11 test-only injected runtime inference failure");
++		}
++#endif
++		AutoRestoreBackup company(_current_company, CompanyID::Begin());
++		const RlObservation observation = EncodeRlObservation(this->transition_ordinal_, this->tick_zero_);
++		const RlActionMask mask = BuildRlActionMask(this->selection_);
++		std::vector<float> structured(observation.structured.begin(), observation.structured.end());
++		std::vector<float> spatial(observation.spatial.begin(), observation.spatial.end());
++		std::vector<uint8_t> legal(mask.legal.begin(), mask.legal.end());
++		const auto inspected = this->adapter_->inspect(structured, spatial, legal, 1, this->config_.deterministic);
++		Require(inspected.actions.size() == 1 && inspected.probabilities.size() == RL_ACTION_COUNT && inspected.values.size() == 1, "in-game inference output shape drifted");
++		const uint16_t action_index = static_cast<uint16_t>(inspected.actions[0]);
++		Require(action_index < RL_ACTION_COUNT && mask.legal[action_index] == 1, "in-game inference selected an illegal action");
++		uint16_t legal_count = 0;
++		for (const uint8_t value : mask.legal) legal_count += value;
++		const std::string outcome_bytes = ExecuteRlAction(action_index, this->selection_, "");
++		const json outcome = json::parse(outcome_bytes);
++		const json snapshot = json::parse(BuildRlEnvironmentBridgeSnapshot());
++		const RlEnvironmentActionPlan plan = GetRlEnvironmentActionPlan();
++		const RlRewardSource reward = CaptureRlRewardSource(0);
++
++		this->latest_ = {
++			{"action_outcome", outcome},
++			{"confidence", inspected.probabilities[action_index]},
++			{"current_action", {{"family", outcome.at("family")}, {"index", action_index}}},
++			{"interval_ticks", this->config_.interval_ticks},
++			{"legal_action_count", legal_count},
++			{"legal_mask", mask.legal},
++			{"mode", this->config_.deterministic ? "greedy" : "seeded-stochastic"},
++			{"model_name", "combined-cnn-mlp-v1"},
++			{"model_version", 1},
++			{"package_id", this->policy_->package_id()},
++			{"policy_logits", inspected.logits},
++			{"masked_probabilities", inspected.probabilities},
++			{"reward_relevant_state", {
++				{"balance", snapshot.at("company").at("balance")},
++				{"delivered_passengers", reward.delivered_passengers_total},
++				{"expenses", reward.operating_expenses_total},
++				{"income", reward.operating_income_total},
++				{"primary_bus_count", reward.primary_bus_count},
++				{"stopped_primary_bus_count", reward.stopped_primary_bus_count},
++			}},
++			{"route_target", {
++				{"depot_tile", plan.depot_tile},
++				{"destination_town_slot", this->selection_.destination_town_slot == RL_ACTION_UNSELECTED_TOWN ? -1 : this->selection_.destination_town_slot},
++				{"origin_town_slot", this->selection_.origin_town_slot == RL_ACTION_UNSELECTED_TOWN ? -1 : this->selection_.origin_town_slot},
++				{"stop_tiles", plan.stop_tiles},
++			}},
++			{"schema_version", "openttd-rl-v1-m11-inspection-record-1"},
++			{"tick", TimerGameTick::counter},
++			{"transition_ordinal", this->transition_ordinal_},
++			{"value", inspected.values[0]},
++		};
++		++this->transition_ordinal_;
++		this->next_tick_ = TimerGameTick::counter + this->config_.interval_ticks;
++		this->status_ = this->paused_ ? "AGENT_PAUSED" : "RUNNING";
++		if (this->config_.action_logging && this->log_records_ < this->config_.maximum_records) {
++			this->action_log_ << this->latest_.dump() << '\n';
++			this->action_log_.flush();
++			Require(static_cast<bool>(this->action_log_), "bounded action log write failed");
++			++this->log_records_;
++		}
++		if (this->config_.debug_overlay) {
++			Debug(misc, 1, "M11 action={} family={} confidence={:.6f} value={:.6f} legal={} tick={}", action_index,
++				outcome.at("family").get<std::string>(), inspected.probabilities[action_index], inspected.values[0], legal_count, TimerGameTick::counter);
++		}
++		const bool complete = this->config_.maximum_actions > 0 && this->transition_ordinal_ >= this->config_.maximum_actions;
++		if (complete) {
++			this->status_ = "COMPLETE";
++			this->active_ = false;
++			this->paused_ = true;
++		}
++		this->WriteReport(&this->latest_);
++		SetWindowDirty(WC_RL_NEURAL_AGENT, 0);
++		MarkWholeScreenDirty();
++		if (complete && this->config_.exit_when_complete) this->pending_exit_ = true;
++	}
++
++	void WriteReport(const json *latest)
++	{
++		json report = {
++			{"action_count", this->transition_ordinal_},
++			{"contract_sha256", M11_COMPATIBILITY_SHA256},
++			{"failure", this->failure_.empty() ? json(nullptr) : json(this->failure_)},
++			{"latest", latest == nullptr ? json(nullptr) : *latest},
++			{"model_name", "combined-cnn-mlp-v1"},
++			{"model_sha256", this->policy_->model_sha256()},
++			{"model_version", 1},
++			{"package_id", this->policy_->package_id()},
++			{"schema_version", REPORT_SCHEMA},
++			{"status", this->status_},
++		};
++		const std::filesystem::path temporary = this->config_.report_path.string() + ".tmp";
++		std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
++		Require(static_cast<bool>(output), "cannot open temporary inspection report");
++		output << report.dump() << '\n';
++		output.close();
++		Require(static_cast<bool>(output), "inspection report write failed");
++		std::error_code error;
++		std::filesystem::rename(temporary, this->config_.report_path, error);
++		Require(!error, fmt::format("cannot publish inspection report: {}", error.message()));
++	}
++
++	PlaybackConfig config_;
++	std::unique_ptr<DeploymentPolicy> policy_;
++	std::unique_ptr<InGamePolicyAdapter> adapter_;
++	RlActionSelection selection_;
++	uint64_t tick_zero_ = 0;
++	uint64_t next_tick_ = 0;
++	uint64_t transition_ordinal_ = 0;
++	uint64_t log_records_ = 0;
++	bool active_ = false;
++	bool paused_ = false;
++	bool pending_exit_ = false;
++	bool screenshot_requested_ = false;
++	std::string status_ = "STARTING";
++	std::string failure_;
++	json latest_ = nullptr;
++	std::ofstream action_log_;
++};
++
++static std::unique_ptr<NeuralAgentController> controller;
++
++} // namespace
++
++void StartRlNeuralAgent(const std::string &config_path)
++{
++	Require(controller == nullptr, "controller may start only once per process");
++	controller = std::make_unique<NeuralAgentController>(std::filesystem::path(config_path));
++	if (controller->active() && controller->show_window()) ShowRlNeuralAgentWindow();
++}
++
++void RlNeuralAgentGameLoop()
++{
++	if (controller != nullptr) controller->GameLoop();
++}
++
++bool IsRlNeuralAgentActive()
++{
++	return controller != nullptr && controller->active();
++}
++
++bool IsRlNeuralAgentPaused()
++{
++	return controller == nullptr || controller->paused();
++}
++
++void ToggleRlNeuralAgentPause()
++{
++	if (controller != nullptr) controller->TogglePause();
++}
++
++void StepRlNeuralAgentOnce()
++{
++	if (controller != nullptr) controller->StepOnce();
++}
++
++void ToggleRlNeuralAgentGamePause()
++{
++	Require(controller != nullptr, "game pause control requires an active M11 session");
++	Require(!_networking, "M11 playback is single-player only");
++	Command<CMD_PAUSE>::Post(PauseMode::Normal, _pause_mode.None());
++}
++
++std::vector<std::string> GetRlNeuralAgentInspectionLines()
++{
++	return controller == nullptr ? std::vector<std::string>{"M11 neural agent is not configured"} : controller->InspectionLines();
++}
+diff --git a/src/rl_neural_agent.h b/src/rl_neural_agent.h
+new file mode 100644
+index 0000000..f7a9e26
+--- /dev/null
++++ b/src/rl_neural_agent.h
+@@ -0,0 +1,27 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_neural_agent.h M11 inference-only normal-game neural controller. */
++
++#ifndef RL_NEURAL_AGENT_H
++#define RL_NEURAL_AGENT_H
++
++#include <string>
++#include <vector>
++
++void StartRlNeuralAgent(const std::string &config_path);
++void RlNeuralAgentGameLoop();
++void ShowRlNeuralAgentWindow();
++
++bool IsRlNeuralAgentActive();
++bool IsRlNeuralAgentPaused();
++void ToggleRlNeuralAgentPause();
++void StepRlNeuralAgentOnce();
++void ToggleRlNeuralAgentGamePause();
++std::vector<std::string> GetRlNeuralAgentInspectionLines();
++
++#endif /* RL_NEURAL_AGENT_H */
+diff --git a/src/rl_neural_agent_gui.cpp b/src/rl_neural_agent_gui.cpp
+new file mode 100644
+index 0000000..1631cb8
+--- /dev/null
++++ b/src/rl_neural_agent_gui.cpp
+@@ -0,0 +1,133 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_neural_agent_gui.cpp Native M11 inspection, pause, and agent-step window. */
++
++#include "stdafx.h"
++
++#include "rl_neural_agent.h"
++
++#include "debug.h"
++#include "gfx_func.h"
++#include "openttd.h"
++#include "strings_func.h"
++#include "window_func.h"
++#include "window_gui.h"
++
++#include "table/strings.h"
++
++#include "safeguards.h"
++
++namespace {
++
++enum RlNeuralAgentWidgets : WidgetID {
++	WID_RLNA_CAPTION,
++	WID_RLNA_INSPECTION,
++	WID_RLNA_AGENT_PAUSE,
++	WID_RLNA_AGENT_STEP,
++	WID_RLNA_GAME_PAUSE,
++};
++
++class RlNeuralAgentWindow : public Window {
++public:
++	RlNeuralAgentWindow(WindowDesc &desc, int window_number) : Window(desc)
++	{
++		this->InitNested(window_number);
++	}
++
++	void OnPaint() override
++	{
++		this->DrawWidgets();
++	}
++
++	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
++	{
++		if (widget == WID_RLNA_CAPTION) return "OpenTTD-RL Neural Agent";
++		return this->Window::GetWidgetString(widget, stringid);
++	}
++
++	void DrawWidget(const Rect &rect, WidgetID widget) const override
++	{
++		const Rect inner = rect.Shrink(WidgetDimensions::scaled.frametext);
++		switch (widget) {
++			case WID_RLNA_INSPECTION: {
++				int y = inner.top;
++				for (const std::string &line : GetRlNeuralAgentInspectionLines()) {
++					DrawString(inner.left, inner.right, y, line, TC_BLACK, SA_LEFT | SA_FORCE);
++					y += GetCharacterHeight(FS_NORMAL);
++				}
++				break;
++			}
++			case WID_RLNA_AGENT_PAUSE:
++				DrawString(inner, IsRlNeuralAgentPaused() ? "Resume agent" : "Pause agent", IsRlNeuralAgentActive() ? TC_BLACK : TC_GREY, SA_CENTER);
++				break;
++			case WID_RLNA_AGENT_STEP:
++				DrawString(inner, "Step one agent action", IsRlNeuralAgentActive() && IsRlNeuralAgentPaused() && _pause_mode.None() ? TC_BLACK : TC_GREY, SA_CENTER);
++				break;
++			case WID_RLNA_GAME_PAUSE:
++				DrawString(inner, _pause_mode.Any() ? "Resume game" : "Pause game", TC_BLACK, SA_CENTER);
++				break;
++		}
++	}
++
++	void OnClick([[maybe_unused]] Point point, WidgetID widget, [[maybe_unused]] int click_count) override
++	{
++		try {
++			switch (widget) {
++				case WID_RLNA_AGENT_PAUSE:
++					ToggleRlNeuralAgentPause();
++					break;
++				case WID_RLNA_AGENT_STEP:
++					StepRlNeuralAgentOnce();
++					break;
++				case WID_RLNA_GAME_PAUSE:
++					ToggleRlNeuralAgentGamePause();
++					break;
++			}
++		} catch (const std::exception &e) {
++			Debug(misc, 0, "M11 control rejected: {}", e.what());
++		}
++		this->SetDirty();
++	}
++
++	void OnRealtimeTick([[maybe_unused]] uint delta_ms) override
++	{
++		this->SetDirty();
++	}
++};
++
++static constexpr std::initializer_list<NWidgetPart> _nested_rl_neural_agent_widgets = {
++	NWidget(NWID_HORIZONTAL),
++		NWidget(WWT_CLOSEBOX, COLOUR_DARK_BLUE),
++		NWidget(WWT_CAPTION, COLOUR_DARK_BLUE, WID_RLNA_CAPTION), SetStringTip(STR_JUST_RAW_STRING, STR_TOOLTIP_WINDOW_TITLE_DRAG_THIS),
++		NWidget(WWT_SHADEBOX, COLOUR_DARK_BLUE),
++		NWidget(WWT_STICKYBOX, COLOUR_DARK_BLUE),
++	EndContainer(),
++	NWidget(WWT_PANEL, COLOUR_GREY, WID_RLNA_INSPECTION), SetMinimalSize(620, 118), SetResize(1, 1), EndContainer(),
++	NWidget(NWID_HORIZONTAL),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLNA_AGENT_PAUSE), SetMinimalSize(130, 24), SetFill(1, 0), EndContainer(),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLNA_AGENT_STEP), SetMinimalSize(180, 24), SetFill(1, 0), EndContainer(),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLNA_GAME_PAUSE), SetMinimalSize(130, 24), SetFill(1, 0), EndContainer(),
++	EndContainer(),
++	NWidget(NWID_HORIZONTAL),
++		NWidget(WWT_RESIZEBOX, COLOUR_DARK_BLUE),
++	EndContainer(),
++};
++
++static WindowDesc _rl_neural_agent_desc(
++	WDP_AUTO, "rl_neural_agent", 620, 166,
++	WC_RL_NEURAL_AGENT, WC_NONE,
++	WindowDefaultFlag::Construction,
++	_nested_rl_neural_agent_widgets
++);
++
++} // namespace
++
++void ShowRlNeuralAgentWindow()
++{
++	AllocateWindowDescFront<RlNeuralAgentWindow>(_rl_neural_agent_desc, 0);
++}
+diff --git a/src/window_type.h b/src/window_type.h
+index 67a23bc..9aa4347 100644
+--- a/src/window_type.h
++++ b/src/window_type.h
+@@ -732,6 +732,9 @@ enum WindowClass : uint16_t {
+ 	 */
+ 	WC_HELPWIN,
+ 
++	/** OpenTTD-RL normal-game neural-agent inspection and controls. */
++	WC_RL_NEURAL_AGENT,
++
+ 	WC_INVALID = 0xFFFF, ///< Invalid window.
+ };
+ 
