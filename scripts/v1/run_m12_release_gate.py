@@ -215,7 +215,7 @@ def compose_m11_source(root: pathlib.Path, output: pathlib.Path) -> str:
 
 def build_openttd(
     *, source: pathlib.Path, build: pathlib.Path, clean_root: pathlib.Path,
-    onnxruntime: pathlib.Path, neural: bool, jobs: int, timeout: float,
+    onnxruntime: pathlib.Path, opengfx: pathlib.Path, neural: bool, jobs: int, timeout: float,
     recorder: CommandRecorder,
 ) -> dict[str, Any]:
     arguments = [
@@ -227,6 +227,7 @@ def build_openttd(
         arguments += [f"-DOPENTTD_RL_PROJECT_ROOT={clean_root}", f"-DOPENTTD_RL_ONNXRUNTIME_ROOT={onnxruntime}"]
     recorder.run(f"configure-openttd-{'playable' if neural else 'headless'}", arguments, cwd=clean_root, timeout=timeout)
     recorder.run(f"build-openttd-{'playable' if neural else 'headless'}", ["cmake", "--build", build, "--parallel", str(jobs)], cwd=clean_root, timeout=timeout)
+    shutil.copyfile(opengfx, build / "baseset/opengfx-8.0.tar")
     recorder.run(f"test-openttd-{'playable' if neural else 'headless'}", ["ctest", "--test-dir", build, "--output-on-failure"], cwd=clean_root, timeout=timeout)
     executable = build / "openttd"
     require(executable.is_file(), "OpenTTD build did not produce an executable")
@@ -246,7 +247,7 @@ def build_training(args: argparse.Namespace, clean_root: pathlib.Path, recorder:
         f"-DV1_NVIDIA_RUNTIME_ROOT={args.nvidia_runtime_root}",
         f"-DV1_ONNXRUNTIME_ROOT={args.onnxruntime_root}",
     ], cwd=clean_root, timeout=args.timeout)
-    recorder.run("build-training", ["cmake", "--build", build, "--parallel", str(args.jobs)], cwd=clean_root, timeout=args.timeout)
+    recorder.run("build-training", ["cmake", "--build", build, "--parallel", str(min(args.jobs, 2))], cwd=clean_root, timeout=args.timeout)
     result = recorder.run("test-training", ["ctest", "--test-dir", build, "--output-on-failure"], cwd=clean_root, timeout=args.timeout)
     for name in ("rl_trainer", "m08_architecture_smoke", "m08_cuda_gate", "m08_trainer", "m09_evaluator", "m10_export_orchestrator", "m10_onnx_evaluator"):
         require((build / name).is_file(), f"training build is missing {name}")
@@ -419,8 +420,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     headless_build = args.artifact_root / "build/openttd-headless"
     playable_build = args.artifact_root / "build/openttd-playable"
     builds = [
-        build_openttd(source=source, build=headless_build, clean_root=clean_root, onnxruntime=args.onnxruntime_root, neural=False, jobs=args.jobs, timeout=args.timeout * 4, recorder=recorder),
-        build_openttd(source=source, build=playable_build, clean_root=clean_root, onnxruntime=args.onnxruntime_root, neural=True, jobs=args.jobs, timeout=args.timeout * 4, recorder=recorder),
+        build_openttd(source=source, build=headless_build, clean_root=clean_root, onnxruntime=args.onnxruntime_root, opengfx=args.opengfx_tar, neural=False, jobs=args.jobs, timeout=args.timeout * 4, recorder=recorder),
+        build_openttd(source=source, build=playable_build, clean_root=clean_root, onnxruntime=args.onnxruntime_root, opengfx=args.opengfx_tar, neural=True, jobs=args.jobs, timeout=args.timeout * 4, recorder=recorder),
     ]
     training_build, training_record = build_training(args, clean_root, recorder)
     builds.append(training_record)
