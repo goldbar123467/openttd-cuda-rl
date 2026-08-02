@@ -732,14 +732,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-SCOPE",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "SCOPE-026",
@@ -753,14 +761,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-SCOPE",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "SCOPE-027",
@@ -990,14 +1006,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-LIFE",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "LIFE-009",
@@ -1010,14 +1034,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-LIFE",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "LIFE-010",
@@ -2914,14 +2946,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REW"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-REW",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "REW-002",
@@ -2934,14 +2974,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REW"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-REW",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "REW-003",
@@ -2954,14 +3002,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REW"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-REW",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "REW-004",
@@ -2974,14 +3030,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REW"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-REW",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "REW-005",
@@ -2994,14 +3058,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REW"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-REW",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "REW-006",
@@ -3014,14 +3086,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REW"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-REW",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "REW-007",
@@ -3034,14 +3114,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REW"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-REW",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "REW-008",
@@ -4570,14 +4658,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-TEST",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "TEST-005",
@@ -4649,14 +4745,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-TEST",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "TEST-008",
@@ -4670,14 +4774,22 @@
       ],
       "milestone": "M06",
       "gate": "G06",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "IN_PROGRESS",
+      "implementation": [
+        "config/v1/m06-reward-trajectory-contract.json",
+        "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+        "scripts/v1/validate_m06_reward_contract.py",
+        "scripts/v1/m06_reward_reference.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-TEST",
+        "V1-TEST-M06-FOUNDATION"
+      ],
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G06."
+      "reviewer_note": "M06 foundation frozen: all 18 reward candidates, eight exact components, 13 outcome reasons, trajectory integrity, and bounded rollout semantics have executable unit evidence; native transition projection and G06 actual-engine/exploit evidence remain pending."
     },
     {
       "id": "TEST-009",
@@ -5816,6 +5928,33 @@
       ],
       "mandatory": true,
       "reviewer_note": "Two complete current-Ubuntu campaigns are byte-identical; 614 production/native-oracle mask states match and every template constructs service, delivers passengers, and receives revenue."
+    },
+    {
+      "id": "V1-TEST-M06-FOUNDATION",
+      "summary": "Validate the M06 reward candidate ledger, exact scalar reference, termination/truncation classes, integrity hashes, and bounded rollout foundation.",
+      "runner": "scripts/v1/run_m06_foundation_tests.sh",
+      "requirement_ids": [
+        "SCOPE-025",
+        "SCOPE-026",
+        "LIFE-008",
+        "LIFE-009",
+        "REW-001",
+        "REW-002",
+        "REW-003",
+        "REW-004",
+        "REW-005",
+        "REW-006",
+        "REW-007",
+        "TEST-004",
+        "TEST-007",
+        "TEST-008"
+      ],
+      "status": "IMPLEMENTED",
+      "evidence": [
+        "docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The foundation contract and pure reference suite pass; this mapping remains IMPLEMENTED rather than PASS until native transition, trajectory writer, exploit, bankruptcy, rollover, and actual-engine evidence close G06."
     }
   ],
   "aggregate_dependencies": [

@@ -43,6 +43,14 @@ passenger service on every template. The immediate next milestone is M06 reward,
 termination, trajectory, and rollout-contract work only; PPO and CUDA training
 remain downstream.
 
+`M06` is now in progress. Its foundation compatibility
+`9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e`
+dispositions all 18 reward candidates, freezes eight checked rational component
+transforms, types 13 episode outcomes, and bounds content-addressed trajectory
+segments. The pure reference suite passes, but G06 remains open until native
+quarter-safe deltas, the writer, actual-engine termination/economy evidence, and
+exploit campaigns pass.
+
 ## M05/G05 completion checkpoint — 2026-08-01
 
 The action compatibility identity is
@@ -320,7 +328,7 @@ authorization to expand scope.
 | `M03` | synchronized headless bridge | `PASS` | `G03_GATE_REPORT.md` records repeated lifecycle, tick, isolation, and non-perturbation evidence |
 | `M04` | observation/preprocessing contract | `PASS` | `G04_GATE_REPORT.md` records exhaustive semantics and non-perturbation |
 | `M05` | action/mask/execution contract | `PASS` | `G05_GATE_REPORT.md` records mask-oracle and useful-service evidence |
-| `M06` | reward/episode/trajectory contract | `NOT_STARTED` | no V1 artifacts |
+| `M06` | reward/episode/trajectory contract | `IN_PROGRESS` | foundation frozen; native projection, writer, exploit, and actual-engine evidence pending |
 | `M07` | CPU PPO and structured MLP | `NOT_STARTED` | G06 remains open |
 | `M08` | CNN/combined/measured CUDA | `NOT_STARTED` | PPO/CPU baseline absent |
 | `M09` | independent evaluation/baselines | `NOT_STARTED` | evaluator and policies absent |
@@ -581,8 +589,9 @@ Before handing off:
 
 ## Current next action
 
-Begin M06 only: freeze reward components, timing, units, aggregation, termination,
-truncation, trajectory records, and rollout storage on the accepted M04/M05
-boundaries. Prove reward deltas against engine state, run exploit policies, and
-retain repeated serialization evidence. Do not begin PPO, production ONNX, or
-neural in-game control before their owning gates.
+Continue M06 only: implement the read-only lifetime economy projection, integrate
+reward/termination after the accepted M05 step boundary, add the atomic trajectory
+writer, and prove quarterly rollover, bankruptcy/failure, horizon bootstrap,
+corruption rejection, writer faults, and exploit policies against actual OpenTTD.
+Do not begin PPO, production ONNX, or neural in-game control before their owning
+gates.

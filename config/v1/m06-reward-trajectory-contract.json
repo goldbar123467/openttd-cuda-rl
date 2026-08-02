@@ -1,0 +1,412 @@
+{
+  "$schema": "../../docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m06-reward-trajectory-contract-1",
+  "semantic_version": "1.0.0",
+  "status": "FROZEN_FOUNDATION",
+  "contract_id": "m06-reward-episode-trajectory-v1",
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e",
+    "schema_path": "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json",
+    "schema_sha256": "fa6a776fb45649589058f1ea726a6f82b5c3afbb4144edac337383fe6152c2ad"
+  },
+  "engine": {
+    "openttd_version": "15.3",
+    "source_commit": "14ec60f248547d4d062a1160f0fc26d742319888",
+    "m03_bridge_compatibility_sha256": "4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6",
+    "m04_observation_compatibility_sha256": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb",
+    "m05_action_compatibility_sha256": "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536",
+    "m05_composed_source_identity_sha256": "9bb57367151fbf4eedcd802d179c946685a911bec9b99d7573501e0f52a3b2bd"
+  },
+  "boundary": {
+    "pre_state": "S_t-at-issued-M05-mask-boundary",
+    "action": "M05-action-validated-and-executed-once",
+    "advance": "exactly-128-complete-StateGameLoop-calls",
+    "post_state": "S_t-plus-1-at-next-safe-boundary",
+    "reward_timing": "integer-raw-deltas-from-S_t-to-S_t-plus-1-after-action-and-ticks",
+    "termination_timing": "after-reward-at-S_t-plus-1-before-transition-commit",
+    "quarter_rotation_policy": "sum-current-and-all-valid-old-economy-entries-before-differencing",
+    "quarter_history_safety": "65536-tick-episode-is-shorter-than-24-quarter-history-retention",
+    "invalid_attempt_policy": "ILLEGAL_INPUT-is-a-fail-closed-non-transition-correctness-defect-and-never-shaped-reward"
+  },
+  "candidate_dispositions": [
+    {
+      "candidate_id": "POS-001",
+      "requirement": "REW-001",
+      "name": "operating_profit",
+      "disposition": "INCLUDED",
+      "component_id": "RC-002",
+      "source": "delta-of-lifetime-company-income-plus-expenses",
+      "information_boundary": "causal-engine-state-at-S_t-and-S_t-plus-1",
+      "rationale": "Direct realized economics penalize routes whose running and property costs exceed revenue."
+    },
+    {
+      "candidate_id": "POS-002",
+      "requirement": "REW-001",
+      "name": "passenger_delivery",
+      "disposition": "INCLUDED",
+      "component_id": "RC-001",
+      "source": "delta-of-lifetime-delivered-passenger-count",
+      "information_boundary": "causal-engine-state-at-S_t-and-S_t-plus-1",
+      "rationale": "Delivery is the required useful-gameplay event and is attributed only to the interval that records it."
+    },
+    {
+      "candidate_id": "POS-003",
+      "requirement": "REW-001",
+      "name": "transported_passenger_growth",
+      "disposition": "DIAGNOSTIC_ONLY",
+      "component_id": null,
+      "source": "town-percent-transported",
+      "information_boundary": "causal-but-quarterly-and-lagged",
+      "rationale": "It is a delayed proxy for the already rewarded delivery and can double-pay one event."
+    },
+    {
+      "candidate_id": "POS-004",
+      "requirement": "REW-001",
+      "name": "station_rating_improvement",
+      "disposition": "REJECTED",
+      "component_id": null,
+      "source": "station-or-town-rating",
+      "information_boundary": "causal-but-proxy",
+      "rationale": "Rating can improve without profitable delivery and creates a proxy-farming objective."
+    },
+    {
+      "candidate_id": "POS-005",
+      "requirement": "REW-001",
+      "name": "route_profitability",
+      "disposition": "DIAGNOSTIC_ONLY",
+      "component_id": null,
+      "source": "vehicle-period-profit",
+      "information_boundary": "causal-but-period-resetting",
+      "rationale": "Vehicle profit is retained for analysis but duplicates company operating profit in the single-route V1 scope."
+    },
+    {
+      "candidate_id": "POS-006",
+      "requirement": "REW-001",
+      "name": "utilization",
+      "disposition": "DIAGNOSTIC_ONLY",
+      "component_id": null,
+      "source": "running-and-cargo-state",
+      "information_boundary": "causal-engine-state",
+      "rationale": "Movement or loading is not useful by itself; the negative idle component is sufficient for the sparse baseline."
+    },
+    {
+      "candidate_id": "POS-007",
+      "requirement": "REW-001",
+      "name": "productive_expansion",
+      "disposition": "REJECTED",
+      "component_id": null,
+      "source": "infrastructure-and-vehicle-count-growth",
+      "information_boundary": "causal-but-speculative",
+      "rationale": "Construction is not productive until it causes delivery and profit, so rewarding it invites waste."
+    },
+    {
+      "candidate_id": "POS-008",
+      "requirement": "REW-001",
+      "name": "long_term_company_value",
+      "disposition": "DIAGNOSTIC_ONLY",
+      "component_id": null,
+      "source": "CalculateCompanyValue",
+      "information_boundary": "causal-engine-state",
+      "rationale": "Company value mixes purchased assets and operating results and would double-pay capital acquisition."
+    },
+    {
+      "candidate_id": "NEG-001",
+      "requirement": "REW-002",
+      "name": "bankruptcy",
+      "disposition": "INCLUDED",
+      "component_id": "RC-008",
+      "source": "learning-company-absence-or-native-bankruptcy-state",
+      "information_boundary": "causal-post-boundary-terminal-state",
+      "rationale": "Bankruptcy is a game terminal outcome and receives a finite terminal penalty."
+    },
+    {
+      "candidate_id": "NEG-002",
+      "requirement": "REW-002",
+      "name": "invalid_action",
+      "disposition": "DIAGNOSTIC_ONLY",
+      "component_id": null,
+      "source": "M05-ILLEGAL_INPUT-attempt-log",
+      "information_boundary": "controller-correctness-state",
+      "rationale": "A masked or malformed action is a correctness defect, not an accepted environment transition; stopping it is stronger than reward shaping."
+    },
+    {
+      "candidate_id": "NEG-003",
+      "requirement": "REW-002",
+      "name": "repeated_construction_failure",
+      "disposition": "INCLUDED",
+      "component_id": "RC-005",
+      "source": "M05-NATIVE_REJECTED-outcome",
+      "information_boundary": "causal-action-result",
+      "rationale": "Unexpected native rejection consumes a decision interval and is explicitly discouraged."
+    },
+    {
+      "candidate_id": "NEG-004",
+      "requirement": "REW-002",
+      "name": "idle_vehicle",
+      "disposition": "INCLUDED",
+      "component_id": "RC-006",
+      "source": "post-boundary-stopped-primary-bus-count-times-advanced-ticks",
+      "information_boundary": "causal-engine-state",
+      "rationale": "Purchased buses left stopped consume opportunity without producing delivery."
+    },
+    {
+      "candidate_id": "NEG-005",
+      "requirement": "REW-002",
+      "name": "unused_station",
+      "disposition": "DIAGNOSTIC_ONLY",
+      "component_id": null,
+      "source": "station-route-and-cargo-state",
+      "information_boundary": "causal-engine-state",
+      "rationale": "The M05 fixed two-stop route makes this largely redundant with capital spend and idle-vehicle penalties."
+    },
+    {
+      "candidate_id": "NEG-006",
+      "requirement": "REW-002",
+      "name": "excessive_infrastructure_spend",
+      "disposition": "INCLUDED",
+      "component_id": "RC-003",
+      "source": "sum-of-positive-M05-native-command-costs",
+      "information_boundary": "causal-action-result",
+      "rationale": "Capital spend is excluded from operating profit and therefore receives one separately logged bounded cost."
+    },
+    {
+      "candidate_id": "NEG-007",
+      "requirement": "REW-002",
+      "name": "valueless_route_duplication",
+      "disposition": "REJECTED",
+      "component_id": null,
+      "source": "M05-route-identity",
+      "information_boundary": "causal-action-state",
+      "rationale": "An identical route is masked and the V1 catalog has no separate route object to duplicate."
+    },
+    {
+      "candidate_id": "NEG-008",
+      "requirement": "REW-002",
+      "name": "vehicle_loss",
+      "disposition": "INCLUDED",
+      "component_id": "RC-007",
+      "source": "positive-decrease-in-owned-primary-bus-count",
+      "information_boundary": "causal-engine-state",
+      "rationale": "Loss of an owned bus destroys useful capacity and is distinct from ordinary operating cost."
+    },
+    {
+      "candidate_id": "NEG-009",
+      "requirement": "REW-002",
+      "name": "destructive_loop",
+      "disposition": "REJECTED",
+      "component_id": null,
+      "source": "M05-action-catalog",
+      "information_boundary": "not-agent-reachable-in-V1",
+      "rationale": "Selling and infrastructure removal are excluded from M05, so a build/remove or buy/sell loop is unreachable."
+    },
+    {
+      "candidate_id": "NEG-010",
+      "requirement": "REW-002",
+      "name": "excessive_noop",
+      "disposition": "INCLUDED",
+      "component_id": "RC-004",
+      "source": "M05-NO_OP-outcome",
+      "information_boundary": "causal-action-result",
+      "rationale": "A small per-decision penalty prevents unlimited waiting from being free while leaving time for service delivery."
+    }
+  ],
+  "reward": {
+    "raw_integer_policy": "all-source-deltas-are-checked-integers-and-bool-is-never-an-integer",
+    "component_dtype": "float64",
+    "aggregation": "IEEE-754-binary64-left-fold-in-component-order-starting-from-positive-zero",
+    "nonfinite_policy": "fatal-NONFINITE-failure-no-training-transition",
+    "components": [
+      {
+        "component_id": "RC-001",
+        "order": 0,
+        "name": "passenger_delivery",
+        "raw_field": "delivered_passengers_delta",
+        "raw_unit": "passengers",
+        "raw_min": 0,
+        "raw_max": 128,
+        "coefficient_numerator": 1,
+        "coefficient_denominator": 16,
+        "weighted_min": 0.0,
+        "weighted_max": 8.0
+      },
+      {
+        "component_id": "RC-002",
+        "order": 1,
+        "name": "operating_profit",
+        "raw_field": "operating_profit_delta",
+        "raw_unit": "OpenTTD-money-units",
+        "raw_min": -16384,
+        "raw_max": 16384,
+        "coefficient_numerator": 1,
+        "coefficient_denominator": 4096,
+        "weighted_min": -4.0,
+        "weighted_max": 4.0
+      },
+      {
+        "component_id": "RC-003",
+        "order": 2,
+        "name": "capital_spend",
+        "raw_field": "capital_spend",
+        "raw_unit": "OpenTTD-money-units",
+        "raw_min": 0,
+        "raw_max": 65536,
+        "coefficient_numerator": -1,
+        "coefficient_denominator": 16384,
+        "weighted_min": -4.0,
+        "weighted_max": 0.0
+      },
+      {
+        "component_id": "RC-004",
+        "order": 3,
+        "name": "noop",
+        "raw_field": "noop",
+        "raw_unit": "indicator",
+        "raw_min": 0,
+        "raw_max": 1,
+        "coefficient_numerator": -1,
+        "coefficient_denominator": 64,
+        "weighted_min": -0.015625,
+        "weighted_max": 0.0
+      },
+      {
+        "component_id": "RC-005",
+        "order": 4,
+        "name": "native_rejection",
+        "raw_field": "native_rejected",
+        "raw_unit": "indicator",
+        "raw_min": 0,
+        "raw_max": 1,
+        "coefficient_numerator": -1,
+        "coefficient_denominator": 4,
+        "weighted_min": -0.25,
+        "weighted_max": 0.0
+      },
+      {
+        "component_id": "RC-006",
+        "order": 5,
+        "name": "idle_bus_ticks",
+        "raw_field": "idle_bus_ticks",
+        "raw_unit": "bus-ticks",
+        "raw_min": 0,
+        "raw_max": 1024,
+        "coefficient_numerator": -1,
+        "coefficient_denominator": 65536,
+        "weighted_min": -0.015625,
+        "weighted_max": 0.0
+      },
+      {
+        "component_id": "RC-007",
+        "order": 6,
+        "name": "vehicle_loss",
+        "raw_field": "vehicle_loss_count",
+        "raw_unit": "primary-buses",
+        "raw_min": 0,
+        "raw_max": 8,
+        "coefficient_numerator": -2,
+        "coefficient_denominator": 1,
+        "weighted_min": -16.0,
+        "weighted_max": 0.0
+      },
+      {
+        "component_id": "RC-008",
+        "order": 7,
+        "name": "bankruptcy",
+        "raw_field": "bankruptcy",
+        "raw_unit": "indicator",
+        "raw_min": 0,
+        "raw_max": 1,
+        "coefficient_numerator": -8,
+        "coefficient_denominator": 1,
+        "weighted_min": -8.0,
+        "weighted_max": 0.0
+      }
+    ]
+  },
+  "termination": {
+    "priority": [
+      "FAILURE",
+      "BANKRUPTCY",
+      "SOLVED",
+      "USER_CANCELLED",
+      "ACTION_AND_TICK_HORIZON",
+      "ACTION_HORIZON",
+      "TICK_HORIZON",
+      "NONE"
+    ],
+    "solved_threshold": null,
+    "reasons": [
+      {"name": "NONE", "kind": "CONTINUE", "terminal": false, "truncated": false, "bootstrap": true, "trainable": true},
+      {"name": "BANKRUPTCY", "kind": "TERMINAL", "terminal": true, "truncated": false, "bootstrap": false, "trainable": true},
+      {"name": "SOLVED", "kind": "TERMINAL", "terminal": true, "truncated": false, "bootstrap": false, "trainable": true},
+      {"name": "ACTION_HORIZON", "kind": "TRUNCATED", "terminal": false, "truncated": true, "bootstrap": true, "trainable": true},
+      {"name": "TICK_HORIZON", "kind": "TRUNCATED", "terminal": false, "truncated": true, "bootstrap": true, "trainable": true},
+      {"name": "ACTION_AND_TICK_HORIZON", "kind": "TRUNCATED", "terminal": false, "truncated": true, "bootstrap": true, "trainable": true},
+      {"name": "USER_CANCELLED", "kind": "INCOMPLETE", "terminal": false, "truncated": true, "bootstrap": false, "trainable": false},
+      {"name": "INVALID_STATE", "kind": "FAILURE", "terminal": false, "truncated": false, "bootstrap": false, "trainable": false},
+      {"name": "WORKER_CRASH", "kind": "FAILURE", "terminal": false, "truncated": false, "bootstrap": false, "trainable": false},
+      {"name": "TIMEOUT", "kind": "FAILURE", "terminal": false, "truncated": false, "bootstrap": false, "trainable": false},
+      {"name": "INTEGRATION_FAILURE", "kind": "FAILURE", "terminal": false, "truncated": false, "bootstrap": false, "trainable": false},
+      {"name": "NONFINITE", "kind": "FAILURE", "terminal": false, "truncated": false, "bootstrap": false, "trainable": false},
+      {"name": "IO_FAILURE", "kind": "FAILURE", "terminal": false, "truncated": false, "bootstrap": false, "trainable": false}
+    ]
+  },
+  "trajectory": {
+    "format": "canonical-JSON-bundle-with-content-addressed-M04-observation-blobs",
+    "schema_version": "openttd-rl-v1-m06-trajectory-1",
+    "record_integrity": "sha256-canonical-json-without-integrity-field",
+    "bundle_integrity": "sha256-canonical-json-without-bundle_sha256-field",
+    "write_policy": "create-new-temporary-fsync-atomic-rename-never-overwrite",
+    "observation_blob": {
+      "dtype": "little-endian-float32",
+      "structured_values": 256,
+      "spatial_values": 32768,
+      "byte_length": 132096,
+      "identity": "sha256-over-exact-M04-canonical-tensor-bytes"
+    },
+    "transition_fields": [
+      "run-worker-environment-episode-transition-request-identities",
+      "scenario-template-seed-and-ledger-reference",
+      "pre-and-post-boundary-tokens-ticks-and-dates",
+      "observation-and-next-observation-content-references",
+      "41-byte-pre-action-mask-and-mask-token",
+      "action-index-parameters-selection-mode-log-probability-and-value",
+      "M05-action-outcome-and-native-subcommands",
+      "eight-raw-and-weighted-reward-components-and-scalar",
+      "next-value-when-bootstrap-is-required",
+      "terminal-truncated-reason-bootstrap-and-trainable-flags",
+      "model-checkpoint-and-all-compatibility-identities",
+      "record-integrity"
+    ],
+    "selection_modes": ["SAMPLED", "GREEDY", "SCRIPTED", "RANDOM_LEGAL"],
+    "float_encoding": "finite-JSON-number-plus-IEEE-754-bit-pattern-guard",
+    "corruption_policy": "reject-before-any-record-enters-rollout"
+  },
+  "rollout": {
+    "maximum_transitions_per_segment": 128,
+    "maximum_observation_blobs_per_segment": 129,
+    "maximum_observation_blob_bytes": 17040384,
+    "maximum_metadata_bytes": 8388608,
+    "maximum_total_segment_bytes": 25428992,
+    "canonical_pre_shuffle_order": "worker_id-then-episode_id-then-transition_ordinal",
+    "shuffle_seed": "first-64-bits-little-endian-of-sha256-canonical-json-of-run_seed-rollout_id-update_index",
+    "duplicate_transition_policy": "reject",
+    "gap_policy": "segment-boundary-or-explicit-failure-record-required"
+  },
+  "requirements": [
+    "SCOPE-025",
+    "SCOPE-026",
+    "LIFE-008",
+    "LIFE-009",
+    "REW-001",
+    "REW-002",
+    "REW-003",
+    "REW-004",
+    "REW-005",
+    "REW-006",
+    "REW-007",
+    "TEST-004",
+    "TEST-007",
+    "TEST-008"
+  ]
+}

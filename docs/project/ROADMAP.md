@@ -14,9 +14,10 @@ scenario/reset corpus, and a synchronized source-integrated headless bridge with
 process isolation and exact tick stepping. It now also includes a frozen native
 policy observation and preprocessing contract plus a fixed 41-action bus catalog,
 boundary-bound legality masks, transactional route updates, and repeated
-actual-engine profitable-service evidence. No V1 reward/termination/trajectory
-layer, PPO trainer, CUDA trainer, evaluator, ONNX package, or in-game neural agent
-exists.
+actual-engine profitable-service evidence. The M06 reward/termination/trajectory
+foundation is now frozen and unit-tested, but its native projection, writer,
+exploit campaign, and G06 actual-engine evidence remain in progress. No PPO
+trainer, CUDA trainer, evaluator, ONNX package, or in-game neural agent exists.
 
 Legacy P0 completion is not a prerequisite as originally written because its
 freight target conflicts with the active bus-only scope. Its reusable pieces enter
@@ -315,6 +316,11 @@ bus routes and distinguish every failure class.
   service, delivers passengers, and receives revenue.
 
 ## M06 — Reward, termination, trajectory, and rollout contract
+
+Status: `IN_PROGRESS`. The candidate ledger, exact scalar/termination reference,
+trajectory integrity, and bounded rollout design are frozen in
+[`M06_REWARD_TRAJECTORY_FOUNDATION.md`](M06_REWARD_TRAJECTORY_FOUNDATION.md).
+Native and actual-engine G06 evidence remains open.
 
 ### Objective
 

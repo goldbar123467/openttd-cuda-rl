@@ -74,6 +74,8 @@ or RL progress.
     — frozen 41-action catalog, masks, typed outcomes, and transactions.
 26. [`docs/project/G05_GATE_REPORT.md`](docs/project/G05_GATE_REPORT.md) — passed
     action/mask oracle and useful actual-engine bus-service gate.
+27. [`docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md`](docs/project/M06_REWARD_TRAJECTORY_FOUNDATION.md)
+    — in-progress candidate, scalar, termination, integrity, and rollout freeze.
 
 ## Current status
 
@@ -87,7 +89,7 @@ or RL progress.
 | Headless RL environment API | Versioned local framing, typed lifecycle, process isolation, 1–128 tick stepping, repeated all-template oracle | `M03/G03 PASS`; frozen synchronization boundary |
 | Structured/spatial observations | Frozen native encoder, exhaustive semantics, shared bytes, and 264,192 actual-engine comparisons | `M04/G04 PASS`; frozen observation boundary |
 | Legal bus action masking | Fixed 41-action catalog, boundary tokens, native command test/execute paths, 614 oracle comparisons, and profitable all-template trajectories | `M05/G05 PASS`; frozen action boundary |
-| Reward, termination, and trajectories | No V1 implementation | `M06/G06` next |
+| Reward, termination, and trajectories | Frozen 18-candidate ledger, eight-component scalar reference, 13 typed outcomes, integrity hashes, and bounded rollout contract | `M06 IN_PROGRESS`; native/G06 evidence pending |
 | PPO trainer | No implementation | Not started |
 | CUDA training path | No implementation | Not started |
 | Independent evaluation | No V1 evaluator | Not started |

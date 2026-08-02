@@ -91,7 +91,7 @@ class V1TraceabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             summary = self.validate_mutation(pathlib.Path(raw))
         self.assertEqual(summary.requirements, 227)
-        self.assertEqual(summary.tests, 21)
+        self.assertEqual(summary.tests, 22)
         self.assertEqual(summary.requirements_passed, 81)
         self.assertEqual(summary.post_v1_deferred, 10)
         self.assertEqual(summary.nonclosed_defects, 0)

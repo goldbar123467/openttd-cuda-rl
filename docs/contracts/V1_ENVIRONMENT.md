@@ -403,6 +403,20 @@ The mask application rule must:
 
 ## Reward contract
 
+M06 foundation compatibility
+`9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e`
+is frozen in `config/v1/m06-reward-trajectory-contract.json`. It defines eight
+ordered binary64 components: delivered-passenger delta, operating-profit delta,
+capital spend, no-op, native rejection, idle bus-ticks, vehicle loss, and
+bankruptcy. Each uses checked integer raw data, clamp-before-scale, and an exact
+rational coefficient. The scalar is a left fold in component order from positive
+zero; all raw/clamped/weighted values remain separately visible.
+
+OpenTTD current-economy counters rotate quarterly. M06 never differences two
+bare `cur_economy` values: it sums current plus all valid retained quarterly
+entries at both boundaries, then computes the transition delta. The V1 horizon
+is shorter than the retained 24-quarter window.
+
 ### Component design record
 
 The reward registry includes every candidate from `REW-001` and `REW-002` with:
@@ -449,6 +463,12 @@ component schema is unchanged.
 
 ## Termination and truncation
 
+The foundation adds an explicit simultaneous action-and-tick horizon reason and
+separates user cancellation (incomplete, non-trainable) from failures. Failure,
+bankruptcy, solved, user cancellation, combined horizon, individual horizons,
+and continuation are evaluated in that priority order. The solved threshold is
+disabled for the initial contract.
+
 | Reason | Terminal? | Bootstrap? | Required evidence |
 |---|---:|---:|---|
 | Bankruptcy/company deletion | yes | no | controlled bankruptcy scenario |
@@ -463,6 +483,12 @@ An episode length metric states whether it counts decisions, actions, ticks, day
 or months. All are available separately where useful.
 
 ## Trajectory contract
+
+The foundation selects canonical JSON metadata with content-addressed exact M04
+observation blobs. A segment is bounded to 128 transitions, 129 observation blobs,
+17,040,384 observation bytes, 8,388,608 metadata bytes, and 25,428,992 total
+bytes. Record/bundle SHA-256 excludes only its own integrity field; mandatory
+writes are create-new, fsynced, atomically renamed, and never overwrite.
 
 Each transition record includes at minimum:
 

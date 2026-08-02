@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/openttd-rl/v1-m06-reward-trajectory-contract.schema.json",
+  "title": "OpenTTD-RL V1 M06 reward, episode, trajectory, and rollout contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "semantic_version",
+    "status",
+    "contract_id",
+    "identity",
+    "engine",
+    "boundary",
+    "candidate_dispositions",
+    "reward",
+    "termination",
+    "trajectory",
+    "rollout",
+    "requirements"
+  ],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v1-m06-reward-trajectory-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v1-m06-reward-trajectory-contract-1"},
+    "semantic_version": {"const": "1.0.0"},
+    "status": {"const": "FROZEN_FOUNDATION"},
+    "contract_id": {"const": "m06-reward-episode-trajectory-v1"},
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compatibility_algorithm", "compatibility_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "compatibility_algorithm": {"const": "sha256-canonical-json-v1"},
+        "compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_path": {"const": "docs/project/schema/v1-m06-reward-trajectory-contract.schema.json"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["openttd_version", "source_commit", "m03_bridge_compatibility_sha256", "m04_observation_compatibility_sha256", "m05_action_compatibility_sha256", "m05_composed_source_identity_sha256"],
+      "properties": {
+        "openttd_version": {"const": "15.3"},
+        "source_commit": {"$ref": "#/$defs/sha1"},
+        "m03_bridge_compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "m04_observation_compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "m05_action_compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "m05_composed_source_identity_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pre_state", "action", "advance", "post_state", "reward_timing", "termination_timing", "quarter_rotation_policy", "quarter_history_safety", "invalid_attempt_policy"],
+      "properties": {
+        "pre_state": {"type": "string", "minLength": 1},
+        "action": {"type": "string", "minLength": 1},
+        "advance": {"type": "string", "minLength": 1},
+        "post_state": {"type": "string", "minLength": 1},
+        "reward_timing": {"type": "string", "minLength": 1},
+        "termination_timing": {"type": "string", "minLength": 1},
+        "quarter_rotation_policy": {"type": "string", "minLength": 1},
+        "quarter_history_safety": {"type": "string", "minLength": 1},
+        "invalid_attempt_policy": {"type": "string", "minLength": 1}
+      }
+    },
+    "candidate_dispositions": {
+      "type": "array",
+      "minItems": 18,
+      "maxItems": 18,
+      "items": {"$ref": "#/$defs/candidate"}
+    },
+    "reward": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_integer_policy", "component_dtype", "aggregation", "nonfinite_policy", "components"],
+      "properties": {
+        "raw_integer_policy": {"type": "string", "minLength": 1},
+        "component_dtype": {"const": "float64"},
+        "aggregation": {"const": "IEEE-754-binary64-left-fold-in-component-order-starting-from-positive-zero"},
+        "nonfinite_policy": {"type": "string", "minLength": 1},
+        "components": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {"$ref": "#/$defs/component"}
+        }
+      }
+    },
+    "termination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["priority", "solved_threshold", "reasons"],
+      "properties": {
+        "priority": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "FAILURE"},
+            {"const": "BANKRUPTCY"},
+            {"const": "SOLVED"},
+            {"const": "USER_CANCELLED"},
+            {"const": "ACTION_AND_TICK_HORIZON"},
+            {"const": "ACTION_HORIZON"},
+            {"const": "TICK_HORIZON"},
+            {"const": "NONE"}
+          ],
+          "items": false,
+          "minItems": 8,
+          "maxItems": 8
+        },
+        "solved_threshold": {"type": "null"},
+        "reasons": {
+          "type": "array",
+          "minItems": 13,
+          "maxItems": 13,
+          "items": {"$ref": "#/$defs/termination_reason"}
+        }
+      }
+    },
+    "trajectory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "schema_version", "record_integrity", "bundle_integrity", "write_policy", "observation_blob", "transition_fields", "selection_modes", "float_encoding", "corruption_policy"],
+      "properties": {
+        "format": {"const": "canonical-JSON-bundle-with-content-addressed-M04-observation-blobs"},
+        "schema_version": {"const": "openttd-rl-v1-m06-trajectory-1"},
+        "record_integrity": {"type": "string", "minLength": 1},
+        "bundle_integrity": {"type": "string", "minLength": 1},
+        "write_policy": {"type": "string", "minLength": 1},
+        "observation_blob": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dtype", "structured_values", "spatial_values", "byte_length", "identity"],
+          "properties": {
+            "dtype": {"const": "little-endian-float32"},
+            "structured_values": {"const": 256},
+            "spatial_values": {"const": 32768},
+            "byte_length": {"const": 132096},
+            "identity": {"type": "string", "minLength": 1}
+          }
+        },
+        "transition_fields": {"type": "array", "minItems": 12, "maxItems": 12, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "selection_modes": {
+          "type": "array",
+          "prefixItems": [{"const": "SAMPLED"}, {"const": "GREEDY"}, {"const": "SCRIPTED"}, {"const": "RANDOM_LEGAL"}],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "float_encoding": {"type": "string", "minLength": 1},
+        "corruption_policy": {"type": "string", "minLength": 1}
+      }
+    },
+    "rollout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximum_transitions_per_segment", "maximum_observation_blobs_per_segment", "maximum_observation_blob_bytes", "maximum_metadata_bytes", "maximum_total_segment_bytes", "canonical_pre_shuffle_order", "shuffle_seed", "duplicate_transition_policy", "gap_policy"],
+      "properties": {
+        "maximum_transitions_per_segment": {"const": 128},
+        "maximum_observation_blobs_per_segment": {"const": 129},
+        "maximum_observation_blob_bytes": {"const": 17040384},
+        "maximum_metadata_bytes": {"const": 8388608},
+        "maximum_total_segment_bytes": {"const": 25428992},
+        "canonical_pre_shuffle_order": {"type": "string", "minLength": 1},
+        "shuffle_seed": {"type": "string", "minLength": 1},
+        "duplicate_transition_policy": {"const": "reject"},
+        "gap_policy": {"type": "string", "minLength": 1}
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "items": {"type": "string", "pattern": "^[A-Z]+-[0-9]{3}$"},
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sha1": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_id", "requirement", "name", "disposition", "component_id", "source", "information_boundary", "rationale"],
+      "properties": {
+        "candidate_id": {"type": "string", "pattern": "^(POS|NEG)-[0-9]{3}$"},
+        "requirement": {"enum": ["REW-001", "REW-002"]},
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "disposition": {"enum": ["INCLUDED", "DIAGNOSTIC_ONLY", "REJECTED"]},
+        "component_id": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^RC-[0-9]{3}$"}]},
+        "source": {"type": "string", "minLength": 1},
+        "information_boundary": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "order", "name", "raw_field", "raw_unit", "raw_min", "raw_max", "coefficient_numerator", "coefficient_denominator", "weighted_min", "weighted_max"],
+      "properties": {
+        "component_id": {"type": "string", "pattern": "^RC-[0-9]{3}$"},
+        "order": {"type": "integer", "minimum": 0, "maximum": 7},
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "raw_field": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "raw_unit": {"type": "string", "minLength": 1},
+        "raw_min": {"type": "integer"},
+        "raw_max": {"type": "integer"},
+        "coefficient_numerator": {"type": "integer"},
+        "coefficient_denominator": {"type": "integer", "minimum": 1},
+        "weighted_min": {"type": "number"},
+        "weighted_max": {"type": "number"}
+      }
+    },
+    "termination_reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "terminal", "truncated", "bootstrap", "trainable"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Z][A-Z_]*$"},
+        "kind": {"enum": ["CONTINUE", "TERMINAL", "TRUNCATED", "INCOMPLETE", "FAILURE"]},
+        "terminal": {"type": "boolean"},
+        "truncated": {"type": "boolean"},
+        "bootstrap": {"type": "boolean"},
+        "trainable": {"type": "boolean"}
+      }
+    }
+  }
+}
