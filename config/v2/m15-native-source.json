@@ -1,0 +1,46 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-native-source.schema.json",
+  "schema_version": "openttd-rl-v2-m15-native-source-1",
+  "schema_sha256": "c83efef5b05d2146b330736ca7facd7afa9d7e27bbf5f6e8bfc98cb2834cba80",
+  "snapshot_date": "2026-08-02",
+  "base": {
+    "kind": "released-v1-m11-composed-source",
+    "commit": "d579c6d2a3b482aac8432d75d951b2472701d918",
+    "tree": "e1151f41b131a41c1d450f741c8922da1a119e18",
+    "engine_source_commit": "14ec60f248547d4d062a1160f0fc26d742319888",
+    "engine_source_tree": "02d8cbbb0d8c030698d37ca76ab2773b6e23c397"
+  },
+  "patch_series": {
+    "directory": "integration/openttd/patches/15.3/m15",
+    "series": "integration/openttd/patches/15.3/m15/series",
+    "series_sha256": "813172422b0e600bc1f612a67989f262154f40c0ff9bd3001a0aa6328db21ab7",
+    "patches": [
+      {
+        "name": "0010-OpenTTD-RL-V2-M15-native-scalable-reset.patch",
+        "sha256": "ee95b3a35756408ecaa469b0df3fa21507eb319bc14a8b848b53b907885ffe33"
+      }
+    ]
+  },
+  "result": {
+    "tree": "70394b69df9a6c2104cb711c439da53b2abde367",
+    "source_files": ["src/rl_v2_environment.cpp", "src/rl_v2_environment.h"],
+    "cli_manifest_option": "-V",
+    "cli_projection_option": "-U",
+    "v1_path_modified": false
+  },
+  "build": {
+    "artifact_root": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-native-a",
+    "cmake_options": [
+      "CMAKE_BUILD_TYPE=RelWithDebInfo",
+      "OPTION_RL_ENVIRONMENT=ON",
+      "OPTION_RL_NEURAL_AGENT=OFF",
+      "OPTION_USE_ASSERTS=ON"
+    ],
+    "executable": {
+      "path": "build/openttd",
+      "sha256": "5598509cc6b113fa816f02f9b52f5f723e491e3859b4f37ed3f7e87c0c9bed05",
+      "size": 393403360
+    },
+    "ctest": {"tests": 98, "passed": 98, "failed": 0}
+  }
+}

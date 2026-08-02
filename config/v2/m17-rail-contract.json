@@ -1,0 +1,123 @@
+{
+  "action_extension": {
+    "families": [
+      "SELECT_RAIL_TYPE",
+      "BUILD_RAIL",
+      "REMOVE_RAIL",
+      "CONVERT_RAIL",
+      "BUILD_RAIL_STATION",
+      "REMOVE_RAIL_STATION",
+      "JOIN_RAIL_STATION",
+      "RENAME_STATION",
+      "BUILD_TRAIN_DEPOT",
+      "BUILD_RAIL_WAYPOINT",
+      "REMOVE_RAIL_WAYPOINT",
+      "BUILD_RAIL_SIGNAL",
+      "REMOVE_RAIL_SIGNAL",
+      "RESERVE_RAIL_PATH",
+      "BUY_TRAIN",
+      "ASSEMBLE_CONSIST",
+      "REFIT_TRAIN",
+      "CLONE_TRAIN",
+      "SELL_TRAIN",
+      "SET_TRAIN_ORDERS",
+      "SET_TRAIN_TIMETABLE",
+      "SET_TRAIN_SERVICE_INTERVAL",
+      "SET_TRAIN_AUTOREPLACE",
+      "START_STOP_TRAIN"
+    ],
+    "legality": "native-command-test-before-execute",
+    "transaction_failure": "rollback-or-no-state-change"
+  },
+  "baseline": {
+    "rejected_preferred_specialist": {
+      "content_unique_id": "43484f4f",
+      "name": "ChooChoo",
+      "outcome": "PACKAGE_REJECTED",
+      "reason_code": "catalog-listed-unselectable"
+    },
+    "service_comparators": [
+      "no-build-zero-service",
+      "no-start-zero-service"
+    ],
+    "specialist": {
+      "content_unique_id": "484f4745",
+      "evidence_sha256": "40b76ae7bcee66ca6c1ee7271f49cbc7499823a29d4e736f0d758b58b67d355e",
+      "name": "AAAHogEx",
+      "qualification": "TOURNAMENT runtime: 30 days, one train, save/load healthy"
+    }
+  },
+  "counts": {
+    "native_cases": 14,
+    "native_runs": 28,
+    "rail_types": 4,
+    "signal_variants": 12,
+    "track_orientations": 6,
+    "train_engine_entries": 116
+  },
+  "native_probes": {
+    "catalog": "runtime RailTypeInfo and train Engine projection",
+    "construction": "all track orientations, slopes, junctions, rail and road crossings, ownership, failures, station/depot/waypoint lifecycle, and conversion",
+    "freight": "real refitted coal train traversing a native route and receiving final-delivery income",
+    "lifecycle": "locomotive/wagon consist, refit, orders, timetable, service interval, clone, autoreplace, and sale",
+    "passenger": "real passenger train traversing a native route and receiving final-delivery income",
+    "signals": "six signal types in electric and semaphore variants plus reservation acquire/reject/release",
+    "stress": "two trains on a junction-connected two-platform physical network with a shared destination, path signals, a 32768-tick soak, bounded wait, delivery, and collision/deadlock checks"
+  },
+  "observation_extension": {
+    "bounded_tables": [
+      "rail_types",
+      "train_engines",
+      "rail_tiles",
+      "rail_junctions",
+      "rail_crossings",
+      "rail_stations",
+      "rail_platforms",
+      "rail_waypoints",
+      "train_depots",
+      "rail_signals",
+      "rail_reservations",
+      "trains",
+      "train_consists",
+      "train_orders",
+      "train_timetables",
+      "train_congestion",
+      "train_safety"
+    ],
+    "graph_edges": [
+      "track-connects",
+      "junction-branches",
+      "platform-serves",
+      "order-targets",
+      "consist-next",
+      "reservation-holds",
+      "crossing-intersects"
+    ],
+    "m15_compatibility": "append-only typed extension; M15 tensor and candidate bytes remain unchanged"
+  },
+  "schema_version": "openttd-rl-v2-m17-rail-contract-1",
+  "semantics": {
+    "competence": "passenger and freight service must produce positive delivery and income against frozen zero-service comparators on two deterministic seeds each",
+    "exact_replay": "every native case runs in two fresh processes with normalized byte-identical reports",
+    "loading_fixture": "deterministic station packets are loaded through the native StationCargoList into real consists before vehicle ticks",
+    "save_load": "M15 exact save/load replay remains a required regression dependency; M17 adds fresh-process exact twins around rail trajectories",
+    "scenario_setup": "empty-map source packets and sink acceptance are bounded qualification fixtures; construction, consist management, pathfinding, movement, delivery, and payment are native",
+    "signal_types": [
+      "block",
+      "entry",
+      "exit",
+      "combo",
+      "path",
+      "path-one-way"
+    ],
+    "track_orientations": [
+      "x",
+      "y",
+      "upper",
+      "lower",
+      "left",
+      "right"
+    ]
+  },
+  "version": "m17-rail-v1"
+}

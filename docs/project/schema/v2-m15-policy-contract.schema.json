@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-policy-contract.schema.json",
+  "title": "OpenTTD RL V2 M15 scalable policy contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "contract_id", "semantic_version", "status", "compatibility", "backend", "architecture", "inputs", "outputs", "masking", "checkpoint", "onnx", "verification"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-policy-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-policy-contract-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "contract_id": {"const": "m15-scalable-policy-v1"},
+    "semantic_version": {"const": 1},
+    "status": {"const": "FROZEN"},
+    "compatibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scalable_contract_sha256", "observation_schema_id", "action_schema_id", "v1_adapter"],
+      "properties": {
+        "scalable_contract_sha256": {"$ref": "#/$defs/sha256"},
+        "observation_schema_id": {"const": "v2-m15-observation-v1"},
+        "action_schema_id": {"const": "v2-m15-hierarchical-action-v1"},
+        "v1_adapter": {"const": "separate-bit-exact-v1-model-path"}
+      }
+    },
+    "backend": {
+      "type": "object", "additionalProperties": false,
+      "required": ["language", "standard", "tensor_backend", "version", "devices", "dtype", "mixed_precision", "minimum_compute_capability"],
+      "properties": {
+        "language": {"const": "C++"}, "standard": {"const": "C++20"},
+        "tensor_backend": {"const": "LibTorch"}, "version": {"const": "2.13.0+cu130"},
+        "devices": {"const": ["cpu", "cuda:0"]}, "dtype": {"const": "float32"},
+        "mixed_precision": {"const": false}, "minimum_compute_capability": {"const": "12.0"}
+      }
+    },
+    "architecture": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_id", "encoders", "fusion", "memory", "heads", "parameter_count"],
+      "properties": {
+        "schema_id": {"const": "v2-m15-policy-v1"},
+        "encoders": {"const": ["structured-mlp", "shared-spatial-cnn", "masked-entity-transformer", "graph-message-passing", "candidate-scorer"]},
+        "fusion": {"const": {"input_width": 768, "output_width": 256, "normalization": "layernorm", "activation": "silu"}},
+        "memory": {"const": {"kind": "GRUCell", "input_size": 256, "hidden_size": 256, "reset": "episode-boundary-and-explicit-bool-mask"}},
+        "heads": {"const": ["family_logits", "candidate_logits", "value"]},
+        "parameter_count": {"const": 1239406}
+      }
+    },
+    "inputs": {"type": "array", "minItems": 25, "maxItems": 25, "items": {"$ref": "#/$defs/tensor"}},
+    "outputs": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/tensor"}},
+    "masking": {
+      "const": {
+        "mask_dtype": "bool",
+        "illegal_logit": -1000000000,
+        "all_illegal": "reject-before-forward",
+        "padding": "masked-tokens-have-zero-attention-or-message-weight",
+        "candidate_family_range": [0, 11],
+        "graph_edge_index_range": [0, 2047]
+      }
+    },
+    "checkpoint": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_id", "boundary", "atomicity", "inventory", "state", "compatibility", "maximum_payload_bytes"],
+      "properties": {
+        "schema_id": {"const": "v2-m15-scalable-checkpoint-v1"},
+        "boundary": {"const": "after-completed-ppo-update-before-next-rollout"},
+        "atomicity": {"const": "new-staging-directory-fsync-rename-never-overwrite"},
+        "inventory": {"const": ["COMMITTED", "checkpoint.manifest", "model.pt", "optimizer.pt", "runtime.pt", "state.bin"]},
+        "state": {"const": ["model", "optimizer", "normalization_mean", "normalization_variance", "normalization_count", "rng_state", "curriculum_tier", "map_dimensions", "episode", "transition", "completed_updates", "hidden_state", "contract_identity"]},
+        "compatibility": {"const": "exact-schema-contract-inventory-and-payload-sha256-before-load"},
+        "maximum_payload_bytes": {"const": 1073741824}
+      }
+    },
+    "onnx": {
+      "type": "object", "additionalProperties": false,
+      "required": ["opset", "batch_axis", "capacity_axes", "inputs", "outputs", "mask_semantics", "recurrent_state", "training_state"],
+      "properties": {
+        "opset": {"const": 18}, "batch_axis": {"const": "dynamic-axis-0"},
+        "capacity_axes": {"const": "fixed-to-contract"},
+        "inputs": {"type": "array", "minItems": 25, "maxItems": 25, "items": {"type": "string"}},
+        "outputs": {"const": ["family_logits", "candidate_logits", "value", "next_hidden"]},
+        "mask_semantics": {"const": "explicit-bool-inputs-identical-to-native"},
+        "recurrent_state": {"const": "hidden_state-input-next_hidden-output-explicit-reset-input"},
+        "training_state": {"const": "excluded"}
+      }
+    },
+    "verification": {
+      "const": {
+        "devices": ["cpu", "cuda:0"],
+        "tests": ["shape", "finite", "mask", "gradient", "recurrent-retain-reset", "invalid-input", "checkpoint-round-trip", "checkpoint-never-overwrite"],
+        "checkpoint_forward_max_abs_error": 0,
+        "recurrent_reset_max_abs_error": 0
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "dimension": {"oneOf": [{"type": "integer", "minimum": 1}, {"const": "batch"}]},
+    "tensor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "dtype", "shape"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "dtype": {"enum": ["float32", "int64", "bool"]},
+        "shape": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"$ref": "#/$defs/dimension"}}
+      }
+    }
+  }
+}

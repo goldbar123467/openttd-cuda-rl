@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-action-evidence.schema.json",
+  "title": "OpenTTD RL V2 M15 hierarchical action frozen evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "contract_sha256", "action_contract_sha256", "action_source_sha256", "metadata_schema_sha256", "request_schema_sha256", "result_schema_sha256", "executable", "artifact_base_hint", "artifact_root", "map_cases", "action_cases", "determinism", "policy", "summary"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-action-evidence.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-action-evidence-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"}, "snapshot_date": {"const": "2026-08-02"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"}, "action_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "action_source_sha256": {"$ref": "#/$defs/sha256"}, "metadata_schema_sha256": {"$ref": "#/$defs/sha256"},
+    "request_schema_sha256": {"$ref": "#/$defs/sha256"}, "result_schema_sha256": {"$ref": "#/$defs/sha256"},
+    "executable": {
+      "type": "object", "additionalProperties": false, "required": ["sha256", "size"],
+      "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1000000}}
+    },
+    "artifact_base_hint": {"const": "/home/thecl/.codex/artifacts/openttd-rl"},
+    "artifact_root": {"const": "v2-m15-action-evidence-a"},
+    "map_cases": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/map_case"}},
+    "action_cases": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"$ref": "#/$defs/action_case"}},
+    "determinism": {
+      "type": "object", "additionalProperties": false,
+      "required": ["primary_artifact_dir", "repeat_artifact_dir", "observation_sha256", "candidate_metadata_sha256", "candidate_binary_sha256", "snapshot_token", "byte_identical"],
+      "properties": {
+        "primary_artifact_dir": {"const": "reset-0064x0064"}, "repeat_artifact_dir": {"const": "repeat-0064x0064"},
+        "observation_sha256": {"$ref": "#/$defs/sha256"}, "candidate_metadata_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_binary_sha256": {"$ref": "#/$defs/sha256"}, "snapshot_token": {"type": "string", "pattern": "^m15a1:[0-9a-f]{64}$"},
+        "byte_identical": {"const": true}
+      }
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["exact_candidate_bytes", "bounded_streaming_top_k", "full_native_domain_counts", "rectangular_maps", "maximum_budget_map", "all_initial_families_executed", "all_twelve_families_executed", "typed_invalid_no_mutation", "g15_pass_claim"],
+      "properties": {
+        "exact_candidate_bytes": {"const": 790528}, "bounded_streaming_top_k": {"const": true}, "full_native_domain_counts": {"const": true},
+        "rectangular_maps": {"const": true}, "maximum_budget_map": {"const": true}, "all_initial_families_executed": {"const": true},
+        "all_twelve_families_executed": {"const": false}, "typed_invalid_no_mutation": {"const": true}, "g15_pass_claim": {"const": false}
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["map_cases", "action_cases", "passed", "candidate_bytes", "maximum_rss_kib", "maximum_wall_seconds", "maximum_total_legal", "maximum_omitted_legal", "positive_actions", "negative_actions"],
+      "properties": {
+        "map_cases": {"const": 4}, "action_cases": {"const": 10}, "passed": {"const": 14}, "candidate_bytes": {"const": 790528},
+        "maximum_rss_kib": {"type": "integer", "minimum": 1}, "maximum_wall_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "maximum_total_legal": {"type": "integer", "minimum": 1000000}, "maximum_omitted_legal": {"type": "integer", "minimum": 1},
+        "positive_actions": {"const": 6}, "negative_actions": {"const": 4}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "map_case": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_dir", "width", "height", "seed", "outcome", "candidate_bytes", "selected_candidates", "total_legal", "omitted_legal", "maximum_rss_kib", "wall_seconds", "manifest_sha256", "projection_sha256", "observation_sha256", "candidate_metadata_sha256", "candidate_binary_sha256", "snapshot_token", "evidence_sha256", "transcript_sha256", "oracle_checks"],
+      "properties": {
+        "artifact_dir": {"type": "string", "pattern": "^reset-[0-9]{4}x[0-9]{4}$"}, "width": {"type": "integer", "minimum": 64, "maximum": 1024},
+        "height": {"type": "integer", "minimum": 64, "maximum": 1024}, "seed": {"type": "integer", "minimum": 0}, "outcome": {"const": "PASS"},
+        "candidate_bytes": {"const": 790528}, "selected_candidates": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "total_legal": {"type": "integer", "minimum": 1}, "omitted_legal": {"type": "integer", "minimum": 0},
+        "maximum_rss_kib": {"type": "integer", "minimum": 1}, "wall_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"}, "projection_sha256": {"$ref": "#/$defs/sha256"}, "observation_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_metadata_sha256": {"$ref": "#/$defs/sha256"}, "candidate_binary_sha256": {"$ref": "#/$defs/sha256"},
+        "snapshot_token": {"type": "string", "pattern": "^m15a1:[0-9a-f]{64}$"}, "evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "transcript_sha256": {"$ref": "#/$defs/sha256"}, "oracle_checks": {"type": "array", "minItems": 7, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "action_case": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_dir", "category", "family_index", "candidate_row", "status", "mutated", "command_count", "tick_delta", "request_sha256", "result_sha256", "evidence_sha256"],
+      "properties": {
+        "artifact_dir": {"type": "string", "pattern": "^(positive|negative)-[a-z0-9-]+$"}, "category": {"enum": ["positive", "negative"]},
+        "family_index": {"type": "integer", "minimum": 0, "maximum": 11}, "candidate_row": {"type": "integer", "minimum": 0},
+        "status": {"enum": ["SUCCESS", "NO_OP", "STALE_TOKEN", "OUT_OF_RANGE", "ILLEGAL_CANDIDATE", "FAMILY_MISMATCH"]},
+        "mutated": {"type": "boolean"}, "command_count": {"type": "integer", "minimum": 0}, "tick_delta": {"const": 0},
+        "request_sha256": {"$ref": "#/$defs/sha256"}, "result_sha256": {"$ref": "#/$defs/sha256"}, "evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

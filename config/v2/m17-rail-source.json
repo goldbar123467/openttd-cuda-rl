@@ -1,0 +1,40 @@
+{
+  "base": {
+    "commit": "ceb913106af64d6a1a9c50afb15bf4437297363b",
+    "tree": "71571eeb60eeb0b6267e063dcdaa6ec704590102"
+  },
+  "build": {
+    "cmake_arguments": [
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+      "-DOPTION_RL_ENVIRONMENT=ON",
+      "-DOPTION_RL_NEURAL_AGENT=OFF",
+      "-DOPTION_USE_ASSERTS=ON"
+    ],
+    "open_gfx": {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m17-rail-a/build/baseset/opengfx-8.0.tar",
+      "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c"
+    },
+    "upstream_ctest": {
+      "passed": 98,
+      "total": 98
+    }
+  },
+  "executable": {
+    "bytes": 407996528,
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m17-rail-a/build/openttd",
+    "sha256": "f3a6d9a39cebd171697516b41b5ac5d857e887cfe83e4de0df9f957a0466e9ff"
+  },
+  "patch": {
+    "path": "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+    "sha256": "f9f073c9771af2e3048050948f25cafdccb74c013f72c7fcb3f899349283cc65"
+  },
+  "retained_artifact": "/home/thecl/.codex/artifacts/openttd-rl/v2-m17-rail-a",
+  "schema_version": "openttd-rl-v2-m17-rail-source-1",
+  "source": {
+    "commit": "eb7b769eb9339ecbde7ed69015230079e92d3316",
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m17-rail-a/source",
+    "tree": "c9fd523f51bfb68c8da114e64f8183dc48496abb"
+  }
+}

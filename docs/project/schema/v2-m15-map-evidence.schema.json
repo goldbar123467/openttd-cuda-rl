@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-m15-map-evidence.schema.json",
+  "title": "OpenTTD RL V2 M15 native map qualification matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "engine_source", "executable", "contract_sha256", "artifact_base_hint", "artifact_root", "seed", "policy", "results", "counts"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-map-evidence.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-map-evidence-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"type": "string", "format": "date"},
+    "engine_source": {"type": "object", "additionalProperties": false, "required": ["release", "commit", "tree"], "properties": {"release": {"const": "15.3"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}},
+    "executable": {"type": "object", "additionalProperties": false, "required": ["sha256", "size"], "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1}}},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "artifact_base_hint": {"type": "string", "minLength": 1},
+    "artifact_root": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"},
+    "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+    "policy": {"type": "object", "additionalProperties": false, "required": ["all_49_rectangles", "generated_at_or_below_tile_budget", "preflight_rejected_above_tile_budget", "save_load_required_for_generated", "all_outcomes_retained"], "properties": {"all_49_rectangles": {"const": true}, "generated_at_or_below_tile_budget": {"const": true}, "preflight_rejected_above_tile_budget": {"const": true}, "save_load_required_for_generated": {"const": true}, "all_outcomes_retained": {"const": true}}},
+    "results": {"type": "array", "minItems": 49, "maxItems": 49, "items": {"$ref": "#/$defs/result"}},
+    "counts": {"type": "object", "additionalProperties": false, "required": ["rectangles", "generated", "preflight_rejected", "save_bytes", "maximum_rss_kib", "summed_wall_seconds"], "properties": {"rectangles": {"const": 49}, "generated": {"type": "integer", "minimum": 1}, "preflight_rejected": {"type": "integer", "minimum": 1}, "save_bytes": {"type": "integer", "minimum": 1}, "maximum_rss_kib": {"type": "integer", "minimum": 1}, "summed_wall_seconds": {"type": "number", "minimum": 0}}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "result": {"type": "object", "additionalProperties": false, "required": ["width", "height", "tile_count", "outcome", "reason_code", "artifact_dir", "evidence_file", "evidence_sha256", "map_sha256", "save_sha256", "save_size", "max_rss_kib", "wall_seconds"], "properties": {"width": {"type": "integer", "minimum": 64, "maximum": 4096}, "height": {"type": "integer", "minimum": 64, "maximum": 4096}, "tile_count": {"type": "integer", "minimum": 4096, "maximum": 16777216}, "outcome": {"enum": ["GENERATED", "PREFLIGHT_REJECTED"]}, "reason_code": {"type": ["string", "null"], "enum": [null, "tile-count-exceeds-useful-play-preflight-budget"]}, "artifact_dir": {"type": "string", "pattern": "^map-[0-9]{4}x[0-9]{4}$"}, "evidence_file": {"const": "m15-map-qualification.json"}, "evidence_sha256": {"$ref": "#/$defs/sha256"}, "map_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}, "save_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}, "save_size": {"type": ["integer", "null"], "minimum": 1}, "max_rss_kib": {"type": "integer", "minimum": 0}, "wall_seconds": {"type": "number", "minimum": 0}}}
+  }
+}

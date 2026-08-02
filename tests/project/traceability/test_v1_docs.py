@@ -70,6 +70,15 @@ class V1DocumentLintTests(unittest.TestCase):
             with self.assertRaisesRegex(lint_project_docs.DocLintError, "is not accepted"):
                 lint_project_docs.check_authority_for_adr(document, root)
 
+    def test_repository_authority_includes_active_v2(self) -> None:
+        goal = (self.root / "GOAL.md").read_text(encoding="utf-8")
+        readme = (self.root / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Version 2 active expansion", goal)
+        self.assertIn("Version 2 is now active", readme)
+        self.assertIn("](docs/project/V2_RESEARCH.md)", readme)
+        self.assertIn("](docs/project/V2_PLAN.md)", readme)
+        self.assertIn("](docs/project/requirements-v2.json)", readme)
+
 
 if __name__ == "__main__":
     unittest.main()

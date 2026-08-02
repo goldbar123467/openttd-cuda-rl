@@ -1,0 +1,150 @@
+{
+  "$schema": "../../docs/project/schema/v2-opponent-package-evidence.schema.json",
+  "schema_version": "openttd-rl-v2-opponent-package-evidence-1",
+  "schema_sha256": "b5b6d01f0f5207ee497336e196c6bf8c21caa5fa4cf352316bdabded9227b7d5",
+  "snapshot_date": "2026-08-02",
+  "engine_source": {
+    "release": "15.3",
+    "commit": "14ec60f248547d4d062a1160f0fc26d742319888",
+    "tree": "02d8cbbb0d8c030698d37ca76ab2773b6e23c397"
+  },
+  "executable": {
+    "sha256": "8b27f06113d08fa3a21f81c01721873194f35bf885963be2697cc9da52e1ef9a",
+    "size": 390926320
+  },
+  "artifact_base_hint": "/home/thecl/.codex/artifacts/openttd-rl",
+  "policy": {
+    "catalog_list_is_not_qualification": true,
+    "dependencies_are_transitive": true,
+    "rejections_are_retained": true,
+    "locked_packages_may_enter_qualification": true
+  },
+  "results": [
+    {
+      "name": "AAAHogEx",
+      "content_unique_id": "484f4745",
+      "version": 115,
+      "outcome": "LOCKED",
+      "artifact_dir": "v2-m14-ai-aaahogex-a",
+      "evidence_file": "ai-package-lock.json",
+      "evidence_sha256": "6c30a080985dd95f056f40a8fb386883f27466afee9380ded4767908d5825fbe",
+      "package_count": 1,
+      "archive_bytes": 1239040,
+      "license_files": 1,
+      "closure_sha256": "4dff95d4859cb6c0b2171ac4b52bf1cf8beafd84f06ce5b11da9593da3f57312"
+    },
+    {
+      "name": "ChooChoo",
+      "content_unique_id": "43484f4f",
+      "version": 434,
+      "outcome": "REJECTED",
+      "artifact_dir": "v2-m14-ai-choochoo-b",
+      "evidence_file": "ai-package-rejection.json",
+      "evidence_sha256": "8b857dafae426b80738b382cec601a7427bf264d1a5b722ed3dc3642ebcfb2bd",
+      "reason_code": "catalog-listed-unselectable",
+      "transcript_sha256": "19e26d30bdbe2998dff19e36a377b9f8ff28e96bbd6183cef71228b89d997c5d"
+    },
+    {
+      "name": "KrakenAI2",
+      "content_unique_id": "4b524132",
+      "version": 3,
+      "outcome": "LOCKED",
+      "artifact_dir": "v2-m14-ai-krakenai2-b",
+      "evidence_file": "ai-package-lock.json",
+      "evidence_sha256": "32e5d09951bc0c7f71d67f6e036643b131de059f2fc54ce388b0ecd8e36a250e",
+      "package_count": 5,
+      "archive_bytes": 645120,
+      "license_files": 5,
+      "closure_sha256": "c6601cfff243b8fb94627a4993617ff4edd5e259c0ea2291c4721e21431c82f3"
+    },
+    {
+      "name": "LuDiAI AfterFix",
+      "content_unique_id": "4c444146",
+      "version": 27,
+      "outcome": "LOCKED",
+      "artifact_dir": "v2-m14-ai-ludiai-afterfix-b",
+      "evidence_file": "ai-package-lock.json",
+      "evidence_sha256": "be1c778e69e36087b8beb5cc6ac77a0bb733f17cda4d12f0810a55d1434faabe",
+      "package_count": 1,
+      "archive_bytes": 890880,
+      "license_files": 1,
+      "closure_sha256": "647fa0a8066f3274b8a91a2b98cf0370841d33d662acbfbbb3887994c016e455"
+    },
+    {
+      "name": "Lufthansa",
+      "content_unique_id": "4c554654",
+      "version": 2,
+      "outcome": "LOCKED",
+      "artifact_dir": "v2-m14-ai-lufthansa-a",
+      "evidence_file": "ai-package-lock.json",
+      "evidence_sha256": "6aaffec5f7754b1776a05ac90911309cb5a474c44e19566d5246177308dc0755",
+      "package_count": 1,
+      "archive_bytes": 30720,
+      "license_files": 1,
+      "closure_sha256": "c24174795b33fbb6cba1145f74814b69aac407aaf5a74e6466b714c0e60295a4"
+    },
+    {
+      "name": "NoOpAI",
+      "content_unique_id": "4e6f7041",
+      "version": 4,
+      "outcome": "LOCKED",
+      "artifact_dir": "v2-m14-ai-noopai-b",
+      "evidence_file": "ai-package-lock.json",
+      "evidence_sha256": "2594108b831c202a1d58daa454e4a4281cb461ec1a5e79096fbbaf78206453e1",
+      "package_count": 1,
+      "archive_bytes": 20480,
+      "license_files": 1,
+      "closure_sha256": "575c0ffd971121efa30f3cd373c171e3f5823f8a62115c5559ba7cbd3b22fbdc"
+    },
+    {
+      "name": "ShipAI",
+      "content_unique_id": "53484950",
+      "version": 10,
+      "outcome": "LOCKED",
+      "artifact_dir": "v2-m14-ai-shipai-a",
+      "evidence_file": "ai-package-lock.json",
+      "evidence_sha256": "d8f85a6e4218d8434c1f0383106866873c136c774a0a2699d73e7ed9b4c29aff",
+      "package_count": 1,
+      "archive_bytes": 184320,
+      "license_files": 1,
+      "closure_sha256": "518b68121df9fc487aa4258b9dd95623b33b5b5ea35cebc5b4ce53be718a6a38"
+    },
+    {
+      "name": "SimpleAI",
+      "content_unique_id": "534d504c",
+      "version": 14,
+      "outcome": "REJECTED",
+      "artifact_dir": "v2-m14-ai-simpleai-b",
+      "evidence_file": "ai-package-rejection.json",
+      "evidence_sha256": "08bb8a3a5922373a095ba7cb3d50285053c27438d86ca755ed79db5f5761e95d",
+      "reason_code": "catalog-listed-unselectable",
+      "transcript_sha256": "3796d98be8e824eac1521e060464018c83f3c43a8614ce3a0c962cecd21f1f54"
+    },
+    {
+      "name": "Trans AI",
+      "content_unique_id": "46544149",
+      "version": 200626,
+      "outcome": "LOCKED",
+      "artifact_dir": "v2-m14-ai-trans-ai-c",
+      "evidence_file": "ai-package-lock.json",
+      "evidence_sha256": "4d845c37f7ed84e39057e53e8476e77a8909a43cedea3c4630f0b6ed35adc795",
+      "package_count": 1,
+      "archive_bytes": 327680,
+      "license_files": 1,
+      "closure_sha256": "2247266009c03ee29321af9643c860d9e371b0dd94939aa51146b045e5830f69"
+    },
+    {
+      "name": "WmDOT",
+      "content_unique_id": "7d7d6d57",
+      "version": 16,
+      "outcome": "LOCKED",
+      "artifact_dir": "v2-m14-ai-wmdot-b",
+      "evidence_file": "ai-package-lock.json",
+      "evidence_sha256": "2e32a941ab3afdb4b09401ad8d1877a7209166831c855285754072938d5855d5",
+      "package_count": 7,
+      "archive_bytes": 1003520,
+      "license_files": 7,
+      "closure_sha256": "1bef02f8eebcbdd3ef0c11cc17a7f1b959e19d61ce6a8147165e35878e277e6f"
+    }
+  ]
+}

@@ -4,6 +4,88 @@ OpenTTD RL is a source-integrated C++/CUDA reinforcement-learning platform that
 trains PPO policies for controlled passenger-bus games, exports them to ONNX, and
 runs them as a visible neural company inside normal OpenTTD.
 
+**Version 2 is now active.** It expands the released V1 system to native map sizes,
+all base cargo/industry chains and transport modes, multimodal planning, and
+reproducible shared-map competition against byte-pinned OpenTTD AIs. G14 authority
+and opponent qualification, G15 scalable passenger operation, G16 cargo/industry
+accounting, and G17 rail networks have passed. This repository intentionally
+stops at G17; M18 has not started and no V2 release claim has been made.
+
+[`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
+· [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
+· [`V2 machine research baseline`](config/v2/research-baseline.json)
+· [`V2 pinned setting inventory`](config/v2/setting-inventory.json)
+· [`V2 atomic requirements`](docs/project/requirements-v2.json)
+· [`V2 defect ledger`](docs/project/defects-v2.json)
+· [`M14 package evidence`](config/v2/opponent-package-evidence.json)
+· [`M14 runtime evidence`](config/v2/opponent-runtime-evidence.json)
+· [`M14 frozen competition manifest`](config/v2/m14-competition-manifest.json)
+· [`M15 scalable machine contract`](config/v2/m15-scalable-contract.json)
+· [`M15 native map evidence`](config/v2/m15-map-evidence.json)
+· [`M15 native source evidence`](config/v2/m15-native-source.json)
+· [`M15 native reset evidence`](config/v2/m15-native-reset-evidence.json)
+· [`M15 complete reset matrix`](config/v2/m15-native-reset-matrix.json)
+· [`M15 observation contract`](config/v2/m15-observation-contract.json)
+· [`M15 observation source evidence`](config/v2/m15-observation-source.json)
+· [`M15 observation oracle evidence`](config/v2/m15-observation-evidence.json)
+· [`M15 action contract`](config/v2/m15-action-contract.json)
+· [`M15 action source evidence`](config/v2/m15-action-source.json)
+· [`M15 action oracle evidence`](config/v2/m15-action-evidence.json)
+· [`M15 stateful episode program`](config/v2/m15-episode-program.json)
+· [`M15 episode source evidence`](config/v2/m15-episode-source.json)
+· [`M15 lifecycle/replay evidence`](config/v2/m15-episode-evidence.json)
+· [`M15 scalable policy contract`](config/v2/m15-policy-contract.json)
+· [`M15 CPU/CUDA policy evidence`](config/v2/m15-policy-evidence.json)
+· [`M15 cross-scale replay program`](config/v2/m15-cross-scale-replay-program.json)
+· [`M15 cross-scale replay evidence`](config/v2/m15-cross-scale-replay-evidence.json)
+· [`M15 passenger competence program`](config/v2/m15-competence-program.json)
+· [`M15 passenger competence source`](config/v2/m15-competence-source.json)
+· [`M15 passenger competence evidence`](config/v2/m15-competence-evidence.json)
+· [`M16 cargo/industry contract`](config/v2/m16-cargo-contract.json)
+· [`M16 cargo source evidence`](config/v2/m16-cargo-source.json)
+· [`M16 cargo matrix evidence`](config/v2/m16-cargo-evidence.json)
+· [`M17 rail contract`](config/v2/m17-rail-contract.json)
+· [`M17 rail source evidence`](config/v2/m17-rail-source.json)
+· [`M17 rail matrix evidence`](config/v2/m17-rail-evidence.json)
+· [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
+· [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
+· [`M14 competition protocol`](docs/project/M14_INVENTORY_AND_COMPETITION.md)
+· [`G14 gate report`](docs/project/G14_GATE_REPORT.md)
+· [`M15 scalable contract`](docs/project/M15_SCALABLE_CONTRACT.md)
+· [`G15 gate report`](docs/project/G15_GATE_REPORT.md)
+· [`M16 cargo/industry contract`](docs/project/M16_CARGO_INDUSTRY_CONTRACT.md)
+· [`G16 gate report`](docs/project/G16_GATE_REPORT.md)
+· [`M17 rail network contract`](docs/project/M17_RAIL_NETWORK_CONTRACT.md)
+· [`G17 gate report`](docs/project/G17_GATE_REPORT.md)
+
+## Version 2 implementation through G17
+
+The committed V2 work is a gate-controlled expansion, not a release candidate:
+
+- M14/G14 freezes the 15.3 feature, command, setting, map, source, package,
+  runtime, and competition authority. It inventories 18 gameplay domains, 145
+  commands, 435 settings, 49 native rectangles, and ten external-AI candidates.
+- M15/G15 provides the scalable 4,096-row hierarchical action surface, bounded
+  observations, exact reset/save/load/replay, and a 1,239,406-parameter recurrent
+  CPU/CUDA policy contract. Twelve retained native competence runs demonstrate
+  useful passenger service through held-out rectangular and 1024 tiers.
+- M16/G16 covers all 46 base-climate cargo occurrences, 31 labels, 37 industry
+  specs, 24 production edges, passenger/mail coordination, subsidies, and
+  exploit-free transfer accounting in 102 cases and 204 exact-twin native runs.
+- M17/G17 adds 24 rail action families, four rail types, six track orientations,
+  116 train engine entries, 12 signal variants, native train lifecycle and rail
+  save/load. Its 14-case/28-run matrix includes profitable passenger and freight
+  service and a 32,768-tick, two-train junction-connected soak with no unresolved
+  deadlock or unexplained collision; all 14 twins are exact.
+
+Cargo packets, sink acceptance, and competence preloading in M16/M17 are bounded
+qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
+payment, and the M17 save/load transition are native. The useful-service
+controllers are deterministic qualification oracles, not learned generalist
+policies. Runs truthfully record `rlimit-only` isolation because bubblewrap
+namespaces are unavailable on the WSL host. M18 ships/waterways is the next
+planned stage and is deliberately absent from this stopping-point commit.
+
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
 **Version 1 is complete.** The clean M12 release gate passed 12 campaigns, all
@@ -38,6 +120,13 @@ for the full supported-host workflow.
 The unfinished legacy P0 64 by 64 road-freight workstream is retained only for
 deterministic tooling and historical evidence; it is not V1 bus/RL progress.
 
+Validate the current V2 research/command inventory, its mutation tests, and the
+full frozen V1 traceability regression with:
+
+```bash
+./scripts/v2/verify.sh
+```
+
 OpenTTD RL is distributed under [`GPL-2.0-only`](LICENSE). OpenTTD, OpenGFX,
 ONNX Runtime, PyTorch/LibTorch, CUDA, and other dependencies retain their own
 terms; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). This is an
@@ -45,8 +134,10 @@ independent project and does not imply OpenTTD endorsement.
 
 ## Start here
 
-1. [`GOAL.md`](GOAL.md) — authoritative project scope and Version 1 definition of
-   done.
+1. [`GOAL.md`](GOAL.md) — authoritative project scope, frozen V1 boundary and
+   active V2 objective.
+   Start V2 work with [`V2_RESEARCH.md`](docs/project/V2_RESEARCH.md) and
+   [`V2_PLAN.md`](docs/project/V2_PLAN.md).
 2. [`docs/project/REQUIREMENTS.md`](docs/project/REQUIREMENTS.md) — atomic
    requirements and acceptance evidence.
    The synchronized machine registry is
@@ -149,6 +240,9 @@ independent project and does not imply OpenTTD endorsement.
 | Headless RL environment API | Versioned local framing, typed lifecycle, process isolation, 1–128 tick stepping, repeated all-template oracle | `M03/G03 PASS`; frozen synchronization boundary |
 | Structured/spatial observations | Frozen native encoder, exhaustive semantics, shared bytes, and 264,192 actual-engine comparisons | `M04/G04 PASS`; frozen observation boundary |
 | Legal bus action masking | Fixed 41-action catalog, boundary tokens, native command test/execute paths, 614 oracle comparisons, and profitable all-template trajectories | `M05/G05 PASS`; frozen action boundary |
+| V2 scalable environment/policy | Fixed 4,096-row typed actions, all 12 families, exact rollback, 18-run replay through 1024², a 1.24M-parameter recurrent CPU/CUDA policy, and 12-run useful passenger service through held-out rectangle/1024 tiers | `M15/G15 PASS`; frozen scalable passenger boundary |
+| V2 cargo and industries | All 46 four-climate cargo occurrences, 31 labels, 37 industry specs, 24 production edges, 204 exact-twin native runs, shared passenger/mail, subsidies, and exploit-free transfer accounting | `M16/G16 PASS`; frozen cargo/accounting boundary |
+| V2 rail networks | Four rail types, six track orientations, 116 train engine entries, 12 signal variants, native consists/orders/timetables/service/autoreplace/save-load, profitable passenger/freight runs, and a 32,768-tick two-train junction soak | `M17/G17 PASS`; frozen rail boundary; M18 not started |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

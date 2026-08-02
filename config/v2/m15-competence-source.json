@@ -1,0 +1,28 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-competence-source.schema.json",
+  "schema_version": "openttd-rl-v2-m15-competence-source-1",
+  "schema_sha256": "843be6145dbd30f7961cd5b31eebb75b60593e69ccb6ab681f2ac430b020cc9e",
+  "snapshot_date": "2026-08-02",
+  "base": {
+    "kind": "m15-stateful-episode-result",
+    "commit": "5e33497bd224ac32074795ab4d4d268cf9981a8b",
+    "tree": "b2dde6bb99a108c98be697f845009c691ecc8593",
+    "episode_source_evidence_sha256": "ef65d7e03b3fb2f81aa547a0297ada80d848da197ce94d98630cb4ca4abec6df"
+  },
+  "patch": {
+    "path": "integration/openttd/patches/15.3/m15/competence/0001-Add-deterministic-V2-passenger-service-qualification.patch",
+    "sha256": "86d3b031273cf7b8c19b2f3920a40ff992a95b4086099218df30274a98df3789"
+  },
+  "result": {
+    "commit": "abc1912e290d8f49221fb3f68e30f3bcb3190ec9",
+    "tree": "fb9a95a7bb03f279a2965516713afd759010a46b",
+    "episode_operation": "SERVICE",
+    "v1_path_modified": false
+  },
+  "build": {
+    "artifact_root": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-competence-a",
+    "cmake_options": ["CMAKE_BUILD_TYPE=RelWithDebInfo", "OPTION_RL_ENVIRONMENT=ON", "OPTION_RL_NEURAL_AGENT=OFF", "OPTION_USE_ASSERTS=ON"],
+    "executable": {"path": "build/openttd", "sha256": "a8b72d477967743f9f64800ec89d7d9301ce40f7717f1689e2dc8aa1b616b6d1", "size": 400701752},
+    "ctest": {"tests": 98, "passed": 98, "failed": 0}
+  }
+}

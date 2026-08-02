@@ -1,0 +1,221 @@
+From abc1912e290d8f49221fb3f68e30f3bcb3190ec9 Mon Sep 17 00:00:00 2001
+From: OpenTTD-RL V2 Evidence <openttd-rl-v2@localhost>
+Date: Sun, 2 Aug 2026 14:25:02 -0400
+Subject: [PATCH] Add deterministic V2 passenger service qualification
+
+---
+ src/rl_v2_action.cpp | 184 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 184 insertions(+)
+
+diff --git a/src/rl_v2_action.cpp b/src/rl_v2_action.cpp
+index 1527ae3..a1074e6 100644
+--- a/src/rl_v2_action.cpp
++++ b/src/rl_v2_action.cpp
+@@ -42,6 +42,7 @@
+ #include <fstream>
+ #include <limits>
+ #include <map>
++#include <optional>
+ #include <queue>
+ #include <stdexcept>
+ #include <tuple>
+@@ -468,6 +469,180 @@ static json ExecuteCandidate(const Candidate &candidate, bool inject_route_secon
+ 	return {{"native_commands",std::move(commands)},{"rolled_back",rolled_back},{"status",status}};
+ }
+ 
++struct ServiceSite {
++	std::vector<TileIndex> line;
++	TileIndex depot;
++	DiagDirection depot_direction;
++	uint32_t house_score;
++};
++
++static uint32_t HousesNear(TileIndex tile)
++{
++	uint32_t result = 0;
++	int center_x = static_cast<int>(TileX(tile));
++	int center_y = static_cast<int>(TileY(tile));
++	for (int dy = -4; dy <= 4; ++dy) {
++		for (int dx = -4; dx <= 4; ++dx) {
++			int x = center_x + dx;
++			int y = center_y + dy;
++			if (x >= 0 && y >= 0 && x < static_cast<int>(Map::SizeX()) && y < static_cast<int>(Map::SizeY()) &&
++				IsTileType(TileXY(static_cast<uint>(x), static_cast<uint>(y)), MP_HOUSE)) ++result;
++		}
++	}
++	return result;
++}
++
++static std::optional<ServiceSite> TestServiceLine(uint x, uint y, bool vertical, uint length)
++{
++	ServiceSite site{{}, INVALID_TILE, INVALID_DIAGDIR, 0};
++	for (uint offset = 0; offset < length; ++offset) {
++		TileIndex tile = TileXY(x + (vertical ? 0 : offset), y + (vertical ? offset : 0));
++		if (!IsTileType(tile, MP_CLEAR)) return std::nullopt;
++		site.line.push_back(tile);
++	}
++	DiagDirection first_direction = DiagdirBetweenTiles(site.line.front(), site.line[1]);
++	DiagDirection second_direction = DiagdirBetweenTiles(site.line.back(), site.line[length - 2]);
++	if (Command<CMD_BUILD_ROAD_STOP>::Do({}, site.line.front(), 1, 1, RoadStopType::Bus, false,
++			first_direction, ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false).Failed() ||
++		Command<CMD_BUILD_ROAD_STOP>::Do({}, site.line.back(), 1, 1, RoadStopType::Bus, false,
++			second_direction, ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false).Failed()) return std::nullopt;
++	for (uint offset = 1; offset + 1 < length; ++offset) {
++		RoadBits bits = DiagDirToRoadBits(DiagdirBetweenTiles(site.line[offset], site.line[offset - 1])) |
++			DiagDirToRoadBits(DiagdirBetweenTiles(site.line[offset], site.line[offset + 1]));
++		if (Command<CMD_BUILD_ROAD>::Do({}, site.line[offset], bits, ROADTYPE_ROAD, DRD_NONE, TownID::Invalid()).Failed()) return std::nullopt;
++	}
++	TileIndex connection = site.line[length / 2];
++	for (int side : {-1, 1}) {
++		uint depot_x = vertical ? static_cast<uint>(static_cast<int>(x) + side) : TileX(connection);
++		uint depot_y = vertical ? TileY(connection) : static_cast<uint>(static_cast<int>(y) + side);
++		TileIndex depot = TileXY(depot_x, depot_y);
++		if (!IsTileType(depot, MP_CLEAR)) continue;
++		DiagDirection direction = DiagdirBetweenTiles(depot, connection);
++		if (Command<CMD_BUILD_ROAD_DEPOT>::Do({}, depot, ROADTYPE_ROAD, direction).Succeeded()) {
++			site.depot = depot;
++			site.depot_direction = direction;
++			break;
++		}
++	}
++	if (site.depot == INVALID_TILE) return std::nullopt;
++	RoadBits junction_bits = DiagDirToRoadBits(DiagdirBetweenTiles(connection, site.line[length / 2 - 1])) |
++		DiagDirToRoadBits(DiagdirBetweenTiles(connection, site.line[length / 2 + 1])) |
++		DiagDirToRoadBits(ReverseDiagDir(site.depot_direction));
++	if (Command<CMD_BUILD_ROAD>::Do({}, connection, junction_bits, ROADTYPE_ROAD, DRD_NONE, TownID::Invalid()).Failed()) return std::nullopt;
++	uint32_t first_houses = HousesNear(site.line.front());
++	uint32_t second_houses = HousesNear(site.line.back());
++	if (first_houses == 0 || second_houses == 0) return std::nullopt;
++	site.house_score = std::min(first_houses, second_houses) * 10000 + first_houses + second_houses;
++	return site;
++}
++
++static ServiceSite FindServiceSite()
++{
++	std::optional<ServiceSite> best;
++	for (const Town *town : Town::Iterate()) {
++		int center_x = static_cast<int>(TileX(town->xy));
++		int center_y = static_cast<int>(TileY(town->xy));
++		for (bool vertical : {false, true}) {
++			for (uint length : {8U, 10U, 12U}) {
++				int maximum_x = static_cast<int>(Map::SizeX()) - (vertical ? 1 : static_cast<int>(length));
++				int maximum_y = static_cast<int>(Map::SizeY()) - (vertical ? static_cast<int>(length) : 1);
++				for (int y = std::max(1, center_y - 20); y <= std::min(maximum_y - 1, center_y + 20); ++y) {
++					for (int x = std::max(1, center_x - 20); x <= std::min(maximum_x - 1, center_x + 20); ++x) {
++						auto candidate = TestServiceLine(static_cast<uint>(x), static_cast<uint>(y), vertical, length);
++						if (!candidate.has_value()) continue;
++						if (!best.has_value() || candidate->house_score > best->house_score ||
++							(candidate->house_score == best->house_score && candidate->line.front() < best->line.front())) best = std::move(candidate);
++					}
++				}
++			}
++		}
++	}
++	Require(best.has_value(), "service planner found no connected passenger-bus site near generated houses");
++	return std::move(*best);
++}
++
++static json RunPassengerService()
++{
++	static constexpr uint64_t TICK_LIMIT = 65536;
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	Require(IsValidCargoType(passengers), "passenger cargo label is unavailable");
++	size_t baseline_vehicle_count = Vehicle::GetNumItems();
++	for (const Vehicle *vehicle : Vehicle::Iterate()) {
++		Require(vehicle->owner != CompanyID::Begin(), "service baseline contains a pre-existing learning-company vehicle");
++	}
++	Require(Station::GetNumItems() == 0 && Depot::GetNumItems() == 0,
++		"service baseline requires an empty learning-company transport pool");
++	ServiceSite site = FindServiceSite();
++	json commands = json::array();
++	auto execute = [&commands](std::string_view name, auto &&call) {
++		CommandCost cost = call();
++		commands.push_back(CommandLog(name, "SERVICE", cost));
++		Require(cost.Succeeded(), fmt::format("service command {} failed", name));
++	};
++	CommandCost loan = Command<CMD_INCREASE_LOAN>::Do(DoCommandFlag::Execute, LoanCommand::Max, Money{0});
++	commands.push_back(CommandLog("CMD_INCREASE_LOAN", "SERVICE", loan));
++	for (size_t offset = 1; offset + 1 < site.line.size(); ++offset) {
++		RoadBits bits = DiagDirToRoadBits(DiagdirBetweenTiles(site.line[offset], site.line[offset - 1])) |
++			DiagDirToRoadBits(DiagdirBetweenTiles(site.line[offset], site.line[offset + 1]));
++		if (offset == site.line.size() / 2) bits |= DiagDirToRoadBits(ReverseDiagDir(site.depot_direction));
++		execute("CMD_BUILD_ROAD", [&] { return Command<CMD_BUILD_ROAD>::Do(DoCommandFlag::Execute,
++			site.line[offset], bits, ROADTYPE_ROAD, DRD_NONE, TownID::Invalid()); });
++	}
++	execute("CMD_BUILD_ROAD_STOP", [&] { return Command<CMD_BUILD_ROAD_STOP>::Do(DoCommandFlag::Execute,
++		site.line.front(), 1, 1, RoadStopType::Bus, false, DiagdirBetweenTiles(site.line.front(), site.line[1]),
++		ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false); });
++	execute("CMD_BUILD_ROAD_STOP", [&] { return Command<CMD_BUILD_ROAD_STOP>::Do(DoCommandFlag::Execute,
++		site.line.back(), 1, 1, RoadStopType::Bus, false, DiagdirBetweenTiles(site.line.back(), site.line[site.line.size() - 2]),
++		ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false); });
++	execute("CMD_BUILD_ROAD_DEPOT", [&] { return Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute,
++		site.depot, ROADTYPE_ROAD, site.depot_direction); });
++	auto built = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, site.depot, BUS_ENGINE, true, passengers, INVALID_CLIENT_ID);
++	commands.push_back(CommandLog("CMD_BUILD_VEHICLE", "SERVICE", std::get<0>(built)));
++	Require(std::get<0>(built).Succeeded(), "service bus purchase failed");
++	VehicleID vehicle_id = std::get<1>(built);
++	for (uint8_t index = 0; index < 2; ++index) {
++		Order order;
++		order.MakeGoToStation(StationID{index});
++		order.SetStopLocation(OrderStopLocation::FarEnd);
++		execute("CMD_INSERT_ORDER", [&] { return Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute,
++			vehicle_id, VehicleOrderID{index}, order); });
++	}
++	execute("CMD_START_STOP_VEHICLE", [&] { return Command<CMD_START_STOP_VEHICLE>::Do(DoCommandFlag::Execute, vehicle_id, false); });
++	Company *company = Company::Get(CompanyID::Begin());
++	uint64_t ticks = 0;
++	while ((company->cur_economy.delivered_cargo[passengers] == 0 || company->cur_economy.income <= 0) && ticks < TICK_LIMIT) {
++		StateGameLoop();
++		++ticks;
++	}
++	uint32_t delivered = company->cur_economy.delivered_cargo[passengers];
++	Require(delivered > 0, fmt::format("service bus delivered no passengers within {} ticks", TICK_LIMIT));
++	Require(company->cur_economy.income > 0, "service bus produced no company income");
++	for (CargoType cargo = 0; cargo < NUM_CARGO; ++cargo) {
++		if (cargo != passengers) Require(company->cur_economy.delivered_cargo[cargo] == 0, "service baseline delivered non-passenger cargo");
++	}
++	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
++	Require(vehicle->type == VEH_ROAD && vehicle->engine_type == BUS_ENGINE && vehicle->cargo_type == passengers,
++		"service vehicle identity or cargo scope drifted");
++	Require(!vehicle->vehstatus.Test(VehState::Stopped) && !vehicle->vehstatus.Test(VehState::Crashed),
++		"service bus is stopped or crashed");
++	Require(vehicle->GetNumManualOrders() == 2 && Vehicle::GetNumItems() == baseline_vehicle_count + 1 &&
++		Station::GetNumItems() == 2 && Depot::GetNumItems() == 1,
++		"service facility, vehicle, or order count drifted");
++	return {
++		{"controller", "deterministic-native-passenger-baseline-v1"},
++		{"native_commands", std::move(commands)},
++		{"site", {{"depot_tile", site.depot.base()}, {"first_stop_tile", site.line.front().base()},
++			{"house_score", site.house_score}, {"road_tiles", site.line.size() - 2}, {"second_stop_tile", site.line.back().base()}}},
++		{"company", {{"balance", company->money.base()}, {"delivered_passengers", delivered},
++			{"expenses", company->cur_economy.expenses.base()}, {"income", company->cur_economy.income.base()},
++			{"operating_result", (company->cur_economy.income + company->cur_economy.expenses).base()}}},
++		{"ticks", {{"executed", ticks}, {"limit", TICK_LIMIT}}},
++		{"vehicle", {{"capacity", vehicle->cargo_cap}, {"id", vehicle->index.base()},
++			{"profit_this_year", vehicle->GetDisplayProfitThisYear().base()}, {"running", true}}},
++		{"passenger_only", true},
++	};
++}
++
+ static size_t FamilyIndex(std::string_view name)
+ {
+ 	for (size_t index = 0; index < FAMILY_NAMES.size(); ++index) {
+@@ -682,6 +857,15 @@ void RunRlV2EpisodeProgram(const std::string &program_path, const std::string &t
+ 			record["status"] = status;
+ 			record["total_legal"] = enumeration.total_legal[family];
+ 			record["transition"] = transition;
++		} else if (operation == "SERVICE") {
++			Require(step.size() == 2, "SERVICE step must contain exactly operation,label");
++			json service = RunPassengerService();
++			record["advance_ticks"] = service.at("ticks").at("executed");
++			record["native_commands"] = service.at("native_commands");
++			record["service"] = std::move(service);
++			record["status"] = "SUCCESS";
++			++transition;
++			record["transition"] = transition;
+ 		} else if (operation == "ROLLBACK") {
+ 			Require(step.size() == 4 && step.contains("family") && step.contains("selection"),
+ 				"ROLLBACK step must contain exactly operation,label,family,selection");
+-- 
+2.43.0
+

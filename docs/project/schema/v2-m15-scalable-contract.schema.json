@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-m15-scalable-contract.schema.json",
+  "title": "OpenTTD RL V2 M15 scalable environment contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "contract_id", "semantic_version", "status", "identity", "map", "seeds", "scenario", "reset", "resources", "observation", "action", "policy", "verification"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-scalable-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-scalable-contract-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "contract_id": {"const": "m15-scalable-passenger-environment-v1"},
+    "semantic_version": {"const": 1},
+    "status": {"const": "FROZEN"},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["engine_source", "g14_gate_report_sha256", "research_baseline_sha256", "setting_inventory_sha256", "competition_manifest_sha256", "v1_contracts"],
+      "properties": {
+        "engine_source": {"type": "object", "additionalProperties": false, "required": ["release", "commit", "tree"], "properties": {"release": {"const": "15.3"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}},
+        "g14_gate_report_sha256": {"$ref": "#/$defs/sha256"},
+        "research_baseline_sha256": {"$ref": "#/$defs/sha256"},
+        "setting_inventory_sha256": {"$ref": "#/$defs/sha256"},
+        "competition_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "v1_contracts": {"type": "object", "minProperties": 5, "additionalProperties": {"$ref": "#/$defs/sha256"}}
+      }
+    },
+    "map": {
+      "type": "object", "additionalProperties": false,
+      "required": ["v1_compatibility", "native_side_lengths", "native_rectangles", "curriculum", "generalization", "boundary", "useful_play_max_tiles", "boundary_policy", "dimension_encoding"],
+      "properties": {
+        "v1_compatibility": {"const": [[32, 32]]},
+        "native_side_lengths": {"const": [64, 128, 256, 512, 1024, 2048, 4096]},
+        "native_rectangles": {"type": "array", "minItems": 49, "maxItems": 49, "uniqueItems": true, "items": {"$ref": "#/$defs/dimensions"}},
+        "curriculum": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/dimensions"}},
+        "generalization": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"$ref": "#/$defs/dimensions"}},
+        "boundary": {"const": [[2048, 2048], [4096, 4096]]},
+        "useful_play_max_tiles": {"const": 1048576},
+        "boundary_policy": {"const": "bounded-reset-observation-save-load-smoke-or-explicit-preallocation-rejection"},
+        "dimension_encoding": {"const": "uint16-width-height-and-uint32-tile-index"}
+      }
+    },
+    "seeds": {
+      "type": "object", "additionalProperties": false, "required": ["algorithm", "domain", "sets", "final_policy"],
+      "properties": {
+        "algorithm": {"const": "sha256-first-31-bits"},
+        "domain": {"const": "openttd-rl-v2-m15-scenarios-v1"},
+        "sets": {"type": "object", "additionalProperties": false, "required": ["training", "development", "generalization", "final"], "properties": {"training": {"$ref": "#/$defs/seed_set"}, "development": {"$ref": "#/$defs/seed_set"}, "generalization": {"$ref": "#/$defs/seed_set"}, "final": {"$ref": "#/$defs/seed_set"}}},
+        "final_policy": {"const": "never-used-for-training-selection-or-policy-input"}
+      }
+    },
+    "scenario": {
+      "type": "object", "additionalProperties": false,
+      "required": ["transport_scope", "climate", "start_year", "generation", "counts", "setting_policy", "content_policy", "reachability", "manifest_fields"],
+      "properties": {
+        "transport_scope": {"const": "passenger-bus"},
+        "climate": {"const": "temperate"},
+        "start_year": {"const": 1950},
+        "generation": {"enum": ["native-seeded", "v1-fixed-template-adapter"]},
+        "counts": {"type": "object", "additionalProperties": false, "required": ["towns", "industries", "companies", "vehicles", "stations"], "properties": {"towns": {"$ref": "#/$defs/bound"}, "industries": {"$ref": "#/$defs/bound"}, "companies": {"$ref": "#/$defs/bound"}, "vehicles": {"$ref": "#/$defs/bound"}, "stations": {"$ref": "#/$defs/bound"}}},
+        "setting_policy": {"const": "pin-every-applicable-SCENARIO_PIN-COMPANY_PIN-and-HARNESS_PIN-row"},
+        "content_policy": {"const": "base-game-and-OpenGFX-only"},
+        "reachability": {"const": "at-least-one-native-legal-passenger-bus-service-pair-or-record-and-reject-seed"},
+        "manifest_fields": {"type": "array", "minItems": 12, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "reset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["lifecycle", "seed_streams", "no_implicit_retry", "same_manifest_same_projection", "save_load_continuation", "observation_and_mask_same_snapshot", "v1_adapter"],
+      "properties": {
+        "lifecycle": {"const": ["READY", "RESETTING", "AT_BOUNDARY", "EXECUTING", "ADVANCING", "PAUSED", "CLOSED", "FAILED"]},
+        "seed_streams": {"const": ["map_generation", "simulation", "interactive", "candidate_tiebreak"]},
+        "no_implicit_retry": {"const": true},
+        "same_manifest_same_projection": {"const": true},
+        "save_load_continuation": {"const": "semantic-and-action-boundary-exact"},
+        "observation_and_mask_same_snapshot": {"const": true},
+        "v1_adapter": {"const": "bit-exact-existing-32x32-reset-observation-action-reward-path"}
+      }
+    },
+    "resources": {
+      "type": "object", "additionalProperties": false,
+      "required": ["preflight", "protocol_payload_bytes", "observation_bytes", "candidate_bytes", "entity_overflow", "map_tier_limits", "telemetry"],
+      "properties": {
+        "preflight": {"const": "before-map-allocation-and-before-policy-inference"},
+        "protocol_payload_bytes": {"type": "integer", "minimum": 1048576, "maximum": 67108864},
+        "observation_bytes": {"type": "integer", "minimum": 1, "maximum": 8388608},
+        "candidate_bytes": {"type": "integer", "minimum": 1, "maximum": 4194304},
+        "entity_overflow": {"const": "deterministic-priority-then-native-id-with-counts-and-truncation-flags"},
+        "map_tier_limits": {"type": "array", "minItems": 4, "items": {"$ref": "#/$defs/tier_limit"}},
+        "telemetry": {"const": ["wall_seconds", "cpu_seconds", "max_rss_kib", "map_bytes", "observation_bytes", "candidate_count", "entity_counts", "overflow_counts"]}
+      }
+    },
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_id", "structured", "spatial", "entities", "graph", "ordering", "coordinates", "normalization", "visibility", "overflow", "serialization"],
+      "properties": {
+        "schema_id": {"const": "v2-m15-observation-v1"},
+        "structured": {"$ref": "#/$defs/tensor"},
+        "spatial": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/spatial_tensor"}},
+        "entities": {"type": "array", "minItems": 5, "items": {"$ref": "#/$defs/entity_table"}},
+        "graph": {"type": "object", "additionalProperties": false, "required": ["node_capacity", "node_features", "edge_capacity", "edge_features", "directed"], "properties": {"node_capacity": {"type": "integer", "minimum": 1}, "node_features": {"type": "integer", "minimum": 1}, "edge_capacity": {"type": "integer", "minimum": 1}, "edge_features": {"type": "integer", "minimum": 1}, "directed": {"const": true}}},
+        "ordering": {"const": "table-kind-priority-then-native-id; graph-source-destination-edge-kind"},
+        "coordinates": {"const": "absolute-uint16-plus-normalized-and-crop-relative"},
+        "normalization": {"const": "declared-fieldwise-float32-no-running-statistics-at-evaluation"},
+        "visibility": {"const": "public-map-public-company-and-own-private-state-only"},
+        "overflow": {"const": "explicit-count-cap-truncated-and-omitted-count-per-table"},
+        "serialization": {"const": "little-endian-float32-row-major-with-byte-count-and-sha256"}
+      }
+    },
+    "action": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_id", "selection", "families", "candidate_table", "legality", "snapshot_token", "omission_policy", "transactions", "illegal_result"],
+      "properties": {
+        "schema_id": {"const": "v2-m15-hierarchical-action-v1"},
+        "selection": {"const": "masked-family-head-then-masked-candidate-head"},
+        "families": {"type": "array", "minItems": 10, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]+$"}},
+        "candidate_table": {"type": "object", "additionalProperties": false, "required": ["capacity", "features", "parameter_words", "stable_key", "ordering"], "properties": {"capacity": {"type": "integer", "minimum": 256, "maximum": 8192}, "features": {"type": "integer", "minimum": 8, "maximum": 128}, "parameter_words": {"type": "integer", "minimum": 4, "maximum": 32}, "stable_key": {"const": "family-plus-native-ids-coordinates-and-parameter-hash"}, "ordering": {"const": "family-priority-score-descending-stable-key"}}},
+        "legality": {"const": "exposed-legal-iff-authoritative-native-test-mode-succeeds-at-issued-snapshot"},
+        "snapshot_token": {"const": "contract-session-episode-transition-tick-observation-and-candidate-sha256"},
+        "omission_policy": {"const": "omitted-native-legal-actions-are-counted-not-relabelled-illegal-and-never-selected"},
+        "transactions": {"const": "native-single-command-or-declared-prefix-with-exact-rollback-and-fatal-rollback-failure"},
+        "illegal_result": {"const": "zero-tick-zero-mutation-typed-rejection"}
+      }
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_id", "encoders", "fusion", "memory", "heads", "v1_adapter", "checkpoint", "onnx"],
+      "properties": {
+        "schema_id": {"const": "v2-m15-policy-v1"},
+        "encoders": {"const": ["structured-mlp", "shared-spatial-cnn", "masked-entity-transformer", "graph-message-passing", "candidate-scorer"]},
+        "fusion": {"const": "concatenate-layernorm-mlp"},
+        "memory": {"type": "object", "additionalProperties": false, "required": ["kind", "hidden_size", "reset"], "properties": {"kind": {"const": "GRU"}, "hidden_size": {"type": "integer", "minimum": 128, "maximum": 1024}, "reset": {"const": "episode-boundary-and-explicit-mask"}}},
+        "heads": {"const": ["family_logits", "candidate_logits", "value"]},
+        "v1_adapter": {"const": "separate-bit-exact-v1-model-path-retained-not-zero-padded-into-v2"},
+        "checkpoint": {"const": "model-optimizer-normalization-rng-curriculum-contract-and-hidden-state"},
+        "onnx": {"const": "dynamic-batch-fixed-capacity-tensors-explicit-masks-and-recurrent-state"}
+      }
+    },
+    "verification": {
+      "type": "object", "additionalProperties": false,
+      "required": ["native_rectangles", "useful_play", "generalization", "boundary", "oracles", "replay", "save_load", "v1_regression", "failure_tests"],
+      "properties": {
+        "native_rectangles": {"const": "all-49-reset-preflight-disposition"},
+        "useful_play": {"const": [[64, 64], [128, 128], [256, 256], [512, 512]]},
+        "generalization": {"const": [[64, 256], [128, 512], [256, 1024], [512, 128], [1024, 1024]]},
+        "boundary": {"const": [[2048, 2048], [4096, 4096]]},
+        "oracles": {"const": ["native-map-and-pool-projection", "full-map-spatial-reference", "full-native-legality-enumeration", "native-cost-and-state-differential"]},
+        "replay": {"const": "twin-process-semantic-hash-per-action-boundary"},
+        "save_load": {"const": "continued-semantic-hash-and-legality-equivalence"},
+        "v1_regression": {"const": "complete-v1-suite-and-retained-model-results"},
+        "failure_tests": {"const": ["invalid-dimension", "resource-preflight", "entity-overflow", "candidate-overflow", "stale-token", "native-rejection", "rollback-failure", "corrupt-save", "schema-mismatch"]}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "dimensions": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "integer"}], "items": false, "minItems": 2, "maxItems": 2},
+    "seed_set": {"type": "object", "additionalProperties": false, "required": ["ordinal_start", "seeds"], "properties": {"ordinal_start": {"type": "integer", "minimum": 0}, "seeds": {"type": "array", "minItems": 8, "uniqueItems": true, "items": {"type": "integer", "minimum": 0, "maximum": 2147483647}}}},
+    "bound": {"type": "object", "additionalProperties": false, "required": ["minimum", "maximum", "target_rule", "overflow"], "properties": {"minimum": {"type": "integer", "minimum": 0}, "maximum": {"type": "integer", "minimum": 1}, "target_rule": {"type": "string", "minLength": 1}, "overflow": {"enum": ["reject-before-reset", "truncate-observation-only-never-native-pool", "not-applicable"]}}},
+    "tier_limit": {"type": "object", "additionalProperties": false, "required": ["tier", "maximum_tiles", "max_rss_kib", "wall_seconds", "outcome"], "properties": {"tier": {"enum": ["v1", "curriculum", "generalization", "boundary"]}, "maximum_tiles": {"type": "integer", "minimum": 1024}, "max_rss_kib": {"type": "integer", "minimum": 65536}, "wall_seconds": {"type": "integer", "minimum": 1}, "outcome": {"enum": ["useful-play", "evaluation", "smoke-or-preflight-rejection", "compatibility"]}}},
+    "tensor": {"type": "object", "additionalProperties": false, "required": ["dtype", "shape", "mask"], "properties": {"dtype": {"const": "float32"}, "shape": {"type": "array", "minItems": 1, "items": {"type": "integer", "minimum": 1}}, "mask": {"type": ["string", "null"]}}},
+    "spatial_tensor": {"type": "object", "additionalProperties": false, "required": ["name", "channels", "height", "width", "coverage", "aggregation"], "properties": {"name": {"type": "string", "minLength": 1}, "channels": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}, "width": {"type": "integer", "minimum": 1}, "coverage": {"enum": ["whole-map", "decision-region", "decision-local"]}, "aggregation": {"type": "string", "minLength": 1}}},
+    "entity_table": {"type": "object", "additionalProperties": false, "required": ["name", "capacity", "features", "mask", "priority"], "properties": {"name": {"type": "string", "minLength": 1}, "capacity": {"type": "integer", "minimum": 1}, "features": {"type": "integer", "minimum": 1}, "mask": {"const": "uint8-row-valid"}, "priority": {"type": "string", "minLength": 1}}}
+  }
+}

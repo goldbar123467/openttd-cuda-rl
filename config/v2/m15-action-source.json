@@ -1,0 +1,29 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-action-source.schema.json",
+  "schema_version": "openttd-rl-v2-m15-action-source-1",
+  "schema_sha256": "e0ab10a23f35f81d163e75278b4c16e4b32032587a7af2f4387e1c87a50886a1",
+  "snapshot_date": "2026-08-02",
+  "base": {
+    "kind": "m15-bounded-observation-result",
+    "commit": "7d1b3535d80c26cb324766eb34f0a1f715cbdb75",
+    "tree": "a0f9242c225637018f1af5ce5b2c85d20d78b0da",
+    "observation_source_evidence_sha256": "b6477bb490c4b799e78ec476089d8554aac3b83852d968d27baa54edd675eda6"
+  },
+  "patch": {
+    "path": "integration/openttd/patches/15.3/m15/action/0001-OpenTTD-RL-V2-M15-hierarchical-native-actions.patch",
+    "sha256": "d0e184c89ab3a7be25dbf7f1c1201ca593d2cbad48a644e4ce44ffa846466ba4"
+  },
+  "result": {
+    "commit": "7bd1e889b8665aaca53369c1fba0136abd1b255b",
+    "tree": "52e0c3452b84b8324b83ac0958b9b34995b74de8",
+    "source_files": ["src/rl_v2_action.cpp", "src/rl_v2_action.h"],
+    "cli_options": ["-J", "-K", "-L"],
+    "v1_path_modified": false
+  },
+  "build": {
+    "artifact_root": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-action-a",
+    "cmake_options": ["CMAKE_BUILD_TYPE=RelWithDebInfo", "OPTION_RL_ENVIRONMENT=ON", "OPTION_RL_NEURAL_AGENT=OFF", "OPTION_USE_ASSERTS=ON"],
+    "executable": {"path": "build/openttd", "sha256": "9bb0c7d3faee5786013eaee8209c6b861fbcea2821f95ef3f8b7d8f0ae332816", "size": 399617056},
+    "ctest": {"tests": 98, "passed": 98, "failed": 0}
+  }
+}

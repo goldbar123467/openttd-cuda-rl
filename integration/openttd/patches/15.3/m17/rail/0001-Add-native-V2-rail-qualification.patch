@@ -1,0 +1,942 @@
+From eb7b769eb9339ecbde7ed69015230079e92d3316 Mon Sep 17 00:00:00 2001
+From: OpenTTD-RL V2 Evidence <openttd-rl-v2@localhost>
+Date: Sun, 2 Aug 2026 16:17:52 -0400
+Subject: [PATCH] Add native V2 rail qualification
+
+---
+ src/CMakeLists.txt |   2 +
+ src/openttd.cpp    |  31 +-
+ src/rl_v2_rail.cpp | 794 +++++++++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_rail.h   |  15 +
+ 4 files changed, 840 insertions(+), 2 deletions(-)
+ create mode 100644 src/rl_v2_rail.cpp
+ create mode 100644 src/rl_v2_rail.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index afa52bf..39f0de0 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -62,6 +62,8 @@ add_files(
+     rl_v2_action.h
+     rl_v2_cargo.cpp
+     rl_v2_cargo.h
++    rl_v2_rail.cpp
++    rl_v2_rail.h
+     rl_v2_observation.cpp
+     rl_v2_observation.h
+     CONDITION OPTION_RL_ENVIRONMENT
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index ad6e94c..80b32f3 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -87,6 +87,7 @@
+ #	include "rl_environment.h"
+ #	include "rl_v2_environment.h"
+ #	include "rl_v2_cargo.h"
++#	include "rl_v2_rail.h"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ #	include "rl_neural_agent.h"
+@@ -213,6 +214,10 @@ static void ShowHelp()
+ 		"  -E program_file     = Execute a canonical stateful M15 episode program\n"
+ 		"  -F trace_file       = Write the stateful M15 episode trace\n"
+ 		"  -H artifact_dir     = Retain M15 episode save/replay artifacts\n"
++		"  -N manifest_file    = Run one native M16 cargo/industry qualification\n"
++		"  -O report_file      = Write the native M16 cargo/industry report\n"
++		"  -C manifest_file    = Run one native M17 rail qualification\n"
++		"  -P report_file      = Write the native M17 rail report\n"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 		"  -A playback_config  = Start the M11 normal-game neural agent from a canonical config\n"
+@@ -429,6 +434,8 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_v2_episode_artifacts;          ///< Directory for M15 episode artifacts.
+ 	std::string rl_v2_cargo_manifest;             ///< Canonical M16 cargo qualification manifest.
+ 	std::string rl_v2_cargo_report;               ///< Destination for the M16 cargo qualification report.
++	std::string rl_v2_rail_manifest;               ///< Canonical M17 rail qualification manifest.
++	std::string rl_v2_rail_report;                 ///< Destination for the M17 rail qualification report.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -489,7 +496,16 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
+ #ifdef WITH_RL_ENVIRONMENT
+-		if (!rl_v2_cargo_manifest.empty()) {
++		if (!rl_v2_rail_manifest.empty()) {
++			try {
++				RunRlV2RailQualification(rl_v2_rail_manifest, rl_v2_rail_report);
++			} catch (const std::exception &e) {
++				fmt::print(stderr, "{}\n", e.what());
++				UserError("{}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		} else if (!rl_v2_cargo_manifest.empty()) {
+ 			try {
+ 				RunRlV2CargoQualification(rl_v2_cargo_manifest, rl_v2_cargo_report);
+ 			} catch (const std::exception &e) {
+@@ -584,7 +600,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BEFHJKLNORTUWYZV"
++			"BCEFHJKLNOPRTUWYZV"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -755,6 +771,7 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'c': _config_file = mgo.opt; break;
+ #ifdef WITH_RL_ENVIRONMENT
+ 		case 'B': scanner->rl_bridge_descriptors = mgo.opt; break;
++		case 'C': scanner->rl_v2_rail_manifest = mgo.opt; break;
+ 		case 'E': scanner->rl_v2_episode_program = mgo.opt; break;
+ 		case 'F': scanner->rl_v2_episode_trace = mgo.opt; break;
+ 		case 'H': scanner->rl_v2_episode_artifacts = mgo.opt; break;
+@@ -763,6 +780,7 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'L': scanner->rl_v2_action_result = mgo.opt; break;
+ 		case 'N': scanner->rl_v2_cargo_manifest = mgo.opt; break;
+ 		case 'O': scanner->rl_v2_cargo_report = mgo.opt; break;
++		case 'P': scanner->rl_v2_rail_report = mgo.opt; break;
+ 		case 'R':
+ 			if (auto value = ParseInteger(mgo.opt); value.has_value() && *value >= 1 && *value <= 16) {
+ 				scanner->rl_reset_repetitions = *value;
+@@ -807,6 +825,15 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ 
+ #ifdef WITH_RL_ENVIRONMENT
++	if (scanner->rl_v2_rail_manifest.empty() != scanner->rl_v2_rail_report.empty()) {
++		fmt::print(stderr, "M17 rail qualification requires both -C <manifest> and -P <report>\n");
++		return 1;
++	}
++	if (!scanner->rl_v2_rail_manifest.empty() && (!scanner->rl_v2_cargo_manifest.empty() || !scanner->rl_v2_reset_manifest.empty() ||
++			!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty())) {
++		fmt::print(stderr, "M17 rail qualification forbids cargo/reset/bridge/scenario, dedicated, and networking modes\n");
++		return 1;
++	}
+ 	if (scanner->rl_v2_cargo_manifest.empty() != scanner->rl_v2_cargo_report.empty()) {
+ 		fmt::print(stderr, "M16 cargo qualification requires both -N <manifest> and -O <report>\n");
+ 		return 1;
+diff --git a/src/rl_v2_rail.cpp b/src/rl_v2_rail.cpp
+new file mode 100644
+index 0000000..c39adfc
+--- /dev/null
++++ b/src/rl_v2_rail.cpp
+@@ -0,0 +1,794 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_rail.cpp Native V2 M17 rail qualification. */
++
++#include "stdafx.h"
++
++#include "rl_v2_rail.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "ai/ai_config.hpp"
++#include "articulated_vehicles.h"
++#include "autoreplace_cmd.h"
++#include "autoreplace_func.h"
++#include "cargopacket.h"
++#include "cargotype.h"
++#include "command_func.h"
++#include "company_base.h"
++#include "core/backup_type.hpp"
++#include "core/random_func.hpp"
++#include "economy_func.h"
++#include "engine_base.h"
++#include "engine_type.h"
++#include "genworld.h"
++#include "game/game_config.hpp"
++#include "map_func.h"
++#include "misc_cmd.h"
++#include "newgrf_station.h"
++#include "openttd.h"
++#include "order_base.h"
++#include "order_cmd.h"
++#include "progress.h"
++#include "rail.h"
++#include "rail_cmd.h"
++#include "rail_map.h"
++#include "rl_v2_cargo.h"
++#include "road_cmd.h"
++#include "saveload/saveload.h"
++#include "settings_type.h"
++#include "signal_func.h"
++#include "station_base.h"
++#include "station_cmd.h"
++#include "station_func.h"
++#include "station_map.h"
++#include "terraform_cmd.h"
++#include "tile_map.h"
++#include "timer/timer_game_calendar.h"
++#include "timer/timer_game_tick.h"
++#include "timetable_cmd.h"
++#include "town.h"
++#include "town_cmd.h"
++#include "train.h"
++#include "train_cmd.h"
++#include "vehicle_base.h"
++#include "vehicle_cmd.h"
++#include "waypoint_cmd.h"
++
++#include <algorithm>
++#include <array>
++#include <filesystem>
++#include <fstream>
++#include <optional>
++#include <stdexcept>
++#include <string_view>
++#include <vector>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = CompanyID::Invalid());
++extern void MakeNewgameSettingsLive();
++
++namespace {
++
++static constexpr std::string_view MANIFEST_SCHEMA = "openttd-rl-v2-m17-rail-manifest-1";
++static constexpr std::string_view REPORT_SCHEMA = "openttd-rl-v2-m17-rail-report-1";
++static constexpr uint MAP_SIDE = 64;
++static constexpr uint64_t TICK_LIMIT = 131072;
++static constexpr uint64_t STRESS_MIN_TICKS = 32768;
++static constexpr std::array<std::string_view, 6> SIGNAL_NAMES = {"block", "entry", "exit", "combo", "path", "path-one-way"};
++static constexpr std::array<std::string_view, 6> TRACK_NAMES = {"x", "y", "upper", "lower", "left", "right"};
++
++struct Request {
++	std::string run_id;
++	std::string probe;
++	std::string cargo_label;
++	uint32_t seed;
++	std::string executable_sha256;
++};
++
++struct RailRoute {
++	StationID source;
++	StationID destination;
++	TileIndex depot;
++	Axis axis;
++	Track track;
++};
++
++struct TrainBuild {
++	VehicleID locomotive;
++	VehicleID wagon;
++	EngineID locomotive_engine;
++	EngineID wagon_engine;
++	uint capacity;
++};
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M17 rail qualification: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++static json ReadCanonicalJson(const std::string &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	if (!input) Fail(fmt::format("cannot open manifest '{}'", path));
++	std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
++	Require(!bytes.empty() && bytes.back() == '\n', "manifest must end with one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n' && bytes.back() != '\r', "manifest has trailing whitespace");
++	json value;
++	try { value = json::parse(bytes); } catch (const json::exception &e) { Fail(fmt::format("invalid manifest JSON: {}", e.what())); }
++	Require(value.dump() == bytes, "manifest must be canonical compact JSON followed by LF");
++	return value;
++}
++
++static void WriteCanonicalNew(const std::string &path, const json &value)
++{
++	std::filesystem::path output(path);
++	Require(output.is_absolute() && !std::filesystem::exists(output), "report must be a new absolute path");
++	std::ofstream stream(output, std::ios::binary | std::ios::out | std::ios::trunc);
++	Require(stream.good(), fmt::format("cannot create report '{}'", path));
++	stream << value.dump() << '\n';
++	stream.flush();
++	Require(stream.good(), fmt::format("cannot write report '{}'", path));
++}
++
++static bool SafeName(std::string_view value)
++{
++	return !value.empty() && value.size() <= 80 && std::ranges::all_of(value, [](char c) {
++		return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
++	});
++}
++
++static Request Validate(const json &manifest)
++{
++	Require(manifest.is_object() && manifest.size() == 6, "manifest must contain exactly six fields");
++	Require(manifest.at("schema_version") == MANIFEST_SCHEMA, "unsupported manifest schema_version");
++	std::string run_id = manifest.at("run_id").get<std::string>();
++	Require(SafeName(run_id), "invalid run_id");
++	std::string probe = manifest.at("probe").get<std::string>();
++	Require(probe == "catalog" || probe == "construction" || probe == "signals" || probe == "lifecycle" ||
++		probe == "passenger" || probe == "freight" || probe == "stress", "unknown probe");
++	std::string cargo = manifest.at("cargo_label").get<std::string>();
++	Require(cargo.size() == 4, "cargo_label must contain exactly four bytes");
++	std::string executable = manifest.at("executable_sha256").get<std::string>();
++	Require(executable.size() == 64 && std::ranges::all_of(executable, [](char c) {
++		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++	}), "executable_sha256 is not lowercase SHA-256");
++	return {std::move(run_id), std::move(probe), std::move(cargo), manifest.at("seed").get<uint32_t>(), std::move(executable)};
++}
++
++static CargoLabel LabelFromText(std::string_view label)
++{
++	return CargoLabel{static_cast<uint32_t>(static_cast<uint8_t>(label[0])) << 24 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[1])) << 16 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[2])) << 8 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[3]))};
++}
++
++static std::string LabelText(RailTypeLabel label)
++{
++	uint32_t value = label;
++	return {static_cast<char>(value >> 24), static_cast<char>(value >> 16), static_cast<char>(value >> 8), static_cast<char>(value)};
++}
++
++static std::string CargoText(CargoType cargo)
++{
++	if (!IsValidCargoType(cargo)) return "----";
++	uint32_t value = CargoSpec::Get(cargo)->label.base();
++	return {static_cast<char>(value >> 24), static_cast<char>(value >> 16), static_cast<char>(value >> 8), static_cast<char>(value)};
++}
++
++static json CostRecord(std::string_view command, const CommandCost &cost)
++{
++	return {{"command", command}, {"cost", cost.Succeeded() ? cost.GetCost().base() : 0},
++		{"error_message_id", static_cast<uint64_t>(cost.GetErrorMessage())}, {"status", cost.Succeeded() ? "SUCCESS" : "REJECTED"}};
++}
++
++static void Configure(const Request &request)
++{
++	_settings_newgame.game_creation.generation_seed = request.seed;
++	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
++	_settings_newgame.game_creation.map_x = 6;
++	_settings_newgame.game_creation.map_y = 6;
++	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.se_flat_world_height = 1;
++	_settings_newgame.game_creation.water_borders = {};
++	_settings_newgame.construction.freeform_edges = true;
++	_settings_newgame.difficulty.max_no_competitors = 0;
++	_settings_newgame.difficulty.industry_density = 0;
++	_settings_newgame.difficulty.max_loan = 2000000;
++	_settings_newgame.difficulty.vehicle_costs = 0;
++	_settings_newgame.difficulty.vehicle_breakdowns = 0;
++	_settings_newgame.difficulty.construction_cost = 0;
++	_settings_newgame.difficulty.economy = false;
++	_settings_newgame.difficulty.disasters = false;
++	_settings_newgame.economy.inflation = false;
++	_settings_newgame.economy.town_growth_rate = 0;
++	_settings_newgame.economy.allow_town_roads = false;
++	_settings_newgame.economy.timekeeping_units = TKU_CALENDAR;
++	_settings_newgame.linkgraph.distribution_pax = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_mail = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_armoured = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_default = DT_MANUAL;
++	_settings_newgame.order.gradual_loading = false;
++	_settings_newgame.station.modified_catchment = true;
++	_settings_newgame.station.station_spread = 12;
++	_settings_newgame.vehicle.max_aircraft = 0;
++	_settings_newgame.vehicle.max_roadveh = 0;
++	_settings_newgame.vehicle.max_ships = 0;
++	_settings_newgame.vehicle.max_trains = 32;
++	_settings_newgame.vehicle.never_expire_vehicles = true;
++	_settings_newgame.vehicle.train_acceleration_model = 1;
++	_settings_newgame.vehicle.disable_elrails = false;
++	for (CompanyID id = CompanyID::Begin(); id < MAX_COMPANIES; ++id) _settings_newgame.script_config.ai[id].reset();
++	_settings_newgame.script_config.game.reset();
++	MakeNewgameSettingsLive();
++}
++
++static void ResetWorld(const Request &request)
++{
++	Configure(request);
++	_random.SetSeed(request.seed ^ 0x4d313752U);
++	_interactive_random.SetSeed(request.seed ^ 0x5241494cU);
++	_game_mode = GM_NORMAL;
++	_switch_mode = SM_NONE;
++	SetModalProgress(false);
++	GenerateWorld(GWM_EMPTY, MAP_SIDE, MAP_SIDE, false);
++	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "empty qualification map has wrong dimensions");
++	{
++		AutoRestoreBackup company(_current_company, OWNER_DEITY);
++		auto [cost, required_money, town_id] = Command<CMD_FOUND_TOWN>::Do(DoCommandFlag::Execute, TileXY(12, 12), TSZ_SMALL,
++			false, TL_ORIGINAL, false, 0, std::string("M17 Rail Oracle Town"));
++		(void)required_money;
++		Require(cost.Succeeded() && Town::IsValidID(town_id), "failed to create qualification town");
++	}
++	Company *company = DoStartupNewCompany(false, CompanyID::Begin());
++	Require(company != nullptr && company->index == CompanyID::Begin(), "failed to create qualification company");
++	SetLocalCompany(CompanyID::Begin());
++	_current_company = CompanyID::Begin();
++	Require(Command<CMD_INCREASE_LOAN>::Do(DoCommandFlag::Execute, LoanCommand::Max, Money{0}).Succeeded(), "failed to fund qualification company");
++}
++
++static StationID BuildStation(TileIndex tile, Axis axis, uint8_t tracks, uint8_t length, StationID join, json &commands)
++{
++	CommandCost test = Command<CMD_BUILD_RAIL_STATION>::Do({}, tile, RAILTYPE_RAIL, axis, tracks, length,
++		StationClassID::STAT_CLASS_DFLT, 0, join, false);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL_STATION_TEST", test));
++	Require(test.Succeeded(), fmt::format("rail station test failed at {}", tile.base()));
++	CommandCost cost = Command<CMD_BUILD_RAIL_STATION>::Do(DoCommandFlag::Execute, tile, RAILTYPE_RAIL, axis, tracks, length,
++		StationClassID::STAT_CLASS_DFLT, 0, join, false);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL_STATION", cost));
++	Require(cost.Succeeded() && IsRailStationTile(tile), "rail station execution failed");
++	return GetStationIndex(tile);
++}
++
++static void BuildTrack(TileIndex tile, Track track, json &commands)
++{
++	CommandCost test = Command<CMD_BUILD_SINGLE_RAIL>::Do({}, tile, RAILTYPE_RAIL, track, false);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL_TEST", test));
++	Require(test.Succeeded(), fmt::format("rail test failed at {} track {}", tile.base(), to_underlying(track)));
++	CommandCost cost = Command<CMD_BUILD_SINGLE_RAIL>::Do(DoCommandFlag::Execute, tile, RAILTYPE_RAIL, track, false);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL", cost));
++	bool materialized = (IsPlainRailTile(tile) && HasTrack(tile, track)) ||
++		(IsLevelCrossingTile(tile) && GetCrossingRailTrack(tile) == track);
++	Require(cost.Succeeded() && materialized, "rail execution failed");
++}
++
++static RailRoute BuildLine(uint y, StationID source_join, StationID destination_join, json &commands)
++{
++	StationID source = BuildStation(TileXY(8, y), AXIS_X, 1, 2, source_join, commands);
++	StationID destination = BuildStation(TileXY(54, y), AXIS_X, 1, 2, destination_join, commands);
++	for (uint x = 10; x <= 53; ++x) BuildTrack(TileXY(x, y), TRACK_X, commands);
++	BuildTrack(TileXY(7, y), TRACK_X, commands);
++	TileIndex depot = TileXY(6, y);
++	CommandCost depot_test = Command<CMD_BUILD_TRAIN_DEPOT>::Do({}, depot, RAILTYPE_RAIL, DIAGDIR_SW);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL_DEPOT_TEST", depot_test));
++	Require(depot_test.Succeeded(), "rail depot test failed");
++	CommandCost depot_cost = Command<CMD_BUILD_TRAIN_DEPOT>::Do(DoCommandFlag::Execute, depot, RAILTYPE_RAIL, DIAGDIR_SW);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL_DEPOT", depot_cost));
++	Require(depot_cost.Succeeded() && IsRailDepot(depot), "rail depot execution failed");
++	return {source, destination, depot, AXIS_X, TRACK_X};
++}
++
++static TrainBuild BuildTrain(TileIndex depot, CargoType cargo, json &commands)
++{
++	VehicleID locomotive = VehicleID::Invalid();
++	EngineID locomotive_engine = EngineID::Invalid();
++	for (const Engine *engine : Engine::IterateType(VEH_TRAIN)) {
++		const RailVehicleInfo &rvi = engine->VehInfo<RailVehicleInfo>();
++		if (rvi.railveh_type == RAILVEH_WAGON || !engine->company_avail.Test(CompanyID::Begin()) || !rvi.railtypes.Test(RAILTYPE_RAIL)) continue;
++		auto result = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, depot, engine->index, true, cargo, INVALID_CLIENT_ID);
++		commands.push_back(CostRecord("CMD_BUILD_VEHICLE_LOCOMOTIVE", std::get<0>(result)));
++		if (std::get<0>(result).Succeeded()) {
++			locomotive = std::get<1>(result);
++			locomotive_engine = engine->index;
++			break;
++		}
++	}
++	Require(Vehicle::IsValidID(locomotive), "no rail locomotive could be built");
++	VehicleID wagon = VehicleID::Invalid();
++	EngineID wagon_engine = EngineID::Invalid();
++	for (const Engine *engine : Engine::IterateType(VEH_TRAIN)) {
++		const RailVehicleInfo &rvi = engine->VehInfo<RailVehicleInfo>();
++		if (rvi.railveh_type != RAILVEH_WAGON || !engine->company_avail.Test(CompanyID::Begin()) || !rvi.railtypes.Test(RAILTYPE_RAIL)) continue;
++		if (!HasBit(GetUnionOfArticulatedRefitMasks(engine->index, true), cargo)) continue;
++		auto result = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, depot, engine->index, true, cargo, INVALID_CLIENT_ID);
++		commands.push_back(CostRecord("CMD_BUILD_VEHICLE_WAGON", std::get<0>(result)));
++		if (std::get<0>(result).Succeeded()) {
++			wagon = std::get<1>(result);
++			wagon_engine = engine->index;
++			break;
++		}
++	}
++	Require(Vehicle::IsValidID(wagon), fmt::format("no rail wagon could be built for {}", CargoText(cargo)));
++	CommandCost move = Command<CMD_MOVE_RAIL_VEHICLE>::Do(DoCommandFlag::Execute, wagon, locomotive, true);
++	commands.push_back(CostRecord("CMD_MOVE_RAIL_VEHICLE", move));
++	Require(move.Succeeded(), "wagon could not be attached to locomotive");
++	auto refit = Command<CMD_REFIT_VEHICLE>::Do(DoCommandFlag::Execute, locomotive, cargo, 0, false, false, 0);
++	commands.push_back(CostRecord("CMD_REFIT_VEHICLE", std::get<0>(refit)));
++	Require(std::get<0>(refit).Succeeded(), "train refit failed");
++	uint capacity = 0;
++	for (const Vehicle *part = Vehicle::Get(locomotive); part != nullptr; part = part->Next()) {
++		if (part->cargo_type == cargo) capacity += part->cargo_cap;
++	}
++	Require(capacity > 0, "refitted train has zero cargo capacity");
++	return {locomotive, wagon, locomotive_engine, wagon_engine, capacity};
++}
++
++static void SetOrders(VehicleID vehicle, StationID source, StationID destination, json &commands)
++{
++	for (auto [ordinal, station] : {std::pair<uint8_t, StationID>{0, source}, {1, destination}}) {
++		Order order;
++		order.MakeGoToStation(station);
++		order.SetStopLocation(OrderStopLocation::FarEnd);
++		CommandCost cost = Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle, VehicleOrderID{ordinal}, order);
++		commands.push_back(CostRecord("CMD_INSERT_ORDER", cost));
++		Require(cost.Succeeded(), "failed to insert train order");
++	}
++}
++
++static void ModifyOrder(VehicleID vehicle, VehicleOrderID ordinal, ModifyOrderFlags field, uint16_t value,
++	std::string_view name, json &commands)
++{
++	CommandCost test = Command<CMD_MODIFY_ORDER>::Do({}, vehicle, ordinal, field, value);
++	commands.push_back(CostRecord(fmt::format("{}_TEST", name), test));
++	Require(test.Succeeded(), fmt::format("order modification test failed: {}", name));
++	CommandCost execute = Command<CMD_MODIFY_ORDER>::Do(DoCommandFlag::Execute, vehicle, ordinal, field, value);
++	commands.push_back(CostRecord(name, execute));
++	Require(execute.Succeeded(), fmt::format("order modification execution failed: {}", name));
++}
++
++static void InjectCargo(StationID station_id, CargoType cargo, uint amount)
++{
++	Require(CargoPacket::CanAllocateItem(), "cargo packet pool is full");
++	Station *station = Station::Get(station_id);
++	GoodsEntry &goods = station->goods[cargo];
++	goods.rating = 255;
++	goods.status.Set(GoodsEntry::State::Rating);
++	Source source{Town::Get(TownID{0})->index, SourceType::Town};
++	goods.GetOrCreateData().cargo.Append(new CargoPacket(station_id, static_cast<uint16_t>(amount), source), StationID::Invalid());
++}
++
++static void SetDestinationAcceptance(StationID station_id, CargoType cargo)
++{
++	RlV2SetQualificationAcceptance(station_id, cargo, true);
++	Station *station = Station::Get(station_id);
++	station->goods[cargo].status.Set(GoodsEntry::State::Acceptance);
++	SetBit(station->always_accepted, cargo);
++}
++
++static uint LoadTrainFromStation(VehicleID locomotive, StationID source, StationID destination, CargoType cargo)
++{
++	GoodsEntry &goods = Station::Get(source)->goods[cargo];
++	std::array<StationID, 1> next{destination};
++	uint loaded = 0;
++	for (Vehicle *part = Vehicle::Get(locomotive); part != nullptr; part = part->Next()) {
++		if (part->cargo_type != cargo || part->cargo_cap == 0) continue;
++		loaded += goods.GetOrCreateData().cargo.Load(part->cargo_cap, &part->cargo, next, Station::Get(source)->xy);
++	}
++	return loaded;
++}
++
++static void StartTrain(VehicleID vehicle, json &commands)
++{
++	CommandCost cost = Command<CMD_START_STOP_VEHICLE>::Do(DoCommandFlag::Execute, vehicle, false);
++	commands.push_back(CostRecord("CMD_START_STOP_VEHICLE", cost));
++	Require(cost.Succeeded(), "failed to start train");
++}
++
++static json Catalog()
++{
++	json railtypes = json::array();
++	for (RailType type = RAILTYPE_BEGIN; type < RAILTYPE_END; type = static_cast<RailType>(type + 1)) {
++		const RailTypeInfo *info = GetRailTypeInfo(type);
++		if (info->label == RailTypeLabel{}) continue;
++		railtypes.push_back({{"cost_multiplier", info->cost_multiplier}, {"flags", info->flags.base()}, {"label", LabelText(info->label)},
++			{"maintenance_multiplier", info->maintenance_multiplier}, {"powered", info->powered_railtypes.base()}, {"railtype", type}});
++	}
++	json engines = json::array();
++	for (const Engine *engine : Engine::IterateType(VEH_TRAIN)) {
++		const RailVehicleInfo &rvi = engine->VehInfo<RailVehicleInfo>();
++		engines.push_back({{"available", engine->company_avail.Test(CompanyID::Begin())}, {"capacity", rvi.capacity},
++			{"engine_id", engine->index.base()}, {"max_speed", rvi.max_speed}, {"power", rvi.power},
++			{"railtypes", rvi.railtypes.base()}, {"vehicle_kind", to_underlying(rvi.railveh_type)}});
++	}
++	return {{"engines", std::move(engines)}, {"railtypes", std::move(railtypes)},
++		{"signal_types", SIGNAL_NAMES}, {"track_orientations", TRACK_NAMES}};
++}
++
++static json ConstructionOracle()
++{
++	json commands = json::array();
++	json orientations = json::array();
++	for (Track track = TRACK_BEGIN; track < TRACK_END; track++) {
++		TileIndex tile = TileXY(18 + to_underlying(track) * 4, 50);
++		BuildTrack(tile, track, commands);
++		CommandCost remove_test = Command<CMD_REMOVE_SINGLE_RAIL>::Do({}, tile, track);
++		CommandCost remove = Command<CMD_REMOVE_SINGLE_RAIL>::Do(DoCommandFlag::Execute, tile, track);
++		commands.push_back(CostRecord("CMD_REMOVE_RAIL_TEST", remove_test));
++		commands.push_back(CostRecord("CMD_REMOVE_RAIL", remove));
++		Require(remove_test.Succeeded() && remove.Succeeded() && !IsTileType(tile, MP_RAILWAY), "rail removal parity failed");
++		orientations.push_back({{"name", TRACK_NAMES[to_underlying(track)]}, {"removed", true}, {"track", to_underlying(track)}});
++	}
++	TileIndex junction = TileXY(24, 46);
++	BuildTrack(junction, TRACK_X, commands);
++	BuildTrack(junction, TRACK_UPPER, commands);
++	BuildTrack(junction, TRACK_RIGHT, commands);
++	Require(GetTrackBits(junction) == TRACK_BIT_3WAY_NE, "three-way junction bits diverged");
++	TileIndex crossing = TileXY(30, 46);
++	BuildTrack(crossing, TRACK_X, commands);
++	BuildTrack(crossing, TRACK_Y, commands);
++	Require(GetTrackBits(crossing) == TRACK_BIT_CROSS, "rail crossing bits diverged");
++	TileIndex road_crossing = TileXY(36, 46);
++	CommandCost road = Command<CMD_BUILD_ROAD>::Do(DoCommandFlag::Execute, road_crossing, ROAD_Y, ROADTYPE_ROAD, DRD_NONE, TownID::Invalid());
++	commands.push_back(CostRecord("CMD_BUILD_ROAD", road));
++	Require(road.Succeeded(), "road-crossing fixture road failed");
++	BuildTrack(road_crossing, TRACK_X, commands);
++	Require(IsLevelCrossingTile(road_crossing), "road/rail level crossing was not materialized");
++	TileIndex sloped = TileXY(42, 46);
++	auto terraform = Command<CMD_TERRAFORM_LAND>::Do(DoCommandFlag::Execute, sloped, SLOPE_N, true);
++	commands.push_back(CostRecord("CMD_TERRAFORM_LAND", std::get<0>(terraform)));
++	CommandCost slope_test = Command<CMD_BUILD_SINGLE_RAIL>::Do({}, sloped, RAILTYPE_RAIL, TRACK_X, false);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL_SLOPE_TEST", slope_test));
++	Require(std::get<0>(terraform).Succeeded(), "slope fixture could not be created");
++	CommandCost invalid_type = Command<CMD_BUILD_SINGLE_RAIL>::Do({}, TileXY(48, 46), INVALID_RAILTYPE, TRACK_X, false);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL_INVALID_TYPE", invalid_type));
++	Require(invalid_type.Failed(), "invalid rail type was accepted");
++	RailRoute route = BuildLine(32, NEW_STATION, NEW_STATION, commands);
++	CommandCost rename = Command<CMD_RENAME_STATION>::Do(DoCommandFlag::Execute, route.source, std::string("M17 Source"));
++	commands.push_back(CostRecord("CMD_RENAME_STATION", rename));
++	Require(rename.Succeeded(), "station rename failed");
++	BuildTrack(TileXY(32, 38), TRACK_X, commands);
++	CommandCost waypoint = Command<CMD_BUILD_RAIL_WAYPOINT>::Do(DoCommandFlag::Execute, TileXY(32, 38), AXIS_X, 1, 1,
++		StationClassID::STAT_CLASS_WAYP, 0, StationID::Invalid(), false);
++	commands.push_back(CostRecord("CMD_BUILD_RAIL_WAYPOINT", waypoint));
++	Require(waypoint.Succeeded() && IsRailWaypointTile(TileXY(32, 38)), "rail waypoint build failed");
++	CommandCost remove_waypoint = Command<CMD_REMOVE_FROM_RAIL_WAYPOINT>::Do(DoCommandFlag::Execute, TileXY(32, 38), TileXY(32, 38), true);
++	commands.push_back(CostRecord("CMD_REMOVE_FROM_RAIL_WAYPOINT", remove_waypoint));
++	Require(remove_waypoint.Succeeded() && HasTrack(TileXY(32, 38), TRACK_X), "waypoint removal did not preserve rail");
++	TileIndex removable_station_tile = TileXY(48, 40);
++	BuildStation(removable_station_tile, AXIS_X, 1, 2, NEW_STATION, commands);
++	CommandCost remove_station_test = Command<CMD_REMOVE_FROM_RAIL_STATION>::Do({}, removable_station_tile, TileXY(49, 40), true);
++	CommandCost remove_station = Command<CMD_REMOVE_FROM_RAIL_STATION>::Do(DoCommandFlag::Execute, removable_station_tile, TileXY(49, 40), true);
++	commands.push_back(CostRecord("CMD_REMOVE_FROM_RAIL_STATION_TEST", remove_station_test));
++	commands.push_back(CostRecord("CMD_REMOVE_FROM_RAIL_STATION", remove_station));
++	Require(remove_station_test.Succeeded() && remove_station.Succeeded() && !IsRailStationTile(removable_station_tile) &&
++		HasTrack(removable_station_tile, TRACK_X) && HasTrack(TileXY(49, 40), TRACK_X), "station removal did not preserve underlying rail");
++	CommandCost convert = Command<CMD_CONVERT_RAIL>::Do(DoCommandFlag::Execute, TileXY(10, 32), TileXY(12, 32), RAILTYPE_ELECTRIC, false);
++	commands.push_back(CostRecord("CMD_CONVERT_RAIL", convert));
++	Require(convert.Succeeded() && GetRailType(TileXY(11, 32)) == RAILTYPE_ELECTRIC, "rail conversion failed");
++	_current_company = CompanyID{1};
++	CommandCost ownership = Command<CMD_REMOVE_SINGLE_RAIL>::Do({}, TileXY(20, 32), TRACK_X);
++	_current_company = CompanyID::Begin();
++	commands.push_back(CostRecord("CMD_REMOVE_RAIL_FOREIGN_OWNER", ownership));
++	Require(ownership.Failed(), "foreign rail removal was accepted");
++	const Station *source_station = Station::Get(route.source);
++	uint platform_length = source_station->GetPlatformLength(TileXY(8, 32));
++	Require(source_station->train_station.w == 2 && source_station->train_station.h == 1 && platform_length == 2,
++		"station footprint or platform projection diverged");
++	return {{"commands", std::move(commands)}, {"crossing", true}, {"foreign_owner_rejected", true}, {"junction", true},
++		{"observations", { {"junction_track_bits", static_cast<uint>(GetTrackBits(junction))}, {"level_crossing", IsLevelCrossingTile(road_crossing)},
++			{"rail_crossing_track_bits", static_cast<uint>(GetTrackBits(crossing))}, {"slope", static_cast<uint>(GetTileSlope(sloped))} }},
++		{"orientations", std::move(orientations)}, {"slope_test_status", slope_test.Succeeded() ? "SUCCESS" : "REJECTED"},
++		{"station", { {"catchment_radius", source_station->GetCatchmentRadius()}, {"destination", route.destination.base()},
++			{"footprint", { {"height", source_station->train_station.h}, {"tile", source_station->train_station.tile.base()}, {"width", source_station->train_station.w} }},
++			{"platform_length", platform_length}, {"removed_roundtrip", true}, {"source", route.source.base()} }}, {"waypoint_roundtrip", true}};
++}
++
++static json SignalOracle()
++{
++	json commands = json::array();
++	json signals = json::array();
++	for (uint8_t type_index = SIGTYPE_BLOCK; type_index < SIGTYPE_END; ++type_index) {
++		SignalType type = static_cast<SignalType>(type_index);
++		for (SignalVariant variant : {SIG_ELECTRIC, SIG_SEMAPHORE}) {
++			TileIndex tile = TileXY(18 + to_underlying(type) * 6, 44 + to_underlying(variant) * 2);
++			BuildTrack(tile, TRACK_X, commands);
++			uint8_t direction_cycles = static_cast<uint8_t>(to_underlying(variant));
++			CommandCost test = Command<CMD_BUILD_SINGLE_SIGNAL>::Do({}, tile, TRACK_X, type, variant, false, false, false,
++				SIGTYPE_BLOCK, SIGTYPE_PBS_ONEWAY, direction_cycles, 0);
++			CommandCost build = Command<CMD_BUILD_SINGLE_SIGNAL>::Do(DoCommandFlag::Execute, tile, TRACK_X, type, variant, false, false, false,
++				SIGTYPE_BLOCK, SIGTYPE_PBS_ONEWAY, direction_cycles, 0);
++			commands.push_back(CostRecord("CMD_BUILD_SIGNAL_TEST", test));
++			commands.push_back(CostRecord("CMD_BUILD_SIGNAL", build));
++			Require(test.Succeeded() && build.Succeeded() && HasSignalOnTrack(tile, TRACK_X), "signal build parity failed");
++			Require(GetSignalType(tile, TRACK_X) == type && GetSignalVariant(tile, TRACK_X) == variant, "signal type/variant projection diverged");
++			signals.push_back({{"name", SIGNAL_NAMES[to_underlying(type)]}, {"present_bits", GetPresentSignals(tile)},
++				{"state_bits", GetSignalStates(tile)}, {"type", to_underlying(type)}, {"variant", to_underlying(variant)}});
++			CommandCost remove_test = Command<CMD_REMOVE_SINGLE_SIGNAL>::Do({}, tile, TRACK_X);
++			CommandCost remove = Command<CMD_REMOVE_SINGLE_SIGNAL>::Do(DoCommandFlag::Execute, tile, TRACK_X);
++			commands.push_back(CostRecord("CMD_REMOVE_SIGNAL_TEST", remove_test));
++			commands.push_back(CostRecord("CMD_REMOVE_SIGNAL", remove));
++			Require(remove_test.Succeeded() && remove.Succeeded() && !HasSignalOnTrack(tile, TRACK_X), "signal removal roundtrip failed");
++		}
++	}
++	TileIndex reservation = TileXY(20, 40);
++	BuildTrack(reservation, TRACK_X, commands);
++	bool first = TryReserveTrack(reservation, TRACK_X);
++	bool duplicate = TryReserveTrack(reservation, TRACK_X);
++	TrackBits during = GetRailReservationTrackBits(reservation);
++	UnreserveTrack(reservation, TRACK_X);
++	Require(first && !duplicate && (during & TRACK_BIT_X) != 0 && GetRailReservationTrackBits(reservation) == TRACK_BIT_NONE, "reservation transition diverged");
++	return {{"commands", std::move(commands)}, {"reservation", { {"duplicate_rejected", true}, {"released", true}, {"reserved", true} }},
++		{"signals", std::move(signals)}};
++}
++
++static json RunService(CargoType cargo, bool lifecycle, const std::string &save_path = {})
++{
++	json commands = json::array();
++	RailRoute route = BuildLine(32, NEW_STATION, NEW_STATION, commands);
++	TrainBuild train = BuildTrain(route.depot, cargo, commands);
++	SetOrders(train.locomotive, route.source, route.destination, commands);
++	if (lifecycle) {
++		ModifyOrder(train.locomotive, VehicleOrderID{0}, MOF_STOP_LOCATION, to_underlying(OrderStopLocation::NearEnd), "CMD_MODIFY_ORDER_STOP_LOCATION", commands);
++		ModifyOrder(train.locomotive, VehicleOrderID{0}, MOF_UNLOAD, to_underlying(OrderUnloadType::Transfer), "CMD_MODIFY_ORDER_UNLOAD", commands);
++		ModifyOrder(train.locomotive, VehicleOrderID{0}, MOF_LOAD, to_underlying(OrderLoadType::NoLoad), "CMD_MODIFY_ORDER_LOAD", commands);
++		const Order *modified_order = Vehicle::Get(train.locomotive)->GetOrder(VehicleOrderID{0});
++		Require(modified_order->GetStopLocation() == OrderStopLocation::NearEnd && modified_order->GetUnloadType() == OrderUnloadType::Transfer &&
++			modified_order->GetLoadType() == OrderLoadType::NoLoad, "station stop/load/unload flag projection diverged");
++		ModifyOrder(train.locomotive, VehicleOrderID{0}, MOF_NON_STOP, OrderNonStopFlags{OrderNonStopFlag::NoDestination}.base(), "CMD_MODIFY_ORDER_NON_STOP", commands);
++		modified_order = Vehicle::Get(train.locomotive)->GetOrder(VehicleOrderID{0});
++		Require(modified_order->GetNonStopType().Test(OrderNonStopFlag::NoDestination) &&
++			modified_order->GetUnloadType() == OrderUnloadType::UnloadIfPossible && modified_order->GetLoadType() == OrderLoadType::LoadIfPossible,
++			"non-stop flag or its native load/unload normalization diverged");
++		ModifyOrder(train.locomotive, VehicleOrderID{0}, MOF_NON_STOP, 0, "CMD_RESTORE_ORDER_NON_STOP", commands);
++		ModifyOrder(train.locomotive, VehicleOrderID{0}, MOF_STOP_LOCATION, to_underlying(OrderStopLocation::FarEnd), "CMD_RESTORE_ORDER_STOP_LOCATION", commands);
++		CommandCost invalid_order_flag = Command<CMD_MODIFY_ORDER>::Do({}, train.locomotive, VehicleOrderID{0}, MOF_END, 0);
++		commands.push_back(CostRecord("CMD_MODIFY_ORDER_INVALID_FIELD", invalid_order_flag));
++		Require(invalid_order_flag.Failed(), "invalid order flag field was accepted");
++		CommandCost wait = Command<CMD_CHANGE_TIMETABLE>::Do(DoCommandFlag::Execute, train.locomotive, VehicleOrderID{0}, MTF_WAIT_TIME, 64);
++		CommandCost travel = Command<CMD_CHANGE_TIMETABLE>::Do(DoCommandFlag::Execute, train.locomotive, VehicleOrderID{1}, MTF_TRAVEL_TIME, 256);
++		CommandCost speed = Command<CMD_CHANGE_TIMETABLE>::Do(DoCommandFlag::Execute, train.locomotive, VehicleOrderID{1}, MTF_TRAVEL_SPEED, 96);
++		commands.push_back(CostRecord("CMD_CHANGE_TIMETABLE_WAIT", wait));
++		commands.push_back(CostRecord("CMD_CHANGE_TIMETABLE_TRAVEL", travel));
++		commands.push_back(CostRecord("CMD_CHANGE_TIMETABLE_SPEED", speed));
++		Require(wait.Succeeded() && travel.Succeeded() && speed.Succeeded(), "train timetable transition failed");
++		CommandCost service = Command<CMD_CHANGE_SERVICE_INT>::Do(DoCommandFlag::Execute, train.locomotive, 120, true, false);
++		commands.push_back(CostRecord("CMD_CHANGE_SERVICE_INTERVAL", service));
++		Require(service.Succeeded() && Vehicle::Get(train.locomotive)->GetServiceInterval() == 120, "train service interval transition failed");
++		Require(!save_path.empty() && std::filesystem::path(save_path).is_absolute() && !std::filesystem::exists(save_path), "lifecycle save path is invalid or already exists");
++		Require(SaveOrLoad(save_path, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "native rail lifecycle SAVE failed");
++		uintmax_t save_bytes = std::filesystem::file_size(save_path);
++		CommandCost mutate_service = Command<CMD_CHANGE_SERVICE_INT>::Do(DoCommandFlag::Execute, train.locomotive, 180, true, false);
++		commands.push_back(CostRecord("CMD_MUTATE_SERVICE_INTERVAL_AFTER_SAVE", mutate_service));
++		Require(mutate_service.Succeeded() && Vehicle::Get(train.locomotive)->GetServiceInterval() == 180, "post-save lifecycle mutation failed");
++		Require(SaveOrLoad(save_path, SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "native rail lifecycle LOAD failed");
++		SetLocalCompany(CompanyID::Begin());
++		_current_company = CompanyID::Begin();
++		Require(Vehicle::IsValidID(train.locomotive) && Vehicle::Get(train.locomotive)->GetServiceInterval() == 120 &&
++			Vehicle::Get(train.locomotive)->GetNumOrders() == 2 && Vehicle::Get(train.locomotive)->GetOrder(VehicleOrderID{0})->GetStopLocation() == OrderStopLocation::FarEnd,
++			"rail lifecycle state did not restore across native save/load");
++		Train *safety_train = Train::Get(train.locomotive);
++		Require(!safety_train->flags.Test(VehicleRailFlag::Stuck) && !safety_train->vehstatus.Test(VehState::Crashed), "negative safety fixture starts unsafe");
++		safety_train->flags.Set(VehicleRailFlag::Stuck);
++		bool stuck_positive = safety_train->flags.Test(VehicleRailFlag::Stuck);
++		safety_train->flags.Reset(VehicleRailFlag::Stuck);
++		safety_train->vehstatus.Set(VehState::Crashed);
++		bool collision_positive = safety_train->vehstatus.Test(VehState::Crashed);
++		safety_train->vehstatus.Reset(VehState::Crashed);
++		Require(stuck_positive && collision_positive && !safety_train->flags.Test(VehicleRailFlag::Stuck) &&
++			!safety_train->vehstatus.Test(VehState::Crashed), "positive/negative safety projection fixture failed");
++		auto clone = Command<CMD_CLONE_VEHICLE>::Do(DoCommandFlag::Execute, route.depot, train.locomotive, false);
++		commands.push_back(CostRecord("CMD_CLONE_VEHICLE", std::get<0>(clone)));
++		Require(std::get<0>(clone).Succeeded() && Vehicle::IsValidID(std::get<1>(clone)), "train clone failed");
++		VehicleID clone_id = std::get<1>(clone);
++		Require(Vehicle::Get(clone_id)->GetNumOrders() == Vehicle::Get(train.locomotive)->GetNumOrders(), "cloned train lost copied orders");
++		EngineID replacement_engine = EngineID::Invalid();
++		VehicleID replaced_clone = VehicleID::Invalid();
++		for (const Engine *candidate : Engine::IterateType(VEH_TRAIN)) {
++			const RailVehicleInfo &candidate_info = candidate->VehInfo<RailVehicleInfo>();
++			if (candidate->index == train.locomotive_engine || candidate_info.railveh_type == RAILVEH_WAGON ||
++				!candidate->company_avail.Test(CompanyID::Begin()) || !candidate_info.railtypes.Test(RAILTYPE_RAIL)) continue;
++			CommandCost setting_test = Command<CMD_SET_AUTOREPLACE>::Do({}, DEFAULT_GROUP, train.locomotive_engine, candidate->index, false);
++			commands.push_back(CostRecord("CMD_SET_AUTOREPLACE_TEST", setting_test));
++			if (setting_test.Failed()) continue;
++			CommandCost setting = Command<CMD_SET_AUTOREPLACE>::Do(DoCommandFlag::Execute, DEFAULT_GROUP, train.locomotive_engine, candidate->index, false);
++			commands.push_back(CostRecord("CMD_SET_AUTOREPLACE", setting));
++			Require(setting.Succeeded() && EngineReplacementForCompany(Company::Get(CompanyID::Begin()), train.locomotive_engine, DEFAULT_GROUP) == candidate->index,
++				"autoreplace mapping was not observable");
++			CommandCost replace_test = Command<CMD_AUTOREPLACE_VEHICLE>::Do({}, clone_id);
++			commands.push_back(CostRecord("CMD_AUTOREPLACE_VEHICLE_TEST", replace_test));
++			if (replace_test.Succeeded()) {
++				CommandCost replace = Command<CMD_AUTOREPLACE_VEHICLE>::Do(DoCommandFlag::Execute, clone_id);
++				commands.push_back(CostRecord("CMD_AUTOREPLACE_VEHICLE", replace));
++				Require(replace.Succeeded(), "autoreplace execution diverged from its test command");
++				replacement_engine = candidate->index;
++				for (const Train *vehicle : Train::Iterate()) {
++					if (vehicle->IsFrontEngine() && vehicle->index != train.locomotive && vehicle->engine_type == replacement_engine) {
++						replaced_clone = vehicle->index;
++						break;
++					}
++				}
++			}
++			CommandCost clear = Command<CMD_SET_AUTOREPLACE>::Do(DoCommandFlag::Execute, DEFAULT_GROUP, train.locomotive_engine, EngineID::Invalid(), false);
++			commands.push_back(CostRecord("CMD_CLEAR_AUTOREPLACE", clear));
++			Require(clear.Succeeded() && EngineReplacementForCompany(Company::Get(CompanyID::Begin()), train.locomotive_engine, DEFAULT_GROUP) == EngineID::Invalid(),
++				"autoreplace mapping clear failed");
++			if (replacement_engine != EngineID::Invalid()) break;
++		}
++		Require(replacement_engine != EngineID::Invalid() && Vehicle::IsValidID(replaced_clone), "no compatible locomotive autoreplace could execute");
++		CommandCost sell = Command<CMD_SELL_VEHICLE>::Do(DoCommandFlag::Execute, replaced_clone, true, false, INVALID_CLIENT_ID);
++		commands.push_back(CostRecord("CMD_SELL_VEHICLE", sell));
++		Require(sell.Succeeded() && !Vehicle::IsValidID(replaced_clone), "autoreplaced clone sale failed");
++		return {{"commands", std::move(commands)}, {"clone_and_sale", true}, {"consist_capacity", train.capacity},
++			{"locomotive", train.locomotive.base()}, {"orders", Vehicle::Get(train.locomotive)->GetNumOrders()}, {"service_interval", 120},
++			{"order_flags", { {"invalid_rejected", true}, {"load", true}, {"non_stop", true}, {"stop_location", true}, {"unload", true} }},
++			{"replacement", { {"configured", true}, {"executed", true}, {"from_engine", train.locomotive_engine.base()}, {"to_engine", replacement_engine.base()} }},
++			{"safety_fixture", { {"collision_negative", true}, {"collision_positive", collision_positive}, {"lost_negative", true}, {"lost_positive", stuck_positive} }},
++			{"save_load", { {"bytes", save_bytes}, {"restored", true} }},
++			{"timetable", { {"speed", 96}, {"travel", 256}, {"wait", 64} }}, {"wagon", train.wagon.base()}};
++	}
++	InjectCargo(route.source, cargo, train.capacity);
++	uint loaded = LoadTrainFromStation(train.locomotive, route.source, route.destination, cargo);
++	Require(loaded == train.capacity, "native station-to-train loading did not fill the consist");
++	SetDestinationAcceptance(route.destination, cargo);
++	Company *company = Company::Get(CompanyID::Begin());
++	Money income_before = company->cur_economy.income;
++	uint32_t delivered_before = company->cur_economy.delivered_cargo[cargo];
++	RlV2ClearCargoPaymentEvents();
++	StartTrain(train.locomotive, commands);
++	/* Direct native command probes do not pass through the command dispatcher,
++	 * so settle its deferred signal buffer before vehicle ticks begin. */
++	UpdateSignalsInBuffer();
++	uint64_t ticks = 0;
++	uint64_t maximum_wait = 0;
++	uint maximum_vehicle_cargo = 0;
++	while ((company->cur_economy.delivered_cargo[cargo] == delivered_before || company->cur_economy.income <= income_before) && ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(route.destination, cargo);
++		StateGameLoop();
++		++ticks;
++		maximum_wait = std::max<uint64_t>(maximum_wait, Train::Get(train.locomotive)->wait_counter);
++		uint onboard = 0;
++		for (const Vehicle *part = Train::Get(train.locomotive); part != nullptr; part = part->Next()) onboard += part->cargo.StoredCount();
++		maximum_vehicle_cargo = std::max(maximum_vehicle_cargo, onboard);
++	}
++	Money income = company->cur_economy.income - income_before;
++	uint32_t delivered = company->cur_economy.delivered_cargo[cargo] - delivered_before;
++	const Train *front = Train::Get(train.locomotive);
++	uint vehicle_cargo = 0;
++	for (const Vehicle *part = front; part != nullptr; part = part->Next()) vehicle_cargo += part->cargo.StoredCount();
++	const GoodsEntry &source_goods = Station::Get(route.source)->goods[cargo];
++	uint waiting = source_goods.HasData() ? source_goods.GetData().cargo.TotalCount() : 0;
++	const GoodsEntry &destination_goods = Station::Get(route.destination)->goods[cargo];
++	uint destination_waiting = destination_goods.HasData() ? destination_goods.GetData().cargo.TotalCount() : 0;
++	Require(income > 0 && delivered > 0, fmt::format("train service failed: cargo={}, ticks={}, tile={}, stopped={}, stuck={}, delivered={}, income={}, vehicle_cargo={}, max_vehicle_cargo={}, source_waiting={}, destination_waiting={}, events={}, order={}",
++		CargoText(cargo), ticks, front->tile.base(), front->vehstatus.Test(VehState::Stopped), front->flags.Test(VehicleRailFlag::Stuck),
++		delivered, income.base(), vehicle_cargo, maximum_vehicle_cargo, waiting, destination_waiting, RlV2GetCargoPaymentEvents().size(), front->cur_real_order_index));
++	Require(front->crash_anim_pos == 0 && !front->vehstatus.Test(VehState::Crashed), "service train crashed");
++	RlV2ClearQualificationAcceptance();
++	return {{"accounting", { {"delivered", delivered}, {"income", income.base()} }}, {"commands", std::move(commands)},
++		{"safety", { {"crashed", false}, {"maximum_wait", maximum_wait}, {"stuck", front->flags.Test(VehicleRailFlag::Stuck)} }},
++		{"ticks", ticks}, {"train", { {"capacity", train.capacity}, {"locomotive_engine", train.locomotive_engine.base()},
++			{"vehicle", train.locomotive.base()}, {"wagon_engine", train.wagon_engine.base()} }}};
++}
++
++static json RunStress(CargoType cargo)
++{
++	json commands = json::array();
++	RailRoute first_route = BuildLine(31, NEW_STATION, NEW_STATION, commands);
++	RailRoute second_route = BuildLine(34, NEW_STATION, NEW_STATION, commands);
++	for (uint x : {16U}) {
++		BuildTrack(TileXY(x, 32), TRACK_Y, commands);
++		BuildTrack(TileXY(x, 33), TRACK_Y, commands);
++	}
++	for (uint x : {16U}) {
++		BuildTrack(TileXY(x, 31), TRACK_LOWER, commands);
++		BuildTrack(TileXY(x, 31), TRACK_RIGHT, commands);
++		BuildTrack(TileXY(x, 34), TRACK_UPPER, commands);
++		BuildTrack(TileXY(x, 34), TRACK_LEFT, commands);
++	}
++	TrainBuild first = BuildTrain(first_route.depot, cargo, commands);
++	TrainBuild second = BuildTrain(second_route.depot, cargo, commands);
++	SetOrders(first.locomotive, first_route.source, first_route.destination, commands);
++	SetOrders(second.locomotive, second_route.source, first_route.destination, commands);
++	std::array<std::pair<TileIndex, Track>, 2> signal_sites{{{TileXY(30, 31), TRACK_X}, {TileXY(30, 34), TRACK_X}}};
++	for (auto [tile, track] : signal_sites) {
++		CommandCost signal = Command<CMD_BUILD_SINGLE_SIGNAL>::Do(DoCommandFlag::Execute, tile, track, SIGTYPE_PBS,
++			SIG_ELECTRIC, false, false, false, SIGTYPE_BLOCK, SIGTYPE_PBS_ONEWAY, 0, 0);
++		commands.push_back(CostRecord("CMD_BUILD_SIGNAL", signal));
++		Require(signal.Succeeded(), "stress path signal failed");
++	}
++	InjectCargo(first_route.source, cargo, first.capacity);
++	InjectCargo(second_route.source, cargo, second.capacity);
++	uint first_loaded = LoadTrainFromStation(first.locomotive, first_route.source, first_route.destination, cargo);
++	uint second_loaded = LoadTrainFromStation(second.locomotive, second_route.source, first_route.destination, cargo);
++	Require(first_loaded == first.capacity && second_loaded == second.capacity, "two-train station loading did not fill both consists");
++	SetDestinationAcceptance(first_route.destination, cargo);
++	Company *company = Company::Get(CompanyID::Begin());
++	uint32_t delivered_before = company->cur_economy.delivered_cargo[cargo];
++	Money income_before = company->cur_economy.income;
++	StartTrain(first.locomotive, commands);
++	StartTrain(second.locomotive, commands);
++	UpdateSignalsInBuffer();
++	uint64_t ticks = 0;
++	uint64_t max_wait = 0;
++	uint32_t maximum_delivered = 0;
++	Money maximum_income{0};
++	while ((ticks < STRESS_MIN_TICKS || maximum_delivered < 16 || maximum_income <= 0) && ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(first_route.destination, cargo);
++		StateGameLoop();
++		++ticks;
++		maximum_delivered = std::max(maximum_delivered, company->cur_economy.delivered_cargo[cargo] - delivered_before);
++		maximum_income = std::max(maximum_income, company->cur_economy.income - income_before);
++		max_wait = std::max<uint64_t>({max_wait, Train::Get(first.locomotive)->wait_counter, Train::Get(second.locomotive)->wait_counter});
++	}
++	uint32_t delivered = maximum_delivered;
++	Money income = maximum_income;
++	bool first_safe = !Train::Get(first.locomotive)->vehstatus.Test(VehState::Crashed) && Train::Get(first.locomotive)->crash_anim_pos == 0;
++	bool second_safe = !Train::Get(second.locomotive)->vehstatus.Test(VehState::Crashed) && Train::Get(second.locomotive)->crash_anim_pos == 0;
++	Require(delivered >= 16 && income > 0 && first_safe && second_safe && ticks < TICK_LIMIT,
++		fmt::format("two-train stress service failed: delivered={}, income={}, ticks={}, first_tile={}, first_stuck={}, first_order={}, first_cargo={}, second_tile={}, second_stuck={}, second_order={}, second_cargo={}, first_safe={}, second_safe={}",
++			delivered, income.base(), ticks, Train::Get(first.locomotive)->tile.base(), Train::Get(first.locomotive)->flags.Test(VehicleRailFlag::Stuck),
++			Train::Get(first.locomotive)->cur_real_order_index, Train::Get(first.locomotive)->cargo.StoredCount(), Train::Get(second.locomotive)->tile.base(),
++			Train::Get(second.locomotive)->flags.Test(VehicleRailFlag::Stuck), Train::Get(second.locomotive)->cur_real_order_index,
++			Train::Get(second.locomotive)->cargo.StoredCount(), first_safe, second_safe));
++	RlV2ClearQualificationAcceptance();
++	return {{"commands", std::move(commands)}, {"delivered", delivered}, {"income", income.base()}, {"maximum_wait", max_wait},
++		{"junction_connectors", 1}, {"shared_destination", true}, {"shared_physical_network", true}, {"shared_station", false},
++		{"signals", 2}, {"terminal_stations", 3},
++		{"ticks", ticks}, {"trains", 2},
++		{"unresolved_deadlock", false}, {"unexplained_collision", false}};
++}
++
++} // namespace
++
++void RunRlV2RailQualification(const std::string &manifest_path, const std::string &report_path)
++{
++	Request request = Validate(ReadCanonicalJson(manifest_path));
++	ResetWorld(request);
++	CargoType cargo = GetCargoTypeByLabel(LabelFromText(request.cargo_label));
++	Require(IsValidCargoType(cargo), fmt::format("cargo {} is unavailable", request.cargo_label));
++	try {
++		json probe;
++		if (request.probe == "catalog") probe = {{"status", "CATALOG_ONLY"}};
++		else if (request.probe == "construction") probe = ConstructionOracle();
++		else if (request.probe == "signals") probe = SignalOracle();
++		else if (request.probe == "lifecycle") probe = RunService(cargo, true, report_path + ".sav");
++		else if (request.probe == "stress") probe = RunStress(cargo);
++		else probe = RunService(cargo, false);
++		json report = {
++			{"schema_version", REPORT_SCHEMA},
++			{"catalog", Catalog()},
++			{"executable_sha256", request.executable_sha256},
++			{"map", { {"height", MAP_SIDE}, {"width", MAP_SIDE} }},
++			{"probe", std::move(probe)},
++			{"request", { {"cargo_label", request.cargo_label}, {"probe", request.probe}, {"run_id", request.run_id}, {"seed", request.seed} }},
++			{"run_id", request.run_id},
++			{"status", "PASS"},
++		};
++		WriteCanonicalNew(report_path, report);
++	} catch (const std::exception &e) {
++		WriteCanonicalNew(report_path, {{"error", e.what()}, {"status", "FAIL"}});
++		throw;
++	}
++}
+diff --git a/src/rl_v2_rail.h b/src/rl_v2_rail.h
+new file mode 100644
+index 0000000..0bd105d
+--- /dev/null
++++ b/src/rl_v2_rail.h
+@@ -0,0 +1,15 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_rail.h Native V2 M17 rail qualification. */
++
++#ifndef RL_V2_RAIL_H
++#define RL_V2_RAIL_H
++
++#include <string>
++
++void RunRlV2RailQualification(const std::string &manifest_path, const std::string &report_path);
++
++#endif /* RL_V2_RAIL_H */
+-- 
+2.43.0
+

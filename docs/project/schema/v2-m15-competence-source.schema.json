@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-competence-source.schema.json",
+  "title": "OpenTTD RL V2 M15 passenger-service competence source evidence",
+  "type": "object", "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "base", "patch", "result", "build"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-competence-source.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-competence-source-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "base": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "commit", "tree", "episode_source_evidence_sha256"],
+      "properties": {
+        "kind": {"const": "m15-stateful-episode-result"},
+        "commit": {"const": "5e33497bd224ac32074795ab4d4d268cf9981a8b"},
+        "tree": {"const": "b2dde6bb99a108c98be697f845009c691ecc8593"},
+        "episode_source_evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "patch": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": {
+        "path": {"const": "integration/openttd/patches/15.3/m15/competence/0001-Add-deterministic-V2-passenger-service-qualification.patch"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "episode_operation", "v1_path_modified"],
+      "properties": {
+        "commit": {"const": "abc1912e290d8f49221fb3f68e30f3bcb3190ec9"},
+        "tree": {"const": "fb9a95a7bb03f279a2965516713afd759010a46b"},
+        "episode_operation": {"const": "SERVICE"},
+        "v1_path_modified": {"const": false}
+      }
+    },
+    "build": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_root", "cmake_options", "executable", "ctest"],
+      "properties": {
+        "artifact_root": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-competence-a"},
+        "cmake_options": {"const": ["CMAKE_BUILD_TYPE=RelWithDebInfo", "OPTION_RL_ENVIRONMENT=ON", "OPTION_RL_NEURAL_AGENT=OFF", "OPTION_USE_ASSERTS=ON"]},
+        "executable": {
+          "type": "object", "additionalProperties": false, "required": ["path", "sha256", "size"],
+          "properties": {"path": {"const": "build/openttd"}, "sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1000000}}
+        },
+        "ctest": {"const": {"tests": 98, "passed": 98, "failed": 0}}
+      }
+    }
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

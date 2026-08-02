@@ -1,0 +1,1092 @@
+From ceb913106af64d6a1a9c50afb15bf4437297363b Mon Sep 17 00:00:00 2001
+From: OpenTTD-RL V2 Evidence <openttd-rl-v2@localhost>
+Date: Sun, 2 Aug 2026 15:18:15 -0400
+Subject: [PATCH] Add native V2 cargo and industry qualification
+
+---
+ src/CMakeLists.txt  |   2 +
+ src/economy.cpp     |  54 +++-
+ src/economy_func.h  |  19 ++
+ src/openttd.cpp     |  26 +-
+ src/rl_v2_cargo.cpp | 769 ++++++++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_cargo.h   |  15 +
+ src/station_cmd.cpp |  29 ++
+ src/station_func.h  |   3 +
+ 8 files changed, 904 insertions(+), 13 deletions(-)
+ create mode 100644 src/rl_v2_cargo.cpp
+ create mode 100644 src/rl_v2_cargo.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 402f525..afa52bf 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -60,6 +60,8 @@ add_files(
+     rl_v2_environment.h
+     rl_v2_action.cpp
+     rl_v2_action.h
++    rl_v2_cargo.cpp
++    rl_v2_cargo.h
+     rl_v2_observation.cpp
+     rl_v2_observation.h
+     CONDITION OPTION_RL_ENVIRONMENT
+diff --git a/src/economy.cpp b/src/economy.cpp
+index a82ccc1..56b455d 100644
+--- a/src/economy.cpp
++++ b/src/economy.cpp
+@@ -103,6 +103,19 @@ const ScoreInfo _score_info[] = {
+ 
+ TypedIndexContainer<std::array<std::array<int64_t, SCORE_END>, MAX_COMPANIES>, CompanyID> _score_part;
+ Economy _economy;
++static std::vector<RlV2CargoPaymentEvent> _rl_v2_cargo_payment_events;
++static bool _rl_v2_cargo_payment_telemetry_enabled = false;
++
++void RlV2ClearCargoPaymentEvents()
++{
++	_rl_v2_cargo_payment_events.clear();
++	_rl_v2_cargo_payment_telemetry_enabled = true;
++}
++
++const std::vector<RlV2CargoPaymentEvent> &RlV2GetCargoPaymentEvents()
++{
++	return _rl_v2_cargo_payment_events;
++}
+ Prices _price;
+ static PriceMultipliers _price_base_multiplier;
+ 
+@@ -1139,6 +1152,25 @@ static Money DeliverGoods(int num_pieces, CargoType cargo_type, StationID dest,
+  * DeliverGoodsToIndustry() silently incremented incoming_cargo_waiting, now it is time to do something with the new cargo.
+  * @param i The industry to process
+  */
++static void ProcessIndustryInputCargo(Industry *i, const IndustrySpec *indspec)
++{
++	for (auto ita = std::begin(i->accepted); ita != std::end(i->accepted); ++ita) {
++		if (ita->waiting == 0 || !IsValidCargoType(ita->cargo)) continue;
++
++		for (auto itp = std::begin(i->produced); itp != std::end(i->produced); ++itp) {
++			if (!IsValidCargoType(itp->cargo)) continue;
++			itp->waiting = ClampTo<uint16_t>(itp->waiting + (ita->waiting * indspec->input_cargo_multiplier[ita - std::begin(i->accepted)][itp - std::begin(i->produced)] / 256));
++		}
++
++		ita->waiting = 0;
++	}
++}
++
++void RlV2ProcessIndustryInputForQualification(Industry *i)
++{
++	ProcessIndustryInputCargo(i, GetIndustrySpec(i->type));
++}
++
+ static void TriggerIndustryProduction(Industry *i)
+ {
+ 	const IndustrySpec *indspec = GetIndustrySpec(i->type);
+@@ -1153,16 +1185,7 @@ static void TriggerIndustryProduction(Industry *i)
+ 			SetWindowDirty(WC_INDUSTRY_VIEW, i->index);
+ 		}
+ 	} else {
+-		for (auto ita = std::begin(i->accepted); ita != std::end(i->accepted); ++ita) {
+-			if (ita->waiting == 0 || !IsValidCargoType(ita->cargo)) continue;
+-
+-			for (auto itp = std::begin(i->produced); itp != std::end(i->produced); ++itp) {
+-				if (!IsValidCargoType(itp->cargo)) continue;
+-				itp->waiting = ClampTo<uint16_t>(itp->waiting + (ita->waiting * indspec->input_cargo_multiplier[ita - std::begin(i->accepted)][itp - std::begin(i->produced)] / 256));
+-			}
+-
+-			ita->waiting = 0;
+-		}
++		ProcessIndustryInputCargo(i, indspec);
+ 	}
+ 
+ 	TriggerIndustryRandomisation(i, IndustryRandomTrigger::CargoReceived);
+@@ -1217,7 +1240,13 @@ CargoPayment::~CargoPayment()
+ void CargoPayment::PayFinalDelivery(CargoType cargo, const CargoPacket *cp, uint count, TileIndex current_tile)
+ {
+ 	/* Handle end of route payment */
+-	Money profit = DeliverGoods(count, cargo, this->current_station, cp->GetDistance(current_tile), cp->GetPeriodsInTransit(), Company::Get(this->front->owner), cp->GetSource());
++	uint distance = cp->GetDistance(current_tile);
++	uint16_t periods = cp->GetPeriodsInTransit();
++	Money base_income = GetTransportedGoodsIncome(count, distance, periods, cargo);
++	Money profit = DeliverGoods(count, cargo, this->current_station, distance, periods, Company::Get(this->front->owner), cp->GetSource());
++	if (_rl_v2_cargo_payment_telemetry_enabled) {
++		_rl_v2_cargo_payment_events.push_back({cargo, count, distance, periods, cp->GetFeederShare(count), base_income, profit, this->current_station, false});
++	}
+ 	this->route_profit += profit;
+ 
+ 	/* The vehicle's profit is whatever route profit there is minus feeder shares. */
+@@ -1243,6 +1272,9 @@ Money CargoPayment::PayTransfer(CargoType cargo, const CargoPacket *cp, uint cou
+ 			cargo);
+ 
+ 	profit = profit * _settings_game.economy.feeder_payment_share / 100;
++	if (_rl_v2_cargo_payment_telemetry_enabled) {
++		_rl_v2_cargo_payment_events.push_back({cargo, count, cp->GetDistance(current_tile), cp->GetPeriodsInTransit(), cp->GetFeederShare(count), Money{0}, profit, this->current_station, true});
++	}
+ 
+ 	this->visual_transfer += profit; // accumulate transfer profits for whole vehicle
+ 	return profit; // account for the (virtual) profit already made for the cargo packet
+diff --git a/src/economy_func.h b/src/economy_func.h
+index d92e08f..67626aa 100644
+--- a/src/economy_func.h
++++ b/src/economy_func.h
+@@ -19,12 +19,31 @@
+ #include "source_type.h"
+ #include "core/random_func.hpp"
+ 
++struct Industry;
++
+ void ResetPriceBaseMultipliers();
+ void SetPriceBaseMultiplier(Price price, int factor);
+ 
+ extern const ScoreInfo _score_info[];
+ extern TypedIndexContainer<std::array<std::array<int64_t, SCORE_END>, MAX_COMPANIES>, CompanyID> _score_part;
+ extern Economy _economy;
++
++/** Read-only qualification telemetry emitted by the native cargo-payment path. */
++struct RlV2CargoPaymentEvent {
++	CargoType cargo = INVALID_CARGO;
++	uint count = 0;
++	uint distance = 0;
++	uint16_t periods_in_transit = 0;
++	Money feeder_share{};
++	Money base_income{};
++	Money final_income{};
++	StationID station = StationID::Invalid();
++	bool transfer = false;
++};
++
++void RlV2ClearCargoPaymentEvents();
++const std::vector<RlV2CargoPaymentEvent> &RlV2GetCargoPaymentEvents();
++void RlV2ProcessIndustryInputForQualification(Industry *industry);
+ /* Prices and also the fractional part. */
+ extern Prices _price;
+ 
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index a11c7d7..ad6e94c 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -86,6 +86,7 @@
+ #	include "rl_bridge.h"
+ #	include "rl_environment.h"
+ #	include "rl_v2_environment.h"
++#	include "rl_v2_cargo.h"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ #	include "rl_neural_agent.h"
+@@ -426,6 +427,8 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_v2_episode_program;            ///< Canonical M15 stateful episode program.
+ 	std::string rl_v2_episode_trace;              ///< Destination for the M15 episode trace.
+ 	std::string rl_v2_episode_artifacts;          ///< Directory for M15 episode artifacts.
++	std::string rl_v2_cargo_manifest;             ///< Canonical M16 cargo qualification manifest.
++	std::string rl_v2_cargo_report;               ///< Destination for the M16 cargo qualification report.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -486,7 +489,15 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
+ #ifdef WITH_RL_ENVIRONMENT
+-		if (!rl_v2_reset_manifest.empty()) {
++		if (!rl_v2_cargo_manifest.empty()) {
++			try {
++				RunRlV2CargoQualification(rl_v2_cargo_manifest, rl_v2_cargo_report);
++			} catch (const std::exception &e) {
++				UserError("{}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		} else if (!rl_v2_reset_manifest.empty()) {
+ 			try {
+ 				RunRlV2ScalableReset(rl_v2_reset_manifest, rl_v2_reset_projection, rl_v2_observation_metadata,
+ 					rl_v2_candidate_metadata, rl_v2_action_request, rl_v2_action_result,
+@@ -573,7 +584,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BEFHJKLRTUWYZV"
++			"BEFHJKLNORTUWYZV"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -750,6 +761,8 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'J': scanner->rl_v2_candidate_metadata = mgo.opt; break;
+ 		case 'K': scanner->rl_v2_action_request = mgo.opt; break;
+ 		case 'L': scanner->rl_v2_action_result = mgo.opt; break;
++		case 'N': scanner->rl_v2_cargo_manifest = mgo.opt; break;
++		case 'O': scanner->rl_v2_cargo_report = mgo.opt; break;
+ 		case 'R':
+ 			if (auto value = ParseInteger(mgo.opt); value.has_value() && *value >= 1 && *value <= 16) {
+ 				scanner->rl_reset_repetitions = *value;
+@@ -794,6 +807,15 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ 
+ #ifdef WITH_RL_ENVIRONMENT
++	if (scanner->rl_v2_cargo_manifest.empty() != scanner->rl_v2_cargo_report.empty()) {
++		fmt::print(stderr, "M16 cargo qualification requires both -N <manifest> and -O <report>\n");
++		return 1;
++	}
++	if (!scanner->rl_v2_cargo_manifest.empty() && (!scanner->rl_v2_reset_manifest.empty() || !scanner->rl_bridge_descriptors.empty() ||
++			!scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty())) {
++		fmt::print(stderr, "M16 cargo qualification forbids reset/bridge/scenario, dedicated, and networking modes\n");
++		return 1;
++	}
+ 	if (scanner->rl_v2_reset_manifest.empty() != scanner->rl_v2_reset_projection.empty()) {
+ 		fmt::print(stderr, "M15 scalable reset requires both -V <manifest> and -U <projection>\n");
+ 		return 1;
+diff --git a/src/rl_v2_cargo.cpp b/src/rl_v2_cargo.cpp
+new file mode 100644
+index 0000000..fea6dea
+--- /dev/null
++++ b/src/rl_v2_cargo.cpp
+@@ -0,0 +1,769 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_cargo.cpp Native V2 M16 cargo, industry, and accounting qualification. */
++
++#include "stdafx.h"
++
++#include "rl_v2_cargo.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "ai/ai_config.hpp"
++#include "articulated_vehicles.h"
++#include "cargopacket.h"
++#include "cargotype.h"
++#include "command_func.h"
++#include "company_base.h"
++#include "core/backup_type.hpp"
++#include "core/random_func.hpp"
++#include "depot_base.h"
++#include "economy_func.h"
++#include "engine_base.h"
++#include "genworld.h"
++#include "game/game_config.hpp"
++#include "industry.h"
++#include "industrytype.h"
++#include "map_func.h"
++#include "misc_cmd.h"
++#include "newgrf_roadstop.h"
++#include "openttd.h"
++#include "progress.h"
++#include "order_base.h"
++#include "order_cmd.h"
++#include "road_cmd.h"
++#include "road_map.h"
++#include "settings_type.h"
++#include "station_base.h"
++#include "station_cmd.h"
++#include "station_func.h"
++#include "subsidy_base.h"
++#include "subsidy_func.h"
++#include "tile_map.h"
++#include "timer/timer_game_calendar.h"
++#include "timer/timer_game_tick.h"
++#include "town.h"
++#include "town_cmd.h"
++#include "vehicle_base.h"
++#include "vehicle_cmd.h"
++
++#include <algorithm>
++#include <array>
++#include <filesystem>
++#include <fstream>
++#include <optional>
++#include <stdexcept>
++#include <string_view>
++#include <vector>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = CompanyID::Invalid());
++extern void MakeNewgameSettingsLive();
++
++namespace {
++
++static constexpr std::string_view MANIFEST_SCHEMA = "openttd-rl-v2-m16-cargo-manifest-1";
++static constexpr std::string_view REPORT_SCHEMA = "openttd-rl-v2-m16-cargo-report-1";
++static constexpr uint MAP_SIDE = 64;
++static constexpr uint64_t TICK_LIMIT = 65536;
++static constexpr std::array<std::string_view, 4> CLIMATE_NAMES = {"temperate", "arctic", "tropic", "toyland"};
++static constexpr std::array<std::string_view, 37> INDUSTRY_NAMES = {
++	"coal-mine", "power-station", "sawmill", "forest", "oil-refinery", "oil-rig", "factory-temperate",
++	"printing-works", "steel-mill", "farm-temperate-arctic", "copper-ore-mine", "oil-wells", "bank-temperate",
++	"food-processing-plant", "paper-mill", "gold-mine", "bank-arctic-tropic", "diamond-mine", "iron-ore-mine",
++	"fruit-plantation", "rubber-plantation", "water-supply", "water-tower", "factory-tropic", "farm-tropic",
++	"lumber-mill", "cotton-candy-forest", "candy-factory", "battery-farm", "cola-wells", "toy-shop", "toy-factory",
++	"plastic-fountains", "fizzy-drink-factory", "bubble-generator", "toffee-quarry", "sugar-mine",
++};
++static constexpr std::array<std::string_view, 16> CARGO_CLASS_NAMES = {
++	"passengers", "mail", "express", "armoured", "bulk", "piece-goods", "liquid", "refrigerated",
++	"hazardous", "covered", "oversized", "powderized", "not-pourable", "potable", "non-potable", "special",
++};
++
++struct Request {
++	std::string run_id;
++	LandscapeType climate;
++	std::string climate_name;
++	std::string probe;
++	std::string cargo_label;
++	uint32_t seed;
++	uint16_t amount;
++	std::string executable_sha256;
++};
++
++struct Route {
++	StationID source;
++	StationID destination;
++	StationID middle = StationID::Invalid();
++	TileIndex depot;
++};
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M16 cargo qualification: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++static json ReadCanonicalJson(const std::string &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	if (!input) Fail(fmt::format("cannot open manifest '{}'", path));
++	std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
++	Require(!bytes.empty() && bytes.back() == '\n', "manifest must end with one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n' && bytes.back() != '\r', "manifest has trailing whitespace");
++	json value;
++	try { value = json::parse(bytes); } catch (const json::exception &e) { Fail(fmt::format("invalid manifest JSON: {}", e.what())); }
++	Require(value.dump() == bytes, "manifest must be canonical compact JSON followed by LF");
++	return value;
++}
++
++static void WriteCanonicalNew(const std::string &path, const json &value)
++{
++	std::filesystem::path output(path);
++	Require(output.is_absolute() && !std::filesystem::exists(output), "report must be a new absolute path");
++	std::ofstream stream(output, std::ios::binary | std::ios::out | std::ios::trunc);
++	Require(stream.good(), fmt::format("cannot create report '{}'", path));
++	stream << value.dump() << '\n';
++	stream.flush();
++	Require(stream.good(), fmt::format("cannot write report '{}'", path));
++}
++
++static bool SafeName(std::string_view value)
++{
++	return !value.empty() && value.size() <= 80 && std::all_of(value.begin(), value.end(), [](char c) {
++		return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
++	});
++}
++
++static Request Validate(const json &manifest)
++{
++	Require(manifest.is_object() && manifest.size() == 8, "manifest must contain exactly eight fields");
++	Require(manifest.at("schema_version") == MANIFEST_SCHEMA, "unsupported manifest schema_version");
++	std::string run_id = manifest.at("run_id").get<std::string>();
++	Require(SafeName(run_id), "invalid run_id");
++	std::string climate_name = manifest.at("climate").get<std::string>();
++	auto climate_it = std::ranges::find(CLIMATE_NAMES, climate_name);
++	Require(climate_it != CLIMATE_NAMES.end(), "unknown climate");
++	std::string probe = manifest.at("probe").get<std::string>();
++	Require(probe == "catalog" || probe == "single-leg" || probe == "coordination" || probe == "transfer" || probe == "subsidy",
++		"unknown probe");
++	std::string cargo_label = manifest.at("cargo_label").get<std::string>();
++	Require(cargo_label.size() == 4, "cargo_label must contain exactly four bytes");
++	uint16_t amount = manifest.at("amount").get<uint16_t>();
++	Require(amount >= 1 && amount <= 256, "amount must be in 1..256");
++	std::string executable = manifest.at("executable_sha256").get<std::string>();
++	Require(executable.size() == 64 && std::ranges::all_of(executable, [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); }),
++		"executable_sha256 is not lowercase SHA-256");
++	return {std::move(run_id), static_cast<LandscapeType>(climate_it - CLIMATE_NAMES.begin()), std::move(climate_name),
++		std::move(probe), std::move(cargo_label), manifest.at("seed").get<uint32_t>(), amount, std::move(executable)};
++}
++
++static CargoLabel LabelFromText(std::string_view label)
++{
++	Require(label.size() == 4, "cargo label text is not four bytes");
++	return CargoLabel{static_cast<uint32_t>(static_cast<uint8_t>(label[0])) << 24 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[1])) << 16 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[2])) << 8 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[3]))};
++}
++
++static std::string LabelText(CargoLabel label)
++{
++	uint32_t value = label.base();
++	return {static_cast<char>(value >> 24), static_cast<char>(value >> 16), static_cast<char>(value >> 8), static_cast<char>(value)};
++}
++
++static std::string CargoText(CargoType cargo)
++{
++	return IsValidCargoType(cargo) ? LabelText(CargoSpec::Get(cargo)->label) : "----";
++}
++
++static void Configure(const Request &request)
++{
++	_settings_newgame.game_creation.generation_seed = request.seed;
++	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
++	_settings_newgame.game_creation.map_x = 6;
++	_settings_newgame.game_creation.map_y = 6;
++	_settings_newgame.game_creation.landscape = request.climate;
++	_settings_newgame.game_creation.se_flat_world_height = 1;
++	_settings_newgame.game_creation.water_borders = {};
++	_settings_newgame.construction.freeform_edges = true;
++	_settings_newgame.construction.road_stop_on_town_road = true;
++	_settings_newgame.difficulty.max_no_competitors = 0;
++	_settings_newgame.difficulty.industry_density = 0;
++	_settings_newgame.difficulty.max_loan = 2000000;
++	_settings_newgame.difficulty.initial_interest = 2;
++	_settings_newgame.difficulty.vehicle_costs = 0;
++	_settings_newgame.difficulty.vehicle_breakdowns = 0;
++	_settings_newgame.difficulty.subsidy_duration = 2;
++	_settings_newgame.difficulty.subsidy_multiplier = 1;
++	_settings_newgame.difficulty.construction_cost = 0;
++	_settings_newgame.difficulty.economy = false;
++	_settings_newgame.difficulty.disasters = false;
++	_settings_newgame.difficulty.infinite_money = false;
++	_settings_newgame.economy.inflation = false;
++	_settings_newgame.economy.type = ET_SMOOTH;
++	_settings_newgame.economy.town_growth_rate = 0;
++	_settings_newgame.economy.town_layout = TL_ORIGINAL;
++	_settings_newgame.economy.allow_town_roads = false;
++	_settings_newgame.economy.found_town = TF_CUSTOM_LAYOUT;
++	_settings_newgame.economy.timekeeping_units = TKU_CALENDAR;
++	_settings_newgame.linkgraph.distribution_pax = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_mail = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_armoured = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_default = DT_MANUAL;
++	_settings_newgame.order.gradual_loading = false;
++	_settings_newgame.order.selectgoods = false;
++	_settings_newgame.station.modified_catchment = true;
++	_settings_newgame.station.station_spread = 12;
++	_settings_newgame.vehicle.max_aircraft = 0;
++	_settings_newgame.vehicle.max_roadveh = 32;
++	_settings_newgame.vehicle.max_ships = 0;
++	_settings_newgame.vehicle.max_trains = 0;
++	_settings_newgame.vehicle.never_expire_vehicles = true;
++	_settings_newgame.vehicle.road_side = 1;
++	_settings_newgame.vehicle.roadveh_acceleration_model = 1;
++	for (CompanyID id = CompanyID::Begin(); id < MAX_COMPANIES; ++id) _settings_newgame.script_config.ai[id].reset();
++	_settings_newgame.script_config.game.reset();
++	MakeNewgameSettingsLive();
++}
++
++static void ResetWorld(const Request &request)
++{
++	Configure(request);
++	_random.SetSeed(request.seed ^ 0x4d313643U);
++	_interactive_random.SetSeed(request.seed ^ 0x524c5632U);
++	_game_mode = GM_NORMAL;
++	_switch_mode = SM_NONE;
++	SetModalProgress(false);
++	GenerateWorld(GWM_EMPTY, MAP_SIDE, MAP_SIDE, false);
++	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "empty qualification map has wrong dimensions");
++	{
++		AutoRestoreBackup company(_current_company, OWNER_DEITY);
++		bool built = false;
++		for (uint y = 8; y <= 24 && !built; ++y) {
++			for (uint x = 8; x <= 56 && !built; ++x) {
++				auto [test_cost, test_required, test_id] = Command<CMD_FOUND_TOWN>::Do({}, TileXY(x, y), TSZ_SMALL,
++					false, TL_ORIGINAL, false, 0, std::string("M16 Oracle Town"));
++				(void)test_required; (void)test_id;
++				if (test_cost.Failed()) continue;
++				auto [cost, required_money, town_id] = Command<CMD_FOUND_TOWN>::Do(DoCommandFlag::Execute, TileXY(x, y), TSZ_SMALL,
++					false, TL_ORIGINAL, false, 0, std::string("M16 Oracle Town"));
++				(void)required_money;
++				built = cost.Succeeded() && Town::IsValidID(town_id);
++			}
++		}
++		Require(built, "failed to find any legal qualification-town site");
++	}
++	Company *company = DoStartupNewCompany(false, CompanyID::Begin());
++	Require(company != nullptr && company->index == CompanyID::Begin(), "failed to create qualification company");
++	SetLocalCompany(CompanyID::Begin());
++	_current_company = CompanyID::Begin();
++	CommandCost loan = Command<CMD_INCREASE_LOAN>::Do(DoCommandFlag::Execute, LoanCommand::Max, Money{0});
++	Require(loan.Succeeded(), "failed to fund qualification company");
++}
++
++static json CommandRecord(std::string_view command, const CommandCost &cost)
++{
++	return {{"command", command}, {"cost", cost.Succeeded() ? cost.GetCost().base() : 0},
++		{"error_message_id", static_cast<uint64_t>(cost.GetErrorMessage())}, {"status", cost.Succeeded() ? "SUCCESS" : "REJECTED"}};
++}
++
++static void BuildRoadTile(TileIndex tile, RoadBits bits, json &commands)
++{
++	CommandCost cost = Command<CMD_BUILD_ROAD>::Do(DoCommandFlag::Execute, tile, bits, ROADTYPE_ROAD, DRD_NONE, TownID::Invalid());
++	commands.push_back(CommandRecord("CMD_BUILD_ROAD", cost));
++	Require(cost.Succeeded(), fmt::format("failed to build road tile {}", tile.base()));
++}
++
++static StationID BuildStop(TileIndex tile, RoadStopType type, DiagDirection direction, StationID join, json &commands)
++{
++	std::vector<StationID> before;
++	for (const Station *station : Station::Iterate()) before.push_back(station->index);
++	CommandCost cost = Command<CMD_BUILD_ROAD_STOP>::Do(DoCommandFlag::Execute, tile, 1, 1, type, false, direction,
++		ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, join, false);
++	commands.push_back(CommandRecord("CMD_BUILD_ROAD_STOP", cost));
++	Require(cost.Succeeded(), fmt::format("failed to build road stop at {}", tile.base()));
++	if (join != NEW_STATION) {
++		Require(Station::IsValidID(join), "joined road stop references an invalid station");
++		return join;
++	}
++	StationID found = StationID::Invalid();
++	for (const Station *station : Station::Iterate()) {
++		if (station->owner == CompanyID::Begin() && std::ranges::find(before, station->index) == before.end()) found = station->index;
++	}
++	Require(Station::IsValidID(found), "new road stop has no station identity");
++	return found;
++}
++
++static Route BuildRoute(RoadStopType type, bool with_middle, json &commands)
++{
++	for (uint x = 9; x <= 54; ++x) {
++		RoadBits bits = ROAD_X;
++		if (x == 20) bits |= ROAD_SE;
++		if (with_middle && x == 32) bits |= ROAD_NW;
++		BuildRoadTile(TileXY(x, 32), bits, commands);
++	}
++	StationID source = BuildStop(TileXY(8, 32), type, DIAGDIR_SW, NEW_STATION, commands);
++	StationID destination = BuildStop(TileXY(55, 32), type, DIAGDIR_NE, NEW_STATION, commands);
++	StationID middle = StationID::Invalid();
++	if (with_middle) middle = BuildStop(TileXY(32, 31), type, DIAGDIR_SE, NEW_STATION, commands);
++	TileIndex depot = TileXY(20, 33);
++	CommandCost depot_cost = Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute, depot, ROADTYPE_ROAD, DIAGDIR_NW);
++	commands.push_back(CommandRecord("CMD_BUILD_ROAD_DEPOT", depot_cost));
++	Require(depot_cost.Succeeded(), "failed to build road depot");
++	return {source, destination, middle, depot};
++}
++
++static Route BuildCoordinatedRoute(json &commands)
++{
++	for (uint x = 9; x <= 54; ++x) {
++		RoadBits bits = ROAD_X;
++		if (x == 9 || x == 54) bits |= ROAD_NW;
++		if (x == 32) bits |= ROAD_SE;
++		BuildRoadTile(TileXY(x, 32), bits, commands);
++	}
++	StationID source = BuildStop(TileXY(8, 32), RoadStopType::Bus, DIAGDIR_SW, NEW_STATION, commands);
++	StationID destination = BuildStop(TileXY(55, 32), RoadStopType::Bus, DIAGDIR_NE, NEW_STATION, commands);
++	Require(BuildStop(TileXY(9, 31), RoadStopType::Truck, DIAGDIR_SE, source, commands) == source, "source facilities did not join");
++	Require(BuildStop(TileXY(54, 31), RoadStopType::Truck, DIAGDIR_SE, destination, commands) == destination, "destination facilities did not join");
++	TileIndex depot = TileXY(32, 33);
++	CommandCost depot_cost = Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute, depot, ROADTYPE_ROAD, DIAGDIR_NW);
++	commands.push_back(CommandRecord("CMD_BUILD_ROAD_DEPOT", depot_cost));
++	Require(depot_cost.Succeeded(), "failed to build coordination depot");
++	return {source, destination, StationID::Invalid(), depot};
++}
++
++static EngineID FindAndBuildVehicle(TileIndex depot, CargoType cargo, json &commands, VehicleID &vehicle_id, uint16_t &refit_capacity)
++{
++	for (const Engine *engine : Engine::IterateType(VEH_ROAD)) {
++		if (!engine->company_avail.Test(CompanyID::Begin()) || !engine->CanCarryCargo()) continue;
++		if (!HasBit(GetUnionOfArticulatedRefitMasks(engine->index, true), cargo)) continue;
++		auto result = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, depot, engine->index, true, cargo, INVALID_CLIENT_ID);
++		commands.push_back(CommandRecord("CMD_BUILD_VEHICLE", std::get<0>(result)));
++		if (std::get<0>(result).Failed()) continue;
++		vehicle_id = std::get<1>(result);
++		refit_capacity = std::get<2>(result);
++		const Vehicle *vehicle = Vehicle::Get(vehicle_id);
++		Require(vehicle->cargo_type == cargo && vehicle->cargo_cap > 0, "built road vehicle has wrong cargo or zero capacity");
++		return engine->index;
++	}
++	Fail(fmt::format("no buildable road vehicle for cargo {}", CargoText(cargo)));
++}
++
++static void SetOrders(VehicleID vehicle, std::span<const StationID> stations, std::optional<size_t> transfer_ordinal, json &commands)
++{
++	for (size_t ordinal = 0; ordinal < stations.size(); ++ordinal) {
++		Order order;
++		order.MakeGoToStation(stations[ordinal]);
++		order.SetStopLocation(OrderStopLocation::FarEnd);
++		if (transfer_ordinal.has_value() && *transfer_ordinal == ordinal) {
++			order.SetUnloadType(OrderUnloadType::Transfer);
++			order.SetLoadType(OrderLoadType::NoLoad);
++		}
++		CommandCost cost = Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle, VehicleOrderID{static_cast<uint8_t>(ordinal)}, order);
++		commands.push_back(CommandRecord("CMD_INSERT_ORDER", cost));
++		Require(cost.Succeeded(), "failed to insert road-vehicle order");
++	}
++}
++
++static void StartVehicle(VehicleID vehicle, json &commands)
++{
++	CommandCost cost = Command<CMD_START_STOP_VEHICLE>::Do(DoCommandFlag::Execute, vehicle, false);
++	commands.push_back(CommandRecord("CMD_START_STOP_VEHICLE", cost));
++	Require(cost.Succeeded(), "failed to start road vehicle");
++}
++
++static void InjectCargo(StationID station_id, CargoType cargo, uint amount, Source source)
++{
++	Require(CargoPacket::CanAllocateItem(), "cargo packet pool is full");
++	Station *station = Station::Get(station_id);
++	GoodsEntry &goods = station->goods[cargo];
++	goods.rating = 255;
++	goods.status.Set(GoodsEntry::State::Rating);
++	goods.GetOrCreateData().cargo.Append(new CargoPacket(station_id, static_cast<uint16_t>(amount), source), StationID::Invalid());
++}
++
++static void SetDestinationAcceptance(StationID station_id, CargoType cargo, bool town_sink)
++{
++	RlV2SetQualificationAcceptance(station_id, cargo, town_sink);
++	Station *station = Station::Get(station_id);
++	station->goods[cargo].status.Set(GoodsEntry::State::Acceptance);
++	if (town_sink) SetBit(station->always_accepted, cargo);
++}
++
++static std::optional<IndustryType> FindProducer(CargoType cargo, LandscapeType climate)
++{
++	for (IndustryType type = 0; type < NEW_INDUSTRYOFFSET; ++type) {
++		const IndustrySpec *spec = GetIndustrySpec(type);
++		if (!spec->enabled || !spec->climate_availability.Test(climate)) continue;
++		if (std::ranges::find(spec->produced_cargo, cargo) != spec->produced_cargo.end()) return type;
++	}
++	return std::nullopt;
++}
++
++static std::optional<IndustryType> FindConsumer(CargoType cargo, LandscapeType climate)
++{
++	for (IndustryType type = 0; type < NEW_INDUSTRYOFFSET; ++type) {
++		const IndustrySpec *spec = GetIndustrySpec(type);
++		if (!spec->enabled || !spec->climate_availability.Test(climate)) continue;
++		if (std::ranges::find(spec->accepts_cargo, cargo) != spec->accepts_cargo.end()) return type;
++	}
++	return std::nullopt;
++}
++
++static Industry *MakeIndustry(IndustryType type)
++{
++	Require(Industry::CanAllocateItem(), "industry pool is full");
++	Industry *industry = new Industry();
++	industry->type = type;
++	industry->town = Town::Get(TownID{0});
++	industry->owner = OWNER_NONE;
++	industry->prod_level = PRODLEVEL_DEFAULT;
++	industry->last_prod_year = TimerGameEconomy::year;
++	industry->ctlflags.Set({IndustryControlFlag::NoProductionDecrease, IndustryControlFlag::NoClosure, IndustryControlFlag::ExternalProdLevel});
++	const IndustrySpec *spec = GetIndustrySpec(type);
++	size_t accepted_count = 0;
++	for (size_t index = 0; index < spec->accepts_cargo.size(); ++index) if (IsValidCargoType(spec->accepts_cargo[index])) accepted_count = index + 1;
++	for (size_t index = 0; index < accepted_count; ++index) industry->accepted.push_back({spec->accepts_cargo[index]});
++	size_t produced_count = 0;
++	for (size_t index = 0; index < spec->produced_cargo.size(); ++index) if (IsValidCargoType(spec->produced_cargo[index])) produced_count = index + 1;
++	for (size_t index = 0; index < produced_count; ++index) industry->produced.push_back({spec->produced_cargo[index], 0, spec->production_rate[index], {}});
++	return industry;
++}
++
++static json PaymentEvents()
++{
++	json result = json::array();
++	for (const RlV2CargoPaymentEvent &event : RlV2GetCargoPaymentEvents()) {
++		result.push_back({{"base_income", event.base_income.base()}, {"cargo", CargoText(event.cargo)}, {"count", event.count},
++			{"distance", event.distance}, {"feeder_share", event.feeder_share.base()}, {"final_income", event.final_income.base()},
++			{"periods_in_transit", event.periods_in_transit}, {"station", event.station.base()}, {"transfer", event.transfer}});
++	}
++	return result;
++}
++
++static json RunSingleLeg(const Request &request, CargoType cargo, bool create_subsidy)
++{
++	json commands = json::array();
++	RoadStopType stop_type = IsCargoInClass(cargo, CargoClass::Passengers) ? RoadStopType::Bus : RoadStopType::Truck;
++	Route route = BuildRoute(stop_type, false, commands);
++	Station *destination_station = Station::Get(route.destination);
++	std::optional<IndustryType> producer = FindProducer(cargo, request.climate);
++	std::optional<IndustryType> consumer = FindConsumer(cargo, request.climate);
++	Industry *source_industry = producer.has_value() ? MakeIndustry(*producer) : nullptr;
++	Industry *destination_industry = consumer.has_value() ? MakeIndustry(*consumer) : nullptr;
++	Source source = source_industry != nullptr ? Source{source_industry->index, SourceType::Industry} : Source{Town::Get(TownID{0})->index, SourceType::Town};
++	if (destination_industry != nullptr) destination_station->industries_near.insert({0, destination_industry});
++	bool town_sink = destination_industry == nullptr;
++	Subsidy *subsidy = nullptr;
++	if (create_subsidy) {
++		Require(source_industry != nullptr && destination_industry != nullptr, "subsidy probe needs industry source and destination");
++		Require(Subsidy::CanAllocateItem(), "subsidy pool is full");
++		subsidy = new Subsidy(cargo, source, {destination_industry->index, SourceType::Industry}, SUBSIDY_OFFER_MONTHS);
++		RebuildSubsidisedSourceAndDestinationCache();
++	}
++	VehicleID vehicle_id = VehicleID::Invalid();
++	uint16_t refit_capacity = 0;
++	EngineID engine = FindAndBuildVehicle(route.depot, cargo, commands, vehicle_id, refit_capacity);
++	std::array<StationID, 2> orders{route.source, route.destination};
++	SetOrders(vehicle_id, orders, std::nullopt, commands);
++	InjectCargo(route.source, cargo, request.amount, source);
++	SetDestinationAcceptance(route.destination, cargo, town_sink);
++	Company *company = Company::Get(CompanyID::Begin());
++	uint32_t delivered_before = company->cur_economy.delivered_cargo[cargo];
++	Money income_before = company->cur_economy.income;
++	uint16_t accepted_before = destination_industry == nullptr ? 0 : destination_industry->GetCargoAccepted(cargo)->GetOrCreateHistory()[THIS_MONTH].accepted;
++	std::vector<uint16_t> produced_before;
++	if (destination_industry != nullptr) for (const auto &slot : destination_industry->produced) produced_before.push_back(slot.waiting);
++	RlV2ClearCargoPaymentEvents();
++	StartVehicle(vehicle_id, commands);
++	uint64_t ticks = 0;
++	while ((company->cur_economy.delivered_cargo[cargo] == delivered_before || company->cur_economy.income <= income_before) && ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(route.destination, cargo, town_sink);
++		StateGameLoop();
++		++ticks;
++	}
++	uint32_t delivered = company->cur_economy.delivered_cargo[cargo] - delivered_before;
++	Money income = company->cur_economy.income - income_before;
++	Require(delivered > 0 && income > 0, fmt::format("native single-leg service did not deliver profitably: delivered={}, income={}, ticks={}, vehicle_tile={}, vehicle_status={}, vehicle_cargo={}, events={}",
++		delivered, income.base(), ticks, Vehicle::Get(vehicle_id)->tile.base(), Vehicle::Get(vehicle_id)->vehstatus.base(),
++		Vehicle::Get(vehicle_id)->cargo.StoredCount(), RlV2GetCargoPaymentEvents().size()));
++	Require(!RlV2GetCargoPaymentEvents().empty() && !RlV2GetCargoPaymentEvents().back().transfer, "single-leg delivery emitted no final payment event");
++	const auto &payment = RlV2GetCargoPaymentEvents().back();
++	Require(payment.final_income == income, "native payment event and company income diverged");
++	if (!create_subsidy) Require(payment.final_income == payment.base_income, "unsubsidized delivery changed base income");
++	if (create_subsidy) Require(subsidy != nullptr && subsidy->awarded == CompanyID::Begin() && payment.final_income == payment.base_income * 2,
++		"subsidy was not awarded with exact 2x native payment");
++	json production = json::array();
++	if (destination_industry != nullptr) {
++		for (size_t index = 0; index < destination_industry->produced.size(); ++index) {
++			production.push_back({{"after", destination_industry->produced[index].waiting}, {"before", produced_before[index]},
++				{"cargo", CargoText(destination_industry->produced[index].cargo)}});
++		}
++	}
++	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
++	json result = {
++		{"accounting", {{"company_income_delta", income.base()}, {"delivered_delta", delivered}, {"payment_events", PaymentEvents()}}},
++		{"commands", std::move(commands)},
++		{"destination", {{"accepted_industry_delta", destination_industry == nullptr ? 0 : destination_industry->GetCargoAccepted(cargo)->GetOrCreateHistory()[THIS_MONTH].accepted - accepted_before},
++			{"industry", consumer.has_value() ? INDUSTRY_NAMES[*consumer] : "town-always-accepted"}, {"production", std::move(production)}, {"station", route.destination.base()}}},
++		{"source", {{"industry", producer.has_value() ? INDUSTRY_NAMES[*producer] : "town"}, {"station", route.source.base()}}},
++		{"ticks", ticks},
++		{"vehicle", {{"capacity", vehicle->cargo_cap}, {"cargo", CargoText(vehicle->cargo_type)}, {"engine", engine.base()},
++			{"id", vehicle_id.base()}, {"refit_capacity", refit_capacity}, {"running", !vehicle->vehstatus.Test(VehState::Stopped)}}},
++	};
++	if (destination_industry != nullptr) destination_station->industries_near.clear();
++	RlV2ClearQualificationAcceptance();
++	if (subsidy != nullptr) delete subsidy;
++	delete destination_industry;
++	delete source_industry;
++	return result;
++}
++
++static json RunCoordination(const Request &request)
++{
++	CargoType passengers = GetCargoTypeByLabel(LabelFromText("PASS"));
++	CargoType mail = GetCargoTypeByLabel(LabelFromText("MAIL"));
++	Require(IsValidCargoType(passengers) && IsValidCargoType(mail), "coordination cargos are unavailable");
++	json commands = json::array();
++	Route route = BuildCoordinatedRoute(commands);
++	VehicleID bus = VehicleID::Invalid(), mail_truck = VehicleID::Invalid();
++	uint16_t bus_refit = 0, mail_refit = 0;
++	EngineID bus_engine = FindAndBuildVehicle(route.depot, passengers, commands, bus, bus_refit);
++	EngineID mail_engine = FindAndBuildVehicle(route.depot, mail, commands, mail_truck, mail_refit);
++	std::array<StationID, 2> orders{route.source, route.destination};
++	SetOrders(bus, orders, std::nullopt, commands);
++	SetOrders(mail_truck, orders, std::nullopt, commands);
++	Source town_source{Town::Get(TownID{0})->index, SourceType::Town};
++	InjectCargo(route.source, passengers, request.amount, town_source);
++	InjectCargo(route.source, mail, request.amount, town_source);
++	Company *company = Company::Get(CompanyID::Begin());
++	uint32_t pax_before = company->cur_economy.delivered_cargo[passengers];
++	uint32_t mail_before = company->cur_economy.delivered_cargo[mail];
++	Money income_before = company->cur_economy.income;
++	RlV2ClearCargoPaymentEvents();
++	StartVehicle(bus, commands);
++	StartVehicle(mail_truck, commands);
++	uint64_t ticks = 0;
++	while ((company->cur_economy.delivered_cargo[passengers] == pax_before || company->cur_economy.delivered_cargo[mail] == mail_before || company->cur_economy.income <= income_before) && ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(route.destination, passengers, true);
++		SetDestinationAcceptance(route.destination, mail, true);
++		StateGameLoop();
++		++ticks;
++	}
++	Money expected_income{};
++	for (const auto &event : RlV2GetCargoPaymentEvents()) if (!event.transfer) expected_income += event.final_income;
++	while (company->cur_economy.income - income_before < expected_income && ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(route.destination, passengers, true);
++		SetDestinationAcceptance(route.destination, mail, true);
++		StateGameLoop();
++		++ticks;
++	}
++	uint32_t pax = company->cur_economy.delivered_cargo[passengers] - pax_before;
++	uint32_t delivered_mail = company->cur_economy.delivered_cargo[mail] - mail_before;
++	Money income = company->cur_economy.income - income_before;
++	Require(pax > 0 && delivered_mail > 0 && income > 0, "coordinated passenger/mail service was not profitable for both cargos");
++	Require(income == expected_income, "coordinated passenger/mail company income diverged from final-payment events");
++	Require(Station::Get(route.source)->facilities.All({StationFacility::BusStop, StationFacility::TruckStop}) &&
++		Station::Get(route.destination)->facilities.All({StationFacility::BusStop, StationFacility::TruckStop}), "coordination stations are not shared bus/truck stations");
++	json vehicles = json::array({
++		{{"cargo", "PASS"}, {"engine", bus_engine.base()}, {"id", bus.base()}, {"refit_capacity", bus_refit}},
++		{{"cargo", "MAIL"}, {"engine", mail_engine.base()}, {"id", mail_truck.base()}, {"refit_capacity", mail_refit}},
++	});
++	RlV2ClearQualificationAcceptance();
++	return {{"accounting", {{"company_income_delta", income.base()}, {"delivered_mail", delivered_mail}, {"delivered_passengers", pax},
++		{"payment_events", PaymentEvents()}}}, {"commands", std::move(commands)}, {"shared_stations", true}, {"ticks", ticks},
++		{"vehicles", std::move(vehicles)}};
++}
++
++static json RunTransfer(const Request &request, CargoType cargo)
++{
++	Require(!IsCargoInClass(cargo, CargoClass::Passengers), "transfer probe requires a non-passenger road cargo");
++	json commands = json::array();
++	Route route = BuildRoute(RoadStopType::Truck, true, commands);
++	VehicleID first = VehicleID::Invalid(), second = VehicleID::Invalid();
++	uint16_t first_refit = 0, second_refit = 0;
++	EngineID first_engine = FindAndBuildVehicle(route.depot, cargo, commands, first, first_refit);
++	EngineID second_engine = FindAndBuildVehicle(route.depot, cargo, commands, second, second_refit);
++	std::array<StationID, 2> first_orders{route.source, route.middle};
++	SetOrders(first, first_orders, 1, commands);
++	std::array<StationID, 2> second_orders{route.middle, route.destination};
++	SetOrders(second, second_orders, std::nullopt, commands);
++	Source source{Town::Get(TownID{0})->index, SourceType::Town};
++	InjectCargo(route.source, cargo, request.amount, source);
++	Company *company = Company::Get(CompanyID::Begin());
++	Money income_before = company->cur_economy.income;
++	uint32_t delivered_before = company->cur_economy.delivered_cargo[cargo];
++	RlV2ClearCargoPaymentEvents();
++	StartVehicle(first, commands);
++	uint64_t transfer_ticks = 0;
++	while ((std::ranges::none_of(RlV2GetCargoPaymentEvents(), [](const auto &event) { return event.transfer; }) ||
++			Station::Get(route.middle)->goods[cargo].AvailableCount() == 0) && transfer_ticks < TICK_LIMIT) {
++		StateGameLoop();
++		++transfer_ticks;
++	}
++	Require(std::ranges::any_of(RlV2GetCargoPaymentEvents(), [](const auto &event) { return event.transfer; }), "first leg emitted no transfer payment");
++	Require(company->cur_economy.income == income_before && company->cur_economy.delivered_cargo[cargo] == delivered_before,
++		"transfer changed company income or final-delivery count");
++	uint transfer_waiting = Station::Get(route.middle)->goods[cargo].AvailableCount();
++	Require(transfer_waiting > 0, "transferred cargo is not waiting at shared station");
++	StartVehicle(second, commands);
++	uint64_t final_ticks = 0;
++	while ((company->cur_economy.delivered_cargo[cargo] == delivered_before || company->cur_economy.income <= income_before) && final_ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(route.destination, cargo, true);
++		StateGameLoop();
++		++final_ticks;
++	}
++	Money expected_final_income{};
++	for (const auto &event : RlV2GetCargoPaymentEvents()) if (!event.transfer) expected_final_income += event.final_income;
++	while (company->cur_economy.income - income_before < expected_final_income && final_ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(route.destination, cargo, true);
++		StateGameLoop();
++		++final_ticks;
++	}
++	Money final_income = company->cur_economy.income - income_before;
++	uint32_t delivered = company->cur_economy.delivered_cargo[cargo] - delivered_before;
++	Require(final_income > 0 && delivered > 0, "transferred cargo was not finally delivered profitably");
++	Require(final_income == expected_final_income, "transfer probe company income diverged from the final-payment event");
++	size_t final_count = std::ranges::count_if(RlV2GetCargoPaymentEvents(), [](const auto &event) { return !event.transfer; });
++	Require(final_count == 1, "transfer probe emitted duplicate final-payment events");
++	RlV2ClearQualificationAcceptance();
++	return {{"commands", std::move(commands)}, {"final", {{"company_income_delta", final_income.base()}, {"delivered_delta", delivered},
++		{"ticks", final_ticks}}}, {"first_leg", {{"company_income_delta", 0}, {"engine", first_engine.base()},
++		{"ticks", transfer_ticks}, {"transfer_waiting", transfer_waiting}}}, {"payment_events", PaymentEvents()},
++		{"second_engine", second_engine.base()}, {"single_final_payment", true}};
++}
++
++static json CargoCatalog()
++{
++	json cargos = json::array();
++	for (const CargoSpec *spec : CargoSpec::Iterate()) {
++		json classes = json::array();
++		for (size_t index = 0; index < CARGO_CLASS_NAMES.size(); ++index) {
++			if (spec->classes.Test(static_cast<CargoClass>(index))) classes.push_back(CARGO_CLASS_NAMES[index]);
++		}
++		cargos.push_back({{"bitnum", spec->bitnum}, {"classes", std::move(classes)}, {"freight", spec->is_freight},
++			{"initial_payment", spec->initial_payment}, {"label", LabelText(spec->label)}, {"slot", spec->Index()},
++			{"transit_periods", {spec->transit_periods[0], spec->transit_periods[1]}}, {"weight_sixteenth_ton", spec->weight}});
++	}
++	return cargos;
++}
++
++static json IndustryCatalogAndProduction(LandscapeType climate)
++{
++	json industries = json::array();
++	json transitions = json::array();
++	for (IndustryType type = 0; type < NEW_INDUSTRYOFFSET; ++type) {
++		const IndustrySpec *spec = GetIndustrySpec(type);
++		if (!spec->enabled || !spec->climate_availability.Test(climate)) continue;
++		json accepted = json::array(), produced = json::array();
++		size_t accepted_count = 0, produced_count = 0;
++		for (size_t index = 0; index < spec->accepts_cargo.size(); ++index) if (IsValidCargoType(spec->accepts_cargo[index])) accepted_count = index + 1;
++		for (size_t index = 0; index < spec->produced_cargo.size(); ++index) if (IsValidCargoType(spec->produced_cargo[index])) produced_count = index + 1;
++		for (size_t index = 0; index < accepted_count; ++index) accepted.push_back(CargoText(spec->accepts_cargo[index]));
++		for (size_t index = 0; index < produced_count; ++index) {
++			CargoType cargo = spec->produced_cargo[index];
++			produced.push_back({{"cargo", CargoText(cargo)}, {"rate", spec->production_rate[index]}});
++		}
++		for (size_t input = 0; input < accepted_count; ++input) {
++			if (!IsValidCargoType(spec->accepts_cargo[input])) continue;
++			for (size_t output = 0; output < produced_count; ++output) {
++				if (!IsValidCargoType(spec->produced_cargo[output])) continue;
++				uint16_t multiplier = spec->input_cargo_multiplier[input][output];
++				if (multiplier == 0) continue;
++				Industry oracle;
++				oracle.type = type;
++				for (size_t index = 0; index < accepted_count; ++index) oracle.accepted.push_back({spec->accepts_cargo[index]});
++				for (size_t index = 0; index < produced_count; ++index) oracle.produced.push_back({spec->produced_cargo[index]});
++				oracle.accepted[input].waiting = 256;
++				RlV2ProcessIndustryInputForQualification(&oracle);
++				Require(oracle.accepted[input].waiting == 0 && oracle.produced[output].waiting == multiplier,
++					"shared native industry-production core diverged from declared multiplier");
++				transitions.push_back({{"accepted", CargoText(spec->accepts_cargo[input])}, {"consumed", 256}, {"industry_id", type},
++					{"industry_name", INDUSTRY_NAMES[type]}, {"multiplier_256", multiplier}, {"produced", CargoText(spec->produced_cargo[output])},
++					{"produced_amount", oracle.produced[output].waiting}});
++			}
++		}
++		industries.push_back({{"accepted", std::move(accepted)}, {"behaviour_bits", spec->behaviour.base()},
++			{"industry_id", type}, {"life_type_bits", spec->life_type.base()}, {"name", INDUSTRY_NAMES[type]},
++			{"produced", std::move(produced)}});
++	}
++	return {{"industries", std::move(industries)}, {"production_transitions", std::move(transitions)}};
++}
++
++static json LifecycleAndEconomyOracle(LandscapeType climate)
++{
++	size_t before = Industry::GetNumItems();
++	IndustryType type = 0;
++	while (type < NEW_INDUSTRYOFFSET && !GetIndustrySpec(type)->climate_availability.Test(climate)) ++type;
++	Require(type < NEW_INDUSTRYOFFSET, "climate has no industry for closure oracle");
++	Require(Industry::CanAllocateItem(), "industry pool is full during closure oracle");
++	Industry *industry = new Industry();
++	industry->type = type;
++	size_t during = Industry::GetNumItems();
++	delete industry;
++	size_t after = Industry::GetNumItems();
++	Require(during == before + 1 && after == before, "industry pool allocation/closure lifecycle did not round-trip");
++	int16_t saved_fluct = _economy.fluct;
++	_economy.fluct = 100;
++	bool normal = !EconomyIsInRecession();
++	_economy.fluct = -1;
++	bool recession = EconomyIsInRecession();
++	_economy.fluct = saved_fluct;
++	Require(normal && recession, "native recession transition oracle failed");
++	DistributionType old_default = _settings_game.linkgraph.distribution_default;
++	_settings_game.linkgraph.distribution_default = DT_ASYMMETRIC;
++	bool asymmetric = _settings_game.linkgraph.distribution_default == DT_ASYMMETRIC;
++	_settings_game.linkgraph.distribution_default = DT_SYMMETRIC;
++	bool symmetric = _settings_game.linkgraph.distribution_default == DT_SYMMETRIC;
++	_settings_game.linkgraph.distribution_default = old_default;
++	Require(asymmetric && symmetric && old_default == DT_MANUAL, "cargo-distribution setting transition oracle failed");
++	return {{"cargo_distribution", {{"asymmetric_observed", asymmetric}, {"restored_manual", true}, {"symmetric_observed", symmetric}}},
++		{"economy", {{"normal_observed", normal}, {"recession_observed", recession}}},
++		{"industry_closure", {{"after", after}, {"before", before}, {"during", during}, {"exact_pool_roundtrip", true},
++			{"industry_id", type}, {"industry_name", INDUSTRY_NAMES[type]}}}};
++}
++
++} // namespace
++
++void RunRlV2CargoQualification(const std::string &manifest_path, const std::string &report_path)
++{
++	Request request = Validate(ReadCanonicalJson(manifest_path));
++	ResetWorld(request);
++	CargoType cargo = GetCargoTypeByLabel(LabelFromText(request.cargo_label));
++	if (request.probe != "coordination" && request.probe != "catalog") {
++		Require(IsValidCargoType(cargo), fmt::format("cargo {} is unavailable in {}", request.cargo_label, request.climate_name));
++	}
++	json catalog = CargoCatalog();
++	json industry = IndustryCatalogAndProduction(request.climate);
++	json probe;
++	if (request.probe == "catalog") probe = {{"status", "CATALOG_ONLY"}};
++	else if (request.probe == "single-leg") probe = RunSingleLeg(request, cargo, false);
++	else if (request.probe == "coordination") probe = RunCoordination(request);
++	else if (request.probe == "transfer") probe = RunTransfer(request, cargo);
++	else probe = RunSingleLeg(request, cargo, true);
++	json report = {
++		{"schema_version", REPORT_SCHEMA},
++		{"cargo_catalog", std::move(catalog)},
++		{"climate", request.climate_name},
++		{"executable_sha256", request.executable_sha256},
++		{"industry_graph", std::move(industry)},
++		{"lifecycle_and_economy", LifecycleAndEconomyOracle(request.climate)},
++		{"probe", std::move(probe)},
++		{"request", {{"amount", request.amount}, {"cargo_label", request.cargo_label}, {"probe", request.probe},
++			{"run_id", request.run_id}, {"seed", request.seed}}},
++		{"run_id", request.run_id},
++		{"status", "PASS"},
++	};
++	WriteCanonicalNew(report_path, report);
++}
+diff --git a/src/rl_v2_cargo.h b/src/rl_v2_cargo.h
+new file mode 100644
+index 0000000..f541a18
+--- /dev/null
++++ b/src/rl_v2_cargo.h
+@@ -0,0 +1,15 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_cargo.h Native V2 M16 cargo, industry, and accounting qualification. */
++
++#ifndef RL_V2_CARGO_H
++#define RL_V2_CARGO_H
++
++#include <string>
++
++void RunRlV2CargoQualification(const std::string &manifest_path, const std::string &report_path);
++
++#endif /* RL_V2_CARGO_H */
+diff --git a/src/station_cmd.cpp b/src/station_cmd.cpp
+index d754b2f..07d71b4 100644
+--- a/src/station_cmd.cpp
++++ b/src/station_cmd.cpp
+@@ -81,6 +81,28 @@
+ 
+ #include "safeguards.h"
+ 
++static StationID _rl_v2_acceptance_station = StationID::Invalid();
++static CargoTypes _rl_v2_acceptance_cargos{};
++static CargoTypes _rl_v2_acceptance_always{};
++
++void RlV2SetQualificationAcceptance(StationID station, CargoType cargo, bool always_accepted)
++{
++	if (_rl_v2_acceptance_station != station) {
++		_rl_v2_acceptance_cargos = {};
++		_rl_v2_acceptance_always = {};
++	}
++	_rl_v2_acceptance_station = station;
++	SetBit(_rl_v2_acceptance_cargos, cargo);
++	if (always_accepted) SetBit(_rl_v2_acceptance_always, cargo);
++}
++
++void RlV2ClearQualificationAcceptance()
++{
++	_rl_v2_acceptance_station = StationID::Invalid();
++	_rl_v2_acceptance_cargos = {};
++	_rl_v2_acceptance_always = {};
++}
++
+ /**
+  * Static instance of FlowStat::SharesMap.
+  * Note: This instance is created on task start.
+@@ -636,6 +658,13 @@ void UpdateStationAcceptance(Station *st, bool show_msg)
+ 			(*LinkGraph::Get(ge.link_graph))[ge.node].SetDemand(amt / 8);
+ 		}
+ 	}
++	if (st->index == _rl_v2_acceptance_station) {
++		for (CargoType cargo = 0; cargo < NUM_CARGO; ++cargo) {
++			if (!HasBit(_rl_v2_acceptance_cargos, cargo)) continue;
++			st->goods[cargo].status.Set(GoodsEntry::State::Acceptance);
++			if (HasBit(_rl_v2_acceptance_always, cargo)) SetBit(st->always_accepted, cargo);
++		}
++	}
+ 
+ 	/* Only show a message in case the acceptance was actually changed. */
+ 	CargoTypes new_acc = GetAcceptanceMask(st);
+diff --git a/src/station_func.h b/src/station_func.h
+index 3e74745..74aa6f5 100644
+--- a/src/station_func.h
++++ b/src/station_func.h
+@@ -29,6 +29,9 @@ void ClearAllStationCachedNames();
+ CargoArray GetProductionAroundTiles(TileIndex tile, int w, int h, int rad);
+ CargoArray GetAcceptanceAroundTiles(TileIndex tile, int w, int h, int rad, CargoTypes *always_accepted = nullptr);
+ 
++void RlV2SetQualificationAcceptance(StationID station, CargoType cargo, bool always_accepted);
++void RlV2ClearQualificationAcceptance();
++
+ void UpdateStationAcceptance(Station *st, bool show_msg);
+ CargoTypes GetAcceptanceMask(const Station *st);
+ CargoTypes GetEmptyMask(const Station *st);
+-- 
+2.43.0
+

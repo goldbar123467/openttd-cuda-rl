@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-observation-evidence.schema.json",
+  "title": "OpenTTD RL V2 M15 bounded observation frozen evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "contract_sha256", "observation_source_sha256", "metadata_schema_sha256", "executable", "artifact_base_hint", "artifact_root", "cases", "determinism", "policy", "summary"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-observation-evidence.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-observation-evidence-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "observation_source_sha256": {"$ref": "#/$defs/sha256"},
+    "metadata_schema_sha256": {"$ref": "#/$defs/sha256"},
+    "executable": {
+      "type": "object", "additionalProperties": false, "required": ["sha256", "size"],
+      "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1000000}}
+    },
+    "artifact_base_hint": {"const": "/home/thecl/.codex/artifacts/openttd-rl"},
+    "artifact_root": {"const": "v2-m15-observation-evidence-c"},
+    "cases": {
+      "type": "array", "minItems": 4, "maxItems": 4,
+      "items": {"$ref": "#/$defs/case"}
+    },
+    "determinism": {
+      "type": "object", "additionalProperties": false,
+      "required": ["primary_artifact_dir", "repeat_artifact_dir", "manifest_sha256", "projection_sha256", "metadata_sha256", "binary_sha256", "byte_identical"],
+      "properties": {
+        "primary_artifact_dir": {"const": "reset-0064x0064"}, "repeat_artifact_dir": {"const": "repeat-0064x0064"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"}, "projection_sha256": {"$ref": "#/$defs/sha256"},
+        "metadata_sha256": {"$ref": "#/$defs/sha256"}, "binary_sha256": {"$ref": "#/$defs/sha256"},
+        "byte_identical": {"const": true}
+      }
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["exact_bytes", "independent_decoder", "cross_view_64", "rectangular_maps", "maximum_budget_map", "overflow_observed", "g15_pass_claim"],
+      "properties": {
+        "exact_bytes": {"const": 2182927}, "independent_decoder": {"const": true}, "cross_view_64": {"const": true},
+        "rectangular_maps": {"const": true}, "maximum_budget_map": {"const": true}, "overflow_observed": {"const": true},
+        "g15_pass_claim": {"const": false}
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["cases", "passed", "observation_bytes", "maximum_rss_kib", "maximum_wall_seconds", "maximum_industries", "maximum_omitted_industries"],
+      "properties": {
+        "cases": {"const": 4}, "passed": {"const": 4}, "observation_bytes": {"const": 2182927},
+        "maximum_rss_kib": {"type": "integer", "minimum": 1}, "maximum_wall_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "maximum_industries": {"type": "integer", "minimum": 257}, "maximum_omitted_industries": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "case": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_dir", "width", "height", "seed", "outcome", "observation_bytes", "towns", "industries", "omitted_industries", "maximum_rss_kib", "wall_seconds", "manifest_sha256", "projection_sha256", "metadata_sha256", "binary_sha256", "evidence_sha256", "transcript_sha256", "oracle_checks"],
+      "properties": {
+        "artifact_dir": {"type": "string", "pattern": "^reset-[0-9]{4}x[0-9]{4}$"},
+        "width": {"type": "integer", "minimum": 64, "maximum": 1024}, "height": {"type": "integer", "minimum": 64, "maximum": 1024},
+        "seed": {"type": "integer", "minimum": 0}, "outcome": {"const": "PASS"}, "observation_bytes": {"const": 2182927},
+        "towns": {"type": "integer", "minimum": 2, "maximum": 128}, "industries": {"type": "integer", "minimum": 1},
+        "omitted_industries": {"type": "integer", "minimum": 0}, "maximum_rss_kib": {"type": "integer", "minimum": 1},
+        "wall_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"}, "projection_sha256": {"$ref": "#/$defs/sha256"},
+        "metadata_sha256": {"$ref": "#/$defs/sha256"}, "binary_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"}, "transcript_sha256": {"$ref": "#/$defs/sha256"},
+        "oracle_checks": {"const": ["exact-layout", "finite-floats", "canonical-masks", "structured-projection", "global-type-projection", "64x64-cross-view", "entity-projection", "graph-pairs"]}
+      }
+    }
+  }
+}

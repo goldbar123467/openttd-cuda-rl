@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-action-source.schema.json",
+  "title": "OpenTTD RL V2 M15 hierarchical native action source evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "base", "patch", "result", "build"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-action-source.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-action-source-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "base": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "commit", "tree", "observation_source_evidence_sha256"],
+      "properties": {
+        "kind": {"const": "m15-bounded-observation-result"},
+        "commit": {"const": "7d1b3535d80c26cb324766eb34f0a1f715cbdb75"},
+        "tree": {"const": "a0f9242c225637018f1af5ce5b2c85d20d78b0da"},
+        "observation_source_evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "patch": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": {
+        "path": {"const": "integration/openttd/patches/15.3/m15/action/0001-OpenTTD-RL-V2-M15-hierarchical-native-actions.patch"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "source_files", "cli_options", "v1_path_modified"],
+      "properties": {
+        "commit": {"const": "7bd1e889b8665aaca53369c1fba0136abd1b255b"},
+        "tree": {"const": "52e0c3452b84b8324b83ac0958b9b34995b74de8"},
+        "source_files": {"const": ["src/rl_v2_action.cpp", "src/rl_v2_action.h"]},
+        "cli_options": {"const": ["-J", "-K", "-L"]},
+        "v1_path_modified": {"const": false}
+      }
+    },
+    "build": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_root", "cmake_options", "executable", "ctest"],
+      "properties": {
+        "artifact_root": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-action-a"},
+        "cmake_options": {"const": ["CMAKE_BUILD_TYPE=RelWithDebInfo", "OPTION_RL_ENVIRONMENT=ON", "OPTION_RL_NEURAL_AGENT=OFF", "OPTION_USE_ASSERTS=ON"]},
+        "executable": {
+          "type": "object", "additionalProperties": false, "required": ["path", "sha256", "size"],
+          "properties": {"path": {"const": "build/openttd"}, "sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1000000}}
+        },
+        "ctest": {
+          "type": "object", "additionalProperties": false, "required": ["tests", "passed", "failed"],
+          "properties": {"tests": {"const": 98}, "passed": {"const": 98}, "failed": {"const": 0}}
+        }
+      }
+    }
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

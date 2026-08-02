@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-cross-scale-replay-evidence.schema.json",
+  "title": "OpenTTD RL V2 M15 curriculum/generalization exact replay evidence",
+  "type": "object", "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "contract_sha256", "episode_source_sha256", "program_schema_sha256", "trace_schema_sha256", "program_sha256", "executable", "artifact_root", "matrix_run_sha256", "cases", "summary"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-cross-scale-replay-evidence.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-cross-scale-replay-evidence-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"}, "snapshot_date": {"const": "2026-08-02"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"}, "episode_source_sha256": {"$ref": "#/$defs/sha256"},
+    "program_schema_sha256": {"$ref": "#/$defs/sha256"}, "trace_schema_sha256": {"$ref": "#/$defs/sha256"},
+    "program_sha256": {"$ref": "#/$defs/sha256"},
+    "executable": {"const": {"sha256": "5c1f0657b8394b9be09f4adb413cbe8f733bc1fda86b06ba63d9f72044490f8f", "size": 400423096}},
+    "artifact_root": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-cross-scale-replay-a"},
+    "matrix_run_sha256": {"$ref": "#/$defs/sha256"},
+    "cases": {"type": "array", "minItems": 9, "maxItems": 9, "items": {"$ref": "#/$defs/case"}},
+    "summary": {"const": {"cases": 9, "runs": 18, "curriculum_cases": 4, "generalization_cases": 5, "twin_process_exact": 9, "save_load_exact": 9, "maximum_rss_kib": 90916, "maximum_wall_seconds": 47.529804, "status": "PASS"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "case": {
+      "type": "object", "additionalProperties": false,
+      "required": ["case_id", "width", "height", "seed", "split", "tier", "projection_sha256", "trace_sha256", "checkpoint_sha256", "checkpoint_bytes", "state_sha256", "save_sha256", "observation_sha256", "candidate_sha256", "candidate_semantic_sha256", "maximum_rss_kib", "maximum_wall_seconds", "twin_process_exact", "save_load_exact"],
+      "properties": {
+        "case_id": {"pattern": "^(curriculum|generalization)-[0-9]+x[0-9]+$"},
+        "width": {"enum": [64, 128, 256, 512, 1024]}, "height": {"enum": [64, 128, 256, 512, 1024]},
+        "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+        "split": {"enum": ["training", "generalization"]}, "tier": {"enum": ["curriculum", "generalization"]},
+        "projection_sha256": {"$ref": "#/$defs/sha256"}, "trace_sha256": {"$ref": "#/$defs/sha256"},
+        "checkpoint_sha256": {"$ref": "#/$defs/sha256"}, "checkpoint_bytes": {"type": "integer", "minimum": 1},
+        "state_sha256": {"$ref": "#/$defs/sha256"}, "save_sha256": {"$ref": "#/$defs/sha256"},
+        "observation_sha256": {"$ref": "#/$defs/sha256"}, "candidate_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_semantic_sha256": {"$ref": "#/$defs/sha256"},
+        "maximum_rss_kib": {"type": "integer", "minimum": 1, "maximum": 6291456},
+        "maximum_wall_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 900},
+        "twin_process_exact": {"const": true}, "save_load_exact": {"const": true}
+      }
+    }
+  }
+}

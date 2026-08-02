@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M17 rail contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "version", "counts", "action_extension", "observation_extension", "native_probes", "semantics", "baseline"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m17-rail-contract-1"},
+    "version": {"const": "m17-rail-v1"},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["native_cases", "native_runs", "rail_types", "signal_variants", "track_orientations", "train_engine_entries"],
+      "properties": {
+        "native_cases": {"const": 14},
+        "native_runs": {"const": 28},
+        "rail_types": {"const": 4},
+        "signal_variants": {"const": 12},
+        "track_orientations": {"const": 6},
+        "train_engine_entries": {"const": 116}
+      }
+    },
+    "action_extension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["families", "legality", "transaction_failure"],
+      "properties": {
+        "families": {"type": "array", "minItems": 24, "uniqueItems": true, "items": {"type": "string"}},
+        "legality": {"const": "native-command-test-before-execute"},
+        "transaction_failure": {"type": "string"}
+      }
+    },
+    "observation_extension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bounded_tables", "graph_edges", "m15_compatibility"],
+      "properties": {
+        "bounded_tables": {"type": "array", "minItems": 17, "uniqueItems": true, "items": {"type": "string"}},
+        "graph_edges": {"type": "array", "minItems": 7, "uniqueItems": true, "items": {"type": "string"}},
+        "m15_compatibility": {"type": "string"}
+      }
+    },
+    "native_probes": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "required": ["catalog", "construction", "signals", "lifecycle", "passenger", "freight", "stress"]
+    },
+    "semantics": {"type": "object"},
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["specialist", "rejected_preferred_specialist", "service_comparators"],
+      "properties": {
+        "specialist": {"type": "object"},
+        "rejected_preferred_specialist": {"type": "object"},
+        "service_comparators": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    }
+  }
+}

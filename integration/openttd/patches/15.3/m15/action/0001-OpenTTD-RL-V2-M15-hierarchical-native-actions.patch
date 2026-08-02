@@ -1,0 +1,748 @@
+From 7bd1e889b8665aaca53369c1fba0136abd1b255b Mon Sep 17 00:00:00 2001
+From: OpenTTD-RL V2 Evidence <openttd-rl-v2@localhost>
+Date: Sun, 2 Aug 2026 12:17:09 -0400
+Subject: [PATCH] OpenTTD-RL V2 M15 hierarchical native actions
+
+---
+ src/CMakeLists.txt        |   2 +
+ src/openttd.cpp           |  26 +-
+ src/rl_v2_action.cpp      | 530 ++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_action.h        |  19 ++
+ src/rl_v2_environment.cpp |  13 +-
+ src/rl_v2_environment.h   |   4 +-
+ src/rl_v2_observation.cpp |   3 +-
+ src/rl_v2_observation.h   |   2 +-
+ 8 files changed, 590 insertions(+), 9 deletions(-)
+ create mode 100644 src/rl_v2_action.cpp
+ create mode 100644 src/rl_v2_action.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 8f3f925..402f525 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -58,6 +58,8 @@ add_files(
+     rl_reward.h
+     rl_v2_environment.cpp
+     rl_v2_environment.h
++    rl_v2_action.cpp
++    rl_v2_action.h
+     rl_v2_observation.cpp
+     rl_v2_observation.h
+     CONDITION OPTION_RL_ENVIRONMENT
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index 3292b59..784293b 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -206,6 +206,9 @@ static void ShowHelp()
+ 		"  -V manifest_file    = Run one native M15 scalable reset from a canonical manifest\n"
+ 		"  -U projection_file  = Write the native M15 reset projection\n"
+ 		"  -W metadata_file    = Write the native M15 bounded observation and metadata\n"
++		"  -J metadata_file    = Write the native M15 hierarchical candidate table\n"
++		"  -K request_file     = Execute one snapshot-bound M15 action request\n"
++		"  -L result_file      = Write the typed M15 action result\n"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 		"  -A playback_config  = Start the M11 normal-game neural agent from a canonical config\n"
+@@ -414,6 +417,9 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_v2_reset_manifest;           ///< Canonical M15 scalable reset manifest.
+ 	std::string rl_v2_reset_projection;         ///< Destination for the M15 reset projection.
+ 	std::string rl_v2_observation_metadata;      ///< Destination for M15 observation metadata.
++	std::string rl_v2_candidate_metadata;        ///< Destination for M15 candidate metadata.
++	std::string rl_v2_action_request;             ///< Canonical M15 action request.
++	std::string rl_v2_action_result;              ///< Destination for the M15 action result.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -476,7 +482,8 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ #ifdef WITH_RL_ENVIRONMENT
+ 		if (!rl_v2_reset_manifest.empty()) {
+ 			try {
+-				RunRlV2ScalableReset(rl_v2_reset_manifest, rl_v2_reset_projection, rl_v2_observation_metadata);
++				RunRlV2ScalableReset(rl_v2_reset_manifest, rl_v2_reset_projection, rl_v2_observation_metadata,
++					rl_v2_candidate_metadata, rl_v2_action_request, rl_v2_action_result);
+ 			} catch (const std::exception &e) {
+ 				UserError("{}", e.what());
+ 			}
+@@ -559,7 +566,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BRTUWYZV"
++			"BJKLRTUWYZV"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -730,6 +737,9 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'c': _config_file = mgo.opt; break;
+ #ifdef WITH_RL_ENVIRONMENT
+ 		case 'B': scanner->rl_bridge_descriptors = mgo.opt; break;
++		case 'J': scanner->rl_v2_candidate_metadata = mgo.opt; break;
++		case 'K': scanner->rl_v2_action_request = mgo.opt; break;
++		case 'L': scanner->rl_v2_action_result = mgo.opt; break;
+ 		case 'R':
+ 			if (auto value = ParseInteger(mgo.opt); value.has_value() && *value >= 1 && *value <= 16) {
+ 				scanner->rl_reset_repetitions = *value;
+@@ -782,6 +792,18 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		fmt::print(stderr, "M15 bounded observation requires -V <manifest> and -U <projection>\n");
+ 		return 1;
+ 	}
++	if (!scanner->rl_v2_candidate_metadata.empty() && scanner->rl_v2_observation_metadata.empty()) {
++		fmt::print(stderr, "M15 candidate generation requires -W <observation-metadata>\n");
++		return 1;
++	}
++	if (scanner->rl_v2_action_request.empty() != scanner->rl_v2_action_result.empty()) {
++		fmt::print(stderr, "M15 action execution requires both -K <request> and -L <result>\n");
++		return 1;
++	}
++	if (!scanner->rl_v2_action_request.empty() && scanner->rl_v2_candidate_metadata.empty()) {
++		fmt::print(stderr, "M15 action execution requires -J <candidate-metadata>\n");
++		return 1;
++	}
+ 	if (!scanner->rl_v2_reset_manifest.empty() && (!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty())) {
+ 		fmt::print(stderr, "M15 scalable reset forbids V1 bridge/scenario modes, dedicated mode, and networking\n");
+ 		return 1;
+diff --git a/src/rl_v2_action.cpp b/src/rl_v2_action.cpp
+new file mode 100644
+index 0000000..0adcb02
+--- /dev/null
++++ b/src/rl_v2_action.cpp
+@@ -0,0 +1,530 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_v2_action.cpp Native hierarchical M15 action support. */
++
++#include "stdafx.h"
++
++#include "rl_v2_action.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "cargotype.h"
++#include "command_func.h"
++#include "company_base.h"
++#include "depot_base.h"
++#include "map_func.h"
++#include "misc_cmd.h"
++#include "newgrf_roadstop.h"
++#include "order_base.h"
++#include "order_cmd.h"
++#include "road_cmd.h"
++#include "road_map.h"
++#include "station_base.h"
++#include "station_cmd.h"
++#include "station_map.h"
++#include "tile_map.h"
++#include "timer/timer_game_tick.h"
++#include "town.h"
++#include "vehicle_base.h"
++#include "vehicle_cmd.h"
++
++#include <algorithm>
++#include <array>
++#include <bit>
++#include <filesystem>
++#include <fstream>
++#include <limits>
++#include <queue>
++#include <stdexcept>
++#include <tuple>
++#include <vector>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++namespace {
++
++static constexpr std::string_view METADATA_SCHEMA_VERSION = "openttd-rl-v2-m15-candidate-metadata-1";
++static constexpr std::string_view REQUEST_SCHEMA_VERSION = "openttd-rl-v2-m15-action-request-1";
++static constexpr std::string_view RESULT_SCHEMA_VERSION = "openttd-rl-v2-m15-action-result-1";
++static constexpr std::string_view ACTION_SCHEMA_ID = "v2-m15-hierarchical-action-v1";
++static constexpr std::string_view CONTRACT_SHA256 = "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271";
++static constexpr size_t FAMILY_COUNT = 12;
++static constexpr size_t CANDIDATE_CAPACITY = 4096;
++static constexpr size_t FEATURE_COUNT = 32;
++static constexpr size_t PARAMETER_WORDS = 16;
++static constexpr size_t CANDIDATE_BYTES = 790528;
++static constexpr EngineID BUS_ENGINE{116};
++static constexpr std::array<std::string_view, FAMILY_COUNT> FAMILY_NAMES = {
++	"WAIT", "SELECT_TOWN_PAIR", "BUILD_ROAD_PATH", "BUILD_BUS_STOP", "BUILD_ROAD_DEPOT", "BUY_BUS",
++	"SET_ROUTE", "START_VEHICLE", "STOP_VEHICLE", "SEND_TO_DEPOT", "SELL_VEHICLE", "MANAGE_LOAN",
++};
++static constexpr std::array<uint16_t, FAMILY_COUNT> FAMILY_QUOTAS = {1, 256, 1024, 768, 512, 256, 256, 192, 192, 192, 192, 255};
++
++enum class Family : uint8_t {
++	Wait, SelectTownPair, BuildRoadPath, BuildBusStop, BuildRoadDepot, BuyBus,
++	SetRoute, StartVehicle, StopVehicle, SendToDepot, SellVehicle, ManageLoan,
++};
++
++struct Candidate {
++	Family family;
++	std::array<uint32_t, PARAMETER_WORDS> parameters{};
++	std::array<float, FEATURE_COUNT> features{};
++	uint64_t priority = 0;
++	Money cost{};
++	std::string stable_key;
++};
++
++static bool CandidateIsBetter(const Candidate &a, const Candidate &b)
++{
++	if (a.priority != b.priority) return a.priority > b.priority;
++	return a.stable_key < b.stable_key;
++}
++
++struct CandidateBetter {
++	bool operator()(const Candidate &a, const Candidate &b) const { return CandidateIsBetter(a, b); }
++};
++
++struct CandidateEnumeration {
++	std::array<std::vector<Candidate>, FAMILY_COUNT> selected;
++	std::array<uint64_t, FAMILY_COUNT> total_legal{};
++};
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M15 hierarchical action: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++class Sha256 {
++public:
++	void Update(std::span<const uint8_t> bytes)
++	{
++		for (uint8_t byte : bytes) {
++			this->block[this->block_size++] = byte;
++			this->bit_count += 8;
++			if (this->block_size == this->block.size()) { this->Transform(); this->block_size = 0; }
++		}
++	}
++
++	void Update(std::string_view text)
++	{
++		this->Update(std::span(reinterpret_cast<const uint8_t *>(text.data()), text.size()));
++	}
++
++	std::string Finish()
++	{
++		uint64_t message_bits = this->bit_count;
++		this->block[this->block_size++] = 0x80;
++		if (this->block_size > 56) {
++			while (this->block_size < 64) this->block[this->block_size++] = 0;
++			this->Transform(); this->block_size = 0;
++		}
++		while (this->block_size < 56) this->block[this->block_size++] = 0;
++		for (int shift = 56; shift >= 0; shift -= 8) this->block[this->block_size++] = static_cast<uint8_t>(message_bits >> shift);
++		this->Transform();
++		static constexpr char HEX[] = "0123456789abcdef";
++		std::string result; result.reserve(64);
++		for (uint32_t word : this->state) for (int shift = 28; shift >= 0; shift -= 4) result.push_back(HEX[(word >> shift) & 0xF]);
++		return result;
++	}
++
++private:
++	static constexpr std::array<uint32_t, 64> K = {
++		0x428a2f98U,0x71374491U,0xb5c0fbcfU,0xe9b5dba5U,0x3956c25bU,0x59f111f1U,0x923f82a4U,0xab1c5ed5U,
++		0xd807aa98U,0x12835b01U,0x243185beU,0x550c7dc3U,0x72be5d74U,0x80deb1feU,0x9bdc06a7U,0xc19bf174U,
++		0xe49b69c1U,0xefbe4786U,0x0fc19dc6U,0x240ca1ccU,0x2de92c6fU,0x4a7484aaU,0x5cb0a9dcU,0x76f988daU,
++		0x983e5152U,0xa831c66dU,0xb00327c8U,0xbf597fc7U,0xc6e00bf3U,0xd5a79147U,0x06ca6351U,0x14292967U,
++		0x27b70a85U,0x2e1b2138U,0x4d2c6dfcU,0x53380d13U,0x650a7354U,0x766a0abbU,0x81c2c92eU,0x92722c85U,
++		0xa2bfe8a1U,0xa81a664bU,0xc24b8b70U,0xc76c51a3U,0xd192e819U,0xd6990624U,0xf40e3585U,0x106aa070U,
++		0x19a4c116U,0x1e376c08U,0x2748774cU,0x34b0bcb5U,0x391c0cb3U,0x4ed8aa4aU,0x5b9cca4fU,0x682e6ff3U,
++		0x748f82eeU,0x78a5636fU,0x84c87814U,0x8cc70208U,0x90befffaU,0xa4506cebU,0xbef9a3f7U,0xc67178f2U,
++	};
++	static uint32_t Rotate(uint32_t value, uint count) { return (value >> count) | (value << (32 - count)); }
++	void Transform()
++	{
++		std::array<uint32_t, 64> words{};
++		for (size_t i = 0; i < 16; ++i) words[i] = static_cast<uint32_t>(this->block[i*4]) << 24 |
++			static_cast<uint32_t>(this->block[i*4+1]) << 16 | static_cast<uint32_t>(this->block[i*4+2]) << 8 | this->block[i*4+3];
++		for (size_t i = 16; i < 64; ++i) {
++			uint32_t s0 = Rotate(words[i-15],7) ^ Rotate(words[i-15],18) ^ (words[i-15] >> 3);
++			uint32_t s1 = Rotate(words[i-2],17) ^ Rotate(words[i-2],19) ^ (words[i-2] >> 10);
++			words[i] = words[i-16] + s0 + words[i-7] + s1;
++		}
++		uint32_t a=this->state[0],b=this->state[1],c=this->state[2],d=this->state[3],e=this->state[4],f=this->state[5],g=this->state[6],h=this->state[7];
++		for (size_t i=0;i<64;++i) {
++			uint32_t s1=Rotate(e,6)^Rotate(e,11)^Rotate(e,25), choice=(e&f)^(~e&g), temp1=h+s1+choice+K[i]+words[i];
++			uint32_t s0=Rotate(a,2)^Rotate(a,13)^Rotate(a,22), majority=(a&b)^(a&c)^(b&c), temp2=s0+majority;
++			h=g; g=f; f=e; e=d+temp1; d=c; c=b; b=a; a=temp1+temp2;
++		}
++		this->state[0]+=a;this->state[1]+=b;this->state[2]+=c;this->state[3]+=d;
++		this->state[4]+=e;this->state[5]+=f;this->state[6]+=g;this->state[7]+=h;
++	}
++	std::array<uint32_t,8> state{0x6a09e667U,0xbb67ae85U,0x3c6ef372U,0xa54ff53aU,0x510e527fU,0x9b05688cU,0x1f83d9abU,0x5be0cd19U};
++	std::array<uint8_t,64> block{}; size_t block_size=0; uint64_t bit_count=0;
++};
++
++static json ReadCanonicalJson(const std::string &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	if (!input) Fail(fmt::format("cannot open JSON input '{}'", path));
++	std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
++	Require(!bytes.empty() && bytes.back() == '\n', "JSON input must end with one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n' && bytes.back() != '\r', "JSON input has non-canonical trailing whitespace");
++	json value;
++	try { value = json::parse(bytes); } catch (const json::exception &e) { Fail(fmt::format("invalid JSON: {}", e.what())); }
++	Require(value.dump() == bytes, "JSON input must be canonical compact JSON followed by LF");
++	return value;
++}
++
++static void WriteNew(const std::filesystem::path &path, std::span<const uint8_t> bytes)
++{
++	Require(!path.empty() && !std::filesystem::exists(path), fmt::format("output already exists: '{}'", path.string()));
++	std::ofstream stream(path, std::ios::binary | std::ios::out | std::ios::trunc);
++	if (!stream) Fail(fmt::format("cannot create output '{}'", path.string()));
++	stream.write(reinterpret_cast<const char *>(bytes.data()), bytes.size()); stream.flush();
++	if (!stream) Fail(fmt::format("cannot write output '{}'", path.string()));
++}
++
++static void WriteCanonicalNew(const std::filesystem::path &path, const json &value)
++{
++	Require(!path.empty() && !std::filesystem::exists(path), fmt::format("output already exists: '{}'", path.string()));
++	std::ofstream stream(path, std::ios::binary | std::ios::out | std::ios::trunc);
++	if (!stream) Fail(fmt::format("cannot create output '{}'", path.string()));
++	stream << value.dump() << '\n'; stream.flush();
++	if (!stream) Fail(fmt::format("cannot write output '{}'", path.string()));
++}
++
++static void AppendU32(std::vector<uint8_t> &bytes, uint32_t value)
++{
++	bytes.push_back(static_cast<uint8_t>(value)); bytes.push_back(static_cast<uint8_t>(value >> 8));
++	bytes.push_back(static_cast<uint8_t>(value >> 16)); bytes.push_back(static_cast<uint8_t>(value >> 24));
++}
++
++static void AppendFloat(std::vector<uint8_t> &bytes, float value) { AppendU32(bytes, std::bit_cast<uint32_t>(value)); }
++
++static float Unit(uint64_t value, uint64_t maximum)
++{
++	return maximum == 0 ? 0.0F : std::min(1.0F, static_cast<float>(value) / static_cast<float>(maximum));
++}
++
++static void SetTileFeatures(Candidate &candidate, size_t offset, TileIndex tile)
++{
++	if (tile >= Map::Size()) return;
++	candidate.features[offset] = Unit(TileX(tile), std::max<uint>(1, Map::SizeX() - 1));
++	candidate.features[offset + 1] = Unit(TileY(tile), std::max<uint>(1, Map::SizeY() - 1));
++}
++
++static std::string CandidateKey(Family family, const std::array<uint32_t, PARAMETER_WORDS> &parameters)
++{
++	std::vector<uint8_t> bytes; bytes.reserve(1 + PARAMETER_WORDS * 4);
++	bytes.push_back(static_cast<uint8_t>(family));
++	for (uint32_t value : parameters) AppendU32(bytes, value);
++	Sha256 sha; sha.Update(bytes); return sha.Finish();
++}
++
++static Candidate MakeCandidate(Family family, std::array<uint32_t, PARAMETER_WORDS> parameters, uint64_t priority, Money cost = Money{0})
++{
++	Candidate candidate{family, parameters, {}, priority, cost, {}};
++	candidate.parameters[0] = static_cast<uint8_t>(family);
++	candidate.stable_key = CandidateKey(family, candidate.parameters);
++	candidate.features[static_cast<uint8_t>(family)] = 1.0F;
++	candidate.features[12] = Unit(priority, std::numeric_limits<uint32_t>::max());
++	candidate.features[13] = std::clamp(static_cast<float>(cost.base()) / 1000000.0F, -1.0F, 1.0F);
++	if (family == Family::BuildRoadPath || family == Family::BuildBusStop || family == Family::BuildRoadDepot || family == Family::BuyBus) {
++		SetTileFeatures(candidate, 14, TileIndex{parameters[1]});
++	}
++	return candidate;
++}
++
++static CandidateEnumeration EnumerateCandidates()
++{
++	std::array<std::priority_queue<Candidate, std::vector<Candidate>, CandidateBetter>, FAMILY_COUNT> heaps;
++	CandidateEnumeration result;
++	auto add = [&heaps, &result](Candidate candidate) {
++		size_t family = static_cast<uint8_t>(candidate.family);
++		++result.total_legal[family];
++		if (heaps[family].size() < FAMILY_QUOTAS[family]) {
++			heaps[family].push(std::move(candidate));
++		} else if (CandidateIsBetter(candidate, heaps[family].top())) {
++			heaps[family].pop();
++			heaps[family].push(std::move(candidate));
++		}
++	};
++	add(MakeCandidate(Family::Wait, {}, std::numeric_limits<uint32_t>::max()));
++	const Town *anchor = nullptr;
++	for (const Town *town : Town::Iterate()) if (anchor == nullptr ||
++		std::tie(town->cache.population, anchor->index) > std::tie(anchor->cache.population, town->index)) anchor = town;
++
++	for (const Town *origin : Town::Iterate()) for (const Town *destination : Town::Iterate()) {
++		if (origin == destination) continue;
++		std::array<uint32_t, PARAMETER_WORDS> parameters{};
++		parameters[1] = origin->index.base(); parameters[2] = destination->index.base();
++		uint64_t priority = static_cast<uint64_t>(origin->cache.population) + destination->cache.population;
++		Candidate candidate = MakeCandidate(Family::SelectTownPair, parameters, std::min<uint64_t>(priority, std::numeric_limits<uint32_t>::max()));
++		SetTileFeatures(candidate, 14, origin->xy); SetTileFeatures(candidate, 16, destination->xy);
++		candidate.features[18] = Unit(origin->cache.population, 100000); candidate.features[19] = Unit(destination->cache.population, 100000);
++		add(std::move(candidate));
++	}
++
++	for (TileIndex tile{}; tile < Map::Size(); ++tile) {
++		uint32_t distance = anchor == nullptr ? Map::SizeX() + Map::SizeY() :
++			static_cast<uint32_t>(std::abs(static_cast<int>(TileX(tile)) - static_cast<int>(TileX(anchor->xy))) +
++			std::abs(static_cast<int>(TileY(tile)) - static_cast<int>(TileY(anchor->xy))));
++		uint64_t site_priority = std::numeric_limits<uint32_t>::max() - std::min<uint32_t>(distance, std::numeric_limits<uint32_t>::max());
++		for (RoadBits bits : {ROAD_X, ROAD_Y}) {
++			CommandCost cost = Command<CMD_BUILD_ROAD>::Do({}, tile, bits, ROADTYPE_ROAD, DRD_NONE, TownID::Invalid());
++			if (cost.Succeeded()) {
++				std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = tile.base(); parameters[2] = static_cast<uint8_t>(bits); parameters[3] = 1;
++				add(MakeCandidate(Family::BuildRoadPath, parameters, site_priority, cost.GetCost()));
++			}
++		}
++		for (uint8_t direction = 0; direction < DIAGDIR_END; ++direction) {
++			CommandCost stop = Command<CMD_BUILD_ROAD_STOP>::Do({}, tile, 1, 1, RoadStopType::Bus, false,
++				static_cast<DiagDirection>(direction), ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
++			if (stop.Succeeded()) {
++				std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = tile.base(); parameters[2] = direction;
++				add(MakeCandidate(Family::BuildBusStop, parameters, site_priority, stop.GetCost()));
++			}
++			CommandCost depot = Command<CMD_BUILD_ROAD_DEPOT>::Do({}, tile, ROADTYPE_ROAD, static_cast<DiagDirection>(direction));
++			if (depot.Succeeded()) {
++				std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = tile.base(); parameters[2] = direction;
++				add(MakeCandidate(Family::BuildRoadDepot, parameters, site_priority, depot.GetCost()));
++			}
++		}
++	}
++
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	for (const Depot *depot : Depot::Iterate()) {
++		if (!IsRoadDepotTile(depot->xy) || GetTileOwner(depot->xy) != CompanyID::Begin() || !IsValidCargoType(passengers)) continue;
++		auto [cost, vehicle_id, refit_capacity, refit_mail, capacities] = Command<CMD_BUILD_VEHICLE>::Do({}, depot->xy, BUS_ENGINE, true, passengers, INVALID_CLIENT_ID);
++		(void)vehicle_id; (void)refit_capacity; (void)refit_mail; (void)capacities;
++		if (cost.Succeeded()) {
++			std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = depot->xy.base(); parameters[2] = BUS_ENGINE.base();
++			add(MakeCandidate(Family::BuyBus, parameters, std::numeric_limits<uint32_t>::max() - depot->index.base(), cost.GetCost()));
++		}
++	}
++
++	std::vector<const Station *> stations;
++	for (const Station *station : Station::Iterate()) if (station->owner == CompanyID::Begin()) stations.push_back(station);
++	for (const Vehicle *vehicle : Vehicle::Iterate()) {
++		if (vehicle->owner != CompanyID::Begin() || vehicle->type != VEH_ROAD || !vehicle->IsPrimaryVehicle()) continue;
++		for (const Station *origin : stations) for (const Station *destination : stations) {
++			if (origin == destination) continue;
++			Order first; first.MakeGoToStation(origin->index); first.SetStopLocation(OrderStopLocation::FarEnd);
++			Order second; second.MakeGoToStation(destination->index); second.SetStopLocation(OrderStopLocation::FarEnd);
++			CommandCost clear = Command<CMD_DELETE_ORDER>::Do({}, vehicle->index, INVALID_VEH_ORDER_ID);
++			CommandCost insert_first = Command<CMD_INSERT_ORDER>::Do({}, vehicle->index, VehicleOrderID{0}, first);
++			/* Test mode does not retain the first insertion, so both independent
++			 * command predicates use the currently legal insertion index zero. */
++			CommandCost insert_second = Command<CMD_INSERT_ORDER>::Do({}, vehicle->index, VehicleOrderID{0}, second);
++			if (clear.Succeeded() && insert_first.Succeeded() && insert_second.Succeeded()) {
++				std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = vehicle->index.base(); parameters[2] = origin->index.base(); parameters[3] = destination->index.base();
++				Candidate candidate = MakeCandidate(Family::SetRoute, parameters, std::numeric_limits<uint32_t>::max() - vehicle->index.base());
++				if (vehicle->tile != INVALID_TILE) SetTileFeatures(candidate, 14, vehicle->tile);
++				SetTileFeatures(candidate, 16, destination->xy); add(std::move(candidate));
++			}
++		}
++		CommandCost toggle = Command<CMD_START_STOP_VEHICLE>::Do({}, vehicle->index, false);
++		if (toggle.Succeeded()) {
++			Family family = vehicle->vehstatus.Test(VehState::Stopped) ? Family::StartVehicle : Family::StopVehicle;
++			std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = vehicle->index.base();
++			Candidate candidate = MakeCandidate(family, parameters, std::numeric_limits<uint32_t>::max() - vehicle->index.base());
++			if (vehicle->tile != INVALID_TILE) SetTileFeatures(candidate, 14, vehicle->tile);
++			add(std::move(candidate));
++		}
++		CommandCost send = Command<CMD_SEND_VEHICLE_TO_DEPOT>::Do({}, vehicle->index, DepotCommandFlags{}, {});
++		if (send.Succeeded()) {
++			std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = vehicle->index.base();
++			Candidate candidate = MakeCandidate(Family::SendToDepot, parameters, std::numeric_limits<uint32_t>::max() - vehicle->index.base());
++			if (vehicle->tile != INVALID_TILE) SetTileFeatures(candidate, 14, vehicle->tile);
++			add(std::move(candidate));
++		}
++		CommandCost sell = Command<CMD_SELL_VEHICLE>::Do({}, vehicle->index, false, false, INVALID_CLIENT_ID);
++		if (sell.Succeeded()) {
++			std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = vehicle->index.base();
++			Candidate candidate = MakeCandidate(Family::SellVehicle, parameters, std::numeric_limits<uint32_t>::max() - vehicle->index.base(), sell.GetCost());
++			if (vehicle->tile != INVALID_TILE) SetTileFeatures(candidate, 14, vehicle->tile);
++			add(std::move(candidate));
++		}
++	}
++
++	for (uint32_t direction = 1; direction <= 2; ++direction) {
++		CommandCost loan = direction == 1 ? Command<CMD_INCREASE_LOAN>::Do({}, LoanCommand::Amount, Money{10000}) :
++			Command<CMD_DECREASE_LOAN>::Do({}, LoanCommand::Amount, Money{10000});
++		if (loan.Succeeded()) {
++			std::array<uint32_t, PARAMETER_WORDS> parameters{}; parameters[1] = direction; parameters[2] = 10000;
++			add(MakeCandidate(Family::ManageLoan, parameters, std::numeric_limits<uint32_t>::max() - direction, loan.GetCost()));
++		}
++	}
++
++	for (size_t family = 0; family < FAMILY_COUNT; ++family) {
++		auto &selected = result.selected[family];
++		selected.reserve(heaps[family].size());
++		while (!heaps[family].empty()) { selected.push_back(heaps[family].top()); heaps[family].pop(); }
++		std::sort(selected.begin(), selected.end(), CandidateIsBetter);
++	}
++	return result;
++}
++
++static json CommandLog(std::string_view command, std::string_view phase, const CommandCost &cost)
++{
++	return {{"command",command},{"cost",cost.Succeeded()?cost.GetCost().base():0},{"error_message_id",static_cast<uint64_t>(cost.GetErrorMessage())},
++		{"extra_error_message_id",static_cast<uint64_t>(cost.GetExtraErrorMessage())},{"phase",phase},{"status",cost.Succeeded()?"SUCCESS":"REJECTED"}};
++}
++
++static std::string NativeStateSha256()
++{
++	Sha256 sha;
++	auto add_u32 = [&sha](uint32_t value) { std::array<uint8_t,4> bytes{static_cast<uint8_t>(value),static_cast<uint8_t>(value>>8),static_cast<uint8_t>(value>>16),static_cast<uint8_t>(value>>24)}; sha.Update(bytes); };
++	add_u32(static_cast<uint32_t>(TimerGameTick::counter));
++	const Company *company = Company::Get(CompanyID::Begin());
++	uint64_t money = static_cast<uint64_t>(company->money.base()), loan = static_cast<uint64_t>(company->current_loan.base());
++	add_u32(money); add_u32(money >> 32); add_u32(loan); add_u32(loan >> 32);
++	for (TileIndex tile{}; tile < Map::Size(); ++tile) {
++		Tile map_tile{tile}; add_u32(map_tile.type()); add_u32(map_tile.height()); add_u32(map_tile.m1());
++		add_u32(map_tile.m2()); add_u32(map_tile.m3()); add_u32(map_tile.m4()); add_u32(map_tile.m5());
++	}
++	for (const Station *station : Station::Iterate()) { add_u32(station->index.base()); add_u32(station->xy.base()); add_u32(station->owner.base()); }
++	for (const Vehicle *vehicle : Vehicle::Iterate()) { add_u32(vehicle->index.base()); add_u32(vehicle->tile.base()); add_u32(vehicle->owner.base()); add_u32(vehicle->vehstatus.base()); add_u32(vehicle->GetNumManualOrders()); }
++	return sha.Finish();
++}
++
++static json ExecuteCandidate(const Candidate &candidate)
++{
++	json commands = json::array(); std::string status = "SUCCESS"; bool rolled_back = false;
++	auto execute = [&commands,&status](std::string_view name, auto &&call) {
++		CommandCost cost = call(); commands.push_back(CommandLog(name, "EXECUTE", cost)); if (cost.Failed()) status = "NATIVE_REJECTED"; return cost;
++	};
++	const auto &p = candidate.parameters;
++	switch (candidate.family) {
++		case Family::Wait: status = "NO_OP"; break;
++		case Family::SelectTownPair: break;
++		case Family::BuildRoadPath:
++			execute("CMD_BUILD_ROAD", [&] { return Command<CMD_BUILD_ROAD>::Do(DoCommandFlag::Execute, TileIndex{p[1]}, static_cast<RoadBits>(p[2]), ROADTYPE_ROAD, DRD_NONE, TownID::Invalid()); }); break;
++		case Family::BuildBusStop:
++			execute("CMD_BUILD_ROAD_STOP", [&] { return Command<CMD_BUILD_ROAD_STOP>::Do(DoCommandFlag::Execute, TileIndex{p[1]}, 1, 1, RoadStopType::Bus, false, static_cast<DiagDirection>(p[2]), ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false); }); break;
++		case Family::BuildRoadDepot:
++			execute("CMD_BUILD_ROAD_DEPOT", [&] { return Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute, TileIndex{p[1]}, ROADTYPE_ROAD, static_cast<DiagDirection>(p[2])); }); break;
++		case Family::BuyBus: {
++			CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++			auto value = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, TileIndex{p[1]}, EngineID{static_cast<uint16_t>(p[2])}, true, passengers, INVALID_CLIENT_ID);
++			CommandCost cost = std::get<0>(value); commands.push_back(CommandLog("CMD_BUILD_VEHICLE", "EXECUTE", cost)); if (cost.Failed()) status = "NATIVE_REJECTED"; break;
++		}
++		case Family::SetRoute: {
++			Vehicle *vehicle = Vehicle::GetIfValid(VehicleID{p[1]});
++			if (vehicle == nullptr) { status = "NATIVE_REJECTED"; break; }
++			std::vector<Order> prior; for (const Order &order : vehicle->Orders()) prior.push_back(order);
++			auto rollback = [&] {
++				CommandCost clear = Command<CMD_DELETE_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, INVALID_VEH_ORDER_ID); commands.push_back(CommandLog("CMD_DELETE_ORDER_ALL", "ROLLBACK", clear)); Require(clear.Succeeded(), "route rollback clear failed");
++				for (size_t index=0; index<prior.size(); ++index) { CommandCost restore=Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, VehicleOrderID{static_cast<uint8_t>(index)}, prior[index]); commands.push_back(CommandLog("CMD_INSERT_ORDER", "ROLLBACK", restore)); Require(restore.Succeeded(), "route rollback restore failed"); }
++				rolled_back = true;
++			};
++			CommandCost clear = execute("CMD_DELETE_ORDER_ALL", [&] { return Command<CMD_DELETE_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, INVALID_VEH_ORDER_ID); });
++			if (clear.Failed()) break;
++			Order first; first.MakeGoToStation(StationID{static_cast<uint16_t>(p[2])}); first.SetStopLocation(OrderStopLocation::FarEnd);
++			Order second; second.MakeGoToStation(StationID{static_cast<uint16_t>(p[3])}); second.SetStopLocation(OrderStopLocation::FarEnd);
++			CommandCost one = execute("CMD_INSERT_ORDER", [&] { return Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, VehicleOrderID{0}, first); });
++			if (one.Failed()) { rollback(); break; }
++			CommandCost two = execute("CMD_INSERT_ORDER", [&] { return Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, VehicleOrderID{1}, second); });
++			if (two.Failed()) rollback();
++			break;
++		}
++		case Family::StartVehicle:
++		case Family::StopVehicle: execute("CMD_START_STOP_VEHICLE", [&] { return Command<CMD_START_STOP_VEHICLE>::Do(DoCommandFlag::Execute, VehicleID{p[1]}, false); }); break;
++		case Family::SendToDepot: execute("CMD_SEND_VEHICLE_TO_DEPOT", [&] { return Command<CMD_SEND_VEHICLE_TO_DEPOT>::Do(DoCommandFlag::Execute, VehicleID{p[1]}, DepotCommandFlags{}, {}); }); break;
++		case Family::SellVehicle: execute("CMD_SELL_VEHICLE", [&] { return Command<CMD_SELL_VEHICLE>::Do(DoCommandFlag::Execute, VehicleID{p[1]}, false, false, INVALID_CLIENT_ID); }); break;
++		case Family::ManageLoan:
++			if (p[1] == 1) execute("CMD_INCREASE_LOAN", [&] { return Command<CMD_INCREASE_LOAN>::Do(DoCommandFlag::Execute, LoanCommand::Amount, Money{p[2]}); });
++			else execute("CMD_DECREASE_LOAN", [&] { return Command<CMD_DECREASE_LOAN>::Do(DoCommandFlag::Execute, LoanCommand::Amount, Money{p[2]}); });
++			break;
++	}
++	return {{"native_commands",std::move(commands)},{"rolled_back",rolled_back},{"status",status}};
++}
++
++} // namespace
++
++void WriteRlV2CandidatesAndMaybeExecute(const std::string &metadata_path, const std::string &request_path,
++	const std::string &result_path, const std::string &observation_sha256, uint32_t map_seed,
++	uint32_t simulation_seed, uint32_t candidate_tiebreak_seed)
++{
++	(void)candidate_tiebreak_seed;
++	auto enumeration = EnumerateCandidates();
++	std::array<const Candidate *, CANDIDATE_CAPACITY> rows{};
++	std::array<uint8_t, CANDIDATE_CAPACITY> mask{};
++	json family_metadata = json::array(), records = json::array();
++	size_t offset = 0;
++	for (size_t family = 0; family < FAMILY_COUNT; ++family) {
++		size_t selected = enumeration.selected[family].size();
++		for (size_t index = 0; index < selected; ++index) { rows[offset + index] = &enumeration.selected[family][index]; mask[offset + index] = 1; }
++		family_metadata.push_back({{"family_index",family},{"name",FAMILY_NAMES[family]},{"omitted_legal",enumeration.total_legal[family]-selected},
++			{"quota",FAMILY_QUOTAS[family]},{"row_begin",offset},{"row_end",offset+FAMILY_QUOTAS[family]},{"selected_legal",selected},{"total_legal",enumeration.total_legal[family]}});
++		offset += FAMILY_QUOTAS[family];
++	}
++	Require(offset == CANDIDATE_CAPACITY, "family quotas do not sum to candidate capacity");
++
++	std::vector<uint8_t> binary; binary.reserve(CANDIDATE_BYTES);
++	for (size_t row=0; row<CANDIDATE_CAPACITY; ++row) for (size_t feature=0; feature<FEATURE_COUNT; ++feature) AppendFloat(binary, rows[row] == nullptr ? 0.0F : rows[row]->features[feature]);
++	for (size_t row=0; row<CANDIDATE_CAPACITY; ++row) for (size_t word=0; word<PARAMETER_WORDS; ++word) AppendU32(binary, rows[row] == nullptr ? 0 : rows[row]->parameters[word]);
++	for (uint8_t value : mask) binary.push_back(value);
++	Require(binary.size() == CANDIDATE_BYTES, fmt::format("serialized {} candidate bytes, expected {}", binary.size(), CANDIDATE_BYTES));
++	Sha256 binary_digest; binary_digest.Update(binary); std::string binary_sha256 = binary_digest.Finish();
++	std::filesystem::path metadata(metadata_path), binary_path = metadata; binary_path.replace_extension(".bin");
++	Require(binary_path != metadata, "candidate metadata path must have an extension distinct from .bin");
++	WriteNew(binary_path, binary);
++
++	for (size_t row=0; row<CANDIDATE_CAPACITY; ++row) if (rows[row] != nullptr) {
++		const Candidate &candidate = *rows[row];
++		records.push_back({{"cost",candidate.cost.base()},{"family_index",static_cast<uint8_t>(candidate.family)},
++			{"parameters",candidate.parameters},{"priority",candidate.priority},{"row",row},{"stable_key",candidate.stable_key}});
++	}
++	std::string snapshot_payload = fmt::format("{}:session-{}-{}:episode-0:transition-0:tick-{}:{}:{}", CONTRACT_SHA256,
++		map_seed, simulation_seed, TimerGameTick::counter, observation_sha256, binary_sha256);
++	Sha256 token_digest; token_digest.Update(snapshot_payload); std::string snapshot_token = "m15a1:" + token_digest.Finish();
++	json sections = {
++		{{"bytes",CANDIDATE_CAPACITY*FEATURE_COUNT*4},{"dtype","float32-le"},{"name","features"},{"offset",0},{"shape",{CANDIDATE_CAPACITY,FEATURE_COUNT}}},
++		{{"bytes",CANDIDATE_CAPACITY*PARAMETER_WORDS*4},{"dtype","uint32-le"},{"name","parameters"},{"offset",CANDIDATE_CAPACITY*FEATURE_COUNT*4},{"shape",{CANDIDATE_CAPACITY,PARAMETER_WORDS}}},
++		{{"bytes",CANDIDATE_CAPACITY},{"dtype","uint8"},{"name","mask"},{"offset",CANDIDATE_CAPACITY*(FEATURE_COUNT+PARAMETER_WORDS)*4},{"shape",{CANDIDATE_CAPACITY}}},
++	};
++	json metadata_value = {{"schema_version",METADATA_SCHEMA_VERSION},{"action_schema_id",ACTION_SCHEMA_ID},{"contract_sha256",CONTRACT_SHA256},
++		{"binary",{{"bytes",binary.size()},{"encoding","features-float32-le-then-parameters-uint32-le-then-mask-uint8"},{"file",binary_path.filename().string()},{"sha256",binary_sha256}}},
++		{"families",family_metadata},{"observation_sha256",observation_sha256},{"records",records},{"sections",sections},
++		{"snapshot",{{"episode",0},{"map_seed",map_seed},{"session",fmt::format("session-{}-{}",map_seed,simulation_seed)},
++			{"simulation_seed",simulation_seed},{"snapshot_token",snapshot_token},{"tick",TimerGameTick::counter},{"transition",0}}}};
++	WriteCanonicalNew(metadata, metadata_value);
++
++	if (request_path.empty()) return;
++	Require(!result_path.empty(), "action request requires a result path");
++	json request = ReadCanonicalJson(request_path);
++	Require(request.is_object() && request.size() == 6, "action request must contain exactly six fields");
++	Require(request.at("schema_version") == REQUEST_SCHEMA_VERSION, "unsupported action request schema_version");
++	Require(request.at("contract_sha256") == CONTRACT_SHA256, "action request contract mismatch");
++	Require(request.at("action_schema_id") == ACTION_SCHEMA_ID, "action request schema mismatch");
++	uint64_t tick_before = TimerGameTick::counter;
++	std::string state_before = NativeStateSha256();
++	std::string status;
++	json execution = {{"native_commands",json::array()},{"rolled_back",false}};
++	size_t row = request.at("candidate_row").get<size_t>();
++	size_t requested_family = request.at("family_index").get<size_t>();
++	if (request.at("snapshot_token") != snapshot_token) status = "STALE_TOKEN";
++	else if (row >= CANDIDATE_CAPACITY) status = "OUT_OF_RANGE";
++	else if (mask[row] == 0) status = "ILLEGAL_CANDIDATE";
++	else if (requested_family >= FAMILY_COUNT || static_cast<size_t>(rows[row]->family) != requested_family) status = "FAMILY_MISMATCH";
++	else { execution = ExecuteCandidate(*rows[row]); status = execution.at("status").get<std::string>(); }
++	std::string state_after = NativeStateSha256();
++	json result = {{"schema_version",RESULT_SCHEMA_VERSION},{"action_schema_id",ACTION_SCHEMA_ID},{"candidate_row",row},
++		{"contract_sha256",CONTRACT_SHA256},{"family_index",requested_family},{"native_commands",execution.at("native_commands")},
++		{"rolled_back",execution.at("rolled_back")},{"snapshot_token",request.at("snapshot_token")},{"state_sha256_after",state_after},
++		{"state_sha256_before",state_before},{"status",status},{"tick_after",TimerGameTick::counter},{"tick_before",tick_before}};
++	WriteCanonicalNew(result_path, result);
++}
+diff --git a/src/rl_v2_action.h b/src/rl_v2_action.h
+new file mode 100644
+index 0000000..84261f8
+--- /dev/null
++++ b/src/rl_v2_action.h
+@@ -0,0 +1,19 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_v2_action.h Native hierarchical M15 action support. */
++
++#ifndef RL_V2_ACTION_H
++#define RL_V2_ACTION_H
++
++#include <string>
++
++void WriteRlV2CandidatesAndMaybeExecute(const std::string &metadata_path, const std::string &request_path,
++	const std::string &result_path, const std::string &observation_sha256, uint32_t map_seed,
++	uint32_t simulation_seed, uint32_t candidate_tiebreak_seed);
++
++#endif /* RL_V2_ACTION_H */
+diff --git a/src/rl_v2_environment.cpp b/src/rl_v2_environment.cpp
+index 5585bd4..372c059 100644
+--- a/src/rl_v2_environment.cpp
++++ b/src/rl_v2_environment.cpp
+@@ -10,6 +10,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_environment.h"
++#include "rl_v2_action.h"
+ #include "rl_v2_observation.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+@@ -251,7 +252,9 @@ static void WriteCanonicalNew(const std::string &path, const json &value)
+ 
+ } // namespace
+ 
+-void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path, const std::string &observation_metadata_path)
++void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path,
++	const std::string &observation_metadata_path, const std::string &candidate_metadata_path,
++	const std::string &action_request_path, const std::string &action_result_path)
+ {
+ 	ResetRequest request = ValidateManifest(ReadCanonicalJson(manifest_path));
+ 	ConfigureSettings(request);
+@@ -272,7 +275,9 @@ void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &p
+ 	SetLocalCompany(CompanyID::Begin());
+ 	_current_company = CompanyID::Begin();
+ 	WriteCanonicalNew(projection_path, BuildProjection(request));
+-	if (!observation_metadata_path.empty()) {
+-		WriteRlV2Observation(observation_metadata_path, request.map_seed, request.simulation_seed, request.candidate_tiebreak_seed);
+-	}
++	std::string observation_sha256;
++	if (!observation_metadata_path.empty()) observation_sha256 = WriteRlV2Observation(observation_metadata_path,
++		request.map_seed, request.simulation_seed, request.candidate_tiebreak_seed);
++	if (!candidate_metadata_path.empty()) WriteRlV2CandidatesAndMaybeExecute(candidate_metadata_path, action_request_path,
++		action_result_path, observation_sha256, request.map_seed, request.simulation_seed, request.candidate_tiebreak_seed);
+ }
+diff --git a/src/rl_v2_environment.h b/src/rl_v2_environment.h
+index 0f19753..745dff5 100644
+--- a/src/rl_v2_environment.h
++++ b/src/rl_v2_environment.h
+@@ -12,6 +12,8 @@
+ 
+ #include <string>
+ 
+-void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path, const std::string &observation_metadata_path);
++void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path,
++	const std::string &observation_metadata_path, const std::string &candidate_metadata_path,
++	const std::string &action_request_path, const std::string &action_result_path);
+ 
+ #endif /* RL_V2_ENVIRONMENT_H */
+diff --git a/src/rl_v2_observation.cpp b/src/rl_v2_observation.cpp
+index bebeee7..c941a3e 100644
+--- a/src/rl_v2_observation.cpp
++++ b/src/rl_v2_observation.cpp
+@@ -337,7 +337,7 @@ static void WriteCanonicalNew(const std::filesystem::path &path, const json &val
+ 
+ } // namespace
+ 
+-void WriteRlV2Observation(const std::string &metadata_path, uint32_t map_seed, uint32_t simulation_seed, uint32_t candidate_tiebreak_seed)
++std::string WriteRlV2Observation(const std::string &metadata_path, uint32_t map_seed, uint32_t simulation_seed, uint32_t candidate_tiebreak_seed)
+ {
+ 	auto towns = OrderedTowns();
+ 	auto industries = OrderedIndustries();
+@@ -519,4 +519,5 @@ void WriteRlV2Observation(const std::string &metadata_path, uint32_t map_seed, u
+ 		{"entities", entity_counts}, {"graph", graph_counts}, {"sections", sections},
+ 	};
+ 	WriteCanonicalNew(metadata, metadata_value);
++	return sha256;
+ }
+diff --git a/src/rl_v2_observation.h b/src/rl_v2_observation.h
+index 8eecfee..b8bbaad 100644
+--- a/src/rl_v2_observation.h
++++ b/src/rl_v2_observation.h
+@@ -12,6 +12,6 @@
+ 
+ #include <string>
+ 
+-void WriteRlV2Observation(const std::string &metadata_path, uint32_t map_seed, uint32_t simulation_seed, uint32_t candidate_tiebreak_seed);
++std::string WriteRlV2Observation(const std::string &metadata_path, uint32_t map_seed, uint32_t simulation_seed, uint32_t candidate_tiebreak_seed);
+ 
+ #endif /* RL_V2_OBSERVATION_H */
+-- 
+2.43.0
+

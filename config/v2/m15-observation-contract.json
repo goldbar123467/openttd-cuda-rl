@@ -1,0 +1,174 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-observation-contract.schema.json",
+  "schema_version": "openttd-rl-v2-m15-observation-contract-1",
+  "schema_sha256": "e71fd96799969d5182161dcd6e44c541c53185d7eb652dc13735c6f8125d1919",
+  "snapshot_date": "2026-08-02",
+  "scalable_contract_sha256": "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271",
+  "observation_schema_id": "v2-m15-observation-v1",
+  "total_bytes": 2182927,
+  "structured": {
+    "dtype": "float32-le",
+    "features": 512,
+    "fields": [
+      {"index": 0, "name": "map_width", "encoding": "uint16/4096"},
+      {"index": 1, "name": "map_height", "encoding": "uint16/4096"},
+      {"index": 2, "name": "tile_count", "encoding": "uint32/1048576"},
+      {"index": 3, "name": "town_count", "encoding": "uint32/native_pool_64000"},
+      {"index": 4, "name": "industry_count", "encoding": "uint32/native_pool_64000"},
+      {"index": 5, "name": "station_count", "encoding": "uint32/native_pool_64000"},
+      {"index": 6, "name": "vehicle_count", "encoding": "uint32/native_pool_1044480"},
+      {"index": 7, "name": "company_count", "encoding": "uint8/15"},
+      {"index": 8, "name": "own_money", "encoding": "signed-clamp(value/1000000000,-1,1)"},
+      {"index": 9, "name": "own_loan", "encoding": "clamp(value/1000000000,0,1)"},
+      {"index": 10, "name": "anchor_x", "encoding": "uint16/max(1,width-1)"},
+      {"index": 11, "name": "anchor_y", "encoding": "uint16/max(1,height-1)"},
+      {"index": 12, "name": "at_boundary", "encoding": "constant-1"},
+      {"index": 13, "name": "map_seed", "encoding": "uint32/4294967295"},
+      {"index": 14, "name": "simulation_seed", "encoding": "uint32/4294967295"},
+      {"index": 15, "name": "candidate_tiebreak_seed", "encoding": "uint32/4294967295"}
+    ],
+    "reserved": {"start": 16, "end": 511, "value": 0}
+  },
+  "spatial": {
+    "dtype": "float32-le",
+    "layout": "channel-y-x-row-major",
+    "channels": [
+      {"index": 0, "name": "in_map", "encoding": "binary"},
+      {"index": 1, "name": "clear", "encoding": "native-MP_CLEAR-one-hot"},
+      {"index": 2, "name": "railway", "encoding": "native-MP_RAILWAY-one-hot"},
+      {"index": 3, "name": "road", "encoding": "native-MP_ROAD-one-hot"},
+      {"index": 4, "name": "house", "encoding": "native-MP_HOUSE-one-hot"},
+      {"index": 5, "name": "trees", "encoding": "native-MP_TREES-one-hot"},
+      {"index": 6, "name": "station", "encoding": "native-MP_STATION-one-hot"},
+      {"index": 7, "name": "water", "encoding": "native-MP_WATER-one-hot"},
+      {"index": 8, "name": "void", "encoding": "native-MP_VOID-one-hot"},
+      {"index": 9, "name": "industry", "encoding": "native-MP_INDUSTRY-one-hot"},
+      {"index": 10, "name": "tunnel_bridge", "encoding": "native-MP_TUNNELBRIDGE-one-hot"},
+      {"index": 11, "name": "object", "encoding": "native-MP_OBJECT-one-hot"},
+      {"index": 12, "name": "height_u8", "encoding": "native-tile-height/255"},
+      {"index": 13, "name": "flat", "encoding": "native-IsTileFlat-binary"},
+      {"index": 14, "name": "owned_by_company_0", "encoding": "owner-valid-native-tile-and-owner-0-binary"},
+      {"index": 15, "name": "developed", "encoding": "not-clear-trees-water-void-binary"},
+      {"index": 16, "name": "reserved_16", "encoding": "constant-0"},
+      {"index": 17, "name": "reserved_17", "encoding": "constant-0"},
+      {"index": 18, "name": "reserved_18", "encoding": "constant-0"},
+      {"index": 19, "name": "reserved_19", "encoding": "constant-0"},
+      {"index": 20, "name": "reserved_20", "encoding": "constant-0"},
+      {"index": 21, "name": "reserved_21", "encoding": "constant-0"},
+      {"index": 22, "name": "reserved_22", "encoding": "constant-0"},
+      {"index": 23, "name": "reserved_23", "encoding": "constant-0"},
+      {"index": 24, "name": "reserved_24", "encoding": "constant-0"},
+      {"index": 25, "name": "reserved_25", "encoding": "constant-0"},
+      {"index": 26, "name": "reserved_26", "encoding": "constant-0"},
+      {"index": 27, "name": "reserved_27", "encoding": "constant-0"},
+      {"index": 28, "name": "reserved_28", "encoding": "constant-0"},
+      {"index": 29, "name": "reserved_29", "encoding": "constant-0"},
+      {"index": 30, "name": "reserved_30", "encoding": "constant-0"},
+      {"index": 31, "name": "reserved_31", "encoding": "constant-0"}
+    ],
+    "views": [
+      {"name": "global", "shape": [32, 64, 64], "sampling": "per-channel-mean-over-exact-rectangular-native-bins", "origin": "whole-map"},
+      {"name": "regional", "shape": [32, 64, 64], "sampling": "one-native-tile-with-explicit-zero-outside-map", "origin": "anchor-minus-32"},
+      {"name": "local", "shape": [32, 32, 32], "sampling": "one-native-tile-with-explicit-zero-outside-map", "origin": "anchor-minus-16"}
+    ]
+  },
+  "entities": [
+    {
+      "name": "companies", "capacity": 15, "features": 32, "order": "own-company-first-then-native-id", "mask": "uint8-prefix-valid", "count_policy": "metadata-total-selected-omitted-truncated",
+      "fields": [
+        {"index": 0, "name": "native_id", "encoding": "id/14"}, {"index": 1, "name": "is_own", "encoding": "binary"},
+        {"index": 2, "name": "money", "encoding": "signed-clamp(value/1000000000,-1,1)"}, {"index": 3, "name": "loan", "encoding": "value/1000000000"},
+        {"index": 4, "name": "max_loan", "encoding": "value/1000000000"}, {"index": 5, "name": "bankruptcy_months", "encoding": "value/255"}
+      ],
+      "reserved": {"start": 6, "end": 31, "value": 0}
+    },
+    {
+      "name": "towns", "capacity": 128, "features": 24, "order": "population-descending-then-native-id", "mask": "uint8-prefix-valid", "count_policy": "metadata-total-selected-omitted-truncated",
+      "fields": [
+        {"index": 0, "name": "native_id", "encoding": "id/63999"}, {"index": 1, "name": "x", "encoding": "x/max(1,width-1)"},
+        {"index": 2, "name": "y", "encoding": "y/max(1,height-1)"}, {"index": 3, "name": "population", "encoding": "value/100000"},
+        {"index": 4, "name": "houses", "encoding": "value/10000"}, {"index": 5, "name": "larger_town", "encoding": "binary"}
+      ],
+      "reserved": {"start": 6, "end": 23, "value": 0}
+    },
+    {
+      "name": "industries", "capacity": 256, "features": 24, "order": "produced-waiting-plus-rate-descending-then-native-id", "mask": "uint8-prefix-valid", "count_policy": "metadata-total-selected-omitted-truncated",
+      "fields": [
+        {"index": 0, "name": "native_id", "encoding": "id/63999"}, {"index": 1, "name": "x", "encoding": "x/max(1,width-1)"},
+        {"index": 2, "name": "y", "encoding": "y/max(1,height-1)"}, {"index": 3, "name": "type", "encoding": "value/255"},
+        {"index": 4, "name": "produced_waiting", "encoding": "clamp(value/65535,0,1)"}, {"index": 5, "name": "produced_rate", "encoding": "clamp(value/2048,0,1)"},
+        {"index": 6, "name": "production_level", "encoding": "value/255"}, {"index": 7, "name": "nearest_town_id", "encoding": "id/63999-or-0"}
+      ],
+      "reserved": {"start": 8, "end": 23, "value": 0}
+    },
+    {
+      "name": "stations", "capacity": 512, "features": 32, "order": "owned-first-rating-descending-then-native-id", "mask": "uint8-prefix-valid", "count_policy": "metadata-total-selected-omitted-truncated",
+      "fields": [
+        {"index": 0, "name": "native_id", "encoding": "id/63999"}, {"index": 1, "name": "x", "encoding": "x/max(1,width-1)"},
+        {"index": 2, "name": "y", "encoding": "y/max(1,height-1)"}, {"index": 3, "name": "is_owned", "encoding": "binary"},
+        {"index": 4, "name": "maximum_rating", "encoding": "value/255"}, {"index": 5, "name": "waiting", "encoding": "clamp(value/65535,0,1)"}
+      ],
+      "reserved": {"start": 6, "end": 31, "value": 0}
+    },
+    {
+      "name": "vehicles", "capacity": 1024, "features": 40, "order": "owned-first-breakdown-delay-descending-breakdown-counter-descending-native-id", "mask": "uint8-prefix-valid", "count_policy": "metadata-total-selected-omitted-truncated",
+      "fields": [
+        {"index": 0, "name": "native_id", "encoding": "id/1044479"}, {"index": 1, "name": "type", "encoding": "value/(VEH_END-1)"},
+        {"index": 2, "name": "is_owned", "encoding": "binary"}, {"index": 3, "name": "is_primary", "encoding": "binary"},
+        {"index": 4, "name": "x", "encoding": "x/max(1,width-1)-or-0"}, {"index": 5, "name": "y", "encoding": "y/max(1,height-1)-or-0"},
+        {"index": 6, "name": "speed", "encoding": "value/65535"}, {"index": 7, "name": "breakdown_delay", "encoding": "value/255"},
+        {"index": 8, "name": "breakdown_counter", "encoding": "value/255"}, {"index": 9, "name": "profit_this_year", "encoding": "signed-clamp(value/1000000000,-1,1)"},
+        {"index": 10, "name": "profit_last_year", "encoding": "signed-clamp(value/1000000000,-1,1)"}, {"index": 11, "name": "value", "encoding": "signed-clamp(value/1000000000,-1,1)"},
+        {"index": 12, "name": "cargo_fill", "encoding": "count/max(1,capacity)"}
+      ],
+      "reserved": {"start": 13, "end": 39, "value": 0}
+    }
+  ],
+  "graph": {
+    "node_capacity": 2048, "node_features": 24, "node_kinds": ["town", "industry", "station", "vehicle"], "node_order": "kind-then-corresponding-entity-table-order",
+    "node_fields": [
+      {"index": 0, "name": "kind", "encoding": "town=0,industry=1/3,station=2/3,vehicle=1"},
+      {"index": 1, "name": "native_id", "encoding": "id/native-kind-pool-maximum-minus-1"},
+      {"index": 2, "name": "x", "encoding": "x/max(1,width-1)"}, {"index": 3, "name": "y", "encoding": "y/max(1,height-1)"},
+      {"index": 4, "name": "kind_value", "encoding": "population-or-production-or-waiting-or-vehicle-type-normalized"}
+    ],
+    "node_reserved": {"start": 5, "end": 23, "value": 0},
+    "edge_capacity": 8192, "edge_features": 16, "edge_order": "source-destination-kind",
+    "edge_fields": [
+      {"index": 0, "name": "source", "encoding": "row/2047"}, {"index": 1, "name": "destination", "encoding": "row/2047"},
+      {"index": 2, "name": "kind", "encoding": "forward=0,reverse=1"}, {"index": 3, "name": "distance", "encoding": "euclidean/map-diagonal"}
+    ],
+    "edge_reserved": {"start": 4, "end": 15, "value": 0},
+    "directed_pair_policy": "industry-nearest-town-forward-and-reverse", "mask": "uint8-prefix-valid"
+  },
+  "serialization": {
+    "endianness": "little",
+    "sections": [
+      {"name": "structured", "offset": 0, "bytes": 2048, "dtype": "float32-le", "shape": [512]},
+      {"name": "spatial.global", "offset": 2048, "bytes": 524288, "dtype": "float32-le", "shape": [32, 64, 64]},
+      {"name": "spatial.regional", "offset": 526336, "bytes": 524288, "dtype": "float32-le", "shape": [32, 64, 64]},
+      {"name": "spatial.local", "offset": 1050624, "bytes": 131072, "dtype": "float32-le", "shape": [32, 32, 32]},
+      {"name": "entities.companies.values", "offset": 1181696, "bytes": 1920, "dtype": "float32-le", "shape": [15, 32]},
+      {"name": "entities.companies.mask", "offset": 1183616, "bytes": 15, "dtype": "uint8", "shape": [15]},
+      {"name": "entities.towns.values", "offset": 1183631, "bytes": 12288, "dtype": "float32-le", "shape": [128, 24]},
+      {"name": "entities.towns.mask", "offset": 1195919, "bytes": 128, "dtype": "uint8", "shape": [128]},
+      {"name": "entities.industries.values", "offset": 1196047, "bytes": 24576, "dtype": "float32-le", "shape": [256, 24]},
+      {"name": "entities.industries.mask", "offset": 1220623, "bytes": 256, "dtype": "uint8", "shape": [256]},
+      {"name": "entities.stations.values", "offset": 1220879, "bytes": 65536, "dtype": "float32-le", "shape": [512, 32]},
+      {"name": "entities.stations.mask", "offset": 1286415, "bytes": 512, "dtype": "uint8", "shape": [512]},
+      {"name": "entities.vehicles.values", "offset": 1286927, "bytes": 163840, "dtype": "float32-le", "shape": [1024, 40]},
+      {"name": "entities.vehicles.mask", "offset": 1450767, "bytes": 1024, "dtype": "uint8", "shape": [1024]},
+      {"name": "graph.nodes.values", "offset": 1451791, "bytes": 196608, "dtype": "float32-le", "shape": [2048, 24]},
+      {"name": "graph.nodes.mask", "offset": 1648399, "bytes": 2048, "dtype": "uint8", "shape": [2048]},
+      {"name": "graph.edges.values", "offset": 1650447, "bytes": 524288, "dtype": "float32-le", "shape": [8192, 16]},
+      {"name": "graph.edges.mask", "offset": 2174735, "bytes": 8192, "dtype": "uint8", "shape": [8192]}
+    ],
+    "sha256": "metadata-over-exact-binary-bytes"
+  },
+  "oracle": {
+    "decoder": "independent-python-struct-decoder",
+    "projection_checks": ["structured-counts", "global-tile-counts", "company", "towns", "entity-counts"],
+    "cross_view": "64x64-global-native-tile-equality-to-regional-and-local",
+    "corruption_test": "single-byte-mutation-must-fail-sha256"
+  }
+}

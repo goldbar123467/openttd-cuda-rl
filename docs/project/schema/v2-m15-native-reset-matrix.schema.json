@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-native-reset-matrix.schema.json",
+  "title": "OpenTTD RL V2 M15 complete source-integrated reset matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "contract_sha256", "native_source_sha256", "executable", "artifact_base_hint", "artifact_root", "seed", "policy", "results", "determinism", "summary"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-native-reset-matrix.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-native-reset-matrix-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "native_source_sha256": {"$ref": "#/$defs/sha256"},
+    "executable": {
+      "type": "object", "additionalProperties": false, "required": ["sha256", "size"],
+      "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1000000}}
+    },
+    "artifact_base_hint": {"const": "/home/thecl/.codex/artifacts/openttd-rl"},
+    "artifact_root": {"const": "v2-m15-native-reset-matrix-a"},
+    "seed": {"const": 1110312784},
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["all_49_rectangles", "source_integrated_generated_at_or_below_budget", "source_and_harness_preflight_above_budget", "same_manifest_same_projection", "g15_pass_claim"],
+      "properties": {
+        "all_49_rectangles": {"const": true}, "source_integrated_generated_at_or_below_budget": {"const": true},
+        "source_and_harness_preflight_above_budget": {"const": true}, "same_manifest_same_projection": {"const": true},
+        "g15_pass_claim": {"const": false}
+      }
+    },
+    "results": {
+      "type": "array", "minItems": 49, "maxItems": 49,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["width", "height", "tile_count", "outcome", "reason_code", "artifact_dir", "manifest_sha256", "projection_sha256", "evidence_sha256", "transcript_sha256", "towns", "industries", "maximum_rss_kib", "wall_seconds"],
+        "properties": {
+          "width": {"$ref": "#/$defs/side"}, "height": {"$ref": "#/$defs/side"}, "tile_count": {"type": "integer", "minimum": 4096, "maximum": 16777216},
+          "outcome": {"enum": ["GENERATED", "PREFLIGHT_REJECTED"]},
+          "reason_code": {"type": ["string", "null"]}, "artifact_dir": {"type": ["string", "null"]},
+          "manifest_sha256": {"$ref": "#/$defs/maybe_sha256"}, "projection_sha256": {"$ref": "#/$defs/maybe_sha256"},
+          "evidence_sha256": {"$ref": "#/$defs/maybe_sha256"}, "transcript_sha256": {"$ref": "#/$defs/maybe_sha256"},
+          "towns": {"type": ["integer", "null"], "minimum": 2, "maximum": 128}, "industries": {"type": ["integer", "null"], "minimum": 0},
+          "maximum_rss_kib": {"type": "integer", "minimum": 0}, "wall_seconds": {"type": "number", "minimum": 0, "maximum": 900}
+        }
+      }
+    },
+    "determinism": {
+      "type": "object", "additionalProperties": false,
+      "required": ["width", "height", "artifact_dir", "manifest_sha256", "projection_sha256", "evidence_sha256", "transcript_sha256", "byte_identical"],
+      "properties": {
+        "width": {"const": 64}, "height": {"const": 64}, "artifact_dir": {"const": "repeat-0064x0064"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"}, "projection_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"}, "transcript_sha256": {"$ref": "#/$defs/sha256"}, "byte_identical": {"const": true}
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["rectangles", "generated", "preflight_rejected", "maximum_rss_kib", "summed_wall_seconds", "maximum_towns", "maximum_industries"],
+      "properties": {
+        "rectangles": {"const": 49}, "generated": {"const": 39}, "preflight_rejected": {"const": 10},
+        "maximum_rss_kib": {"type": "integer", "minimum": 1}, "summed_wall_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "maximum_towns": {"const": 128}, "maximum_industries": {"type": "integer", "minimum": 256}
+      }
+    }
+  },
+  "$defs": {
+    "side": {"enum": [64, 128, 256, 512, 1024, 2048, 4096]},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "maybe_sha256": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+  }
+}

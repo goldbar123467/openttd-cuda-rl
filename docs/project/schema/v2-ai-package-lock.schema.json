@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-ai-package-lock.schema.json",
+  "title": "OpenTTD RL V2 BaNaNaS AI package and dependency lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "engine_source",
+    "executable",
+    "request",
+    "catalog_primary",
+    "packages"
+  ],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-ai-package-lock.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-ai-package-lock-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "engine_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release", "commit", "tree"],
+      "properties": {
+        "release": {"const": "15.3"},
+        "commit": {"$ref": "#/$defs/sha1"},
+        "tree": {"$ref": "#/$defs/sha1"}
+      }
+    },
+    "executable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "size", "reported_version"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size": {"type": "integer", "minimum": 1},
+        "reported_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "content_unique_id", "version", "catalog_url"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "content_unique_id": {"$ref": "#/$defs/local_unique_id"},
+        "version": {"type": "integer", "minimum": 1},
+        "catalog_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://bananas\\.openttd\\.org/package/ai/[0-9a-f]{8}$"
+        }
+      }
+    },
+    "catalog_primary": {"$ref": "#/$defs/catalog_record"},
+    "packages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/package"}
+    }
+  },
+  "$defs": {
+    "sha1": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "md5": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "local_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+    "server_unique_id": {"type": "string", "pattern": "^[0-9A-F]{8}$"},
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "catalog_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_id", "content_type", "state", "name", "server_unique_id", "catalog_md5"],
+      "properties": {
+        "content_id": {"type": "integer", "minimum": 1},
+        "content_type": {"enum": ["AI", "AI library"]},
+        "state": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "server_unique_id": {"$ref": "#/$defs/server_unique_id"},
+        "catalog_md5": {"$ref": "#/$defs/md5"}
+      }
+    },
+    "file_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size", "sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/relative_path"},
+        "size": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "declared_info": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "integer", "minimum": 1},
+        "author": {"type": "string"},
+        "api_version": {"type": "string"},
+        "date": {"type": "string"},
+        "description": {"type": "string"},
+        "instance": {"type": "string"},
+        "short_name": {"type": "string"},
+        "url": {"type": "string"}
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_id",
+        "content_type",
+        "name",
+        "version",
+        "local_unique_id",
+        "server_unique_id",
+        "catalog_md5",
+        "archive_path",
+        "archive_size",
+        "archive_sha256",
+        "files",
+        "licenses"
+      ],
+      "properties": {
+        "content_id": {"type": "integer", "minimum": 1},
+        "content_type": {"enum": ["AI", "AI library"]},
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "integer", "minimum": 1},
+        "local_unique_id": {"$ref": "#/$defs/local_unique_id"},
+        "server_unique_id": {"$ref": "#/$defs/server_unique_id"},
+        "catalog_md5": {"$ref": "#/$defs/md5"},
+        "archive_path": {"$ref": "#/$defs/relative_path"},
+        "archive_size": {"type": "integer", "minimum": 1},
+        "archive_sha256": {"$ref": "#/$defs/sha256"},
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/file_member"}
+        },
+        "licenses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/file_member"}
+        },
+        "declared_info": {"$ref": "#/$defs/declared_info"}
+      }
+    }
+  }
+}

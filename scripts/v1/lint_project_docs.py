@@ -52,6 +52,20 @@ ACTIVE_FIXED = (
     "docs/project/G12_GATE_REPORT.md",
     "docs/project/V1_PUBLICATION.md",
     "docs/project/G13_GATE_REPORT.md",
+    "docs/project/V2_RESEARCH.md",
+    "docs/project/V2_PLAN.md",
+    "docs/project/requirements-v2.json",
+    "docs/project/defects-v2.json",
+    "docs/project/M14_ENGINE_SOURCE_DECISION.md",
+    "docs/project/M14_OPPONENT_ACQUISITION.md",
+    "docs/project/M14_INVENTORY_AND_COMPETITION.md",
+    "docs/project/G14_GATE_REPORT.md",
+    "docs/project/M15_SCALABLE_CONTRACT.md",
+    "docs/project/G15_GATE_REPORT.md",
+    "docs/project/M16_CARGO_INDUSTRY_CONTRACT.md",
+    "docs/project/G16_GATE_REPORT.md",
+    "docs/project/M17_RAIL_NETWORK_CONTRACT.md",
+    "docs/project/G17_GATE_REPORT.md",
     "THIRD_PARTY_NOTICES.md",
 )
 V1_ADR_NUMBERS = tuple(range(7, 14))
@@ -107,6 +121,52 @@ REQUIRED_NAVIGATION_TARGETS = (
     "docs/project/G12_GATE_REPORT.md",
     "docs/project/V1_PUBLICATION.md",
     "docs/project/G13_GATE_REPORT.md",
+    "docs/project/V2_RESEARCH.md",
+    "docs/project/V2_PLAN.md",
+    "docs/project/requirements-v2.json",
+    "docs/project/defects-v2.json",
+    "docs/project/M14_ENGINE_SOURCE_DECISION.md",
+    "docs/project/M14_OPPONENT_ACQUISITION.md",
+    "docs/project/M14_INVENTORY_AND_COMPETITION.md",
+    "docs/project/G14_GATE_REPORT.md",
+    "docs/project/M15_SCALABLE_CONTRACT.md",
+    "docs/project/G15_GATE_REPORT.md",
+    "docs/project/M16_CARGO_INDUSTRY_CONTRACT.md",
+    "docs/project/G16_GATE_REPORT.md",
+    "docs/project/M17_RAIL_NETWORK_CONTRACT.md",
+    "docs/project/G17_GATE_REPORT.md",
+    "config/v2/opponent-package-evidence.json",
+    "config/v2/opponent-runtime-evidence.json",
+    "config/v2/research-baseline.json",
+    "config/v2/setting-inventory.json",
+    "config/v2/m14-competition-manifest.json",
+    "config/v2/m15-scalable-contract.json",
+    "config/v2/m15-map-evidence.json",
+    "config/v2/m15-native-source.json",
+    "config/v2/m15-native-reset-evidence.json",
+    "config/v2/m15-native-reset-matrix.json",
+    "config/v2/m15-observation-contract.json",
+    "config/v2/m15-observation-source.json",
+    "config/v2/m15-observation-evidence.json",
+    "config/v2/m15-action-contract.json",
+    "config/v2/m15-action-source.json",
+    "config/v2/m15-action-evidence.json",
+    "config/v2/m15-episode-program.json",
+    "config/v2/m15-episode-source.json",
+    "config/v2/m15-episode-evidence.json",
+    "config/v2/m15-policy-contract.json",
+    "config/v2/m15-policy-evidence.json",
+    "config/v2/m15-cross-scale-replay-program.json",
+    "config/v2/m15-cross-scale-replay-evidence.json",
+    "config/v2/m15-competence-program.json",
+    "config/v2/m15-competence-source.json",
+    "config/v2/m15-competence-evidence.json",
+    "config/v2/m16-cargo-contract.json",
+    "config/v2/m16-cargo-source.json",
+    "config/v2/m16-cargo-evidence.json",
+    "config/v2/m17-rail-contract.json",
+    "config/v2/m17-rail-source.json",
+    "config/v2/m17-rail-evidence.json",
     "THIRD_PARTY_NOTICES.md",
     "docs/decisions/",
 )
@@ -250,8 +310,12 @@ def check_authority(root: pathlib.Path, adrs: list[pathlib.Path]) -> None:
         raise DocLintError("GOAL.md does not declare project-authority status")
     if "32 by 32" not in goal or "passenger-bus" not in goal:
         raise DocLintError("GOAL.md does not state the V1 map/bus boundary")
+    if "Version 2 active expansion" not in goal or "native power-of-two map dimensions" not in goal:
+        raise DocLintError("GOAL.md does not state the active V2 breadth/scale boundary")
 
     readme = _read(root / "README.md")
+    if "Version 2 is now active" not in readme:
+        raise DocLintError("README.md does not identify V2 as active")
     for target in REQUIRED_NAVIGATION_TARGETS:
         if f"]({target})" not in readme:
             raise DocLintError(f"README.md navigation omits {target}")

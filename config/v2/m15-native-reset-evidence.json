@@ -1,0 +1,127 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-native-reset-evidence.schema.json",
+  "schema_version": "openttd-rl-v2-m15-native-reset-evidence-1",
+  "schema_sha256": "6ac1dfb66ff5324f4be31cc3cbd51918a732cc7caace5cb3a7325a5dc80f98bc",
+  "snapshot_date": "2026-08-02",
+  "contract_sha256": "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271",
+  "native_source_sha256": "b3c525ed8a56ffc27a27e7dd12ceb2f783af196b0c01ab8deca5ca21f5bbb071",
+  "executable": {
+    "sha256": "5598509cc6b113fa816f02f9b52f5f723e491e3859b4f37ed3f7e87c0c9bed05",
+    "size": 393403360
+  },
+  "artifact_base_hint": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-native-a",
+  "seed": 1110312784,
+  "policy": {
+    "native_source_integrated": true,
+    "sandboxed": true,
+    "no_overwrite": true,
+    "same_manifest_same_projection": true,
+    "representative_tiers": [
+      "curriculum",
+      "rectangular",
+      "generalization"
+    ],
+    "g15_pass_claim": false
+  },
+  "results": [
+    {
+      "run": "64-a",
+      "artifact_dir": "qualified-64-a",
+      "width": 64,
+      "height": 64,
+      "outcome": "PASS",
+      "manifest_sha256": "2ec7078f85e6872a8570f23c04c83c0c7628de00d7dd952fac2d72d672952aad",
+      "projection_sha256": "5e0b27b0d901a40699909359e0cb3d066c2bbac39e460189870be4027052e2b2",
+      "evidence_sha256": "8882a1d4e95c9d4fee178386019cd6ae6de1dd342bcf14097dbde59bfa2691c0",
+      "transcript_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "towns": 2,
+      "industries": 10,
+      "maximum_rss_kib": 46988,
+      "wall_seconds": 0.111871
+    },
+    {
+      "run": "64-b",
+      "artifact_dir": "qualified-64-b",
+      "width": 64,
+      "height": 64,
+      "outcome": "PASS",
+      "manifest_sha256": "2ec7078f85e6872a8570f23c04c83c0c7628de00d7dd952fac2d72d672952aad",
+      "projection_sha256": "5e0b27b0d901a40699909359e0cb3d066c2bbac39e460189870be4027052e2b2",
+      "evidence_sha256": "6a9353bfe786aa0ebea362be06db3f1d79ad85cc7dce6aa6877b2249ac4707d8",
+      "transcript_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "towns": 2,
+      "industries": 10,
+      "maximum_rss_kib": 47124,
+      "wall_seconds": 0.111598
+    },
+    {
+      "run": "128-a",
+      "artifact_dir": "qualified-128-a",
+      "width": 128,
+      "height": 128,
+      "outcome": "PASS",
+      "manifest_sha256": "e030ebcb405dc5633ccb60c85a597bef6f369f4ae9f8acbd20f05839bff12af8",
+      "projection_sha256": "51f9221356caab8d3ba6f2a6da2253eb06f7ae12b3426c4c80b70e902e40c101",
+      "evidence_sha256": "af23221bab564dd8cc49516de886a22c7926d8acb2ee11806475eccb76e45e90",
+      "transcript_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "towns": 4,
+      "industries": 12,
+      "maximum_rss_kib": 46992,
+      "wall_seconds": 0.104528
+    },
+    {
+      "run": "64x256-a",
+      "artifact_dir": "qualified-64x256-a",
+      "width": 64,
+      "height": 256,
+      "outcome": "PASS",
+      "manifest_sha256": "2712efc582a583d625d6305e2fde37ea570d9e64f652b4bd9ac9fe39af14aa56",
+      "projection_sha256": "f89883b59470f8e7113424618c70d54904fb72c7212b324eeb17f85b034756ec",
+      "evidence_sha256": "79fe7cd6154244615c5f89da9d8853e636933821d036dd51ed798c3d095b159b",
+      "transcript_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "towns": 4,
+      "industries": 11,
+      "maximum_rss_kib": 46904,
+      "wall_seconds": 0.107747
+    },
+    {
+      "run": "512x128-a",
+      "artifact_dir": "qualified-512x128-a",
+      "width": 512,
+      "height": 128,
+      "outcome": "PASS",
+      "manifest_sha256": "d3e06cf48b049246511031d6bd19d1c70a46c1e9b124849a30538428be2da53d",
+      "projection_sha256": "d4dcadf44c863cecbedd35c5ecaf99e537291979c7ad74f4bacaf843a83deb47",
+      "evidence_sha256": "c6627359c359dc2deee9ede7063ba5de2fbe02a37267d896fea64ef393055e25",
+      "transcript_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "towns": 16,
+      "industries": 54,
+      "maximum_rss_kib": 47264,
+      "wall_seconds": 0.117565
+    },
+    {
+      "run": "1024-a",
+      "artifact_dir": "qualified-1024-a",
+      "width": 1024,
+      "height": 1024,
+      "outcome": "PASS",
+      "manifest_sha256": "a76e3b0c2189f5d5c057bf1318c2dc357d79bbcef00eda8f410b1547d15ecf87",
+      "projection_sha256": "ea359a4c2a46429885b101931ac24043017829b38a32559fc8e2e1aa978353d8",
+      "evidence_sha256": "0ef120b6ca7767b6b0d1f6cef21560ef98136972023421018766ba05eef1ce10",
+      "transcript_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "towns": 128,
+      "industries": 846,
+      "maximum_rss_kib": 61224,
+      "wall_seconds": 0.497721
+    }
+  ],
+  "summary": {
+    "runs": 6,
+    "distinct_rectangles": 5,
+    "byte_identical_repeats": 1,
+    "maximum_rss_kib": 61224,
+    "summed_wall_seconds": 1.05103,
+    "maximum_towns": 128,
+    "maximum_industries": 846
+  }
+}

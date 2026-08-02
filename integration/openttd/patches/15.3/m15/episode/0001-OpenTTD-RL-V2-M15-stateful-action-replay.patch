@@ -1,0 +1,476 @@
+From 5e33497bd224ac32074795ab4d4d268cf9981a8b Mon Sep 17 00:00:00 2001
+From: OpenTTD-RL V2 Evidence <openttd-rl-v2@localhost>
+Date: Sun, 2 Aug 2026 13:08:03 -0400
+Subject: [PATCH] OpenTTD-RL V2 M15 stateful action replay
+
+---
+ src/openttd.cpp           |  28 +++-
+ src/rl_v2_action.cpp      | 270 +++++++++++++++++++++++++++++++++++++-
+ src/rl_v2_action.h        |   4 +
+ src/rl_v2_environment.cpp |   6 +-
+ src/rl_v2_environment.h   |   4 +-
+ 5 files changed, 306 insertions(+), 6 deletions(-)
+
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index 784293b..a11c7d7 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -209,6 +209,9 @@ static void ShowHelp()
+ 		"  -J metadata_file    = Write the native M15 hierarchical candidate table\n"
+ 		"  -K request_file     = Execute one snapshot-bound M15 action request\n"
+ 		"  -L result_file      = Write the typed M15 action result\n"
++		"  -E program_file     = Execute a canonical stateful M15 episode program\n"
++		"  -F trace_file       = Write the stateful M15 episode trace\n"
++		"  -H artifact_dir     = Retain M15 episode save/replay artifacts\n"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 		"  -A playback_config  = Start the M11 normal-game neural agent from a canonical config\n"
+@@ -420,6 +423,9 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_v2_candidate_metadata;        ///< Destination for M15 candidate metadata.
+ 	std::string rl_v2_action_request;             ///< Canonical M15 action request.
+ 	std::string rl_v2_action_result;              ///< Destination for the M15 action result.
++	std::string rl_v2_episode_program;            ///< Canonical M15 stateful episode program.
++	std::string rl_v2_episode_trace;              ///< Destination for the M15 episode trace.
++	std::string rl_v2_episode_artifacts;          ///< Directory for M15 episode artifacts.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -483,7 +489,8 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		if (!rl_v2_reset_manifest.empty()) {
+ 			try {
+ 				RunRlV2ScalableReset(rl_v2_reset_manifest, rl_v2_reset_projection, rl_v2_observation_metadata,
+-					rl_v2_candidate_metadata, rl_v2_action_request, rl_v2_action_result);
++					rl_v2_candidate_metadata, rl_v2_action_request, rl_v2_action_result,
++					rl_v2_episode_program, rl_v2_episode_trace, rl_v2_episode_artifacts);
+ 			} catch (const std::exception &e) {
+ 				UserError("{}", e.what());
+ 			}
+@@ -566,7 +573,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BJKLRTUWYZV"
++			"BEFHJKLRTUWYZV"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -737,6 +744,9 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'c': _config_file = mgo.opt; break;
+ #ifdef WITH_RL_ENVIRONMENT
+ 		case 'B': scanner->rl_bridge_descriptors = mgo.opt; break;
++		case 'E': scanner->rl_v2_episode_program = mgo.opt; break;
++		case 'F': scanner->rl_v2_episode_trace = mgo.opt; break;
++		case 'H': scanner->rl_v2_episode_artifacts = mgo.opt; break;
+ 		case 'J': scanner->rl_v2_candidate_metadata = mgo.opt; break;
+ 		case 'K': scanner->rl_v2_action_request = mgo.opt; break;
+ 		case 'L': scanner->rl_v2_action_result = mgo.opt; break;
+@@ -804,6 +814,20 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		fmt::print(stderr, "M15 action execution requires -J <candidate-metadata>\n");
+ 		return 1;
+ 	}
++	bool any_episode_option = !scanner->rl_v2_episode_program.empty() || !scanner->rl_v2_episode_trace.empty() || !scanner->rl_v2_episode_artifacts.empty();
++	bool all_episode_options = !scanner->rl_v2_episode_program.empty() && !scanner->rl_v2_episode_trace.empty() && !scanner->rl_v2_episode_artifacts.empty();
++	if (any_episode_option && !all_episode_options) {
++		fmt::print(stderr, "M15 episode execution requires -E <program>, -F <trace>, and -H <artifact-dir>\n");
++		return 1;
++	}
++	if (all_episode_options && scanner->rl_v2_reset_manifest.empty()) {
++		fmt::print(stderr, "M15 episode execution requires -V <manifest> and -U <projection>\n");
++		return 1;
++	}
++	if (all_episode_options && !scanner->rl_v2_action_request.empty()) {
++		fmt::print(stderr, "M15 episode execution cannot be combined with one-shot -K/-L execution\n");
++		return 1;
++	}
+ 	if (!scanner->rl_v2_reset_manifest.empty() && (!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty())) {
+ 		fmt::print(stderr, "M15 scalable reset forbids V1 bridge/scenario modes, dedicated mode, and networking\n");
+ 		return 1;
+diff --git a/src/rl_v2_action.cpp b/src/rl_v2_action.cpp
+index 0adcb02..1527ae3 100644
+--- a/src/rl_v2_action.cpp
++++ b/src/rl_v2_action.cpp
+@@ -10,6 +10,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_action.h"
++#include "rl_v2_observation.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "cargotype.h"
+@@ -19,6 +20,7 @@
+ #include "map_func.h"
+ #include "misc_cmd.h"
+ #include "newgrf_roadstop.h"
++#include "openttd.h"
+ #include "order_base.h"
+ #include "order_cmd.h"
+ #include "road_cmd.h"
+@@ -26,6 +28,7 @@
+ #include "station_base.h"
+ #include "station_cmd.h"
+ #include "station_map.h"
++#include "saveload/saveload.h"
+ #include "tile_map.h"
+ #include "timer/timer_game_tick.h"
+ #include "town.h"
+@@ -38,6 +41,7 @@
+ #include <filesystem>
+ #include <fstream>
+ #include <limits>
++#include <map>
+ #include <queue>
+ #include <stdexcept>
+ #include <tuple>
+@@ -52,6 +56,8 @@ namespace {
+ static constexpr std::string_view METADATA_SCHEMA_VERSION = "openttd-rl-v2-m15-candidate-metadata-1";
+ static constexpr std::string_view REQUEST_SCHEMA_VERSION = "openttd-rl-v2-m15-action-request-1";
+ static constexpr std::string_view RESULT_SCHEMA_VERSION = "openttd-rl-v2-m15-action-result-1";
++static constexpr std::string_view EPISODE_PROGRAM_SCHEMA_VERSION = "openttd-rl-v2-m15-episode-program-1";
++static constexpr std::string_view EPISODE_TRACE_SCHEMA_VERSION = "openttd-rl-v2-m15-episode-trace-1";
+ static constexpr std::string_view ACTION_SCHEMA_ID = "v2-m15-hierarchical-action-v1";
+ static constexpr std::string_view CONTRACT_SHA256 = "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271";
+ static constexpr size_t FAMILY_COUNT = 12;
+@@ -396,11 +402,14 @@ static std::string NativeStateSha256()
+ 		add_u32(map_tile.m2()); add_u32(map_tile.m3()); add_u32(map_tile.m4()); add_u32(map_tile.m5());
+ 	}
+ 	for (const Station *station : Station::Iterate()) { add_u32(station->index.base()); add_u32(station->xy.base()); add_u32(station->owner.base()); }
+-	for (const Vehicle *vehicle : Vehicle::Iterate()) { add_u32(vehicle->index.base()); add_u32(vehicle->tile.base()); add_u32(vehicle->owner.base()); add_u32(vehicle->vehstatus.base()); add_u32(vehicle->GetNumManualOrders()); }
++	for (const Vehicle *vehicle : Vehicle::Iterate()) {
++		add_u32(vehicle->index.base()); add_u32(vehicle->tile.base()); add_u32(vehicle->owner.base()); add_u32(vehicle->vehstatus.base()); add_u32(vehicle->GetNumManualOrders());
++		for (const Order &order : vehicle->Orders()) { add_u32(static_cast<uint8_t>(order.GetType())); add_u32(order.GetDestination().base()); }
++	}
+ 	return sha.Finish();
+ }
+ 
+-static json ExecuteCandidate(const Candidate &candidate)
++static json ExecuteCandidate(const Candidate &candidate, bool inject_route_second_failure = false)
+ {
+ 	json commands = json::array(); std::string status = "SUCCESS"; bool rolled_back = false;
+ 	auto execute = [&commands,&status](std::string_view name, auto &&call) {
+@@ -436,6 +445,13 @@ static json ExecuteCandidate(const Candidate &candidate)
+ 			Order second; second.MakeGoToStation(StationID{static_cast<uint16_t>(p[3])}); second.SetStopLocation(OrderStopLocation::FarEnd);
+ 			CommandCost one = execute("CMD_INSERT_ORDER", [&] { return Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, VehicleOrderID{0}, first); });
+ 			if (one.Failed()) { rollback(); break; }
++			if (inject_route_second_failure) {
++				commands.push_back({{"command","CMD_INSERT_ORDER"},{"cost",0},{"error_message_id",0},{"extra_error_message_id",0},
++					{"phase","INJECTED"},{"status","REJECTED"}});
++				status = "NATIVE_REJECTED";
++				rollback();
++				break;
++			}
+ 			CommandCost two = execute("CMD_INSERT_ORDER", [&] { return Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle->index, VehicleOrderID{1}, second); });
+ 			if (two.Failed()) rollback();
+ 			break;
+@@ -452,6 +468,77 @@ static json ExecuteCandidate(const Candidate &candidate)
+ 	return {{"native_commands",std::move(commands)},{"rolled_back",rolled_back},{"status",status}};
+ }
+ 
++static size_t FamilyIndex(std::string_view name)
++{
++	for (size_t index = 0; index < FAMILY_NAMES.size(); ++index) {
++		if (FAMILY_NAMES[index] == name) return index;
++	}
++	Fail(fmt::format("unknown action family '{}'", name));
++}
++
++static std::string Sha256File(const std::filesystem::path &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	Require(input.good(), fmt::format("cannot read artifact '{}'", path.string()));
++	Sha256 sha;
++	std::array<uint8_t, 65536> buffer{};
++	while (input) {
++		input.read(reinterpret_cast<char *>(buffer.data()), buffer.size());
++		std::streamsize count = input.gcount();
++		if (count > 0) sha.Update(std::span(buffer.data(), static_cast<size_t>(count)));
++	}
++	Require(input.eof(), fmt::format("failed while hashing artifact '{}'", path.string()));
++	return sha.Finish();
++}
++
++static std::string CandidateSemanticSha256(const CandidateEnumeration &enumeration)
++{
++	Sha256 sha;
++	auto add_u64 = [&sha](uint64_t value) {
++		std::array<uint8_t, 8> bytes{};
++		for (size_t index = 0; index < bytes.size(); ++index) bytes[index] = static_cast<uint8_t>(value >> (index * 8));
++		sha.Update(bytes);
++	};
++	for (size_t family = 0; family < FAMILY_COUNT; ++family) {
++		add_u64(family);
++		add_u64(enumeration.total_legal[family]);
++		add_u64(enumeration.selected[family].size());
++		for (const Candidate &candidate : enumeration.selected[family]) {
++			sha.Update(candidate.stable_key);
++			add_u64(candidate.priority);
++			add_u64(static_cast<uint64_t>(candidate.cost.base()));
++			for (uint32_t parameter : candidate.parameters) add_u64(parameter);
++		}
++	}
++	return sha.Finish();
++}
++
++static json NativeCounts()
++{
++	return {
++		{"companies", Company::GetNumItems()},
++		{"depots", Depot::GetNumItems()},
++		{"stations", Station::GetNumItems()},
++		{"towns", Town::GetNumItems()},
++		{"vehicles", Vehicle::GetNumItems()},
++	};
++}
++
++static bool SafeArtifactName(std::string_view value)
++{
++	return !value.empty() && value.size() <= 64 && std::all_of(value.begin(), value.end(), [](char character) {
++		return (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '-' || character == '_';
++	});
++}
++
++struct CaptureDigest {
++	std::string state_sha256;
++	std::string save_sha256;
++	std::string observation_sha256;
++	std::string candidate_sha256;
++	std::string candidate_semantic_sha256;
++};
++
+ } // namespace
+ 
+ void WriteRlV2CandidatesAndMaybeExecute(const std::string &metadata_path, const std::string &request_path,
+@@ -528,3 +615,182 @@ void WriteRlV2CandidatesAndMaybeExecute(const std::string &metadata_path, const
+ 		{"state_sha256_before",state_before},{"status",status},{"tick_after",TimerGameTick::counter},{"tick_before",tick_before}};
+ 	WriteCanonicalNew(result_path, result);
+ }
++
++void RunRlV2EpisodeProgram(const std::string &program_path, const std::string &trace_path,
++	const std::string &artifact_directory, uint32_t map_seed, uint32_t simulation_seed,
++	uint32_t candidate_tiebreak_seed)
++{
++	json program = ReadCanonicalJson(program_path);
++	Require(program.is_object() && program.size() == 5, "episode program must contain exactly five fields");
++	Require(program.at("schema_version") == EPISODE_PROGRAM_SCHEMA_VERSION, "unsupported episode program schema_version");
++	Require(program.at("action_schema_id") == ACTION_SCHEMA_ID, "episode action schema mismatch");
++	Require(program.at("contract_sha256") == CONTRACT_SHA256, "episode contract mismatch");
++	Require(program.at("program_id").is_string() && SafeArtifactName(program.at("program_id").get<std::string>()), "invalid episode program_id");
++	Require(program.at("steps").is_array() && !program.at("steps").empty() && program.at("steps").size() <= 128,
++		"episode steps must be a nonempty array of at most 128 items");
++	std::filesystem::path artifact_root(artifact_directory);
++	Require(artifact_root.is_absolute() && std::filesystem::is_directory(artifact_root), "episode artifact directory must be an existing absolute directory");
++	Require(!std::filesystem::is_symlink(artifact_root), "episode artifact directory cannot be a symlink");
++	std::filesystem::path trace_output(trace_path);
++	Require(trace_output.is_absolute() && !std::filesystem::exists(trace_output), "episode trace must be a new absolute path");
++
++	std::string program_sha256 = Sha256File(program_path);
++	json trace_steps = json::array();
++	std::array<uint32_t, FAMILY_COUNT> executed_families{};
++	std::map<std::string, std::filesystem::path> save_slots;
++	std::map<std::string, CaptureDigest> equivalence_first;
++	std::map<std::string, uint32_t> equivalence_count;
++	uint64_t transition = 0;
++	std::string initial_state = NativeStateSha256();
++	json initial_counts = NativeCounts();
++	uint64_t initial_tick = TimerGameTick::counter;
++
++	for (size_t ordinal = 0; ordinal < program.at("steps").size(); ++ordinal) {
++		const json &step = program.at("steps").at(ordinal);
++		Require(step.is_object() && step.contains("operation") && step.contains("label"), "episode step lacks operation or label");
++		std::string operation = step.at("operation").get<std::string>();
++		std::string label = step.at("label").get<std::string>();
++		Require(SafeArtifactName(label), "invalid episode step label");
++		uint64_t tick_before = TimerGameTick::counter;
++		std::string state_before = NativeStateSha256();
++		json record = {{"label",label},{"operation",operation},{"ordinal",ordinal},{"state_sha256_before",state_before},{"tick_before",tick_before}};
++
++		if (operation == "ACTION") {
++			Require(step.size() == 5 && step.contains("family") && step.contains("selection") && step.contains("advance_ticks"),
++				"ACTION step must contain exactly operation,label,family,selection,advance_ticks");
++			Require(step.at("selection") == "FIRST" || step.at("selection") == "LAST", "selection must be FIRST or LAST");
++			uint32_t advance_ticks = step.at("advance_ticks").get<uint32_t>();
++			Require(advance_ticks <= 128, "ACTION advance_ticks exceeds 128");
++			size_t family = FamilyIndex(step.at("family").get<std::string>());
++			CandidateEnumeration enumeration = EnumerateCandidates();
++			Require(!enumeration.selected[family].empty(), fmt::format("ACTION family {} has no exposed legal candidate", FAMILY_NAMES[family]));
++			const Candidate &candidate = step.at("selection") == "FIRST" ? enumeration.selected[family].front() : enumeration.selected[family].back();
++			json execution = ExecuteCandidate(candidate);
++			std::string status = execution.at("status").get<std::string>();
++			Require(status == "SUCCESS" || status == "NO_OP", fmt::format("ACTION family {} returned {}", FAMILY_NAMES[family], status));
++			for (uint32_t tick = 0; tick < advance_ticks; ++tick) StateGameLoop();
++			++executed_families[family];
++			++transition;
++			record["advance_ticks"] = advance_ticks;
++			record["candidate"] = {{"cost",candidate.cost.base()},{"family_index",family},{"parameters",candidate.parameters},
++				{"priority",candidate.priority},{"stable_key",candidate.stable_key}};
++			record["candidate_semantic_sha256"] = CandidateSemanticSha256(enumeration);
++			record["family"] = FAMILY_NAMES[family];
++			record["native_commands"] = execution.at("native_commands");
++			record["rolled_back"] = execution.at("rolled_back");
++			record["selected_legal"] = enumeration.selected[family].size();
++			record["status"] = status;
++			record["total_legal"] = enumeration.total_legal[family];
++			record["transition"] = transition;
++		} else if (operation == "ROLLBACK") {
++			Require(step.size() == 4 && step.contains("family") && step.contains("selection"),
++				"ROLLBACK step must contain exactly operation,label,family,selection");
++			Require(step.at("family") == "SET_ROUTE", "ROLLBACK probe must target SET_ROUTE");
++			Require(step.at("selection") == "FIRST" || step.at("selection") == "LAST", "ROLLBACK selection must be FIRST or LAST");
++			size_t family = static_cast<size_t>(Family::SetRoute);
++			CandidateEnumeration enumeration = EnumerateCandidates();
++			Require(!enumeration.selected[family].empty(), "ROLLBACK SET_ROUTE has no exposed legal candidate");
++			const Candidate &candidate = step.at("selection") == "FIRST" ? enumeration.selected[family].front() : enumeration.selected[family].back();
++			json execution = ExecuteCandidate(candidate, true);
++			Require(execution.at("status") == "NATIVE_REJECTED" && execution.at("rolled_back") == true,
++				"ROLLBACK probe did not reject and restore the route transaction");
++			Require(TimerGameTick::counter == tick_before && NativeStateSha256() == state_before,
++				"ROLLBACK probe changed ticks or native state");
++			record["candidate"] = {{"cost",candidate.cost.base()},{"family_index",family},{"parameters",candidate.parameters},
++				{"priority",candidate.priority},{"stable_key",candidate.stable_key}};
++			record["family"] = FAMILY_NAMES[family];
++			record["native_commands"] = execution.at("native_commands");
++			record["rolled_back"] = true;
++			record["status"] = "NATIVE_REJECTED";
++		} else if (operation == "SAVE") {
++			Require(step.size() == 3 && step.contains("slot"), "SAVE step must contain exactly operation,label,slot");
++			std::string slot = step.at("slot").get<std::string>();
++			Require(SafeArtifactName(slot) && !save_slots.contains(slot), "SAVE slot is invalid or duplicated");
++			std::filesystem::path save_path = artifact_root / (slot + ".sav");
++			Require(!std::filesystem::exists(save_path), "SAVE artifact already exists");
++			Require(SaveOrLoad(save_path.string(), SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "native SAVE failed");
++			save_slots.emplace(slot, save_path);
++			record["bytes"] = std::filesystem::file_size(save_path);
++			record["save_sha256"] = Sha256File(save_path);
++			record["slot"] = slot;
++			record["status"] = "SUCCESS";
++		} else if (operation == "LOAD") {
++			Require(step.size() == 3 && step.contains("slot"), "LOAD step must contain exactly operation,label,slot");
++			std::string slot = step.at("slot").get<std::string>();
++			Require(save_slots.contains(slot), "LOAD references an unknown slot");
++			Require(SaveOrLoad(save_slots.at(slot).string(), SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "native LOAD failed");
++			SetLocalCompany(CompanyID::Begin());
++			_current_company = CompanyID::Begin();
++			record["save_sha256"] = Sha256File(save_slots.at(slot));
++			record["slot"] = slot;
++			record["status"] = "SUCCESS";
++		} else if (operation == "CAPTURE") {
++			Require(step.size() == 3 && step.contains("equivalence_group"), "CAPTURE step must contain exactly operation,label,equivalence_group");
++			std::string group = step.at("equivalence_group").get<std::string>();
++			Require(SafeArtifactName(group), "invalid CAPTURE equivalence_group");
++			std::filesystem::path save_path = artifact_root / (label + ".sav");
++			std::filesystem::path observation_path = artifact_root / (label + "-observation.json");
++			std::filesystem::path candidate_path = artifact_root / (label + "-candidates.json");
++			Require(!std::filesystem::exists(save_path), "CAPTURE save artifact already exists");
++			Require(SaveOrLoad(save_path.string(), SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "CAPTURE native SAVE failed");
++			std::string observation_sha256 = WriteRlV2Observation(observation_path.string(), map_seed, simulation_seed, candidate_tiebreak_seed);
++			WriteRlV2CandidatesAndMaybeExecute(candidate_path.string(), "", "", observation_sha256, map_seed, simulation_seed, candidate_tiebreak_seed);
++			json candidate_metadata = ReadCanonicalJson(candidate_path.string());
++			CandidateEnumeration enumeration = EnumerateCandidates();
++			CaptureDigest digest{NativeStateSha256(), Sha256File(save_path), observation_sha256,
++				candidate_metadata.at("binary").at("sha256").get<std::string>(), CandidateSemanticSha256(enumeration)};
++			if (equivalence_first.contains(group)) {
++				const CaptureDigest &first = equivalence_first.at(group);
++				Require(digest.state_sha256 == first.state_sha256, "CAPTURE state equivalence failed");
++				Require(digest.save_sha256 == first.save_sha256, "CAPTURE save-byte equivalence failed");
++				Require(digest.observation_sha256 == first.observation_sha256, "CAPTURE observation equivalence failed");
++				Require(digest.candidate_sha256 == first.candidate_sha256, "CAPTURE candidate-byte equivalence failed");
++				Require(digest.candidate_semantic_sha256 == first.candidate_semantic_sha256, "CAPTURE candidate semantic equivalence failed");
++			} else {
++				equivalence_first.emplace(group, digest);
++			}
++			++equivalence_count[group];
++			record["candidate_semantic_sha256"] = digest.candidate_semantic_sha256;
++			record["candidate_sha256"] = digest.candidate_sha256;
++			record["equivalence_group"] = group;
++			record["observation_sha256"] = digest.observation_sha256;
++			record["save_sha256"] = digest.save_sha256;
++			record["status"] = "SUCCESS";
++		} else {
++			Fail(fmt::format("unsupported episode operation '{}'", operation));
++		}
++		record["counts_after"] = NativeCounts();
++		record["state_sha256_after"] = NativeStateSha256();
++		record["tick_after"] = TimerGameTick::counter;
++		trace_steps.push_back(std::move(record));
++	}
++
++	json coverage = json::array();
++	bool all_families = true;
++	for (size_t family = 0; family < FAMILY_COUNT; ++family) {
++		coverage.push_back({{"executions",executed_families[family]},{"family_index",family},{"name",FAMILY_NAMES[family]}});
++		all_families = all_families && executed_families[family] > 0;
++	}
++	json equivalence = json::array();
++	bool replay_exact = !equivalence_count.empty();
++	for (const auto &[group, count] : equivalence_count) {
++		equivalence.push_back({{"captures",count},{"group",group},{"status",count >= 2 ? "EXACT" : "UNPAIRED"}});
++		replay_exact = replay_exact && count >= 2;
++	}
++	json trace = {
++		{"schema_version",EPISODE_TRACE_SCHEMA_VERSION},
++		{"action_schema_id",ACTION_SCHEMA_ID},
++		{"contract_sha256",CONTRACT_SHA256},
++		{"coverage",coverage},
++		{"equivalence_groups",equivalence},
++		{"final",{{"counts",NativeCounts()},{"state_sha256",NativeStateSha256()},{"tick",TimerGameTick::counter}}},
++		{"initial",{{"counts",initial_counts},{"state_sha256",initial_state},{"tick",initial_tick}}},
++		{"invariants",{{"all_action_families_executed",all_families},{"save_load_replay_exact",replay_exact}}},
++		{"program_id",program.at("program_id")},
++		{"program_sha256",program_sha256},
++		{"seeds",{{"candidate_tiebreak_seed",candidate_tiebreak_seed},{"map_seed",map_seed},{"simulation_seed",simulation_seed}}},
++		{"steps",trace_steps},
++		{"transitions",transition},
++	};
++	WriteCanonicalNew(trace_output, trace);
++}
+diff --git a/src/rl_v2_action.h b/src/rl_v2_action.h
+index 84261f8..760075c 100644
+--- a/src/rl_v2_action.h
++++ b/src/rl_v2_action.h
+@@ -16,4 +16,8 @@ void WriteRlV2CandidatesAndMaybeExecute(const std::string &metadata_path, const
+ 	const std::string &result_path, const std::string &observation_sha256, uint32_t map_seed,
+ 	uint32_t simulation_seed, uint32_t candidate_tiebreak_seed);
+ 
++void RunRlV2EpisodeProgram(const std::string &program_path, const std::string &trace_path,
++	const std::string &artifact_directory, uint32_t map_seed, uint32_t simulation_seed,
++	uint32_t candidate_tiebreak_seed);
++
+ #endif /* RL_V2_ACTION_H */
+diff --git a/src/rl_v2_environment.cpp b/src/rl_v2_environment.cpp
+index 372c059..31cb46c 100644
+--- a/src/rl_v2_environment.cpp
++++ b/src/rl_v2_environment.cpp
+@@ -254,7 +254,9 @@ static void WriteCanonicalNew(const std::string &path, const json &value)
+ 
+ void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path,
+ 	const std::string &observation_metadata_path, const std::string &candidate_metadata_path,
+-	const std::string &action_request_path, const std::string &action_result_path)
++	const std::string &action_request_path, const std::string &action_result_path,
++	const std::string &episode_program_path, const std::string &episode_trace_path,
++	const std::string &episode_artifact_directory)
+ {
+ 	ResetRequest request = ValidateManifest(ReadCanonicalJson(manifest_path));
+ 	ConfigureSettings(request);
+@@ -280,4 +282,6 @@ void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &p
+ 		request.map_seed, request.simulation_seed, request.candidate_tiebreak_seed);
+ 	if (!candidate_metadata_path.empty()) WriteRlV2CandidatesAndMaybeExecute(candidate_metadata_path, action_request_path,
+ 		action_result_path, observation_sha256, request.map_seed, request.simulation_seed, request.candidate_tiebreak_seed);
++	if (!episode_program_path.empty()) RunRlV2EpisodeProgram(episode_program_path, episode_trace_path,
++		episode_artifact_directory, request.map_seed, request.simulation_seed, request.candidate_tiebreak_seed);
+ }
+diff --git a/src/rl_v2_environment.h b/src/rl_v2_environment.h
+index 745dff5..7702679 100644
+--- a/src/rl_v2_environment.h
++++ b/src/rl_v2_environment.h
+@@ -14,6 +14,8 @@
+ 
+ void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path,
+ 	const std::string &observation_metadata_path, const std::string &candidate_metadata_path,
+-	const std::string &action_request_path, const std::string &action_result_path);
++	const std::string &action_request_path, const std::string &action_result_path,
++	const std::string &episode_program_path, const std::string &episode_trace_path,
++	const std::string &episode_artifact_directory);
+ 
+ #endif /* RL_V2_ENVIRONMENT_H */
+-- 
+2.43.0
+

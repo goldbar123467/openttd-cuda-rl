@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-ai-runtime-qualification.schema.json",
+  "title": "OpenTTD RL V2 external AI runtime qualification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "engine_source", "executable", "package_lock", "sandbox", "scenario", "checks", "observations", "resources", "outcome", "error_details"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-ai-runtime-qualification.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-ai-runtime-qualification-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "engine_source": {
+      "type": "object", "additionalProperties": false, "required": ["release", "commit", "tree"],
+      "properties": {"release": {"const": "15.3"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}
+    },
+    "executable": {
+      "type": "object", "additionalProperties": false, "required": ["sha256", "size", "reported_version"],
+      "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1}, "reported_version": {"type": ["string", "null"]}}
+    },
+    "package_lock": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sha256", "catalog_name", "catalog_unique_id", "catalog_version", "declared_name", "declared_version", "api_version", "package_count", "closure_sha256"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"}, "catalog_name": {"type": "string", "minLength": 1}, "catalog_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+        "catalog_version": {"type": "integer", "minimum": 1}, "declared_name": {"type": "string", "minLength": 1}, "declared_version": {"type": "integer", "minimum": 1},
+        "api_version": {"type": ["string", "null"]}, "package_count": {"type": "integer", "minimum": 1}, "closure_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "sandbox": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "read_only_root", "private_network", "new_session", "resource_limits"],
+      "properties": {
+        "kind": {"enum": ["bubblewrap", "test-none"]}, "read_only_root": {"type": "boolean"}, "private_network": {"type": "boolean"}, "new_session": {"type": "boolean"},
+        "resource_limits": {
+          "type": "object", "additionalProperties": false, "required": ["address_space_bytes", "cpu_seconds", "file_bytes", "open_files", "processes"],
+          "properties": {"address_space_bytes": {"type": "integer", "minimum": 1}, "cpu_seconds": {"type": "integer", "minimum": 1}, "file_bytes": {"type": "integer", "minimum": 1}, "open_files": {"type": "integer", "minimum": 1}, "processes": {"type": "integer", "minimum": 1}}
+        }
+      }
+    },
+    "scenario": {
+      "type": "object", "additionalProperties": false, "required": ["map_width", "map_height", "start_year", "generation_seed", "minimum_elapsed_days"],
+      "properties": {"map_width": {"const": 128}, "map_height": {"const": 128}, "start_year": {"const": 1950}, "generation_seed": {"type": "integer", "minimum": 0, "maximum": 4294967295}, "minimum_elapsed_days": {"type": "integer", "minimum": 1}}
+    },
+    "checks": {
+      "type": "object", "additionalProperties": false, "required": ["declared_identity_listed", "company_started", "minimum_days_elapsed", "save_created", "company_survived_load", "no_script_crash", "resource_limits_respected"],
+      "properties": {"declared_identity_listed": {"type": "boolean"}, "company_started": {"type": "boolean"}, "minimum_days_elapsed": {"type": "boolean"}, "save_created": {"type": "boolean"}, "company_survived_load": {"type": "boolean"}, "no_script_crash": {"type": "boolean"}, "resource_limits_respected": {"type": "boolean"}}
+    },
+    "observations": {
+      "type": "object", "additionalProperties": false, "required": ["list_line", "start_date", "pre_save_date", "post_load_date", "company_before_load", "company_after_load", "save"],
+      "properties": {
+        "list_line": {"type": ["string", "null"]}, "start_date": {"type": ["string", "null"], "format": "date"}, "pre_save_date": {"type": ["string", "null"], "format": "date"}, "post_load_date": {"type": ["string", "null"], "format": "date"},
+        "company_before_load": {"oneOf": [{"$ref": "#/$defs/company"}, {"type": "null"}]}, "company_after_load": {"oneOf": [{"$ref": "#/$defs/company"}, {"type": "null"}]},
+        "save": {"oneOf": [{"$ref": "#/$defs/save"}, {"type": "null"}]}
+      }
+    },
+    "resources": {
+      "type": "object", "additionalProperties": false, "required": ["wall_seconds", "max_rss_kib", "process_returncode", "console_transcript_sha256"],
+      "properties": {"wall_seconds": {"type": "number", "minimum": 0}, "max_rss_kib": {"type": "integer", "minimum": 0}, "process_returncode": {"type": ["integer", "null"]}, "console_transcript_sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "outcome": {"enum": ["QUALIFIED_ACTIVE", "QUALIFIED_HEALTHY_INACTIVE", "QUALIFIED_CONTROL", "REJECTED"]},
+    "error_details": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "company": {
+      "type": "object", "additionalProperties": false, "required": ["company_id", "money", "loan", "value", "trains", "road_vehicles", "aircraft", "ships"],
+      "properties": {"company_id": {"type": "integer", "minimum": 1, "maximum": 15}, "money": {"type": "integer"}, "loan": {"type": "integer", "minimum": 0}, "value": {"type": "integer"}, "trains": {"type": "integer", "minimum": 0}, "road_vehicles": {"type": "integer", "minimum": 0}, "aircraft": {"type": "integer", "minimum": 0}, "ships": {"type": "integer", "minimum": 0}}
+    },
+    "save": {
+      "type": "object", "additionalProperties": false, "required": ["path", "size", "sha256"],
+      "properties": {"path": {"type": "string", "pattern": "^(?!/).+\\.sav$"}, "size": {"type": "integer", "minimum": 1}, "sha256": {"$ref": "#/$defs/sha256"}}
+    }
+  }
+}

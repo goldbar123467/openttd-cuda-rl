@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-observation-contract.schema.json",
+  "title": "OpenTTD RL V2 M15 detailed bounded observation contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "scalable_contract_sha256", "observation_schema_id", "total_bytes", "structured", "spatial", "entities", "graph", "serialization", "oracle"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-observation-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-observation-contract-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "scalable_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "observation_schema_id": {"const": "v2-m15-observation-v1"},
+    "total_bytes": {"const": 2182927},
+    "structured": {
+      "type": "object", "additionalProperties": false, "required": ["dtype", "features", "fields", "reserved"],
+      "properties": {
+        "dtype": {"const": "float32-le"}, "features": {"const": 512},
+        "fields": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"$ref": "#/$defs/field"}},
+        "reserved": {"const": {"start": 16, "end": 511, "value": 0}}
+      }
+    },
+    "spatial": {
+      "type": "object", "additionalProperties": false, "required": ["dtype", "layout", "channels", "views"],
+      "properties": {
+        "dtype": {"const": "float32-le"}, "layout": {"const": "channel-y-x-row-major"},
+        "channels": {"type": "array", "minItems": 32, "maxItems": 32, "items": {"$ref": "#/$defs/field"}},
+        "views": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/view"}}
+      }
+    },
+    "entities": {
+      "type": "array", "minItems": 5, "maxItems": 5,
+      "items": {"$ref": "#/$defs/table"}
+    },
+    "graph": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_capacity", "node_features", "node_kinds", "node_order", "node_fields", "node_reserved", "edge_capacity", "edge_features", "edge_order", "edge_fields", "edge_reserved", "directed_pair_policy", "mask"],
+      "properties": {
+        "node_capacity": {"const": 2048}, "node_features": {"const": 24},
+        "node_kinds": {"const": ["town", "industry", "station", "vehicle"]},
+        "node_order": {"const": "kind-then-corresponding-entity-table-order"},
+        "node_fields": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"$ref": "#/$defs/field"}},
+        "node_reserved": {"const": {"start": 5, "end": 23, "value": 0}},
+        "edge_capacity": {"const": 8192}, "edge_features": {"const": 16},
+        "edge_order": {"const": "source-destination-kind"},
+        "edge_fields": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/field"}},
+        "edge_reserved": {"const": {"start": 4, "end": 15, "value": 0}},
+        "directed_pair_policy": {"const": "industry-nearest-town-forward-and-reverse"},
+        "mask": {"const": "uint8-prefix-valid"}
+      }
+    },
+    "serialization": {
+      "type": "object", "additionalProperties": false, "required": ["endianness", "sections", "sha256"],
+      "properties": {
+        "endianness": {"const": "little"}, "sha256": {"const": "metadata-over-exact-binary-bytes"},
+        "sections": {"type": "array", "minItems": 18, "maxItems": 18, "items": {"$ref": "#/$defs/section"}}
+      }
+    },
+    "oracle": {
+      "type": "object", "additionalProperties": false, "required": ["decoder", "projection_checks", "cross_view", "corruption_test"],
+      "properties": {
+        "decoder": {"const": "independent-python-struct-decoder"},
+        "projection_checks": {"const": ["structured-counts", "global-tile-counts", "company", "towns", "entity-counts"]},
+        "cross_view": {"const": "64x64-global-native-tile-equality-to-regional-and-local"},
+        "corruption_test": {"const": "single-byte-mutation-must-fail-sha256"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "field": {
+      "type": "object", "additionalProperties": false, "required": ["index", "name", "encoding"],
+      "properties": {"index": {"type": "integer", "minimum": 0}, "name": {"type": "string", "minLength": 1}, "encoding": {"type": "string", "minLength": 1}}
+    },
+    "view": {
+      "type": "object", "additionalProperties": false, "required": ["name", "shape", "sampling", "origin"],
+      "properties": {
+        "name": {"enum": ["global", "regional", "local"]},
+        "shape": {"type": "array", "prefixItems": [{"const": 32}, {"type": "integer"}, {"type": "integer"}], "items": false, "minItems": 3, "maxItems": 3},
+        "sampling": {"type": "string", "minLength": 1}, "origin": {"type": "string", "minLength": 1}
+      }
+    },
+    "table": {
+      "type": "object", "additionalProperties": false, "required": ["name", "capacity", "features", "order", "mask", "count_policy", "fields", "reserved"],
+      "properties": {
+        "name": {"enum": ["companies", "towns", "industries", "stations", "vehicles"]},
+        "capacity": {"type": "integer", "minimum": 1}, "features": {"type": "integer", "minimum": 1},
+        "order": {"type": "string", "minLength": 1}, "mask": {"const": "uint8-prefix-valid"},
+        "count_policy": {"const": "metadata-total-selected-omitted-truncated"},
+        "fields": {"type": "array", "minItems": 4, "items": {"$ref": "#/$defs/field"}},
+        "reserved": {"type": "object", "additionalProperties": false, "required": ["start", "end", "value"], "properties": {"start": {"type": "integer", "minimum": 0}, "end": {"type": "integer", "minimum": 0}, "value": {"const": 0}}}
+      }
+    },
+    "section": {
+      "type": "object", "additionalProperties": false, "required": ["name", "offset", "bytes", "dtype", "shape"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1}, "offset": {"type": "integer", "minimum": 0}, "bytes": {"type": "integer", "minimum": 1},
+        "dtype": {"enum": ["float32-le", "uint8"]}, "shape": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "integer", "minimum": 1}}
+      }
+    }
+  }
+}

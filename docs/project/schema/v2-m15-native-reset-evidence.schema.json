@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-native-reset-evidence.schema.json",
+  "title": "OpenTTD RL V2 M15 native reset evidence matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "contract_sha256", "native_source_sha256", "executable", "artifact_base_hint", "seed", "policy", "results", "summary"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-native-reset-evidence.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-native-reset-evidence-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "native_source_sha256": {"$ref": "#/$defs/sha256"},
+    "executable": {
+      "type": "object", "additionalProperties": false, "required": ["sha256", "size"],
+      "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1000000}}
+    },
+    "artifact_base_hint": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-native-a"},
+    "seed": {"const": 1110312784},
+    "policy": {
+      "type": "object", "additionalProperties": false, "required": ["native_source_integrated", "sandboxed", "no_overwrite", "same_manifest_same_projection", "representative_tiers", "g15_pass_claim"],
+      "properties": {
+        "native_source_integrated": {"const": true}, "sandboxed": {"const": true}, "no_overwrite": {"const": true},
+        "same_manifest_same_projection": {"const": true}, "representative_tiers": {"const": ["curriculum", "rectangular", "generalization"]},
+        "g15_pass_claim": {"const": false}
+      }
+    },
+    "results": {
+      "type": "array", "minItems": 6, "maxItems": 6,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["run", "artifact_dir", "width", "height", "outcome", "manifest_sha256", "projection_sha256", "evidence_sha256", "transcript_sha256", "towns", "industries", "maximum_rss_kib", "wall_seconds"],
+        "properties": {
+          "run": {"type": "string", "pattern": "^[a-z0-9-]+$"}, "artifact_dir": {"type": "string", "pattern": "^qualified-[a-z0-9-]+$"},
+          "width": {"$ref": "#/$defs/side"}, "height": {"$ref": "#/$defs/side"}, "outcome": {"const": "PASS"},
+          "manifest_sha256": {"$ref": "#/$defs/sha256"}, "projection_sha256": {"$ref": "#/$defs/sha256"},
+          "evidence_sha256": {"$ref": "#/$defs/sha256"}, "transcript_sha256": {"$ref": "#/$defs/sha256"},
+          "towns": {"type": "integer", "minimum": 2, "maximum": 128}, "industries": {"type": "integer", "minimum": 0},
+          "maximum_rss_kib": {"type": "integer", "minimum": 1}, "wall_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 900}
+        }
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["runs", "distinct_rectangles", "byte_identical_repeats", "maximum_rss_kib", "summed_wall_seconds", "maximum_towns", "maximum_industries"],
+      "properties": {
+        "runs": {"const": 6}, "distinct_rectangles": {"const": 5}, "byte_identical_repeats": {"const": 1},
+        "maximum_rss_kib": {"type": "integer", "minimum": 1}, "summed_wall_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "maximum_towns": {"const": 128}, "maximum_industries": {"type": "integer", "minimum": 256}
+      }
+    }
+  },
+  "$defs": {
+    "side": {"enum": [64, 128, 256, 512, 1024]},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

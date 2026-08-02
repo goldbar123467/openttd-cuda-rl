@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-reset-projection.schema.json",
+  "title": "OpenTTD RL V2 M15 native reset projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_sha256", "request", "state"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m15-reset-projection-1"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_tiebreak_seed", "executable_sha256", "height", "industry_target", "interactive_seed", "map_seed", "resource_tier", "simulation_seed", "split", "town_target", "width"],
+      "properties": {
+        "candidate_tiebreak_seed": {"$ref": "#/$defs/u32"},
+        "executable_sha256": {"$ref": "#/$defs/sha256"},
+        "height": {"$ref": "#/$defs/side"},
+        "industry_target": {"const": 256},
+        "interactive_seed": {"$ref": "#/$defs/u32"},
+        "map_seed": {"$ref": "#/$defs/u32"},
+        "resource_tier": {"enum": ["curriculum", "generalization"]},
+        "simulation_seed": {"$ref": "#/$defs/u32"},
+        "split": {"enum": ["training", "development", "generalization", "final"]},
+        "town_target": {"type": "integer", "minimum": 2, "maximum": 128},
+        "width": {"$ref": "#/$defs/side"}
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company", "counts", "date", "map", "towns"],
+      "properties": {
+        "company": {
+          "type": "object", "additionalProperties": false, "required": ["id", "loan", "money"],
+          "properties": {"id": {"const": 0}, "loan": {"type": "integer"}, "money": {"type": "integer"}}
+        },
+        "counts": {
+          "type": "object", "additionalProperties": false,
+          "required": ["companies", "depots", "industries", "objects", "order_lists", "signs", "stations", "subsidies", "towns", "vehicles"],
+          "properties": {
+            "companies": {"const": 1}, "depots": {"$ref": "#/$defs/count"}, "industries": {"$ref": "#/$defs/count"},
+            "objects": {"$ref": "#/$defs/count"}, "order_lists": {"$ref": "#/$defs/count"}, "signs": {"$ref": "#/$defs/count"},
+            "stations": {"$ref": "#/$defs/count"}, "subsidies": {"$ref": "#/$defs/count"}, "towns": {"type": "integer", "minimum": 2, "maximum": 128},
+            "vehicles": {"$ref": "#/$defs/count"}
+          }
+        },
+        "date": {
+          "type": "object", "additionalProperties": false, "required": ["date_fract", "tick", "year"],
+          "properties": {"date_fract": {"type": "integer", "minimum": 0}, "tick": {"type": "integer", "minimum": 0}, "year": {"const": 1950}}
+        },
+        "map": {
+          "type": "object", "additionalProperties": false,
+          "required": ["clear_tiles", "height", "house_tiles", "road_tiles", "tile_count", "water_tiles", "width"],
+          "properties": {
+            "clear_tiles": {"$ref": "#/$defs/count"}, "height": {"$ref": "#/$defs/side"}, "house_tiles": {"$ref": "#/$defs/count"},
+            "road_tiles": {"$ref": "#/$defs/count"}, "tile_count": {"type": "integer", "minimum": 4096, "maximum": 1048576},
+            "water_tiles": {"$ref": "#/$defs/count"}, "width": {"$ref": "#/$defs/side"}
+          }
+        },
+        "towns": {
+          "type": "array", "minItems": 2, "maxItems": 128,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["id", "population", "x", "y"],
+            "properties": {"id": {"type": "integer", "minimum": 0}, "population": {"type": "integer", "minimum": 1}, "x": {"type": "integer", "minimum": 0, "maximum": 4095}, "y": {"type": "integer", "minimum": 0, "maximum": 4095}}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "count": {"type": "integer", "minimum": 0},
+    "side": {"enum": [64, 128, 256, 512, 1024, 2048, 4096]},
+    "u32": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

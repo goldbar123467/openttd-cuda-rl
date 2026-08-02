@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-ai-package-rejection.schema.json",
+  "title": "OpenTTD RL V2 BaNaNaS AI acquisition rejection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "engine_source",
+    "executable",
+    "request",
+    "reason_code",
+    "detail",
+    "console_transcript"
+  ],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-ai-package-rejection.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-ai-package-rejection-1"},
+    "schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "engine_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release", "commit", "tree"],
+      "properties": {
+        "release": {"const": "15.3"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "executable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "size"],
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size": {"type": "integer", "minimum": 1}
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "content_unique_id", "version", "catalog_url"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "content_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+        "version": {"type": "integer", "minimum": 1},
+        "catalog_url": {"type": "string", "format": "uri"}
+      }
+    },
+    "reason_code": {
+      "enum": [
+        "catalog-unavailable",
+        "catalog-identity-drift",
+        "catalog-listed-unselectable",
+        "content-server-failed",
+        "download-failed",
+        "archive-audit-failed",
+        "execution-failed",
+        "invariant-failed"
+      ]
+    },
+    "detail": {"type": "string", "minLength": 1},
+    "console_transcript": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size", "sha256"],
+      "properties": {
+        "path": {"const": "openttd-content-console.log"},
+        "size": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-episode-trace.schema.json",
+  "title": "OpenTTD RL V2 M15 stateful episode trace",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "action_schema_id", "contract_sha256", "coverage", "equivalence_groups", "final", "initial", "invariants", "program_id", "program_sha256", "seeds", "steps", "transitions"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m15-episode-trace-1"},
+    "action_schema_id": {"const": "v2-m15-hierarchical-action-v1"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "coverage": {"type": "array", "minItems": 12, "maxItems": 12, "items": {"type": "object", "additionalProperties": false, "required": ["executions", "family_index", "name"], "properties": {"executions": {"type": "integer", "minimum": 0}, "family_index": {"type": "integer", "minimum": 0, "maximum": 11}, "name": {"type": "string"}}}},
+    "equivalence_groups": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["captures", "group", "status"], "properties": {"captures": {"type": "integer", "minimum": 2}, "group": {"type": "string"}, "status": {"const": "EXACT"}}}},
+    "initial": {"$ref": "#/$defs/boundary"}, "final": {"$ref": "#/$defs/boundary"},
+    "invariants": {"type": "object", "additionalProperties": false, "required": ["all_action_families_executed", "save_load_replay_exact"], "properties": {"all_action_families_executed": {"type": "boolean"}, "save_load_replay_exact": {"const": true}}},
+    "program_id": {"type": "string"}, "program_sha256": {"$ref": "#/$defs/sha256"},
+    "seeds": {"type": "object", "additionalProperties": false, "required": ["candidate_tiebreak_seed", "map_seed", "simulation_seed"], "properties": {"candidate_tiebreak_seed": {"type": "integer", "minimum": 0}, "map_seed": {"type": "integer", "minimum": 0}, "simulation_seed": {"type": "integer", "minimum": 0}}},
+    "steps": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"type": "object", "required": ["counts_after", "label", "operation", "ordinal", "state_sha256_after", "state_sha256_before", "status", "tick_after", "tick_before"], "properties": {"counts_after": {"$ref": "#/$defs/counts"}, "label": {"type": "string"}, "operation": {"enum": ["ACTION", "SERVICE", "ROLLBACK", "SAVE", "LOAD", "CAPTURE"]}, "ordinal": {"type": "integer", "minimum": 0}, "state_sha256_after": {"$ref": "#/$defs/sha256"}, "state_sha256_before": {"$ref": "#/$defs/sha256"}, "status": {"enum": ["SUCCESS", "NO_OP", "NATIVE_REJECTED"]}, "tick_after": {"type": "integer", "minimum": 0}, "tick_before": {"type": "integer", "minimum": 0}}}},
+    "transitions": {"type": "integer", "minimum": 1}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "counts": {"type": "object", "additionalProperties": false, "required": ["companies", "depots", "stations", "towns", "vehicles"], "properties": {"companies": {"type": "integer", "minimum": 0}, "depots": {"type": "integer", "minimum": 0}, "stations": {"type": "integer", "minimum": 0}, "towns": {"type": "integer", "minimum": 0}, "vehicles": {"type": "integer", "minimum": 0}}},
+    "boundary": {"type": "object", "additionalProperties": false, "required": ["counts", "state_sha256", "tick"], "properties": {"counts": {"$ref": "#/$defs/counts"}, "state_sha256": {"$ref": "#/$defs/sha256"}, "tick": {"type": "integer", "minimum": 0}}}
+  }
+}

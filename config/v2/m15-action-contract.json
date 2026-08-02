@@ -1,0 +1,80 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-action-contract.schema.json",
+  "schema_version": "openttd-rl-v2-m15-action-contract-1",
+  "schema_sha256": "e2c1fadb04bab6796040e5a9fdcab0851fcb1a5e36b78302767d9c6e3fe2b13a",
+  "snapshot_date": "2026-08-02",
+  "scalable_contract_sha256": "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271",
+  "action_schema_id": "v2-m15-hierarchical-action-v1",
+  "capacity": 4096,
+  "binary": {
+    "total_bytes": 790528,
+    "sections": [
+      {"name": "features", "offset": 0, "bytes": 524288, "dtype": "float32-le", "shape": [4096, 32]},
+      {"name": "parameters", "offset": 524288, "bytes": 262144, "dtype": "uint32-le", "shape": [4096, 16]},
+      {"name": "mask", "offset": 786432, "bytes": 4096, "dtype": "uint8", "shape": [4096]}
+    ]
+  },
+  "features": {
+    "dtype": "float32-le",
+    "count": 32,
+    "fields": [
+      {"index": 0, "name": "family_wait", "encoding": "one-hot"},
+      {"index": 1, "name": "family_select_town_pair", "encoding": "one-hot"},
+      {"index": 2, "name": "family_build_road_path", "encoding": "one-hot"},
+      {"index": 3, "name": "family_build_bus_stop", "encoding": "one-hot"},
+      {"index": 4, "name": "family_build_road_depot", "encoding": "one-hot"},
+      {"index": 5, "name": "family_buy_bus", "encoding": "one-hot"},
+      {"index": 6, "name": "family_set_route", "encoding": "one-hot"},
+      {"index": 7, "name": "family_start_vehicle", "encoding": "one-hot"},
+      {"index": 8, "name": "family_stop_vehicle", "encoding": "one-hot"},
+      {"index": 9, "name": "family_send_to_depot", "encoding": "one-hot"},
+      {"index": 10, "name": "family_sell_vehicle", "encoding": "one-hot"},
+      {"index": 11, "name": "family_manage_loan", "encoding": "one-hot"},
+      {"index": 12, "name": "priority", "encoding": "uint32/4294967295"},
+      {"index": 13, "name": "native_cost", "encoding": "clamp(cost/1000000,-1,1)"},
+      {"index": 14, "name": "primary_x", "encoding": "tile-x/max(1,width-1);zero-when-not-applicable"},
+      {"index": 15, "name": "primary_y", "encoding": "tile-y/max(1,height-1);zero-when-not-applicable"},
+      {"index": 16, "name": "secondary_x", "encoding": "tile-x/max(1,width-1);zero-when-not-applicable"},
+      {"index": 17, "name": "secondary_y", "encoding": "tile-y/max(1,height-1);zero-when-not-applicable"},
+      {"index": 18, "name": "primary_metric", "encoding": "town-population/100000-for-select;zero-otherwise"},
+      {"index": 19, "name": "secondary_metric", "encoding": "town-population/100000-for-select;zero-otherwise"}
+    ],
+    "reserved": {"start": 20, "end": 31, "value": 0}
+  },
+  "families": [
+    {"index": 0, "name": "WAIT", "quota": 1, "row_begin": 0, "row_end": 1, "parameter_words": ["family"], "enumeration": "one semantic no-op", "legality": "always-true pure state predicate", "command": "NO_OP", "priority": "uint32-max"},
+    {"index": 1, "name": "SELECT_TOWN_PAIR", "quota": 256, "row_begin": 1, "row_end": 257, "parameter_words": ["family", "origin_town_id", "destination_town_id"], "enumeration": "all ordered distinct pairs of native towns", "legality": "both native town IDs valid and distinct", "command": "PURE_SELECTION", "priority": "origin-plus-destination-population"},
+    {"index": 2, "name": "BUILD_ROAD_PATH", "quota": 1024, "row_begin": 257, "row_end": 1281, "parameter_words": ["family", "tile", "road_bits", "path_length"], "enumeration": "every native tile times ROAD_X and ROAD_Y; path_length is one", "legality": "CMD_BUILD_ROAD authoritative test mode succeeds", "command": "CMD_BUILD_ROAD", "priority": "uint32-max-minus-manhattan-distance-to-highest-population-town"},
+    {"index": 3, "name": "BUILD_BUS_STOP", "quota": 768, "row_begin": 1281, "row_end": 2049, "parameter_words": ["family", "tile", "diag_direction"], "enumeration": "every native tile times four diagonal directions; one-by-one bay bus stop", "legality": "CMD_BUILD_ROAD_STOP authoritative test mode succeeds", "command": "CMD_BUILD_ROAD_STOP", "priority": "uint32-max-minus-manhattan-distance-to-highest-population-town"},
+    {"index": 4, "name": "BUILD_ROAD_DEPOT", "quota": 512, "row_begin": 2049, "row_end": 2561, "parameter_words": ["family", "tile", "diag_direction"], "enumeration": "every native tile times four diagonal directions", "legality": "CMD_BUILD_ROAD_DEPOT authoritative test mode succeeds", "command": "CMD_BUILD_ROAD_DEPOT", "priority": "uint32-max-minus-manhattan-distance-to-highest-population-town"},
+    {"index": 5, "name": "BUY_BUS", "quota": 256, "row_begin": 2561, "row_end": 2817, "parameter_words": ["family", "depot_tile", "engine_id"], "enumeration": "every company-owned native road depot with pinned passenger bus engine 116", "legality": "CMD_BUILD_VEHICLE authoritative test mode succeeds", "command": "CMD_BUILD_VEHICLE", "priority": "uint32-max-minus-depot-id"},
+    {"index": 6, "name": "SET_ROUTE", "quota": 256, "row_begin": 2817, "row_end": 3073, "parameter_words": ["family", "vehicle_id", "origin_station_id", "destination_station_id"], "enumeration": "every owned primary road vehicle times every ordered distinct pair of owned stations", "legality": "CMD_DELETE_ORDER and both independent CMD_INSERT_ORDER authoritative test-mode predicates succeed", "command": "CMD_DELETE_ORDER+CMD_INSERT_ORDER+CMD_INSERT_ORDER", "priority": "uint32-max-minus-vehicle-id"},
+    {"index": 7, "name": "START_VEHICLE", "quota": 192, "row_begin": 3073, "row_end": 3265, "parameter_words": ["family", "vehicle_id"], "enumeration": "every owned stopped primary road vehicle", "legality": "CMD_START_STOP_VEHICLE authoritative test mode succeeds", "command": "CMD_START_STOP_VEHICLE", "priority": "uint32-max-minus-vehicle-id"},
+    {"index": 8, "name": "STOP_VEHICLE", "quota": 192, "row_begin": 3265, "row_end": 3457, "parameter_words": ["family", "vehicle_id"], "enumeration": "every owned running primary road vehicle", "legality": "CMD_START_STOP_VEHICLE authoritative test mode succeeds", "command": "CMD_START_STOP_VEHICLE", "priority": "uint32-max-minus-vehicle-id"},
+    {"index": 9, "name": "SEND_TO_DEPOT", "quota": 192, "row_begin": 3457, "row_end": 3649, "parameter_words": ["family", "vehicle_id"], "enumeration": "every owned primary road vehicle", "legality": "CMD_SEND_VEHICLE_TO_DEPOT authoritative test mode succeeds", "command": "CMD_SEND_VEHICLE_TO_DEPOT", "priority": "uint32-max-minus-vehicle-id"},
+    {"index": 10, "name": "SELL_VEHICLE", "quota": 192, "row_begin": 3649, "row_end": 3841, "parameter_words": ["family", "vehicle_id"], "enumeration": "every owned primary road vehicle", "legality": "CMD_SELL_VEHICLE authoritative test mode succeeds", "command": "CMD_SELL_VEHICLE", "priority": "uint32-max-minus-vehicle-id"},
+    {"index": 11, "name": "MANAGE_LOAN", "quota": 255, "row_begin": 3841, "row_end": 4096, "parameter_words": ["family", "direction", "amount"], "enumeration": "increase and decrease by exactly 10000", "legality": "matching CMD_INCREASE_LOAN or CMD_DECREASE_LOAN authoritative test mode succeeds", "command": "CMD_INCREASE_LOAN|CMD_DECREASE_LOAN", "priority": "uint32-max-minus-direction"}
+  ],
+  "stable_key": "sha256(uint8-family-index || 16-little-endian-uint32-parameter-words)",
+  "ordering": "family-reserved-range-then-priority-descending-then-stable-key-ascending",
+  "snapshot": {
+    "payload": "contract_sha256:session-map_seed-simulation_seed:episode-0:transition-0:tick:observation_sha256:candidate_sha256",
+    "token": "m15a1:sha256(payload)",
+    "candidate_tiebreak_seed": "bound-in-observation-and-session-provenance;stable-key-is-final-tiebreak"
+  },
+  "request": {
+    "schema_version": "openttd-rl-v2-m15-action-request-1",
+    "fields": ["action_schema_id", "candidate_row", "contract_sha256", "family_index", "schema_version", "snapshot_token"],
+    "validation_order": ["schema", "contract", "snapshot-token", "row-range", "row-mask", "family-match", "authoritative-retest", "execute"]
+  },
+  "result": {
+    "schema_version": "openttd-rl-v2-m15-action-result-1",
+    "statuses": ["SUCCESS", "NO_OP", "STALE_TOKEN", "OUT_OF_RANGE", "ILLEGAL_CANDIDATE", "FAMILY_MISMATCH", "NATIVE_REJECTED"],
+    "invalid_invariant": "tick_before==tick_after and state_sha256_before==state_sha256_after and native_commands==[]"
+  },
+  "transactions": {
+    "single_command": "native-command-atomic",
+    "set_route": "snapshot-prior-orders;clear;insert-origin;insert-destination;exact-restore-on-first-rejection"
+  },
+  "oracle": ["exact-binary-layout", "finite-features", "canonical-mask", "stable-key-recompute", "family-range-and-order", "native-full-domain-counts", "exposed-positive-execution", "typed-negative-no-mutation", "repeat-hash"]
+}

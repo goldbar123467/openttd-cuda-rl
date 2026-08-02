@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/defect-ledger-v2.schema.json",
+  "title": "OpenTTD RL V2 defect and divergence ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "ledger_kind", "scope", "entries", "open_counts", "diagnostics"],
+  "properties": {
+    "$schema": {"const": "schema/defect-ledger-v2.schema.json"},
+    "schema_version": {"const": 1},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "ledger_kind": {"const": "openttd-rl-v2-project-defect-ledger"},
+    "scope": {"const": "V2-M14-through-M23"},
+    "entries": {"type": "array", "items": {"$ref": "#/$defs/entry"}},
+    "open_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defects", "divergences", "release_blocking", "total_nonclosed"],
+      "properties": {
+        "defects": {"type": "integer", "minimum": 0},
+        "divergences": {"type": "integer", "minimum": 0},
+        "release_blocking": {"type": "integer", "minimum": 0},
+        "total_nonclosed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["last_reviewed_date", "review_note"],
+      "properties": {
+        "last_reviewed_date": {"type": "string", "format": "date"},
+        "review_note": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "relative_path": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"},
+    "requirement_id": {"type": "string", "pattern": "^V2-[A-Z]+-[0-9]{3}$"},
+    "gate": {"type": "string", "pattern": "^G(?:1[4-9]|2[0-3])$"},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "title", "severity", "blocks_release", "status", "discovery_date", "affected_requirement_ids", "affected_gates", "first_observed", "impact", "root_cause", "reproducer", "evidence", "fix_revision", "regression_test", "closure_evidence"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^V2-(DEF|DIV)-[0-9]{4}$"},
+        "kind": {"enum": ["DEFECT", "DIVERGENCE"]},
+        "title": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["BLOCKER", "CRITICAL", "MAJOR", "MINOR"]},
+        "blocks_release": {"type": "boolean"},
+        "status": {"enum": ["OPEN", "DIAGNOSED", "FIXED_PENDING_VERIFICATION", "CLOSED", "ACCEPTED_LIMITATION"]},
+        "discovery_date": {"type": "string", "format": "date"},
+        "affected_requirement_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/requirement_id"}},
+        "affected_gates": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/gate"}},
+        "first_observed": {"type": "string", "minLength": 1},
+        "impact": {"type": "string", "minLength": 1},
+        "root_cause": {"type": ["string", "null"]},
+        "reproducer": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/relative_path"}},
+        "evidence": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/relative_path"}},
+        "fix_revision": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
+        "regression_test": {"oneOf": [{"$ref": "#/$defs/relative_path"}, {"type": "null"}]},
+        "closure_evidence": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/relative_path"}}
+      }
+    }
+  }
+}

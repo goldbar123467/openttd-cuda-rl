@@ -1,0 +1,18 @@
+{
+  "$schema": "schema/defect-ledger-v2.schema.json",
+  "schema_version": 1,
+  "schema_sha256": "57e4a9a0d583fec27d233f08e60fbf00e5898cde71b7f86715d4941c4220ffe7",
+  "ledger_kind": "openttd-rl-v2-project-defect-ledger",
+  "scope": "V2-M14-through-M23",
+  "entries": [],
+  "open_counts": {
+    "defects": 0,
+    "divergences": 0,
+    "release_blocking": 0,
+    "total_nonclosed": 0
+  },
+  "diagnostics": {
+    "last_reviewed_date": "2026-08-02",
+    "review_note": "The accepted M14-G17 implementation has zero known V2 code defects or divergences. ChooChoo and SimpleAI are retained audit-pool package rejections, not omitted runs or claims of qualified compatibility; AAAHogEx supplies G17's qualified rail-specialist baseline. Planned M18-M23 requirements are not defects merely because their gates have not run."
+  }
+}

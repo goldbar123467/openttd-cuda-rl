@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-policy-evidence.schema.json",
+  "title": "OpenTTD RL V2 M15 native scalable policy evidence",
+  "type": "object", "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "identities", "source", "build", "runs", "summary"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-policy-evidence.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-policy-evidence-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "identities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scalable_contract_sha256", "policy_contract_sha256", "dependency_lock_sha256", "libtorch_archive_sha256"],
+      "properties": {
+        "scalable_contract_sha256": {"$ref": "#/$defs/sha256"}, "policy_contract_sha256": {"$ref": "#/$defs/sha256"},
+        "dependency_lock_sha256": {"$ref": "#/$defs/sha256"},
+        "libtorch_archive_sha256": {"const": "945c5a3d946a28b387ad9dc9fddda7ba03e35fae1375b84ebff15df789436f82"}
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_root", "commit", "tree", "files"],
+      "properties": {
+        "artifact_root": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-policy-a/source"},
+        "commit": {"pattern": "^[0-9a-f]{40}$"}, "tree": {"pattern": "^[0-9a-f]{40}$"},
+        "files": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": {"path": {"type": "string", "pattern": "^(CMakeLists\\.txt|include/openttd_rl/v2/[a-z_]+\\.h|src/[a-z_]+\\.cpp|tests/[a-z0-9_]+\\.cpp)$"}, "sha256": {"$ref": "#/$defs/sha256"}}}}
+      }
+    },
+    "build": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_root", "cmake", "executable", "ctest"],
+      "properties": {
+        "artifact_root": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-policy-a"},
+        "cmake": {"const": {"build_type": "RelWithDebInfo", "compiler": "/usr/bin/g++", "libtorch": "2.13.0+cu130", "cuda": "13.0.88", "compute_capability": "12.0"}},
+        "executable": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "size"], "properties": {"path": {"const": "build/m15_policy_gate"}, "sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1000000}}},
+        "ctest": {"const": {"tests": 2, "passed": 2, "failed": 0, "devices": ["cpu", "cuda:0"]}}
+      }
+    },
+    "runs": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "prefixItems": [{"$ref": "#/$defs/run"}, {"$ref": "#/$defs/run"}], "items": false
+    },
+    "summary": {
+      "const": {"devices_passed": 2, "parameter_count": 1239406, "recurrent_reset_exact": true, "checkpoint_recovery_exact": true, "onnx_design_frozen": true, "status": "PASS"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "run": {
+      "type": "object", "additionalProperties": false,
+      "required": ["device", "artifact_directory", "report_sha256", "parameter_count", "forward_nanoseconds", "reset_max_abs_error", "checkpoint_max_abs_error", "checkpoint_id", "max_rss_kib", "wall_seconds"],
+      "properties": {
+        "device": {"enum": ["cpu", "cuda:0"]}, "artifact_directory": {"enum": ["cpu", "cuda"]},
+        "report_sha256": {"$ref": "#/$defs/sha256"}, "parameter_count": {"const": 1239406},
+        "forward_nanoseconds": {"type": "integer", "minimum": 1}, "reset_max_abs_error": {"const": 0},
+        "checkpoint_max_abs_error": {"const": 0}, "checkpoint_id": {"$ref": "#/$defs/sha256"},
+        "max_rss_kib": {"type": "integer", "minimum": 1, "maximum": 4194304},
+        "wall_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 60}
+      }
+    }
+  }
+}

@@ -3,11 +3,12 @@
 ## Document status
 
 - Status: project authority
-- Scope: the complete project, with Version 1 as the only active product scope
-- Last reconciled with the user-provided project brief: 2026-07-31
-- Change rule: a scope expansion, transport-mode expansion, or weaker Version 1
-  completion criterion requires an explicit reviewed change to this document and
-  the project requirements matrix.
+- Scope: the complete project; Version 1 is released and Version 2 is active
+- Last reconciled with the user-provided Version 2 expansion brief: 2026-08-02
+- Change rule: narrowing Version 2's map, transport, cargo, competition, or
+  broad-gameplay scope, or weakening an accepted Version 1 invariant, requires an
+  explicit reviewed change to this document and the applicable requirements
+  matrix.
 
 This document defines what the repository is trying to build. Detailed designs,
 phase plans, historical reports, and implementation notes may refine how it is
@@ -180,7 +181,59 @@ Version 1 is complete only when all of the following are true:
 Passing a subset of these conditions, producing an ONNX file, obtaining positive
 training return, or rendering a bus route is not Version 1 completion.
 
-## Post-Version 1 expansion
+Version 1 passed its release and publication gates on 2026-08-02. Its contracts,
+packages and evidence are an immutable compatibility baseline for Version 2.
+
+## Version 2 active expansion
+
+Version 2 builds a scalable OpenTTD generalist and competition benchmark on top of
+V1. It must research, implement and test every base-game gameplay domain that can
+affect company decisions or outcomes, while explicitly dispositioning non-gameplay
+application surfaces and community-content compatibility.
+
+V2 includes:
+
+- the complete V1 lifecycle and 32 by 32 passenger-bus environment as mandatory
+  regressions;
+- native power-of-two map dimensions from 64 through 4096, rectangular maps,
+  varied towns/industries/terrain and longer horizons;
+- passengers, mail and all base cargo and industry chains in temperate,
+  sub-arctic, sub-tropical and Toyland;
+- road vehicles and capability-gated trams, trains and signals, ships and
+  waterways, aircraft and airports, and joined multimodal networks;
+- construction, landscape, town authority, economy, orders, timetables, vehicle
+  lifecycle, servicing, replacement, events, breakdowns and disasters;
+- pinned Game Script and NewGRF compatibility suites with capability discovery
+  and fail-closed unknown-content behavior;
+- multiple companies and byte-pinned open-source NoAI opponents in fair,
+  reproducible solo, head-to-head and mixed-field evaluations;
+- scalable observations, hierarchical actions and larger generalist policies;
+  and
+- C++/CUDA PPO training, ONNX packaging, native/in-game equivalence, visible play,
+  clean-host reproduction and publication at no lower correctness standard than
+  V1.
+
+The exact feature research, map tiers, external-AI audit pool, ambiguity around the
+requested “Minimax 2/3” name, milestone gates and V2 definition of done are
+governed by `docs/project/V2_RESEARCH.md`,
+`config/v2/research-baseline.json`, `docs/project/V2_PLAN.md`,
+`docs/project/requirements-v2.json`, `docs/project/defects-v2.json`,
+`docs/project/M14_ENGINE_SOURCE_DECISION.md`, and
+`docs/project/M14_OPPONENT_ACQUISITION.md`. The complete M14 setting/competition
+contract and passed gate are recorded in
+`docs/project/M14_INVENTORY_AND_COMPETITION.md` and
+`docs/project/G14_GATE_REPORT.md`. The accepted scalable, cargo, and rail
+boundaries are recorded in `docs/project/M15_SCALABLE_CONTRACT.md`,
+`docs/project/G15_GATE_REPORT.md`,
+`docs/project/M16_CARGO_INDUSTRY_CONTRACT.md`,
+`docs/project/G16_GATE_REPORT.md`,
+`docs/project/M17_RAIL_NETWORK_CONTRACT.md`, and
+`docs/project/G17_GATE_REPORT.md`. The 86-row atomic V2 registry is frozen; a
+scope change must update its schema-valid traceability rather than only editing
+prose. The current implementation intentionally stops after G17; M18 remains
+planned and unstarted.
+
+## Version 2 dependency order
 
 Expansion is sequential and gate-controlled:
 
@@ -197,16 +250,18 @@ Expansion is sequential and gate-controlled:
    reusable benchmark suite.
 
 Every expansion stage must retain the ability to run, reproduce, and evaluate all
-earlier stages. No post-Version 1 item is authorized merely because related legacy
-code or an old fixture already exists in this repository.
+earlier stages. These stages are now authorized V2 scope, but related legacy code
+or old fixtures do not satisfy a gate without fresh V2 applicability and native
+acceptance evidence.
 
 ## Legacy P0 relationship
 
 The repository contains an unfinished, highly rigorous P0 oracle/parity program
 centered on a 64 by 64 road-freight fixture. Its source pinning, evidence,
 deterministic tape tooling, instrumentation discipline, and testing patterns are
-valuable inputs. Its product target and freight fixture are not the active product
-scope because they conflict with the 32 by 32 passenger-bus-first requirement.
+valuable inputs. Its product target and freight fixture are not V2 evidence merely
+because V2 now includes larger maps and road freight; V2 has different contracts,
+scenarios, actions, observations and release requirements.
 
 Legacy P0 artifacts must be preserved and truthfully labeled. They may be reused
 only after an explicit applicability review. They do not satisfy a Version 1 gate
@@ -217,13 +272,29 @@ unless that gate's bus-specific contract and evidence independently pass.
 The project document order is:
 
 1. `GOAL.md` — scope, end state, and completion authority;
-2. `docs/project/REQUIREMENTS.md` — atomic normative requirements;
-3. `docs/project/ROADMAP.md` — dependency order and release gates;
-4. `docs/architecture/V1_ARCHITECTURE.md` and the versioned contracts under
+2. `docs/project/V2_RESEARCH.md` and `config/v2/research-baseline.json` — active
+   V2 feature, map, command and external-AI research boundary;
+3. `docs/project/V2_PLAN.md` — active V2 dependency order, gates and definition of
+   done;
+4. `docs/project/requirements-v2.json` and `docs/project/defects-v2.json` — frozen
+   V2 atomic requirements, tests, dependencies, status and defect accounting;
+5. `docs/project/M14_ENGINE_SOURCE_DECISION.md`,
+   `docs/project/M14_OPPONENT_ACQUISITION.md`,
+   `docs/project/M14_INVENTORY_AND_COMPETITION.md`, and
+   `docs/project/G14_GATE_REPORT.md` — accepted M14 source, inventory, package,
+   runtime, competition and gate evidence;
+6. `docs/project/M15_SCALABLE_CONTRACT.md`,
+   `docs/project/M16_CARGO_INDUSTRY_CONTRACT.md`,
+   `docs/project/M17_RAIL_NETWORK_CONTRACT.md`, and their G15-G17 gate reports —
+   accepted V2 scalable passenger, cargo/industry, and rail boundaries;
+7. `docs/project/REQUIREMENTS.md` and `docs/project/requirements-v1.json` — frozen
+   V1 atomic requirements and compatibility floor;
+8. `docs/project/ROADMAP.md` — frozen V1 dependency order and release gates;
+9. `docs/architecture/V1_ARCHITECTURE.md` and the versioned contracts under
    `docs/contracts/` — technical boundaries and semantics;
-5. `docs/project/VERIFICATION.md` — proof required for claims;
-6. accepted decision records that explicitly apply to the new platform;
-7. legacy P0 contracts and reverse-engineering reports as historical evidence.
+10. `docs/project/VERIFICATION.md` — V1 proof rules inherited by V2;
+11. accepted decision records that explicitly apply to the platform; and
+12. legacy P0 contracts and reverse-engineering reports as historical evidence.
 
 Pinned OpenTTD source remains the authority for actual OpenTTD engine behavior.
 No planning document may invent engine semantics that contradict the pinned source

@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-competition-manifest.schema.json",
+  "title": "OpenTTD RL V2 frozen competition protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "manifest_id", "frozen_at", "identity", "audit_pool_disposition", "roster", "seed_protocol", "fairness", "scenario_contract", "policy_visibility", "scoring", "failure_policy", "analysis", "integrity"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-competition-manifest.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-competition-manifest-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "manifest_id": {"const": "m14-competition-protocol-v1"},
+    "frozen_at": {"type": "string", "format": "date"},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["engine_source", "executable", "research_baseline_sha256", "setting_inventory_sha256", "runtime_evidence_sha256"],
+      "properties": {
+        "engine_source": {"type": "object", "additionalProperties": false, "required": ["release", "commit", "tree"], "properties": {"release": {"const": "15.3"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}},
+        "executable": {"type": "object", "additionalProperties": false, "required": ["sha256", "size"], "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1}}},
+        "research_baseline_sha256": {"$ref": "#/$defs/sha256"},
+        "setting_inventory_sha256": {"$ref": "#/$defs/sha256"},
+        "runtime_evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "audit_pool_disposition": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"$ref": "#/$defs/disposition"}},
+    "roster": {
+      "type": "object", "additionalProperties": false, "required": ["rl", "tournament", "controls"],
+      "properties": {
+        "rl": {"type": "object", "additionalProperties": false, "required": ["participant_id", "role", "policy_package_sha256_required"], "properties": {"participant_id": {"const": "openttd-rl-v2"}, "role": {"const": "RL"}, "policy_package_sha256_required": {"const": true}}},
+        "tournament": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/participant"}},
+        "controls": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/participant"}}
+      }
+    },
+    "seed_protocol": {
+      "type": "object", "additionalProperties": false, "required": ["algorithm", "domain", "sets"],
+      "properties": {
+        "algorithm": {"const": "sha256-first-31-bits"},
+        "domain": {"const": "openttd-rl-v2-competition-v1"},
+        "sets": {
+          "type": "object", "additionalProperties": false, "required": ["development", "preliminary", "final"],
+          "properties": {
+            "development": {"$ref": "#/$defs/seed_set"},
+            "preliminary": {"$ref": "#/$defs/seed_set"},
+            "final": {"$ref": "#/$defs/seed_set"}
+          }
+        }
+      }
+    },
+    "fairness": {
+      "type": "object", "additionalProperties": false, "required": ["companies_per_match", "paired_legs", "same_map_within_pair", "same_settings_within_pair", "same_policy_bytes_within_suite", "opponent_settings_symmetric"],
+      "properties": {
+        "companies_per_match": {"const": 2},
+        "paired_legs": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/paired_leg"}},
+        "same_map_within_pair": {"const": true},
+        "same_settings_within_pair": {"const": true},
+        "same_policy_bytes_within_suite": {"const": true},
+        "opponent_settings_symmetric": {"const": true}
+      }
+    },
+    "scenario_contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["map_manifest_sha256_required", "settings_manifest_sha256_required", "content_manifest_sha256_required", "allowed_native_side_lengths", "allowed_climates", "calendar_days", "development_final_separation", "required_run_identity_fields"],
+      "properties": {
+        "map_manifest_sha256_required": {"const": true},
+        "settings_manifest_sha256_required": {"const": true},
+        "content_manifest_sha256_required": {"const": true},
+        "allowed_native_side_lengths": {"type": "array", "minItems": 7, "maxItems": 7, "items": {"type": "integer", "enum": [64, 128, 256, 512, 1024, 2048, 4096]}},
+        "allowed_climates": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"enum": ["temperate", "sub-arctic", "sub-tropical", "toyland"]}},
+        "calendar_days": {"type": "integer", "minimum": 365},
+        "development_final_separation": {"const": true},
+        "required_run_identity_fields": {"type": "array", "minItems": 10, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "policy_visibility": {
+      "type": "object", "additionalProperties": false, "required": ["allow", "deny", "enforced_by_schema", "negative_leakage_tests_required"],
+      "properties": {
+        "allow": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "deny": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "enforced_by_schema": {"const": true},
+        "negative_leakage_tests_required": {"const": true}
+      }
+    },
+    "scoring": {
+      "type": "object", "additionalProperties": false, "required": ["primary", "secondary", "sample_unit", "higher_is_better", "all_scheduled_runs_included", "currency_scale"],
+      "properties": {
+        "primary": {"const": "paired_company_value_difference"},
+        "secondary": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"enum": ["survival_rate", "operating_profit", "delivered_cargo_units", "delivered_passengers", "delivered_mail", "vehicle_count", "infrastructure_count"]}},
+        "sample_unit": {"const": "opponent-scenario-seed-four-leg-block"},
+        "higher_is_better": {"const": true},
+        "all_scheduled_runs_included": {"const": true},
+        "currency_scale": {"const": "native_base_currency_integer"}
+      }
+    },
+    "failure_policy": {
+      "type": "object", "additionalProperties": false, "required": ["company_bankruptcy", "participant_launch_crash_timeout", "engine_or_harness_failure", "rerun_limit", "missing_run_policy", "failure_events_retained"],
+      "properties": {
+        "company_bankruptcy": {"const": "survival_false_and_zero_post_failure_flow"},
+        "participant_launch_crash_timeout": {"const": "participant_loss_floor_no_drop"},
+        "engine_or_harness_failure": {"const": "one_identical_rerun_then_infrastructure_failure"},
+        "rerun_limit": {"const": 1},
+        "missing_run_policy": {"const": "gate_failure_never_listwise_delete"},
+        "failure_events_retained": {"const": true}
+      }
+    },
+    "analysis": {
+      "type": "object", "additionalProperties": false, "required": ["estimator", "interval", "confidence", "bootstrap_resamples", "bootstrap_seed", "stratify_by", "multiple_comparison", "universal_victory_required"],
+      "properties": {
+        "estimator": {"const": "mean_of_complete_paired_blocks"},
+        "interval": {"const": "paired_stratified_percentile_bootstrap"},
+        "confidence": {"const": 0.95},
+        "bootstrap_resamples": {"type": "integer", "minimum": 10000},
+        "bootstrap_seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+        "stratify_by": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"enum": ["opponent", "scenario", "map_size", "climate"]}},
+        "multiple_comparison": {"const": "holm_familywise_0.05"},
+        "universal_victory_required": {"const": false}
+      }
+    },
+    "integrity": {
+      "type": "object", "additionalProperties": false, "required": ["freeze_before_first_result", "all_cells_published", "post_result_selection_forbidden", "manifest_change_requires_new_id", "result_files_content_addressed", "raw_transcripts_retained"],
+      "properties": {
+        "freeze_before_first_result": {"const": true},
+        "all_cells_published": {"const": true},
+        "post_result_selection_forbidden": {"const": true},
+        "manifest_change_requires_new_id": {"const": true},
+        "result_files_content_addressed": {"const": true},
+        "raw_transcripts_retained": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "disposition": {"type": "object", "additionalProperties": false, "required": ["name", "content_unique_id", "admission", "reason_code"], "properties": {"name": {"type": "string", "minLength": 1}, "content_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"}, "admission": {"enum": ["TOURNAMENT", "CONTROL", "SCENARIO_REQUIRED", "EXCLUDED"]}, "reason_code": {"type": ["string", "null"]}}},
+    "participant": {"type": "object", "additionalProperties": false, "required": ["name", "content_unique_id", "admission", "package_evidence_sha256", "runtime_evidence_sha256"], "properties": {"name": {"type": "string", "minLength": 1}, "content_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"}, "admission": {"enum": ["TOURNAMENT", "CONTROL"]}, "package_evidence_sha256": {"$ref": "#/$defs/sha256"}, "runtime_evidence_sha256": {"$ref": "#/$defs/sha256"}}},
+    "seed_set": {"type": "object", "additionalProperties": false, "required": ["ordinal_start", "seeds"], "properties": {"ordinal_start": {"type": "integer", "minimum": 0}, "seeds": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "integer", "minimum": 0, "maximum": 2147483647}}}},
+    "paired_leg": {"type": "object", "additionalProperties": false, "required": ["leg", "rl_slot", "opponent_slot", "rl_start_delay_days", "opponent_start_delay_days"], "properties": {"leg": {"enum": ["A", "B", "C", "D"]}, "rl_slot": {"enum": [0, 1]}, "opponent_slot": {"enum": [0, 1]}, "rl_start_delay_days": {"enum": [0, 365]}, "opponent_start_delay_days": {"enum": [0, 365]}}}
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-policy-contract.schema.json",
+  "schema_version": "openttd-rl-v2-m15-policy-contract-1",
+  "schema_sha256": "52a434f59df43dabed2c28d362405b0ad6d5081f1f677f286f495f22ccae9884",
+  "snapshot_date": "2026-08-02",
+  "contract_id": "m15-scalable-policy-v1",
+  "semantic_version": 1,
+  "status": "FROZEN",
+  "compatibility": {
+    "scalable_contract_sha256": "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271",
+    "observation_schema_id": "v2-m15-observation-v1",
+    "action_schema_id": "v2-m15-hierarchical-action-v1",
+    "v1_adapter": "separate-bit-exact-v1-model-path"
+  },
+  "backend": {
+    "language": "C++",
+    "standard": "C++20",
+    "tensor_backend": "LibTorch",
+    "version": "2.13.0+cu130",
+    "devices": ["cpu", "cuda:0"],
+    "dtype": "float32",
+    "mixed_precision": false,
+    "minimum_compute_capability": "12.0"
+  },
+  "architecture": {
+    "schema_id": "v2-m15-policy-v1",
+    "encoders": ["structured-mlp", "shared-spatial-cnn", "masked-entity-transformer", "graph-message-passing", "candidate-scorer"],
+    "fusion": {"input_width": 768, "output_width": 256, "normalization": "layernorm", "activation": "silu"},
+    "memory": {"kind": "GRUCell", "input_size": 256, "hidden_size": 256, "reset": "episode-boundary-and-explicit-bool-mask"},
+    "heads": ["family_logits", "candidate_logits", "value"],
+    "parameter_count": 1239406
+  },
+  "inputs": [
+    {"name": "structured", "dtype": "float32", "shape": ["batch", 512]},
+    {"name": "global_spatial", "dtype": "float32", "shape": ["batch", 32, 64, 64]},
+    {"name": "regional_spatial", "dtype": "float32", "shape": ["batch", 32, 64, 64]},
+    {"name": "local_spatial", "dtype": "float32", "shape": ["batch", 32, 32, 32]},
+    {"name": "companies", "dtype": "float32", "shape": ["batch", 15, 32]},
+    {"name": "companies_mask", "dtype": "bool", "shape": ["batch", 15]},
+    {"name": "towns", "dtype": "float32", "shape": ["batch", 128, 24]},
+    {"name": "towns_mask", "dtype": "bool", "shape": ["batch", 128]},
+    {"name": "industries", "dtype": "float32", "shape": ["batch", 256, 24]},
+    {"name": "industries_mask", "dtype": "bool", "shape": ["batch", 256]},
+    {"name": "stations", "dtype": "float32", "shape": ["batch", 512, 32]},
+    {"name": "stations_mask", "dtype": "bool", "shape": ["batch", 512]},
+    {"name": "vehicles", "dtype": "float32", "shape": ["batch", 1024, 40]},
+    {"name": "vehicles_mask", "dtype": "bool", "shape": ["batch", 1024]},
+    {"name": "graph_nodes", "dtype": "float32", "shape": ["batch", 2048, 24]},
+    {"name": "graph_node_mask", "dtype": "bool", "shape": ["batch", 2048]},
+    {"name": "graph_edge_index", "dtype": "int64", "shape": ["batch", 8192, 2]},
+    {"name": "graph_edge_features", "dtype": "float32", "shape": ["batch", 8192, 16]},
+    {"name": "graph_edge_mask", "dtype": "bool", "shape": ["batch", 8192]},
+    {"name": "candidate_features", "dtype": "float32", "shape": ["batch", 4096, 32]},
+    {"name": "candidate_family", "dtype": "int64", "shape": ["batch", 4096]},
+    {"name": "candidate_mask", "dtype": "bool", "shape": ["batch", 4096]},
+    {"name": "family_mask", "dtype": "bool", "shape": ["batch", 12]},
+    {"name": "hidden_state", "dtype": "float32", "shape": ["batch", 256]},
+    {"name": "recurrent_reset", "dtype": "bool", "shape": ["batch"]}
+  ],
+  "outputs": [
+    {"name": "family_logits", "dtype": "float32", "shape": ["batch", 12]},
+    {"name": "candidate_logits", "dtype": "float32", "shape": ["batch", 4096]},
+    {"name": "value", "dtype": "float32", "shape": ["batch"]},
+    {"name": "next_hidden", "dtype": "float32", "shape": ["batch", 256]}
+  ],
+  "masking": {
+    "mask_dtype": "bool",
+    "illegal_logit": -1000000000,
+    "all_illegal": "reject-before-forward",
+    "padding": "masked-tokens-have-zero-attention-or-message-weight",
+    "candidate_family_range": [0, 11],
+    "graph_edge_index_range": [0, 2047]
+  },
+  "checkpoint": {
+    "schema_id": "v2-m15-scalable-checkpoint-v1",
+    "boundary": "after-completed-ppo-update-before-next-rollout",
+    "atomicity": "new-staging-directory-fsync-rename-never-overwrite",
+    "inventory": ["COMMITTED", "checkpoint.manifest", "model.pt", "optimizer.pt", "runtime.pt", "state.bin"],
+    "state": ["model", "optimizer", "normalization_mean", "normalization_variance", "normalization_count", "rng_state", "curriculum_tier", "map_dimensions", "episode", "transition", "completed_updates", "hidden_state", "contract_identity"],
+    "compatibility": "exact-schema-contract-inventory-and-payload-sha256-before-load",
+    "maximum_payload_bytes": 1073741824
+  },
+  "onnx": {
+    "opset": 18,
+    "batch_axis": "dynamic-axis-0",
+    "capacity_axes": "fixed-to-contract",
+    "inputs": ["structured", "global_spatial", "regional_spatial", "local_spatial", "companies", "companies_mask", "towns", "towns_mask", "industries", "industries_mask", "stations", "stations_mask", "vehicles", "vehicles_mask", "graph_nodes", "graph_node_mask", "graph_edge_index", "graph_edge_features", "graph_edge_mask", "candidate_features", "candidate_family", "candidate_mask", "family_mask", "hidden_state", "recurrent_reset"],
+    "outputs": ["family_logits", "candidate_logits", "value", "next_hidden"],
+    "mask_semantics": "explicit-bool-inputs-identical-to-native",
+    "recurrent_state": "hidden_state-input-next_hidden-output-explicit-reset-input",
+    "training_state": "excluded"
+  },
+  "verification": {
+    "devices": ["cpu", "cuda:0"],
+    "tests": ["shape", "finite", "mask", "gradient", "recurrent-retain-reset", "invalid-input", "checkpoint-round-trip", "checkpoint-never-overwrite"],
+    "checkpoint_forward_max_abs_error": 0,
+    "recurrent_reset_max_abs_error": 0
+  }
+}

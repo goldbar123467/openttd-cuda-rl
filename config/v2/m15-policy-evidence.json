@@ -1,0 +1,36 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-policy-evidence.schema.json",
+  "schema_version": "openttd-rl-v2-m15-policy-evidence-1",
+  "schema_sha256": "ed0ab25645073f42cbe98c287e91fb000183999a4cc279d2fd5bcd1d19b42aaf",
+  "snapshot_date": "2026-08-02",
+  "identities": {
+    "scalable_contract_sha256": "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271",
+    "policy_contract_sha256": "3118092e65e547f4485fa15ab0469333102ea2f8c545641da2dfaecb9930324c",
+    "dependency_lock_sha256": "600fa461776dd6d014f155c7e124167ba8fdb165ffefc48d09ab9cbd1ce90c9b",
+    "libtorch_archive_sha256": "945c5a3d946a28b387ad9dc9fddda7ba03e35fae1375b84ebff15df789436f82"
+  },
+  "source": {
+    "artifact_root": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-policy-a/source",
+    "commit": "96f2424bb0ef4501578defe572462e079d3f3154",
+    "tree": "4186eb0fd5d3f8a1cbfc77877cde01c508af9d29",
+    "files": [
+      {"path": "CMakeLists.txt", "sha256": "f516cff692fe31924d6bdab11aafc0c943a1b33e91a47b86ba14cc71d649cbf9"},
+      {"path": "include/openttd_rl/v2/checkpoint.h", "sha256": "eb367e1e9f15566dd9fd34cff0d01996845e4cb3477e47517443acb0d860eb56"},
+      {"path": "include/openttd_rl/v2/scalable_policy.h", "sha256": "0afd7d9489f1638b92c43c618a76d83c3e773d32e3a4349a181f941d7ece8f05"},
+      {"path": "src/checkpoint.cpp", "sha256": "81de00bfb6ee78557ddad043ccaba130099b87e91fd3136417edf33c8105be4d"},
+      {"path": "src/scalable_policy.cpp", "sha256": "ba9d5e863a486afbaf1b8d33e1d5257a8c67c6aedcded028078e5471521d3cc2"},
+      {"path": "tests/m15_policy_gate.cpp", "sha256": "0bb3ec4a15f4b4a79e60a6891e9c7396883864dc9d4ad6fd62550962b352c20c"}
+    ]
+  },
+  "build": {
+    "artifact_root": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-policy-a",
+    "cmake": {"build_type": "RelWithDebInfo", "compiler": "/usr/bin/g++", "libtorch": "2.13.0+cu130", "cuda": "13.0.88", "compute_capability": "12.0"},
+    "executable": {"path": "build/m15_policy_gate", "sha256": "43fd4ec977c6e45088b69d530a35aee0af89106a4856b554fe27a43cc2fe3af2", "size": 16023144},
+    "ctest": {"tests": 2, "passed": 2, "failed": 0, "devices": ["cpu", "cuda:0"]}
+  },
+  "runs": [
+    {"device": "cpu", "artifact_directory": "cpu", "report_sha256": "1b18714c17b7cb39d1e1c918fa9fbc318de6127d1bb88c63afe11b37f622e6ff", "parameter_count": 1239406, "forward_nanoseconds": 27023594, "reset_max_abs_error": 0, "checkpoint_max_abs_error": 0, "checkpoint_id": "537a012d29a7b54dc2f0382880072ea7644978ce72cc3a141f00a0c730c0a6fc", "max_rss_kib": 680304, "wall_seconds": 0.81},
+    {"device": "cuda:0", "artifact_directory": "cuda", "report_sha256": "407a9a51d29f76d87da3c060288042db08cb3effa1f584974ee0e6911ed575c5", "parameter_count": 1239406, "forward_nanoseconds": 478471659, "reset_max_abs_error": 0, "checkpoint_max_abs_error": 0, "checkpoint_id": "8822ee7ef5e85f5e63ffc4b4d85b01adbb894b3441564a45eb9634bea0d732e8", "max_rss_kib": 1812332, "wall_seconds": 1.65}
+  ],
+  "summary": {"devices_passed": 2, "parameter_count": 1239406, "recurrent_reset_exact": true, "checkpoint_recovery_exact": true, "onnx_design_frozen": true, "status": "PASS"}
+}

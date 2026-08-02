@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-observation-metadata.schema.json",
+  "title": "OpenTTD RL V2 M15 bounded observation metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_sha256", "observation_schema_id", "binary", "snapshot", "spatial", "entities", "graph", "sections"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m15-observation-metadata-1"},
+    "contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "observation_schema_id": {"const": "v2-m15-observation-v1"},
+    "binary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["bytes", "encoding", "file", "sha256"],
+      "properties": {
+        "bytes": {"const": 2182927},
+        "encoding": {"const": "little-endian-float32-row-major-plus-uint8-masks"},
+        "file": {"type": "string", "pattern": "^[^/]+\\.bin$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "snapshot": {
+      "type": "object", "additionalProperties": false,
+      "required": ["anchor_x", "anchor_y", "height", "map_seed", "simulation_seed", "candidate_tiebreak_seed", "tick", "tile_count", "width", "year"],
+      "properties": {
+        "anchor_x": {"type": "integer", "minimum": 0, "maximum": 4095},
+        "anchor_y": {"type": "integer", "minimum": 0, "maximum": 4095},
+        "height": {"type": "integer", "minimum": 64, "maximum": 4096},
+        "map_seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "simulation_seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "candidate_tiebreak_seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "tick": {"type": "integer", "minimum": 0},
+        "tile_count": {"type": "integer", "minimum": 4096, "maximum": 1048576},
+        "width": {"type": "integer", "minimum": 64, "maximum": 4096},
+        "year": {"const": 1950}
+      }
+    },
+    "spatial": {
+      "type": "object", "additionalProperties": false,
+      "required": ["channels", "local_origin", "regional_origin"],
+      "properties": {
+        "channels": {"type": "array", "minItems": 32, "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "local_origin": {"$ref": "#/$defs/coordinate"},
+        "regional_origin": {"$ref": "#/$defs/coordinate"}
+      }
+    },
+    "entities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["companies", "towns", "industries", "stations", "vehicles"],
+      "properties": {
+        "companies": {"$ref": "#/$defs/count"}, "towns": {"$ref": "#/$defs/count"},
+        "industries": {"$ref": "#/$defs/count"}, "stations": {"$ref": "#/$defs/count"},
+        "vehicles": {"$ref": "#/$defs/count"}
+      }
+    },
+    "graph": {
+      "type": "object", "additionalProperties": false,
+      "required": ["nodes", "edges"],
+      "properties": {"nodes": {"$ref": "#/$defs/count"}, "edges": {"$ref": "#/$defs/count"}}
+    },
+    "sections": {
+      "type": "array", "minItems": 18, "maxItems": 18,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["bytes", "dtype", "name", "offset", "shape"],
+        "properties": {
+          "bytes": {"type": "integer", "minimum": 1},
+          "dtype": {"enum": ["float32-le", "uint8"]},
+          "name": {"type": "string", "minLength": 1},
+          "offset": {"type": "integer", "minimum": 0},
+          "shape": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "integer", "minimum": 1}}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "coordinate": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "integer"}], "items": false, "minItems": 2, "maxItems": 2},
+    "count": {
+      "type": "object", "additionalProperties": false,
+      "required": ["capacity", "omitted", "selected", "total", "truncated"],
+      "properties": {
+        "capacity": {"type": "integer", "minimum": 1}, "omitted": {"type": "integer", "minimum": 0},
+        "selected": {"type": "integer", "minimum": 0}, "total": {"type": "integer", "minimum": 0},
+        "truncated": {"type": "boolean"}
+      }
+    }
+  }
+}

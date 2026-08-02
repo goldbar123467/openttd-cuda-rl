@@ -1,0 +1,404 @@
+From 5af2024b35129115b0777053c4f83637db1300e5 Mon Sep 17 00:00:00 2001
+From: Clark Kitchen <clarkkitchen22@gmail.com>
+Date: Sun, 2 Aug 2026 10:58:07 -0400
+Subject: [PATCH] OpenTTD-RL V2 M15 native scalable reset
+
+---
+ src/CMakeLists.txt        |   2 +
+ src/openttd.cpp           |  25 +++-
+ src/rl_v2_environment.cpp | 274 ++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_environment.h   |  17 +++
+ 4 files changed, 316 insertions(+), 2 deletions(-)
+ create mode 100644 src/rl_v2_environment.cpp
+ create mode 100644 src/rl_v2_environment.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 80aaa83..edbedb5 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -56,6 +56,8 @@ add_files(
+     rl_observation.h
+     rl_reward.cpp
+     rl_reward.h
++    rl_v2_environment.cpp
++    rl_v2_environment.h
+     CONDITION OPTION_RL_ENVIRONMENT
+ )
+ 
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index 886c81b..08b6266 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -85,6 +85,7 @@
+ #ifdef WITH_RL_ENVIRONMENT
+ #	include "rl_bridge.h"
+ #	include "rl_environment.h"
++#	include "rl_v2_environment.h"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ #	include "rl_neural_agent.h"
+@@ -407,6 +408,8 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_projection_output;           ///< Destination for the semantic reset projection.
+ 	std::string rl_trajectory_output;           ///< Optional destination for the scripted bus trajectory.
+ 	uint32_t rl_reset_repetitions = 1;          ///< Number of resets in this process.
++	std::string rl_v2_reset_manifest;           ///< Canonical M15 scalable reset manifest.
++	std::string rl_v2_reset_projection;         ///< Destination for the M15 reset projection.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -467,7 +470,15 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
+ #ifdef WITH_RL_ENVIRONMENT
+-		if (!rl_bridge_descriptors.empty()) {
++		if (!rl_v2_reset_manifest.empty()) {
++			try {
++				RunRlV2ScalableReset(rl_v2_reset_manifest, rl_v2_reset_projection);
++			} catch (const std::exception &e) {
++				UserError("{}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		} else if (!rl_bridge_descriptors.empty()) {
+ 			try {
+ 				RunRlEnvironmentBridge(rl_scenario_instance, rl_bridge_descriptors);
+ 			} catch (const std::exception &e) {
+@@ -544,7 +555,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BRTYZ"
++			"BRTUYZV"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -724,6 +735,8 @@ int openttd_main(std::span<std::string_view> arguments)
+ 			}
+ 			break;
+ 		case 'T': scanner->rl_trajectory_output = mgo.opt; break;
++		case 'U': scanner->rl_v2_reset_projection = mgo.opt; break;
++		case 'V': scanner->rl_v2_reset_manifest = mgo.opt; break;
+ 		case 'Y': scanner->rl_projection_output = mgo.opt; break;
+ 		case 'Z': scanner->rl_scenario_instance = mgo.opt; break;
+ #endif
+@@ -756,6 +769,14 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ 
+ #ifdef WITH_RL_ENVIRONMENT
++	if (scanner->rl_v2_reset_manifest.empty() != scanner->rl_v2_reset_projection.empty()) {
++		fmt::print(stderr, "M15 scalable reset requires both -V <manifest> and -U <projection>\n");
++		return 1;
++	}
++	if (!scanner->rl_v2_reset_manifest.empty() && (!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty())) {
++		fmt::print(stderr, "M15 scalable reset forbids V1 bridge/scenario modes, dedicated mode, and networking\n");
++		return 1;
++	}
+ 	if (!scanner->rl_bridge_descriptors.empty()) {
+ 		if (scanner->rl_scenario_instance.empty()) {
+ 			fmt::print(stderr, "M03 bridge mode requires -Z <scenario-instance>\n");
+diff --git a/src/rl_v2_environment.cpp b/src/rl_v2_environment.cpp
+new file mode 100644
+index 0000000..1fb766f
+--- /dev/null
++++ b/src/rl_v2_environment.cpp
+@@ -0,0 +1,274 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_v2_environment.cpp Native scalable M15 reset support. */
++
++#include "stdafx.h"
++
++#include "rl_v2_environment.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "ai/ai_config.hpp"
++#include "company_base.h"
++#include "core/backup_type.hpp"
++#include "core/random_func.hpp"
++#include "depot_base.h"
++#include "game/game.hpp"
++#include "game/game_config.hpp"
++#include "genworld.h"
++#include "industry.h"
++#include "map_func.h"
++#include "network/network.h"
++#include "object_base.h"
++#include "openttd.h"
++#include "order_base.h"
++#include "progress.h"
++#include "settings_type.h"
++#include "signs_base.h"
++#include "station_base.h"
++#include "subsidy_base.h"
++#include "tile_map.h"
++#include "timer/timer_game_calendar.h"
++#include "timer/timer_game_tick.h"
++#include "town.h"
++#include "vehicle_base.h"
++
++#include <filesystem>
++#include <fstream>
++#include <limits>
++#include <stdexcept>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = CompanyID::Invalid());
++extern void MakeNewgameSettingsLive();
++
++namespace {
++
++static constexpr std::string_view SCHEMA_VERSION = "openttd-rl-v2-m15-reset-manifest-1";
++static constexpr std::string_view PROJECTION_SCHEMA_VERSION = "openttd-rl-v2-m15-reset-projection-1";
++static constexpr std::string_view CONTRACT_SHA256 = "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271";
++static constexpr uint32_t MAXIMUM_GENERATED_TILES = 1U << 20;
++
++struct ResetRequest {
++	uint16_t width;
++	uint16_t height;
++	uint32_t map_seed;
++	uint32_t simulation_seed;
++	uint32_t candidate_tiebreak_seed;
++	uint16_t town_target;
++	uint16_t industry_target;
++	std::string split;
++	std::string resource_tier;
++	std::string executable_sha256;
++};
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M15 scalable reset: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++static json ReadCanonicalJson(const std::string &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	if (!input) Fail(fmt::format("cannot open reset manifest '{}'", path));
++	std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
++	Require(!bytes.empty() && bytes.back() == '\n', "reset manifest must end with one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n' && bytes.back() != '\r', "reset manifest has non-canonical trailing whitespace");
++	json value;
++	try {
++		value = json::parse(bytes);
++	} catch (const json::exception &e) {
++		Fail(fmt::format("invalid reset manifest JSON: {}", e.what()));
++	}
++	Require(value.dump() == bytes, "reset manifest must be canonical compact JSON followed by LF");
++	return value;
++}
++
++static bool IsNativeSide(uint16_t value)
++{
++	return value >= 64 && value <= 4096 && (value & (value - 1)) == 0;
++}
++
++static uint8_t Log2Side(uint16_t value)
++{
++	uint8_t result = 0;
++	while (value > 1) {
++		value >>= 1;
++		++result;
++	}
++	return result;
++}
++
++static ResetRequest ValidateManifest(const json &manifest)
++{
++	Require(manifest.is_object() && manifest.size() == 21, "reset manifest must contain schema_version and the 20 contracted fields");
++	Require(manifest.at("schema_version") == SCHEMA_VERSION, "unsupported reset manifest schema_version");
++	Require(manifest.at("contract_sha256") == CONTRACT_SHA256, "scalable contract identity mismatch");
++	Require(manifest.at("engine_source_tree") == "02d8cbbb0d8c030698d37ca76ab2773b6e23c397", "engine source tree mismatch");
++	Require(manifest.at("climate") == "temperate", "M15 reset climate must be temperate");
++	Require(manifest.at("start_year") == 1950, "M15 reset start year must be 1950");
++	Require(manifest.at("generation_mode") == "native-seeded", "M15 reset generation mode must be native-seeded");
++	Require(manifest.at("company_count") == 1, "M15 reset company_count must be one");
++	Require(manifest.at("v1_adapter") == false, "native scalable reset cannot enable the V1 adapter");
++	Require(manifest.at("rejection_reason").is_null(), "accepted reset manifest cannot carry a rejection reason");
++	Require(manifest.at("settings_manifest_sha256").get<std::string>().size() == 64, "settings manifest identity must be SHA-256");
++	Require(manifest.at("content_manifest_sha256").get<std::string>().size() == 64, "content manifest identity must be SHA-256");
++	Require(manifest.at("executable_sha256").get<std::string>().size() == 64, "executable identity must be SHA-256");
++
++	ResetRequest request{
++		manifest.at("map_width").get<uint16_t>(), manifest.at("map_height").get<uint16_t>(),
++		manifest.at("map_seed").get<uint32_t>(), manifest.at("simulation_seed").get<uint32_t>(), manifest.at("candidate_tiebreak_seed").get<uint32_t>(),
++		manifest.at("town_target").get<uint16_t>(), manifest.at("industry_target").get<uint16_t>(),
++		manifest.at("split").get<std::string>(), manifest.at("resource_tier").get<std::string>(), manifest.at("executable_sha256").get<std::string>(),
++	};
++	Require(IsNativeSide(request.width) && IsNativeSide(request.height), "map dimensions are not a native 64..4096 power-of-two rectangle");
++	uint64_t tile_count = static_cast<uint64_t>(request.width) * request.height;
++	Require(tile_count <= MAXIMUM_GENERATED_TILES, "tile count exceeds the M15 preflight generation budget");
++	uint16_t expected_towns = std::max<uint16_t>(2, std::min<uint16_t>(128, tile_count / 4096));
++	Require(request.town_target == expected_towns, "town target does not match max(2,min(128,tile_count//4096))");
++	Require(request.industry_target == 256, "M15 industry target must declare the 256-row observation cap");
++	Require(request.split == "training" || request.split == "development" || request.split == "generalization" || request.split == "final", "unknown seed split");
++	Require(request.resource_tier == "curriculum" || request.resource_tier == "generalization", "unsupported generated resource tier");
++	return request;
++}
++
++static void ConfigureSettings(const ResetRequest &request)
++{
++	_settings_newgame.game_creation.generation_seed = request.map_seed;
++	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{1950};
++	_settings_newgame.game_creation.map_x = Log2Side(request.width);
++	_settings_newgame.game_creation.map_y = Log2Side(request.height);
++	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.custom_town_number = request.town_target;
++	_settings_newgame.difficulty.number_towns = CUSTOM_TOWN_NUMBER_DIFFICULTY;
++	_settings_newgame.difficulty.max_no_competitors = 0;
++	_settings_newgame.difficulty.industry_density = ID_NORMAL;
++	_settings_newgame.difficulty.vehicle_breakdowns = 0;
++	_settings_newgame.difficulty.disasters = false;
++	_settings_newgame.economy.inflation = false;
++	_settings_newgame.economy.town_layout = TL_ORIGINAL;
++	_settings_newgame.economy.timekeeping_units = TKU_CALENDAR;
++	_settings_newgame.vehicle.max_aircraft = 0;
++	_settings_newgame.vehicle.max_roadveh = std::min<uint16_t>(5000, 16 + static_cast<uint32_t>(request.width) * request.height / 1024);
++	_settings_newgame.vehicle.max_ships = 0;
++	_settings_newgame.vehicle.max_trains = 0;
++	_settings_newgame.vehicle.never_expire_vehicles = true;
++
++	for (CompanyID id = CompanyID::Begin(); id < MAX_COMPANIES; ++id) _settings_newgame.script_config.ai[id].reset();
++	_settings_newgame.script_config.game.reset();
++	MakeNewgameSettingsLive();
++}
++
++static json ProjectTowns()
++{
++	json towns = json::array();
++	for (const Town *town : Town::Iterate()) {
++		towns.push_back({
++			{"id", town->index.base()},
++			{"population", town->cache.population},
++			{"x", TileX(town->xy)},
++			{"y", TileY(town->xy)},
++		});
++	}
++	return towns;
++}
++
++static json BuildProjection(const ResetRequest &request)
++{
++	uint32_t clear_tiles = 0;
++	uint32_t house_tiles = 0;
++	uint32_t road_tiles = 0;
++	uint32_t water_tiles = 0;
++	for (TileIndex tile{}; tile < Map::Size(); ++tile) {
++		switch (GetTileType(tile)) {
++			case MP_CLEAR: ++clear_tiles; break;
++			case MP_HOUSE: ++house_tiles; break;
++			case MP_ROAD: ++road_tiles; break;
++			case MP_WATER: ++water_tiles; break;
++			default: break;
++		}
++	}
++	const Company *company = Company::Get(CompanyID::Begin());
++	return {
++		{"schema_version", PROJECTION_SCHEMA_VERSION},
++		{"contract_sha256", CONTRACT_SHA256},
++		{"request", {
++			{"candidate_tiebreak_seed", request.candidate_tiebreak_seed},
++			{"executable_sha256", request.executable_sha256},
++			{"height", request.height},
++			{"industry_target", request.industry_target},
++			{"interactive_seed", request.simulation_seed ^ 0x524C5632U},
++			{"map_seed", request.map_seed},
++			{"resource_tier", request.resource_tier},
++			{"simulation_seed", request.simulation_seed},
++			{"split", request.split},
++			{"town_target", request.town_target},
++			{"width", request.width},
++		}},
++		{"state", {
++			{"company", {{"id", company->index.base()}, {"loan", company->current_loan.base()}, {"money", company->money.base()}}},
++			{"counts", {
++				{"companies", Company::GetNumItems()}, {"depots", Depot::GetNumItems()},
++				{"industries", Industry::GetNumItems()}, {"objects", Object::GetNumItems()},
++				{"order_lists", OrderList::GetNumItems()}, {"signs", Sign::GetNumItems()},
++				{"stations", Station::GetNumItems()}, {"subsidies", Subsidy::GetNumItems()},
++				{"towns", Town::GetNumItems()}, {"vehicles", Vehicle::GetNumItems()},
++			}},
++			{"date", {{"date_fract", TimerGameCalendar::date_fract}, {"tick", TimerGameTick::counter}, {"year", TimerGameCalendar::year.base()}}},
++			{"map", {
++				{"clear_tiles", clear_tiles}, {"height", Map::SizeY()}, {"house_tiles", house_tiles},
++				{"road_tiles", road_tiles}, {"tile_count", Map::Size()}, {"water_tiles", water_tiles}, {"width", Map::SizeX()},
++			}},
++			{"towns", ProjectTowns()},
++		}},
++	};
++}
++
++static void WriteCanonicalNew(const std::string &path, const json &value)
++{
++	std::filesystem::path output(path);
++	Require(!output.empty() && !std::filesystem::exists(output), fmt::format("projection output already exists: '{}'", path));
++	std::ofstream stream(output, std::ios::binary | std::ios::out | std::ios::trunc);
++	if (!stream) Fail(fmt::format("cannot create projection output '{}'", path));
++	stream << value.dump() << '\n';
++	stream.flush();
++	if (!stream) Fail(fmt::format("cannot write projection output '{}'", path));
++}
++
++} // namespace
++
++void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path)
++{
++	ResetRequest request = ValidateManifest(ReadCanonicalJson(manifest_path));
++	ConfigureSettings(request);
++	_random.SetSeed(request.simulation_seed);
++	_interactive_random.SetSeed(request.simulation_seed ^ 0x524C5632U);
++	_game_mode = GM_NORMAL;
++	_switch_mode = SM_NONE;
++	/* The initial NewGRF scanner owns modal progress until its callback returns.
++	 * This synchronous reset owns the process after validation. */
++	SetModalProgress(false);
++	GenerateWorld(GWM_NEWGAME, request.width, request.height, false);
++	Require(Map::SizeX() == request.width && Map::SizeY() == request.height,
++		fmt::format("native map dimensions are {}x{}, expected {}x{}", Map::SizeX(), Map::SizeY(), request.width, request.height));
++	Require(Town::GetNumItems() >= 2 && Town::GetNumItems() <= request.town_target, "native town count is outside 2..town_target");
++	Require(Company::GetNumItems() == 0, "native reset unexpectedly created a company before explicit allocation");
++	Company *company = DoStartupNewCompany(false, CompanyID::Begin());
++	Require(company != nullptr && company->index == CompanyID::Begin(), "failed to create learning company 0");
++	SetLocalCompany(CompanyID::Begin());
++	_current_company = CompanyID::Begin();
++	WriteCanonicalNew(projection_path, BuildProjection(request));
++}
+diff --git a/src/rl_v2_environment.h b/src/rl_v2_environment.h
+new file mode 100644
+index 0000000..28a9678
+--- /dev/null
++++ b/src/rl_v2_environment.h
+@@ -0,0 +1,17 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_v2_environment.h Native scalable M15 reset support. */
++
++#ifndef RL_V2_ENVIRONMENT_H
++#define RL_V2_ENVIRONMENT_H
++
++#include <string>
++
++void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path);
++
++#endif /* RL_V2_ENVIRONMENT_H */
+-- 
+2.43.0
+

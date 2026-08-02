@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-m15-map-qualification.schema.json",
+  "title": "OpenTTD RL V2 M15 native map qualification result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "engine_source", "executable", "contract_sha256", "request", "limits", "outcome", "reason_code", "checks", "observations", "resources"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-map-qualification.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-map-qualification-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "engine_source": {"type": "object", "additionalProperties": false, "required": ["release", "commit", "tree"], "properties": {"release": {"const": "15.3"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}},
+    "executable": {"type": "object", "additionalProperties": false, "required": ["sha256", "size"], "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1}}},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "request": {"type": "object", "additionalProperties": false, "required": ["width", "height", "map_x_bits", "map_y_bits", "tile_count", "seed"], "properties": {"width": {"type": "integer", "minimum": 64, "maximum": 4096}, "height": {"type": "integer", "minimum": 64, "maximum": 4096}, "map_x_bits": {"type": "integer", "minimum": 6, "maximum": 12}, "map_y_bits": {"type": "integer", "minimum": 6, "maximum": 12}, "tile_count": {"type": "integer", "minimum": 4096, "maximum": 16777216}, "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647}}},
+    "limits": {"type": "object", "additionalProperties": false, "required": ["maximum_generated_tiles", "address_space_bytes", "cpu_seconds", "file_bytes", "wall_seconds"], "properties": {"maximum_generated_tiles": {"const": 1048576}, "address_space_bytes": {"type": "integer", "minimum": 1073741824}, "cpu_seconds": {"type": "integer", "minimum": 1}, "file_bytes": {"type": "integer", "minimum": 1048576}, "wall_seconds": {"type": "integer", "minimum": 1}}},
+    "outcome": {"enum": ["GENERATED", "PREFLIGHT_REJECTED"]},
+    "reason_code": {"type": ["string", "null"], "enum": [null, "tile-count-exceeds-useful-play-preflight-budget"]},
+    "checks": {"type": "object", "additionalProperties": false, "required": ["native_rectangle", "preflight_passed", "map_generated", "save_created", "dimensions_confirmed", "load_succeeded", "resource_limits_respected"], "properties": {"native_rectangle": {"const": true}, "preflight_passed": {"type": "boolean"}, "map_generated": {"type": "boolean"}, "save_created": {"type": "boolean"}, "dimensions_confirmed": {"type": "boolean"}, "load_succeeded": {"type": "boolean"}, "resource_limits_respected": {"type": "boolean"}}},
+    "observations": {"type": "object", "additionalProperties": false, "required": ["start_date", "post_load_date", "save", "map", "transcript_sha256"], "properties": {"start_date": {"type": ["string", "null"], "format": "date"}, "post_load_date": {"type": ["string", "null"], "format": "date"}, "save": {"oneOf": [{"$ref": "#/$defs/save"}, {"type": "null"}]}, "map": {"oneOf": [{"$ref": "#/$defs/map"}, {"type": "null"}]}, "transcript_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}}},
+    "resources": {"type": "object", "additionalProperties": false, "required": ["wall_seconds", "max_rss_kib", "returncode"], "properties": {"wall_seconds": {"type": "number", "minimum": 0}, "max_rss_kib": {"type": "integer", "minimum": 0}, "returncode": {"type": ["integer", "null"]}}}
+  },
+  "allOf": [
+    {"if": {"properties": {"outcome": {"const": "GENERATED"}}, "required": ["outcome"]}, "then": {"properties": {"reason_code": {"type": "null"}, "checks": {"properties": {"preflight_passed": {"const": true}, "map_generated": {"const": true}, "save_created": {"const": true}, "dimensions_confirmed": {"const": true}, "load_succeeded": {"const": true}, "resource_limits_respected": {"const": true}}}, "observations": {"properties": {"start_date": {"type": "string"}, "post_load_date": {"type": "string"}, "save": {"$ref": "#/$defs/save"}, "map": {"$ref": "#/$defs/map"}, "transcript_sha256": {"$ref": "#/$defs/sha256"}}}, "resources": {"properties": {"max_rss_kib": {"minimum": 1}, "returncode": {"const": 0}}}}}},
+    {"if": {"properties": {"outcome": {"const": "PREFLIGHT_REJECTED"}}, "required": ["outcome"]}, "then": {"properties": {"reason_code": {"const": "tile-count-exceeds-useful-play-preflight-budget"}, "checks": {"properties": {"preflight_passed": {"const": false}, "map_generated": {"const": false}, "save_created": {"const": false}, "dimensions_confirmed": {"const": false}, "load_succeeded": {"const": false}, "resource_limits_respected": {"const": true}}}, "observations": {"properties": {"start_date": {"type": "null"}, "post_load_date": {"type": "null"}, "save": {"type": "null"}, "map": {"type": "null"}, "transcript_sha256": {"type": "null"}}}, "resources": {"properties": {"wall_seconds": {"const": 0}, "max_rss_kib": {"const": 0}, "returncode": {"type": "null"}}}}}}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "save": {"type": "object", "additionalProperties": false, "required": ["path", "size", "sha256"], "properties": {"path": {"const": "save/m15-map.sav"}, "size": {"type": "integer", "minimum": 1}, "sha256": {"$ref": "#/$defs/sha256"}}},
+    "map": {"type": "object", "additionalProperties": false, "required": ["width", "height", "tiles", "tile_type_counts", "map_sha256"], "properties": {"width": {"type": "integer", "minimum": 64}, "height": {"type": "integer", "minimum": 64}, "tiles": {"type": "integer", "minimum": 4096}, "tile_type_counts": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "integer", "minimum": 1}}, "map_sha256": {"$ref": "#/$defs/sha256"}}}
+  }
+}

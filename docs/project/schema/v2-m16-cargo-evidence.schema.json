@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M16 cargo evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "artifact_root", "contract_sha256", "source_sha256", "executable_sha256", "execution", "aggregate", "cases"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m16-cargo-evidence-1"},
+    "status": {"const": "PASS"},
+    "artifact_root": {"type": "string"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "source_sha256": {"$ref": "#/$defs/sha256"},
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sandbox", "process_limits", "network_calls"],
+      "properties": {
+        "sandbox": {"enum": ["bubblewrap", "rlimit-only"]},
+        "process_limits": {"const": true},
+        "network_calls": {"const": "none"}
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "native_runs", "single_leg_cases", "twin_exact_cases", "unique_cargo_labels", "climate_occurrences", "production_edges", "actual_cargo_class_count", "actual_cargo_classes", "coordination_pass", "subsidy_pass", "transfer_no_duplicate_payment", "maximum_wall_seconds"],
+      "properties": {
+        "cases": {"const": 102},
+        "native_runs": {"const": 204},
+        "single_leg_cases": {"const": 92},
+        "twin_exact_cases": {"const": 102},
+        "unique_cargo_labels": {"const": 31},
+        "climate_occurrences": {"const": 46},
+        "production_edges": {"type": "integer", "minimum": 20},
+        "actual_cargo_class_count": {"const": 10},
+        "actual_cargo_classes": {"type": "array", "minItems": 10, "items": {"type": "string"}, "uniqueItems": true},
+        "coordination_pass": {"const": true},
+        "subsidy_pass": {"const": true},
+        "transfer_no_duplicate_payment": {"const": true},
+        "maximum_wall_seconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 102,
+      "maxItems": 102,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "climate", "cargo", "probe", "seed", "metrics", "twin_exact", "twins"],
+        "properties": {
+          "case_id": {"type": "string"},
+          "climate": {"enum": ["temperate", "arctic", "tropic", "toyland"]},
+          "cargo": {"type": "string", "pattern": "^[A-Z0-9_]{4}$"},
+          "probe": {"enum": ["catalog", "single-leg", "coordination", "transfer", "subsidy"]},
+          "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+          "twin_exact": {"const": true},
+          "metrics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["income", "delivered", "ticks"],
+            "properties": {
+              "income": {"type": "integer", "minimum": 0},
+              "delivered": {"type": "integer", "minimum": 0},
+              "ticks": {"type": "integer", "minimum": 0}
+            }
+          },
+          "twins": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "report_path", "report_sha256", "normalized_sha256", "wall_seconds"],
+              "properties": {
+                "name": {"enum": ["a", "b"]},
+                "report_path": {"type": "string"},
+                "report_sha256": {"$ref": "#/$defs/sha256"},
+                "normalized_sha256": {"$ref": "#/$defs/sha256"},
+                "wall_seconds": {"type": "number", "exclusiveMinimum": 0}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

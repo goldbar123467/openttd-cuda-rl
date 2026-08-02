@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-opponent-package-evidence.schema.json",
+  "title": "OpenTTD RL V2 opponent package acquisition evidence index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "snapshot_date",
+    "engine_source",
+    "executable",
+    "artifact_base_hint",
+    "policy",
+    "results"
+  ],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-opponent-package-evidence.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-opponent-package-evidence-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"type": "string", "format": "date"},
+    "engine_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release", "commit", "tree"],
+      "properties": {
+        "release": {"const": "15.3"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "executable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "size"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size": {"type": "integer", "minimum": 1}
+      }
+    },
+    "artifact_base_hint": {"type": "string", "minLength": 1},
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog_list_is_not_qualification", "dependencies_are_transitive", "rejections_are_retained", "locked_packages_may_enter_qualification"],
+      "properties": {
+        "catalog_list_is_not_qualification": {"const": true},
+        "dependencies_are_transitive": {"const": true},
+        "rejections_are_retained": {"const": true},
+        "locked_packages_may_enter_qualification": {"const": true}
+      }
+    },
+    "results": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/locked"},
+          {"$ref": "#/$defs/rejected"}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "common": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "content_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+        "version": {"type": "integer", "minimum": 1},
+        "artifact_dir": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"},
+        "evidence_file": {"enum": ["ai-package-lock.json", "ai-package-rejection.json"]},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "locked": {
+      "allOf": [
+        {"$ref": "#/$defs/common"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "content_unique_id", "version", "outcome", "artifact_dir", "evidence_file", "evidence_sha256", "package_count", "archive_bytes", "license_files", "closure_sha256"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "content_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+            "version": {"type": "integer", "minimum": 1},
+            "outcome": {"const": "LOCKED"},
+            "artifact_dir": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"},
+            "evidence_file": {"const": "ai-package-lock.json"},
+            "evidence_sha256": {"$ref": "#/$defs/sha256"},
+            "package_count": {"type": "integer", "minimum": 1},
+            "archive_bytes": {"type": "integer", "minimum": 1},
+            "license_files": {"type": "integer", "minimum": 1},
+            "closure_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      ]
+    },
+    "rejected": {
+      "allOf": [
+        {"$ref": "#/$defs/common"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "content_unique_id", "version", "outcome", "artifact_dir", "evidence_file", "evidence_sha256", "reason_code", "transcript_sha256"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "content_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+            "version": {"type": "integer", "minimum": 1},
+            "outcome": {"const": "REJECTED"},
+            "artifact_dir": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"},
+            "evidence_file": {"const": "ai-package-rejection.json"},
+            "evidence_sha256": {"$ref": "#/$defs/sha256"},
+            "reason_code": {"type": "string", "minLength": 1},
+            "transcript_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      ]
+    }
+  }
+}

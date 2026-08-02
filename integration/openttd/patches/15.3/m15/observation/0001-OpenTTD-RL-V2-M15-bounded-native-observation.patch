@@ -1,0 +1,683 @@
+From 7d1b3535d80c26cb324766eb34f0a1f715cbdb75 Mon Sep 17 00:00:00 2001
+From: OpenTTD-RL V2 Evidence <openttd-rl-v2@localhost>
+Date: Sun, 2 Aug 2026 11:33:24 -0400
+Subject: [PATCH] OpenTTD-RL V2 M15 bounded native observation
+
+---
+ src/CMakeLists.txt        |   2 +
+ src/openttd.cpp           |  13 +-
+ src/rl_v2_environment.cpp |   6 +-
+ src/rl_v2_environment.h   |   2 +-
+ src/rl_v2_observation.cpp | 522 ++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_observation.h   |  17 ++
+ 6 files changed, 558 insertions(+), 4 deletions(-)
+ create mode 100644 src/rl_v2_observation.cpp
+ create mode 100644 src/rl_v2_observation.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index edbedb5..8f3f925 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -58,6 +58,8 @@ add_files(
+     rl_reward.h
+     rl_v2_environment.cpp
+     rl_v2_environment.h
++    rl_v2_observation.cpp
++    rl_v2_observation.h
+     CONDITION OPTION_RL_ENVIRONMENT
+ )
+ 
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index 08b6266..3292b59 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -203,6 +203,9 @@ static void ShowHelp()
+ 		"  -Y output_file      = Write the deterministic M02 reset projection report\n"
+ 		"  -T output_file      = Execute and write the deterministic M02 scripted bus trajectory\n"
+ 		"  -R count            = Repeat the M02 reset in-process (1..16, default 1)\n"
++		"  -V manifest_file    = Run one native M15 scalable reset from a canonical manifest\n"
++		"  -U projection_file  = Write the native M15 reset projection\n"
++		"  -W metadata_file    = Write the native M15 bounded observation and metadata\n"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 		"  -A playback_config  = Start the M11 normal-game neural agent from a canonical config\n"
+@@ -410,6 +413,7 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	uint32_t rl_reset_repetitions = 1;          ///< Number of resets in this process.
+ 	std::string rl_v2_reset_manifest;           ///< Canonical M15 scalable reset manifest.
+ 	std::string rl_v2_reset_projection;         ///< Destination for the M15 reset projection.
++	std::string rl_v2_observation_metadata;      ///< Destination for M15 observation metadata.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -472,7 +476,7 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ #ifdef WITH_RL_ENVIRONMENT
+ 		if (!rl_v2_reset_manifest.empty()) {
+ 			try {
+-				RunRlV2ScalableReset(rl_v2_reset_manifest, rl_v2_reset_projection);
++				RunRlV2ScalableReset(rl_v2_reset_manifest, rl_v2_reset_projection, rl_v2_observation_metadata);
+ 			} catch (const std::exception &e) {
+ 				UserError("{}", e.what());
+ 			}
+@@ -555,7 +559,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BRTUYZV"
++			"BRTUWYZV"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -737,6 +741,7 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'T': scanner->rl_trajectory_output = mgo.opt; break;
+ 		case 'U': scanner->rl_v2_reset_projection = mgo.opt; break;
+ 		case 'V': scanner->rl_v2_reset_manifest = mgo.opt; break;
++		case 'W': scanner->rl_v2_observation_metadata = mgo.opt; break;
+ 		case 'Y': scanner->rl_projection_output = mgo.opt; break;
+ 		case 'Z': scanner->rl_scenario_instance = mgo.opt; break;
+ #endif
+@@ -773,6 +778,10 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		fmt::print(stderr, "M15 scalable reset requires both -V <manifest> and -U <projection>\n");
+ 		return 1;
+ 	}
++	if (!scanner->rl_v2_observation_metadata.empty() && scanner->rl_v2_reset_manifest.empty()) {
++		fmt::print(stderr, "M15 bounded observation requires -V <manifest> and -U <projection>\n");
++		return 1;
++	}
+ 	if (!scanner->rl_v2_reset_manifest.empty() && (!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty())) {
+ 		fmt::print(stderr, "M15 scalable reset forbids V1 bridge/scenario modes, dedicated mode, and networking\n");
+ 		return 1;
+diff --git a/src/rl_v2_environment.cpp b/src/rl_v2_environment.cpp
+index 1fb766f..5585bd4 100644
+--- a/src/rl_v2_environment.cpp
++++ b/src/rl_v2_environment.cpp
+@@ -10,6 +10,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_environment.h"
++#include "rl_v2_observation.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "ai/ai_config.hpp"
+@@ -250,7 +251,7 @@ static void WriteCanonicalNew(const std::string &path, const json &value)
+ 
+ } // namespace
+ 
+-void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path)
++void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path, const std::string &observation_metadata_path)
+ {
+ 	ResetRequest request = ValidateManifest(ReadCanonicalJson(manifest_path));
+ 	ConfigureSettings(request);
+@@ -271,4 +272,7 @@ void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &p
+ 	SetLocalCompany(CompanyID::Begin());
+ 	_current_company = CompanyID::Begin();
+ 	WriteCanonicalNew(projection_path, BuildProjection(request));
++	if (!observation_metadata_path.empty()) {
++		WriteRlV2Observation(observation_metadata_path, request.map_seed, request.simulation_seed, request.candidate_tiebreak_seed);
++	}
+ }
+diff --git a/src/rl_v2_environment.h b/src/rl_v2_environment.h
+index 28a9678..0f19753 100644
+--- a/src/rl_v2_environment.h
++++ b/src/rl_v2_environment.h
+@@ -12,6 +12,6 @@
+ 
+ #include <string>
+ 
+-void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path);
++void RunRlV2ScalableReset(const std::string &manifest_path, const std::string &projection_path, const std::string &observation_metadata_path);
+ 
+ #endif /* RL_V2_ENVIRONMENT_H */
+diff --git a/src/rl_v2_observation.cpp b/src/rl_v2_observation.cpp
+new file mode 100644
+index 0000000..bebeee7
+--- /dev/null
++++ b/src/rl_v2_observation.cpp
+@@ -0,0 +1,522 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_v2_observation.cpp Native bounded M15 observation support. */
++
++#include "stdafx.h"
++
++#include "rl_v2_observation.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "company_base.h"
++#include "industry.h"
++#include "map_func.h"
++#include "station_base.h"
++#include "tile_map.h"
++#include "timer/timer_game_calendar.h"
++#include "timer/timer_game_tick.h"
++#include "town.h"
++#include "vehicle_base.h"
++
++#include <algorithm>
++#include <array>
++#include <bit>
++#include <cmath>
++#include <filesystem>
++#include <fstream>
++#include <limits>
++#include <map>
++#include <stdexcept>
++#include <tuple>
++#include <vector>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++namespace {
++
++static constexpr std::string_view METADATA_SCHEMA_VERSION = "openttd-rl-v2-m15-observation-metadata-1";
++static constexpr std::string_view OBSERVATION_SCHEMA_ID = "v2-m15-observation-v1";
++static constexpr std::string_view CONTRACT_SHA256 = "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271";
++static constexpr size_t OBSERVATION_BYTES = 2182927;
++static constexpr size_t STRUCTURED_FEATURES = 512;
++static constexpr size_t SPATIAL_CHANNELS = 32;
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M15 bounded observation: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++static float Unit(uint64_t value, uint64_t maximum)
++{
++	return maximum == 0 ? 0.0F : std::min(1.0F, static_cast<float>(value) / static_cast<float>(maximum));
++}
++
++static float SignedUnit(int64_t value, int64_t magnitude)
++{
++	return std::clamp(static_cast<float>(value) / static_cast<float>(magnitude), -1.0F, 1.0F);
++}
++
++static void AppendFloat(std::vector<uint8_t> &output, float value)
++{
++	static_assert(sizeof(float) == sizeof(uint32_t));
++	uint32_t bits = std::bit_cast<uint32_t>(value);
++	output.push_back(static_cast<uint8_t>(bits));
++	output.push_back(static_cast<uint8_t>(bits >> 8));
++	output.push_back(static_cast<uint8_t>(bits >> 16));
++	output.push_back(static_cast<uint8_t>(bits >> 24));
++}
++
++static void AppendFloats(std::vector<uint8_t> &output, const std::vector<float> &values)
++{
++	for (float value : values) AppendFloat(output, value);
++}
++
++class Sha256 {
++public:
++	void Update(std::span<const uint8_t> bytes)
++	{
++		for (uint8_t byte : bytes) {
++			this->block[this->block_size++] = byte;
++			this->bit_count += 8;
++			if (this->block_size == this->block.size()) {
++				this->Transform();
++				this->block_size = 0;
++			}
++		}
++	}
++
++	std::string Finish()
++	{
++		uint64_t message_bits = this->bit_count;
++		this->block[this->block_size++] = 0x80;
++		if (this->block_size > 56) {
++			while (this->block_size < 64) this->block[this->block_size++] = 0;
++			this->Transform();
++			this->block_size = 0;
++		}
++		while (this->block_size < 56) this->block[this->block_size++] = 0;
++		for (int shift = 56; shift >= 0; shift -= 8) this->block[this->block_size++] = static_cast<uint8_t>(message_bits >> shift);
++		this->Transform();
++
++		static constexpr char HEX[] = "0123456789abcdef";
++		std::string result;
++		result.reserve(64);
++		for (uint32_t word : this->state) {
++			for (int shift = 28; shift >= 0; shift -= 4) result.push_back(HEX[(word >> shift) & 0xF]);
++		}
++		return result;
++	}
++
++private:
++	static constexpr std::array<uint32_t, 64> K = {
++		0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U, 0x3956c25bU, 0x59f111f1U, 0x923f82a4U, 0xab1c5ed5U,
++		0xd807aa98U, 0x12835b01U, 0x243185beU, 0x550c7dc3U, 0x72be5d74U, 0x80deb1feU, 0x9bdc06a7U, 0xc19bf174U,
++		0xe49b69c1U, 0xefbe4786U, 0x0fc19dc6U, 0x240ca1ccU, 0x2de92c6fU, 0x4a7484aaU, 0x5cb0a9dcU, 0x76f988daU,
++		0x983e5152U, 0xa831c66dU, 0xb00327c8U, 0xbf597fc7U, 0xc6e00bf3U, 0xd5a79147U, 0x06ca6351U, 0x14292967U,
++		0x27b70a85U, 0x2e1b2138U, 0x4d2c6dfcU, 0x53380d13U, 0x650a7354U, 0x766a0abbU, 0x81c2c92eU, 0x92722c85U,
++		0xa2bfe8a1U, 0xa81a664bU, 0xc24b8b70U, 0xc76c51a3U, 0xd192e819U, 0xd6990624U, 0xf40e3585U, 0x106aa070U,
++		0x19a4c116U, 0x1e376c08U, 0x2748774cU, 0x34b0bcb5U, 0x391c0cb3U, 0x4ed8aa4aU, 0x5b9cca4fU, 0x682e6ff3U,
++		0x748f82eeU, 0x78a5636fU, 0x84c87814U, 0x8cc70208U, 0x90befffaU, 0xa4506cebU, 0xbef9a3f7U, 0xc67178f2U,
++	};
++
++	static uint32_t Rotate(uint32_t value, uint count) { return (value >> count) | (value << (32 - count)); }
++
++	void Transform()
++	{
++		std::array<uint32_t, 64> words{};
++		for (size_t i = 0; i < 16; ++i) {
++			words[i] = static_cast<uint32_t>(this->block[i * 4]) << 24 |
++					static_cast<uint32_t>(this->block[i * 4 + 1]) << 16 |
++					static_cast<uint32_t>(this->block[i * 4 + 2]) << 8 |
++					this->block[i * 4 + 3];
++		}
++		for (size_t i = 16; i < 64; ++i) {
++			uint32_t s0 = Rotate(words[i - 15], 7) ^ Rotate(words[i - 15], 18) ^ (words[i - 15] >> 3);
++			uint32_t s1 = Rotate(words[i - 2], 17) ^ Rotate(words[i - 2], 19) ^ (words[i - 2] >> 10);
++			words[i] = words[i - 16] + s0 + words[i - 7] + s1;
++		}
++		uint32_t a = this->state[0], b = this->state[1], c = this->state[2], d = this->state[3];
++		uint32_t e = this->state[4], f = this->state[5], g = this->state[6], h = this->state[7];
++		for (size_t i = 0; i < 64; ++i) {
++			uint32_t s1 = Rotate(e, 6) ^ Rotate(e, 11) ^ Rotate(e, 25);
++			uint32_t choice = (e & f) ^ (~e & g);
++			uint32_t temp1 = h + s1 + choice + K[i] + words[i];
++			uint32_t s0 = Rotate(a, 2) ^ Rotate(a, 13) ^ Rotate(a, 22);
++			uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
++			uint32_t temp2 = s0 + majority;
++			h = g; g = f; f = e; e = d + temp1;
++			d = c; c = b; b = a; a = temp1 + temp2;
++		}
++		this->state[0] += a; this->state[1] += b; this->state[2] += c; this->state[3] += d;
++		this->state[4] += e; this->state[5] += f; this->state[6] += g; this->state[7] += h;
++	}
++
++	std::array<uint32_t, 8> state{0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU, 0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U};
++	std::array<uint8_t, 64> block{};
++	size_t block_size = 0;
++	uint64_t bit_count = 0;
++};
++
++static std::array<float, SPATIAL_CHANNELS> TileFeatures(int x, int y)
++{
++	std::array<float, SPATIAL_CHANNELS> result{};
++	if (x < 0 || y < 0 || x >= static_cast<int>(Map::SizeX()) || y >= static_cast<int>(Map::SizeY())) return result;
++	TileIndex tile = TileXY(x, y);
++	TileType type = GetTileType(tile);
++	result[0] = 1.0F;
++	if (type <= MP_OBJECT) result[1 + static_cast<size_t>(type)] = 1.0F;
++	result[12] = Unit(TileHeight(tile), 255);
++	result[13] = IsTileFlat(tile) ? 1.0F : 0.0F;
++	result[14] = type != MP_HOUSE && type != MP_VOID && type != MP_INDUSTRY && GetTileOwner(tile) == CompanyID::Begin() ? 1.0F : 0.0F;
++	result[15] = type != MP_CLEAR && type != MP_TREES && type != MP_WATER && type != MP_VOID ? 1.0F : 0.0F;
++	return result;
++}
++
++static std::vector<const Town *> OrderedTowns()
++{
++	std::vector<const Town *> result;
++	for (const Town *town : Town::Iterate()) result.push_back(town);
++	std::sort(result.begin(), result.end(), [](const Town *a, const Town *b) {
++		return std::tuple(-static_cast<int64_t>(a->cache.population), a->index.base()) < std::tuple(-static_cast<int64_t>(b->cache.population), b->index.base());
++	});
++	return result;
++}
++
++static uint32_t IndustryProduction(const Industry *industry)
++{
++	uint32_t result = 0;
++	for (const auto &cargo : industry->produced) result += cargo.waiting + cargo.rate;
++	return result;
++}
++
++static std::vector<const Industry *> OrderedIndustries()
++{
++	std::vector<const Industry *> result;
++	for (const Industry *industry : Industry::Iterate()) result.push_back(industry);
++	std::sort(result.begin(), result.end(), [](const Industry *a, const Industry *b) {
++		return std::tuple(-static_cast<int64_t>(IndustryProduction(a)), a->index.base()) < std::tuple(-static_cast<int64_t>(IndustryProduction(b)), b->index.base());
++	});
++	return result;
++}
++
++static uint32_t StationRating(const Station *station)
++{
++	uint32_t result = 0;
++	for (const GoodsEntry &goods : station->goods) result = std::max<uint32_t>(result, goods.rating);
++	return result;
++}
++
++static uint32_t StationWaiting(const Station *station)
++{
++	uint32_t result = 0;
++	for (const GoodsEntry &goods : station->goods) result += goods.TotalCount();
++	return result;
++}
++
++static std::vector<const Station *> OrderedStations()
++{
++	std::vector<const Station *> result;
++	for (const Station *station : Station::Iterate()) result.push_back(station);
++	std::sort(result.begin(), result.end(), [](const Station *a, const Station *b) {
++		return std::tuple(a->owner == CompanyID::Begin() ? 0 : 1, -static_cast<int>(StationRating(a)), a->index.base()) <
++				std::tuple(b->owner == CompanyID::Begin() ? 0 : 1, -static_cast<int>(StationRating(b)), b->index.base());
++	});
++	return result;
++}
++
++static std::vector<const Vehicle *> OrderedVehicles()
++{
++	std::vector<const Vehicle *> result;
++	for (const Vehicle *vehicle : Vehicle::Iterate()) result.push_back(vehicle);
++	std::sort(result.begin(), result.end(), [](const Vehicle *a, const Vehicle *b) {
++		return std::tuple(a->owner == CompanyID::Begin() ? 0 : 1, -static_cast<int>(a->breakdown_delay), -static_cast<int>(a->breakdown_ctr), a->index.base()) <
++				std::tuple(b->owner == CompanyID::Begin() ? 0 : 1, -static_cast<int>(b->breakdown_delay), -static_cast<int>(b->breakdown_ctr), b->index.base());
++	});
++	return result;
++}
++
++static void AddSection(json &sections, std::string_view name, size_t offset, size_t bytes, std::string_view dtype, json shape)
++{
++	sections.push_back({{"bytes", bytes}, {"dtype", dtype}, {"name", name}, {"offset", offset}, {"shape", std::move(shape)}});
++}
++
++static void AppendTensor(std::vector<uint8_t> &output, json &sections, std::string_view name, const std::vector<float> &values, json shape)
++{
++	size_t offset = output.size();
++	AppendFloats(output, values);
++	AddSection(sections, name, offset, output.size() - offset, "float32-le", std::move(shape));
++}
++
++static void AppendTable(std::vector<uint8_t> &output, json &sections, json &counts, std::string_view name,
++		const std::vector<std::vector<float>> &rows, size_t total_count, size_t capacity, size_t features)
++{
++	Require(rows.size() <= capacity, fmt::format("{} selected rows exceed capacity", name));
++	size_t values_offset = output.size();
++	for (const auto &row : rows) {
++		Require(row.size() == features, fmt::format("{} row width mismatch", name));
++		AppendFloats(output, row);
++	}
++	for (size_t i = rows.size(); i < capacity; ++i) for (size_t j = 0; j < features; ++j) AppendFloat(output, 0.0F);
++	AddSection(sections, fmt::format("entities.{}.values", name), values_offset, capacity * features * sizeof(float), "float32-le", {capacity, features});
++	size_t mask_offset = output.size();
++	output.insert(output.end(), rows.size(), 1);
++	output.insert(output.end(), capacity - rows.size(), 0);
++	AddSection(sections, fmt::format("entities.{}.mask", name), mask_offset, capacity, "uint8", {capacity});
++	counts[std::string(name)] = {
++		{"capacity", capacity}, {"omitted", total_count - rows.size()}, {"selected", rows.size()},
++		{"total", total_count}, {"truncated", total_count > rows.size()},
++	};
++}
++
++static std::vector<float> SpatialGlobal()
++{
++	std::vector<float> result(SPATIAL_CHANNELS * 64 * 64, 0.0F);
++	for (uint y = 0; y < Map::SizeY(); ++y) {
++		uint gy = static_cast<uint64_t>(y) * 64 / Map::SizeY();
++		for (uint x = 0; x < Map::SizeX(); ++x) {
++			uint gx = static_cast<uint64_t>(x) * 64 / Map::SizeX();
++			auto features = TileFeatures(x, y);
++			for (size_t channel = 0; channel < SPATIAL_CHANNELS; ++channel) result[channel * 4096 + gy * 64 + gx] += features[channel];
++		}
++	}
++	for (uint gy = 0; gy < 64; ++gy) {
++		uint y0 = static_cast<uint64_t>(gy) * Map::SizeY() / 64;
++		uint y1 = static_cast<uint64_t>(gy + 1) * Map::SizeY() / 64;
++		for (uint gx = 0; gx < 64; ++gx) {
++			uint x0 = static_cast<uint64_t>(gx) * Map::SizeX() / 64;
++			uint x1 = static_cast<uint64_t>(gx + 1) * Map::SizeX() / 64;
++			float divisor = static_cast<float>((x1 - x0) * (y1 - y0));
++			for (size_t channel = 0; channel < SPATIAL_CHANNELS; ++channel) result[channel * 4096 + gy * 64 + gx] /= divisor;
++		}
++	}
++	return result;
++}
++
++static std::vector<float> SpatialCrop(int origin_x, int origin_y, size_t side)
++{
++	std::vector<float> result(SPATIAL_CHANNELS * side * side, 0.0F);
++	for (size_t y = 0; y < side; ++y) {
++		for (size_t x = 0; x < side; ++x) {
++			auto features = TileFeatures(origin_x + static_cast<int>(x), origin_y + static_cast<int>(y));
++			for (size_t channel = 0; channel < SPATIAL_CHANNELS; ++channel) result[channel * side * side + y * side + x] = features[channel];
++		}
++	}
++	return result;
++}
++
++static void WriteNew(const std::filesystem::path &path, std::span<const uint8_t> bytes)
++{
++	Require(!path.empty() && !std::filesystem::exists(path), fmt::format("output already exists: '{}'", path.string()));
++	std::ofstream stream(path, std::ios::binary | std::ios::out | std::ios::trunc);
++	if (!stream) Fail(fmt::format("cannot create output '{}'", path.string()));
++	stream.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
++	stream.flush();
++	if (!stream) Fail(fmt::format("cannot write output '{}'", path.string()));
++}
++
++static void WriteCanonicalNew(const std::filesystem::path &path, const json &value)
++{
++	Require(!path.empty() && !std::filesystem::exists(path), fmt::format("output already exists: '{}'", path.string()));
++	std::ofstream stream(path, std::ios::binary | std::ios::out | std::ios::trunc);
++	if (!stream) Fail(fmt::format("cannot create output '{}'", path.string()));
++	stream << value.dump() << '\n';
++	stream.flush();
++	if (!stream) Fail(fmt::format("cannot write output '{}'", path.string()));
++}
++
++} // namespace
++
++void WriteRlV2Observation(const std::string &metadata_path, uint32_t map_seed, uint32_t simulation_seed, uint32_t candidate_tiebreak_seed)
++{
++	auto towns = OrderedTowns();
++	auto industries = OrderedIndustries();
++	auto stations = OrderedStations();
++	auto vehicles = OrderedVehicles();
++	uint anchor_x = towns.empty() ? Map::SizeX() / 2 : TileX(towns.front()->xy);
++	uint anchor_y = towns.empty() ? Map::SizeY() / 2 : TileY(towns.front()->xy);
++
++	std::vector<uint8_t> output;
++	output.reserve(OBSERVATION_BYTES);
++	json sections = json::array();
++	json entity_counts = json::object();
++
++	std::vector<float> structured(STRUCTURED_FEATURES, 0.0F);
++	const Company *company = Company::Get(CompanyID::Begin());
++	structured[0] = Unit(Map::SizeX(), 4096);
++	structured[1] = Unit(Map::SizeY(), 4096);
++	structured[2] = Unit(Map::Size(), 1U << 20);
++	structured[3] = Unit(Town::GetNumItems(), TownID::End().base());
++	structured[4] = Unit(Industry::GetNumItems(), IndustryID::End().base());
++	structured[5] = Unit(Station::GetNumItems(), StationID::End().base());
++	structured[6] = Unit(Vehicle::GetNumItems(), VehicleID::End().base());
++	structured[7] = Unit(Company::GetNumItems(), 15);
++	structured[8] = SignedUnit(company->money.base(), 1000000000);
++	structured[9] = Unit(company->current_loan.base(), 1000000000);
++	structured[10] = Unit(anchor_x, std::max<uint>(1, Map::SizeX() - 1));
++	structured[11] = Unit(anchor_y, std::max<uint>(1, Map::SizeY() - 1));
++	structured[12] = 1.0F;
++	structured[13] = Unit(map_seed, std::numeric_limits<uint32_t>::max());
++	structured[14] = Unit(simulation_seed, std::numeric_limits<uint32_t>::max());
++	structured[15] = Unit(candidate_tiebreak_seed, std::numeric_limits<uint32_t>::max());
++	AppendTensor(output, sections, "structured", structured, {STRUCTURED_FEATURES});
++	AppendTensor(output, sections, "spatial.global", SpatialGlobal(), {SPATIAL_CHANNELS, 64, 64});
++	AppendTensor(output, sections, "spatial.regional", SpatialCrop(static_cast<int>(anchor_x) - 32, static_cast<int>(anchor_y) - 32, 64), {SPATIAL_CHANNELS, 64, 64});
++	AppendTensor(output, sections, "spatial.local", SpatialCrop(static_cast<int>(anchor_x) - 16, static_cast<int>(anchor_y) - 16, 32), {SPATIAL_CHANNELS, 32, 32});
++
++	std::vector<const Company *> companies;
++	for (const Company *item : Company::Iterate()) companies.push_back(item);
++	std::sort(companies.begin(), companies.end(), [](const Company *a, const Company *b) {
++		return std::tuple(a->index == CompanyID::Begin() ? 0 : 1, a->index.base()) < std::tuple(b->index == CompanyID::Begin() ? 0 : 1, b->index.base());
++	});
++	std::vector<std::vector<float>> company_rows;
++	for (const Company *item : companies) {
++		std::vector<float> row(32, 0.0F);
++		row[0] = Unit(item->index.base(), 14); row[1] = item->index == CompanyID::Begin() ? 1.0F : 0.0F;
++		row[2] = SignedUnit(item->money.base(), 1000000000); row[3] = Unit(item->current_loan.base(), 1000000000);
++		row[4] = Unit(item->max_loan.base(), 1000000000); row[5] = Unit(item->months_of_bankruptcy, 255);
++		company_rows.push_back(std::move(row));
++	}
++	AppendTable(output, sections, entity_counts, "companies", company_rows, companies.size(), 15, 32);
++
++	std::vector<std::vector<float>> town_rows;
++	for (size_t i = 0; i < std::min<size_t>(towns.size(), 128); ++i) {
++		const Town *town = towns[i];
++		std::vector<float> row(24, 0.0F);
++		row[0] = Unit(town->index.base(), TownID::End().base() - 1); row[1] = Unit(TileX(town->xy), std::max<uint>(1, Map::SizeX() - 1));
++		row[2] = Unit(TileY(town->xy), std::max<uint>(1, Map::SizeY() - 1)); row[3] = Unit(town->cache.population, 100000);
++		row[4] = Unit(town->cache.num_houses, 10000); row[5] = town->larger_town ? 1.0F : 0.0F;
++		town_rows.push_back(std::move(row));
++	}
++	AppendTable(output, sections, entity_counts, "towns", town_rows, towns.size(), 128, 24);
++
++	std::vector<std::vector<float>> industry_rows;
++	for (size_t i = 0; i < std::min<size_t>(industries.size(), 256); ++i) {
++		const Industry *industry = industries[i];
++		uint32_t waiting = 0, rate = 0;
++		for (const auto &cargo : industry->produced) { waiting += cargo.waiting; rate += cargo.rate; }
++		std::vector<float> row(24, 0.0F);
++		row[0] = Unit(industry->index.base(), IndustryID::End().base() - 1); row[1] = Unit(TileX(industry->location.tile), std::max<uint>(1, Map::SizeX() - 1));
++		row[2] = Unit(TileY(industry->location.tile), std::max<uint>(1, Map::SizeY() - 1)); row[3] = Unit(industry->type, 255);
++		row[4] = Unit(waiting, 65535); row[5] = Unit(rate, 2048); row[6] = Unit(industry->prod_level, 255);
++		row[7] = industry->town == nullptr ? 0.0F : Unit(industry->town->index.base(), TownID::End().base() - 1);
++		industry_rows.push_back(std::move(row));
++	}
++	AppendTable(output, sections, entity_counts, "industries", industry_rows, industries.size(), 256, 24);
++
++	std::vector<std::vector<float>> station_rows;
++	for (size_t i = 0; i < std::min<size_t>(stations.size(), 512); ++i) {
++		const Station *station = stations[i];
++		std::vector<float> row(32, 0.0F);
++		row[0] = Unit(station->index.base(), StationID::End().base() - 1); row[1] = Unit(TileX(station->xy), std::max<uint>(1, Map::SizeX() - 1));
++		row[2] = Unit(TileY(station->xy), std::max<uint>(1, Map::SizeY() - 1)); row[3] = station->owner == CompanyID::Begin() ? 1.0F : 0.0F;
++		row[4] = Unit(StationRating(station), 255); row[5] = Unit(StationWaiting(station), 65535);
++		station_rows.push_back(std::move(row));
++	}
++	AppendTable(output, sections, entity_counts, "stations", station_rows, stations.size(), 512, 32);
++
++	std::vector<std::vector<float>> vehicle_rows;
++	for (size_t i = 0; i < std::min<size_t>(vehicles.size(), 1024); ++i) {
++		const Vehicle *vehicle = vehicles[i];
++		std::vector<float> row(40, 0.0F);
++		row[0] = Unit(vehicle->index.base(), VehicleID::End().base() - 1); row[1] = Unit(vehicle->type, VEH_END - 1);
++		row[2] = vehicle->owner == CompanyID::Begin() ? 1.0F : 0.0F; row[3] = vehicle->IsPrimaryVehicle() ? 1.0F : 0.0F;
++		if (vehicle->tile != INVALID_TILE) {
++			row[4] = Unit(TileX(vehicle->tile), std::max<uint>(1, Map::SizeX() - 1)); row[5] = Unit(TileY(vehicle->tile), std::max<uint>(1, Map::SizeY() - 1));
++		}
++		row[6] = Unit(vehicle->cur_speed, 65535); row[7] = Unit(vehicle->breakdown_delay, 255); row[8] = Unit(vehicle->breakdown_ctr, 255);
++		row[9] = SignedUnit(vehicle->profit_this_year.base(), 1000000000); row[10] = SignedUnit(vehicle->profit_last_year.base(), 1000000000);
++		row[11] = SignedUnit(vehicle->value.base(), 1000000000); row[12] = Unit(vehicle->cargo.TotalCount(), std::max<uint16_t>(1, vehicle->cargo_cap));
++		vehicle_rows.push_back(std::move(row));
++	}
++	AppendTable(output, sections, entity_counts, "vehicles", vehicle_rows, vehicles.size(), 1024, 40);
++
++	std::vector<std::vector<float>> node_rows;
++	std::map<TownID, size_t> town_nodes;
++	std::map<IndustryID, size_t> industry_nodes;
++	for (size_t i = 0; i < std::min<size_t>(towns.size(), 128); ++i) {
++		const Town *town = towns[i];
++		town_nodes[town->index] = node_rows.size();
++		std::vector<float> row(24, 0.0F); row[0] = 0.0F; row[1] = Unit(town->index.base(), TownID::End().base() - 1);
++		row[2] = Unit(TileX(town->xy), std::max<uint>(1, Map::SizeX() - 1)); row[3] = Unit(TileY(town->xy), std::max<uint>(1, Map::SizeY() - 1)); row[4] = Unit(town->cache.population, 100000);
++		node_rows.push_back(std::move(row));
++	}
++	for (size_t i = 0; i < std::min<size_t>(industries.size(), 256); ++i) {
++		const Industry *industry = industries[i];
++		industry_nodes[industry->index] = node_rows.size();
++		std::vector<float> row(24, 0.0F); row[0] = 1.0F / 3.0F; row[1] = Unit(industry->index.base(), IndustryID::End().base() - 1);
++		row[2] = Unit(TileX(industry->location.tile), std::max<uint>(1, Map::SizeX() - 1)); row[3] = Unit(TileY(industry->location.tile), std::max<uint>(1, Map::SizeY() - 1)); row[4] = Unit(IndustryProduction(industry), 65535);
++		node_rows.push_back(std::move(row));
++	}
++	for (size_t i = 0; i < std::min<size_t>(stations.size(), 512); ++i) {
++		const Station *station = stations[i];
++		std::vector<float> row(24, 0.0F); row[0] = 2.0F / 3.0F; row[1] = Unit(station->index.base(), StationID::End().base() - 1);
++		row[2] = Unit(TileX(station->xy), std::max<uint>(1, Map::SizeX() - 1)); row[3] = Unit(TileY(station->xy), std::max<uint>(1, Map::SizeY() - 1)); row[4] = Unit(StationWaiting(station), 65535);
++		node_rows.push_back(std::move(row));
++	}
++	for (size_t i = 0; i < std::min<size_t>(vehicles.size(), 1024); ++i) {
++		const Vehicle *vehicle = vehicles[i];
++		std::vector<float> row(24, 0.0F); row[0] = 1.0F; row[1] = Unit(vehicle->index.base(), VehicleID::End().base() - 1);
++		if (vehicle->tile != INVALID_TILE) { row[2] = Unit(TileX(vehicle->tile), std::max<uint>(1, Map::SizeX() - 1)); row[3] = Unit(TileY(vehicle->tile), std::max<uint>(1, Map::SizeY() - 1)); }
++		row[4] = Unit(vehicle->type, VEH_END - 1); node_rows.push_back(std::move(row));
++	}
++	Require(node_rows.size() <= 2048, "selected graph nodes exceed capacity");
++
++	struct Edge { size_t source; size_t destination; uint kind; float distance; };
++	std::vector<Edge> edges;
++	for (const auto &[industry_id, source] : industry_nodes) {
++		const Industry *industry = Industry::Get(industry_id);
++		if (industry->town == nullptr) continue;
++		auto destination = town_nodes.find(industry->town->index);
++		if (destination == town_nodes.end()) continue;
++		float dx = static_cast<float>(TileX(industry->location.tile)) - TileX(industry->town->xy);
++		float dy = static_cast<float>(TileY(industry->location.tile)) - TileY(industry->town->xy);
++		float distance = std::sqrt(dx * dx + dy * dy) / std::sqrt(static_cast<float>(Map::SizeX() * Map::SizeX() + Map::SizeY() * Map::SizeY()));
++		edges.push_back({source, destination->second, 0, distance});
++		edges.push_back({destination->second, source, 1, distance});
++	}
++	std::sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) { return std::tie(a.source, a.destination, a.kind) < std::tie(b.source, b.destination, b.kind); });
++	Require(edges.size() <= 8192, "selected graph edges exceed capacity");
++	std::vector<std::vector<float>> edge_rows;
++	for (const Edge &edge : edges) {
++		std::vector<float> row(16, 0.0F); row[0] = Unit(edge.source, 2047); row[1] = Unit(edge.destination, 2047);
++		row[2] = static_cast<float>(edge.kind); row[3] = edge.distance; edge_rows.push_back(std::move(row));
++	}
++	AppendTable(output, sections, entity_counts, "graph_nodes", node_rows, node_rows.size(), 2048, 24);
++	AppendTable(output, sections, entity_counts, "graph_edges", edge_rows, edge_rows.size(), 8192, 16);
++	/* Rename graph sections and keep graph counts out of the entity namespace. */
++	for (json &section : sections) {
++		std::string name = section.at("name");
++		if (name.starts_with("entities.graph_nodes.")) section["name"] = "graph.nodes." + name.substr(21);
++		if (name.starts_with("entities.graph_edges.")) section["name"] = "graph.edges." + name.substr(21);
++	}
++	json graph_counts = {{"edges", entity_counts.at("graph_edges")}, {"nodes", entity_counts.at("graph_nodes")}};
++	entity_counts.erase("graph_edges"); entity_counts.erase("graph_nodes");
++
++	Require(output.size() == OBSERVATION_BYTES, fmt::format("serialized {} bytes, expected {}", output.size(), OBSERVATION_BYTES));
++	Sha256 digest; digest.Update(output); std::string sha256 = digest.Finish();
++	std::filesystem::path metadata(metadata_path);
++	std::filesystem::path binary = metadata; binary.replace_extension(".bin");
++	Require(binary != metadata, "metadata path must have an extension distinct from .bin");
++	WriteNew(binary, output);
++	json metadata_value = {
++		{"schema_version", METADATA_SCHEMA_VERSION}, {"contract_sha256", CONTRACT_SHA256}, {"observation_schema_id", OBSERVATION_SCHEMA_ID},
++		{"binary", {{"bytes", output.size()}, {"encoding", "little-endian-float32-row-major-plus-uint8-masks"}, {"file", binary.filename().string()}, {"sha256", sha256}}},
++		{"snapshot", {{"anchor_x", anchor_x}, {"anchor_y", anchor_y}, {"height", Map::SizeY()}, {"map_seed", map_seed},
++			{"simulation_seed", simulation_seed}, {"candidate_tiebreak_seed", candidate_tiebreak_seed}, {"tick", TimerGameTick::counter},
++			{"tile_count", Map::Size()}, {"width", Map::SizeX()}, {"year", TimerGameCalendar::year.base()}}},
++		{"spatial", {{"channels", {"in_map", "clear", "railway", "road", "house", "trees", "station", "water", "void", "industry", "tunnel_bridge", "object", "height_u8", "flat", "owned_by_company_0", "developed", "reserved_16", "reserved_17", "reserved_18", "reserved_19", "reserved_20", "reserved_21", "reserved_22", "reserved_23", "reserved_24", "reserved_25", "reserved_26", "reserved_27", "reserved_28", "reserved_29", "reserved_30", "reserved_31"}}, {"local_origin", {static_cast<int>(anchor_x) - 16, static_cast<int>(anchor_y) - 16}}, {"regional_origin", {static_cast<int>(anchor_x) - 32, static_cast<int>(anchor_y) - 32}}}},
++		{"entities", entity_counts}, {"graph", graph_counts}, {"sections", sections},
++	};
++	WriteCanonicalNew(metadata, metadata_value);
++}
+diff --git a/src/rl_v2_observation.h b/src/rl_v2_observation.h
+new file mode 100644
+index 0000000..8eecfee
+--- /dev/null
++++ b/src/rl_v2_observation.h
+@@ -0,0 +1,17 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_v2_observation.h Native bounded M15 observation support. */
++
++#ifndef RL_V2_OBSERVATION_H
++#define RL_V2_OBSERVATION_H
++
++#include <string>
++
++void WriteRlV2Observation(const std::string &metadata_path, uint32_t map_seed, uint32_t simulation_seed, uint32_t candidate_tiebreak_seed);
++
++#endif /* RL_V2_OBSERVATION_H */
+-- 
+2.43.0
+

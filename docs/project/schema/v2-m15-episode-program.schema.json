@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-episode-program.schema.json",
+  "title": "OpenTTD RL V2 M15 stateful episode program",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action_schema_id", "contract_sha256", "program_id", "schema_version", "steps"],
+  "properties": {
+    "action_schema_id": {"const": "v2-m15-hierarchical-action-v1"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "program_id": {"$ref": "#/$defs/name"},
+    "schema_version": {"const": "openttd-rl-v2-m15-episode-program-1"},
+    "steps": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"oneOf": [
+      {"$ref": "#/$defs/action"}, {"$ref": "#/$defs/service"}, {"$ref": "#/$defs/rollback"}, {"$ref": "#/$defs/save"}, {"$ref": "#/$defs/load"}, {"$ref": "#/$defs/capture"}
+    ]}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "name": {"type": "string", "pattern": "^[a-z0-9_-]{1,64}$"},
+    "base": {"type": "object", "required": ["label", "operation"], "properties": {"label": {"$ref": "#/$defs/name"}}},
+    "action": {
+      "type": "object", "additionalProperties": false,
+      "required": ["advance_ticks", "family", "label", "operation", "selection"],
+      "properties": {
+        "advance_ticks": {"type": "integer", "minimum": 0, "maximum": 128},
+        "family": {"enum": ["WAIT", "SELECT_TOWN_PAIR", "BUILD_ROAD_PATH", "BUILD_BUS_STOP", "BUILD_ROAD_DEPOT", "BUY_BUS", "SET_ROUTE", "START_VEHICLE", "STOP_VEHICLE", "SEND_TO_DEPOT", "SELL_VEHICLE", "MANAGE_LOAN"]},
+        "label": {"$ref": "#/$defs/name"}, "operation": {"const": "ACTION"}, "selection": {"enum": ["FIRST", "LAST"]}
+      }
+    },
+    "service": {"type": "object", "additionalProperties": false, "required": ["label", "operation"], "properties": {"label": {"$ref": "#/$defs/name"}, "operation": {"const": "SERVICE"}}},
+    "save": {"type": "object", "additionalProperties": false, "required": ["label", "operation", "slot"], "properties": {"label": {"$ref": "#/$defs/name"}, "operation": {"const": "SAVE"}, "slot": {"$ref": "#/$defs/name"}}},
+    "rollback": {"type": "object", "additionalProperties": false, "required": ["family", "label", "operation", "selection"], "properties": {"family": {"const": "SET_ROUTE"}, "label": {"$ref": "#/$defs/name"}, "operation": {"const": "ROLLBACK"}, "selection": {"enum": ["FIRST", "LAST"]}}},
+    "load": {"type": "object", "additionalProperties": false, "required": ["label", "operation", "slot"], "properties": {"label": {"$ref": "#/$defs/name"}, "operation": {"const": "LOAD"}, "slot": {"$ref": "#/$defs/name"}}},
+    "capture": {"type": "object", "additionalProperties": false, "required": ["equivalence_group", "label", "operation"], "properties": {"equivalence_group": {"$ref": "#/$defs/name"}, "label": {"$ref": "#/$defs/name"}, "operation": {"const": "CAPTURE"}}}
+  }
+}

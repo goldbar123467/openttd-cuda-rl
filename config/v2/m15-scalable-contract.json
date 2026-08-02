@@ -1,0 +1,143 @@
+{
+  "$schema": "../../docs/project/schema/v2-m15-scalable-contract.schema.json",
+  "schema_version": "openttd-rl-v2-m15-scalable-contract-1",
+  "schema_sha256": "8d5d8250dc846333571a9a92ea9e3743eafecd06ec4647d6d5bfe38ad5d372be",
+  "contract_id": "m15-scalable-passenger-environment-v1",
+  "semantic_version": 1,
+  "status": "FROZEN",
+  "identity": {
+    "engine_source": {
+      "release": "15.3",
+      "commit": "14ec60f248547d4d062a1160f0fc26d742319888",
+      "tree": "02d8cbbb0d8c030698d37ca76ab2773b6e23c397"
+    },
+    "g14_gate_report_sha256": "2ff592fbf5c3399c0c72a7b18d3f5386f73986e0c0f03ea4e8e935ec9f076bb5",
+    "research_baseline_sha256": "c95c06cccd9c8a37d87441f6a101c8655ca05d3797bf7b780841117b76a7dadf",
+    "setting_inventory_sha256": "96371b0e65051b47581116de44c48974b88fbc2ab235764952dcba166ba01c59",
+    "competition_manifest_sha256": "2218667f2ca74740bfbe57af3a978eb2ee33f925eb6e2faaed03394a04bb98ee",
+    "v1_contracts": {
+      "scenario": "ad843638b7f1dc9920889444f564b31e13e3653387978b573430878bb5f802e7",
+      "bridge": "5c4240869eab9f21c55e29c0bbe882305b63da4b1eb6c1f2abe9857e486785e9",
+      "observation": "6139634cf1ae8a1b0d639596e400a12b6b6f56fe3e9a3a1ee5d92d731013877e",
+      "action": "33d42081e05abc6e2bb62623a460e3153111e3b253ca90e4b48d39ef9e843d47",
+      "architecture": "d12725305df8c8c87b8023564b07b73ca62096fc6df7403b644271015005dc49"
+    }
+  },
+  "map": {
+    "v1_compatibility": [[32, 32]],
+    "native_side_lengths": [64, 128, 256, 512, 1024, 2048, 4096],
+    "native_rectangles": [[64, 64], [64, 128], [64, 256], [64, 512], [64, 1024], [64, 2048], [64, 4096], [128, 64], [128, 128], [128, 256], [128, 512], [128, 1024], [128, 2048], [128, 4096], [256, 64], [256, 128], [256, 256], [256, 512], [256, 1024], [256, 2048], [256, 4096], [512, 64], [512, 128], [512, 256], [512, 512], [512, 1024], [512, 2048], [512, 4096], [1024, 64], [1024, 128], [1024, 256], [1024, 512], [1024, 1024], [1024, 2048], [1024, 4096], [2048, 64], [2048, 128], [2048, 256], [2048, 512], [2048, 1024], [2048, 2048], [2048, 4096], [4096, 64], [4096, 128], [4096, 256], [4096, 512], [4096, 1024], [4096, 2048], [4096, 4096]],
+    "curriculum": [[64, 64], [128, 128], [256, 256], [512, 512]],
+    "generalization": [[64, 256], [128, 512], [256, 1024], [512, 128], [1024, 1024]],
+    "boundary": [[2048, 2048], [4096, 4096]],
+    "useful_play_max_tiles": 1048576,
+    "boundary_policy": "bounded-reset-observation-save-load-smoke-or-explicit-preallocation-rejection",
+    "dimension_encoding": "uint16-width-height-and-uint32-tile-index"
+  },
+  "seeds": {
+    "algorithm": "sha256-first-31-bits",
+    "domain": "openttd-rl-v2-m15-scenarios-v1",
+    "sets": {
+      "training": {"ordinal_start": 0, "seeds": [1110312784, 786545128, 1922409719, 583478638, 903537006, 789617916, 250684692, 1871197196, 125547341, 784310697, 408527139, 703186717, 959519001, 270737939, 679867275, 1634930996]},
+      "development": {"ordinal_start": 100, "seeds": [1630856436, 155097162, 1456534872, 164252095, 1846306860, 1429392268, 1469867788, 625690428]},
+      "generalization": {"ordinal_start": 200, "seeds": [865927513, 1936289326, 348404717, 1893295922, 1985050841, 1377526319, 678468527, 746648261]},
+      "final": {"ordinal_start": 1000, "seeds": [484178880, 653254133, 13836983, 1563834933, 192734205, 648550615, 1994357371, 865554119, 352341135, 1037838088, 2095681870, 1785496154, 1500551721, 614866613, 1771035451, 1449205631]}
+    },
+    "final_policy": "never-used-for-training-selection-or-policy-input"
+  },
+  "scenario": {
+    "transport_scope": "passenger-bus",
+    "climate": "temperate",
+    "start_year": 1950,
+    "generation": "native-seeded",
+    "counts": {
+      "towns": {"minimum": 2, "maximum": 128, "target_rule": "max(2,min(128,tile_count//4096))", "overflow": "truncate-observation-only-never-native-pool"},
+      "industries": {"minimum": 0, "maximum": 256, "target_rule": "min(256,native-generated-count)", "overflow": "truncate-observation-only-never-native-pool"},
+      "companies": {"minimum": 1, "maximum": 15, "target_rule": "1-for-M15", "overflow": "reject-before-reset"},
+      "vehicles": {"minimum": 0, "maximum": 1024, "target_rule": "min(1024,16+tile_count//1024)", "overflow": "truncate-observation-only-never-native-pool"},
+      "stations": {"minimum": 0, "maximum": 512, "target_rule": "min(512,8+town_count*4)", "overflow": "truncate-observation-only-never-native-pool"}
+    },
+    "setting_policy": "pin-every-applicable-SCENARIO_PIN-COMPANY_PIN-and-HARNESS_PIN-row",
+    "content_policy": "base-game-and-OpenGFX-only",
+    "reachability": "at-least-one-native-legal-passenger-bus-service-pair-or-record-and-reject-seed",
+    "manifest_fields": ["contract_sha256", "engine_source_tree", "executable_sha256", "map_width", "map_height", "map_seed", "simulation_seed", "candidate_tiebreak_seed", "split", "climate", "start_year", "settings_manifest_sha256", "content_manifest_sha256", "generation_mode", "town_target", "industry_target", "company_count", "resource_tier", "v1_adapter", "rejection_reason"]
+  },
+  "reset": {
+    "lifecycle": ["READY", "RESETTING", "AT_BOUNDARY", "EXECUTING", "ADVANCING", "PAUSED", "CLOSED", "FAILED"],
+    "seed_streams": ["map_generation", "simulation", "interactive", "candidate_tiebreak"],
+    "no_implicit_retry": true,
+    "same_manifest_same_projection": true,
+    "save_load_continuation": "semantic-and-action-boundary-exact",
+    "observation_and_mask_same_snapshot": true,
+    "v1_adapter": "bit-exact-existing-32x32-reset-observation-action-reward-path"
+  },
+  "resources": {
+    "preflight": "before-map-allocation-and-before-policy-inference",
+    "protocol_payload_bytes": 8388608,
+    "observation_bytes": 2182927,
+    "candidate_bytes": 790528,
+    "entity_overflow": "deterministic-priority-then-native-id-with-counts-and-truncation-flags",
+    "map_tier_limits": [
+      {"tier": "v1", "maximum_tiles": 1024, "max_rss_kib": 1048576, "wall_seconds": 60, "outcome": "compatibility"},
+      {"tier": "curriculum", "maximum_tiles": 262144, "max_rss_kib": 4194304, "wall_seconds": 600, "outcome": "useful-play"},
+      {"tier": "generalization", "maximum_tiles": 1048576, "max_rss_kib": 6291456, "wall_seconds": 900, "outcome": "evaluation"},
+      {"tier": "boundary", "maximum_tiles": 16777216, "max_rss_kib": 12582912, "wall_seconds": 1800, "outcome": "smoke-or-preflight-rejection"}
+    ],
+    "telemetry": ["wall_seconds", "cpu_seconds", "max_rss_kib", "map_bytes", "observation_bytes", "candidate_count", "entity_counts", "overflow_counts"]
+  },
+  "observation": {
+    "schema_id": "v2-m15-observation-v1",
+    "structured": {"dtype": "float32", "shape": [512], "mask": null},
+    "spatial": [
+      {"name": "global", "channels": 32, "height": 64, "width": 64, "coverage": "whole-map", "aggregation": "declared-per-channel sum-max-mean-nearest with exact rectangular bins"},
+      {"name": "regional", "channels": 32, "height": 64, "width": 64, "coverage": "decision-region", "aggregation": "one-tile sampling inside bounded region with explicit out-of-map mask"},
+      {"name": "local", "channels": 32, "height": 32, "width": 32, "coverage": "decision-local", "aggregation": "one-tile sampling centered on selected entity or candidate anchor"}
+    ],
+    "entities": [
+      {"name": "companies", "capacity": 15, "features": 32, "mask": "uint8-row-valid", "priority": "own-company-first-then-native-id"},
+      {"name": "towns", "capacity": 128, "features": 24, "mask": "uint8-row-valid", "priority": "candidate-relevant-population-descending-native-id"},
+      {"name": "industries", "capacity": 256, "features": 24, "mask": "uint8-row-valid", "priority": "candidate-relevant-production-descending-native-id"},
+      {"name": "stations", "capacity": 512, "features": 32, "mask": "uint8-row-valid", "priority": "owned-first-rating-descending-native-id"},
+      {"name": "vehicles", "capacity": 1024, "features": 40, "mask": "uint8-row-valid", "priority": "owned-first-problem-severity-descending-native-id"}
+    ],
+    "graph": {"node_capacity": 2048, "node_features": 24, "edge_capacity": 8192, "edge_features": 16, "directed": true},
+    "ordering": "table-kind-priority-then-native-id; graph-source-destination-edge-kind",
+    "coordinates": "absolute-uint16-plus-normalized-and-crop-relative",
+    "normalization": "declared-fieldwise-float32-no-running-statistics-at-evaluation",
+    "visibility": "public-map-public-company-and-own-private-state-only",
+    "overflow": "explicit-count-cap-truncated-and-omitted-count-per-table",
+    "serialization": "little-endian-float32-row-major-with-byte-count-and-sha256"
+  },
+  "action": {
+    "schema_id": "v2-m15-hierarchical-action-v1",
+    "selection": "masked-family-head-then-masked-candidate-head",
+    "families": ["WAIT", "SELECT_TOWN_PAIR", "BUILD_ROAD_PATH", "BUILD_BUS_STOP", "BUILD_ROAD_DEPOT", "BUY_BUS", "SET_ROUTE", "START_VEHICLE", "STOP_VEHICLE", "SEND_TO_DEPOT", "SELL_VEHICLE", "MANAGE_LOAN"],
+    "candidate_table": {"capacity": 4096, "features": 32, "parameter_words": 16, "stable_key": "family-plus-native-ids-coordinates-and-parameter-hash", "ordering": "family-priority-score-descending-stable-key"},
+    "legality": "exposed-legal-iff-authoritative-native-test-mode-succeeds-at-issued-snapshot",
+    "snapshot_token": "contract-session-episode-transition-tick-observation-and-candidate-sha256",
+    "omission_policy": "omitted-native-legal-actions-are-counted-not-relabelled-illegal-and-never-selected",
+    "transactions": "native-single-command-or-declared-prefix-with-exact-rollback-and-fatal-rollback-failure",
+    "illegal_result": "zero-tick-zero-mutation-typed-rejection"
+  },
+  "policy": {
+    "schema_id": "v2-m15-policy-v1",
+    "encoders": ["structured-mlp", "shared-spatial-cnn", "masked-entity-transformer", "graph-message-passing", "candidate-scorer"],
+    "fusion": "concatenate-layernorm-mlp",
+    "memory": {"kind": "GRU", "hidden_size": 256, "reset": "episode-boundary-and-explicit-mask"},
+    "heads": ["family_logits", "candidate_logits", "value"],
+    "v1_adapter": "separate-bit-exact-v1-model-path-retained-not-zero-padded-into-v2",
+    "checkpoint": "model-optimizer-normalization-rng-curriculum-contract-and-hidden-state",
+    "onnx": "dynamic-batch-fixed-capacity-tensors-explicit-masks-and-recurrent-state"
+  },
+  "verification": {
+    "native_rectangles": "all-49-reset-preflight-disposition",
+    "useful_play": [[64, 64], [128, 128], [256, 256], [512, 512]],
+    "generalization": [[64, 256], [128, 512], [256, 1024], [512, 128], [1024, 1024]],
+    "boundary": [[2048, 2048], [4096, 4096]],
+    "oracles": ["native-map-and-pool-projection", "full-map-spatial-reference", "full-native-legality-enumeration", "native-cost-and-state-differential"],
+    "replay": "twin-process-semantic-hash-per-action-boundary",
+    "save_load": "continued-semantic-hash-and-legality-equivalence",
+    "v1_regression": "complete-v1-suite-and-retained-model-results",
+    "failure_tests": ["invalid-dimension", "resource-preflight", "entity-overflow", "candidate-overflow", "stale-token", "native-rejection", "rollback-failure", "corrupt-save", "schema-mismatch"]
+  }
+}

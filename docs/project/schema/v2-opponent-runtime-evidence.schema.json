@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goldbar123467.github.io/openttd-cuda-rl/docs/project/schema/v2-opponent-runtime-evidence.schema.json",
+  "title": "OpenTTD RL V2 opponent runtime qualification evidence index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "engine_source", "executable", "package_evidence_sha256", "artifact_base_hint", "policy", "results"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-opponent-runtime-evidence.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-opponent-runtime-evidence-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"type": "string", "format": "date"},
+    "engine_source": {"type": "object", "additionalProperties": false, "required": ["release", "commit", "tree"], "properties": {"release": {"const": "15.3"}, "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}},
+    "executable": {"type": "object", "additionalProperties": false, "required": ["sha256", "size"], "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "size": {"type": "integer", "minimum": 1}}},
+    "package_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "artifact_base_hint": {"type": "string", "minLength": 1},
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["package_rejection_excludes_runtime", "runtime_rejection_excludes_tournament", "healthy_inactive_requires_scenario_qualification", "activity_requires_owned_vehicle", "all_outcomes_retained"],
+      "properties": {"package_rejection_excludes_runtime": {"const": true}, "runtime_rejection_excludes_tournament": {"const": true}, "healthy_inactive_requires_scenario_qualification": {"const": true}, "activity_requires_owned_vehicle": {"const": true}, "all_outcomes_retained": {"const": true}}
+    },
+    "results": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"oneOf": [{"$ref": "#/$defs/package_rejected"}, {"$ref": "#/$defs/runtime"}]}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "vehicles": {"type": "object", "additionalProperties": false, "required": ["train", "road", "air", "ship"], "properties": {"train": {"type": "integer", "minimum": 0}, "road": {"type": "integer", "minimum": 0}, "air": {"type": "integer", "minimum": 0}, "ship": {"type": "integer", "minimum": 0}}},
+    "package_rejected": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "content_unique_id", "phase", "outcome", "admission", "artifact_dir", "evidence_file", "evidence_sha256", "reason_code"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1}, "content_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"}, "phase": {"const": "PACKAGE"}, "outcome": {"const": "PACKAGE_REJECTED"}, "admission": {"const": "EXCLUDED"},
+        "artifact_dir": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"}, "evidence_file": {"const": "ai-package-rejection.json"}, "evidence_sha256": {"$ref": "#/$defs/sha256"}, "reason_code": {"const": "catalog-listed-unselectable"}
+      }
+    },
+    "runtime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "content_unique_id", "phase", "outcome", "admission", "artifact_dir", "evidence_file", "evidence_sha256", "elapsed_days", "vehicles", "max_rss_kib", "save_sha256", "reason_code"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1}, "content_unique_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"}, "phase": {"const": "RUNTIME"},
+        "outcome": {"enum": ["QUALIFIED_ACTIVE", "QUALIFIED_HEALTHY_INACTIVE", "QUALIFIED_CONTROL", "REJECTED"]}, "admission": {"enum": ["TOURNAMENT", "CONTROL", "SCENARIO_REQUIRED", "EXCLUDED"]},
+        "artifact_dir": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"}, "evidence_file": {"const": "ai-runtime-qualification.json"}, "evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "elapsed_days": {"type": ["integer", "null"], "minimum": 0}, "vehicles": {"oneOf": [{"$ref": "#/$defs/vehicles"}, {"type": "null"}]}, "max_rss_kib": {"type": "integer", "minimum": 1},
+        "save_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}, "reason_code": {"type": ["string", "null"], "enum": [null, "declared-identity-not-listed", "script-crash-missing-library"]}
+      }
+    }
+  }
+}

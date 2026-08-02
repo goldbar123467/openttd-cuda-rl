@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-reset-manifest.schema.json",
+  "title": "OpenTTD RL V2 M15 native reset manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_sha256", "engine_source_tree", "executable_sha256", "map_width", "map_height", "map_seed", "simulation_seed", "candidate_tiebreak_seed", "split", "climate", "start_year", "settings_manifest_sha256", "content_manifest_sha256", "generation_mode", "town_target", "industry_target", "company_count", "resource_tier", "v1_adapter", "rejection_reason"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m15-reset-manifest-1"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "engine_source_tree": {"$ref": "#/$defs/git"},
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "map_width": {"$ref": "#/$defs/side"},
+    "map_height": {"$ref": "#/$defs/side"},
+    "map_seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+    "simulation_seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+    "candidate_tiebreak_seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+    "split": {"enum": ["training", "development", "generalization", "final"]},
+    "climate": {"const": "temperate"},
+    "start_year": {"const": 1950},
+    "settings_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "content_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "generation_mode": {"const": "native-seeded"},
+    "town_target": {"type": "integer", "minimum": 2, "maximum": 128},
+    "industry_target": {"const": 256},
+    "company_count": {"const": 1},
+    "resource_tier": {"enum": ["curriculum", "generalization"]},
+    "v1_adapter": {"const": false},
+    "rejection_reason": {"type": "null"}
+  },
+  "$defs": {
+    "side": {"enum": [64, 128, 256, 512, 1024, 2048, 4096]},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+  }
+}

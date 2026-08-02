@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-action-result.schema.json",
+  "title": "OpenTTD RL V2 M15 typed action result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action_schema_id", "candidate_row", "contract_sha256", "family_index", "native_commands", "rolled_back", "schema_version", "snapshot_token", "state_sha256_after", "state_sha256_before", "status", "tick_after", "tick_before"],
+  "properties": {
+    "action_schema_id": {"const": "v2-m15-hierarchical-action-v1"}, "candidate_row": {"type": "integer", "minimum": 0},
+    "contract_sha256": {"$ref": "#/$defs/sha256"}, "family_index": {"type": "integer", "minimum": 0},
+    "native_commands": {"type": "array", "items": {"$ref": "#/$defs/command"}}, "rolled_back": {"type": "boolean"},
+    "schema_version": {"const": "openttd-rl-v2-m15-action-result-1"}, "snapshot_token": {"type": "string", "pattern": "^m15a1:[0-9a-f]{64}$"},
+    "state_sha256_after": {"$ref": "#/$defs/sha256"}, "state_sha256_before": {"$ref": "#/$defs/sha256"},
+    "status": {"enum": ["SUCCESS", "NO_OP", "STALE_TOKEN", "OUT_OF_RANGE", "ILLEGAL_CANDIDATE", "FAMILY_MISMATCH", "NATIVE_REJECTED"]},
+    "tick_after": {"type": "integer", "minimum": 0}, "tick_before": {"type": "integer", "minimum": 0}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "command": {
+      "type": "object", "additionalProperties": false, "required": ["command", "cost", "error_message_id", "extra_error_message_id", "phase", "status"],
+      "properties": {
+        "command": {"type": "string", "minLength": 1}, "cost": {"type": "integer"}, "error_message_id": {"type": "integer", "minimum": 0},
+        "extra_error_message_id": {"type": "integer", "minimum": 0}, "phase": {"enum": ["EXECUTE", "ROLLBACK"]}, "status": {"enum": ["SUCCESS", "REJECTED"]}
+      }
+    }
+  }
+}

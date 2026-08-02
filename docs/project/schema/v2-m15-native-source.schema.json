@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-native-source.schema.json",
+  "title": "OpenTTD RL V2 M15 native source evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "base", "patch_series", "result", "build"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-native-source.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-native-source-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "commit", "tree", "engine_source_commit", "engine_source_tree"],
+      "properties": {
+        "kind": {"const": "released-v1-m11-composed-source"},
+        "commit": {"$ref": "#/$defs/git"},
+        "tree": {"$ref": "#/$defs/git"},
+        "engine_source_commit": {"$ref": "#/$defs/git"},
+        "engine_source_tree": {"$ref": "#/$defs/git"}
+      }
+    },
+    "patch_series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["directory", "series", "series_sha256", "patches"],
+      "properties": {
+        "directory": {"const": "integration/openttd/patches/15.3/m15"},
+        "series": {"const": "integration/openttd/patches/15.3/m15/series"},
+        "series_sha256": {"$ref": "#/$defs/sha256"},
+        "patches": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "sha256"],
+            "properties": {
+              "name": {"const": "0010-OpenTTD-RL-V2-M15-native-scalable-reset.patch"},
+              "sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tree", "source_files", "cli_manifest_option", "cli_projection_option", "v1_path_modified"],
+      "properties": {
+        "tree": {"$ref": "#/$defs/git"},
+        "source_files": {"const": ["src/rl_v2_environment.cpp", "src/rl_v2_environment.h"]},
+        "cli_manifest_option": {"const": "-V"},
+        "cli_projection_option": {"const": "-U"},
+        "v1_path_modified": {"const": false}
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_root", "cmake_options", "executable", "ctest"],
+      "properties": {
+        "artifact_root": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m15-native-a"},
+        "cmake_options": {"const": ["CMAKE_BUILD_TYPE=RelWithDebInfo", "OPTION_RL_ENVIRONMENT=ON", "OPTION_RL_NEURAL_AGENT=OFF", "OPTION_USE_ASSERTS=ON"]},
+        "executable": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "size"],
+          "properties": {
+            "path": {"const": "build/openttd"},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "size": {"type": "integer", "minimum": 1000000}
+          }
+        },
+        "ctest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tests", "passed", "failed"],
+          "properties": {
+            "tests": {"const": 98},
+            "passed": {"const": 98},
+            "failed": {"const": 0}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-action-contract.schema.json",
+  "title": "OpenTTD RL V2 M15 detailed hierarchical action contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "scalable_contract_sha256", "action_schema_id", "capacity", "binary", "features", "families", "stable_key", "ordering", "snapshot", "request", "result", "transactions", "oracle"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m15-action-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m15-action-contract-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "scalable_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "action_schema_id": {"const": "v2-m15-hierarchical-action-v1"},
+    "capacity": {"const": 4096},
+    "binary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["total_bytes", "sections"],
+      "properties": {
+        "total_bytes": {"const": 790528},
+        "sections": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/section"}}
+      }
+    },
+    "features": {
+      "type": "object", "additionalProperties": false,
+      "required": ["dtype", "count", "fields", "reserved"],
+      "properties": {
+        "dtype": {"const": "float32-le"}, "count": {"const": 32},
+        "fields": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/feature"}},
+        "reserved": {"const": {"start": 20, "end": 31, "value": 0}}
+      }
+    },
+    "families": {"type": "array", "minItems": 12, "maxItems": 12, "items": {"$ref": "#/$defs/family"}},
+    "stable_key": {"const": "sha256(uint8-family-index || 16-little-endian-uint32-parameter-words)"},
+    "ordering": {"const": "family-reserved-range-then-priority-descending-then-stable-key-ascending"},
+    "snapshot": {
+      "type": "object", "additionalProperties": false,
+      "required": ["payload", "token", "candidate_tiebreak_seed"],
+      "properties": {
+        "payload": {"const": "contract_sha256:session-map_seed-simulation_seed:episode-0:transition-0:tick:observation_sha256:candidate_sha256"},
+        "token": {"const": "m15a1:sha256(payload)"},
+        "candidate_tiebreak_seed": {"const": "bound-in-observation-and-session-provenance;stable-key-is-final-tiebreak"}
+      }
+    },
+    "request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "fields", "validation_order"],
+      "properties": {
+        "schema_version": {"const": "openttd-rl-v2-m15-action-request-1"},
+        "fields": {"const": ["action_schema_id", "candidate_row", "contract_sha256", "family_index", "schema_version", "snapshot_token"]},
+        "validation_order": {"const": ["schema", "contract", "snapshot-token", "row-range", "row-mask", "family-match", "authoritative-retest", "execute"]}
+      }
+    },
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "statuses", "invalid_invariant"],
+      "properties": {
+        "schema_version": {"const": "openttd-rl-v2-m15-action-result-1"},
+        "statuses": {"const": ["SUCCESS", "NO_OP", "STALE_TOKEN", "OUT_OF_RANGE", "ILLEGAL_CANDIDATE", "FAMILY_MISMATCH", "NATIVE_REJECTED"]},
+        "invalid_invariant": {"const": "tick_before==tick_after and state_sha256_before==state_sha256_after and native_commands==[]"}
+      }
+    },
+    "transactions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["single_command", "set_route"],
+      "properties": {
+        "single_command": {"const": "native-command-atomic"},
+        "set_route": {"const": "snapshot-prior-orders;clear;insert-origin;insert-destination;exact-restore-on-first-rejection"}
+      }
+    },
+    "oracle": {"const": ["exact-binary-layout", "finite-features", "canonical-mask", "stable-key-recompute", "family-range-and-order", "native-full-domain-counts", "exposed-positive-execution", "typed-negative-no-mutation", "repeat-hash"]}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "feature": {
+      "type": "object", "additionalProperties": false, "required": ["index", "name", "encoding"],
+      "properties": {"index": {"type": "integer", "minimum": 0, "maximum": 31}, "name": {"type": "string", "minLength": 1}, "encoding": {"type": "string", "minLength": 1}}
+    },
+    "section": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "offset", "bytes", "dtype", "shape"],
+      "properties": {
+        "name": {"enum": ["features", "parameters", "mask"]}, "offset": {"type": "integer", "minimum": 0},
+        "bytes": {"type": "integer", "minimum": 1}, "dtype": {"enum": ["float32-le", "uint32-le", "uint8"]},
+        "shape": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"type": "integer", "minimum": 1}}
+      }
+    },
+    "family": {
+      "type": "object", "additionalProperties": false,
+      "required": ["index", "name", "quota", "row_begin", "row_end", "parameter_words", "enumeration", "legality", "command", "priority"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0, "maximum": 11}, "name": {"type": "string", "minLength": 1},
+        "quota": {"type": "integer", "minimum": 1}, "row_begin": {"type": "integer", "minimum": 0}, "row_end": {"type": "integer", "minimum": 1},
+        "parameter_words": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"type": "string", "minLength": 1}},
+        "enumeration": {"type": "string", "minLength": 1}, "legality": {"type": "string", "minLength": 1},
+        "command": {"type": "string", "minLength": 1}, "priority": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

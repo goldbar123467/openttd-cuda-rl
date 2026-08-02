@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m15-action-request.schema.json",
+  "title": "OpenTTD RL V2 M15 snapshot-bound action request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action_schema_id", "candidate_row", "contract_sha256", "family_index", "schema_version", "snapshot_token"],
+  "properties": {
+    "action_schema_id": {"const": "v2-m15-hierarchical-action-v1"},
+    "candidate_row": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "family_index": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "schema_version": {"const": "openttd-rl-v2-m15-action-request-1"},
+    "snapshot_token": {"type": "string", "pattern": "^m15a1:[0-9a-f]{64}$"}
+  }
+}
