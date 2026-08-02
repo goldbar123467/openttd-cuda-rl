@@ -281,6 +281,31 @@ Evaluation and playback load frozen constants. They never update them. Zero
 variance, negative financial values, large debt/profit, missing entities, maximum
 population/counts, and overflow all have tests.
 
+### Frozen M04 selection
+
+M04 freezes this candidate space in
+[`m04-observation-contract.json`](../../config/v1/m04-observation-contract.json)
+with compatibility identity
+`7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb`.
+The output is a 256-element structured float32 vector followed by a logical
+`[32,32,32]` spatial float32 tensor in channel/Y/X order. Every one of the 256
+field rows and 32 channel rows defines its OpenTTD source, type, unit, fixed
+transform, clip, bounds, missing rule, and M03 boundary.
+
+Town, vehicle, station, and route slots use direct bounded OpenTTD pool IDs with
+presence and overflow features. Deletion clears a slot; ID reuse replaces it in
+that same slot. Normalization uses reviewed constants only, so no fitting or
+evaluation-time update exists. Water, predicted route paths, generic owner IDs,
+action context, and reward/action history are excluded or deferred with machine
+rationales rather than represented by unproven all-zero or noncausal values.
+
+One C++ `EncodeRlObservation` implementation returns the native tensor object
+for trainer, evaluator, ONNX Runtime, in-game control, and the bridge oracle.
+`OBSERVE` is M03 extension message type 8 and may run only at `AT_BOUNDARY` or
+`PAUSED`; it executes no tick, command, RNG API, pathfinder, or lazy catchment
+recomputation. Compatibility mismatches fail before tensor use. Canonical golden
+bytes are little-endian IEEE-754 float32, structured then spatial.
+
 ## Action contract
 
 ### Output representation gate

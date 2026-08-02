@@ -529,14 +529,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-SCOPE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "SCOPE-019",
@@ -1794,14 +1802,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-002",
@@ -1814,14 +1830,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-003",
@@ -1834,14 +1858,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-004",
@@ -1854,14 +1886,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-005",
@@ -1874,14 +1914,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-006",
@@ -1894,14 +1942,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-007",
@@ -1914,14 +1970,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-008",
@@ -1934,14 +1998,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-009",
@@ -1954,14 +2026,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-010",
@@ -1974,14 +2054,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-011",
@@ -1994,14 +2082,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-012",
@@ -2014,14 +2110,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-013",
@@ -2034,14 +2138,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-014",
@@ -2054,14 +2166,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-015",
@@ -2074,14 +2194,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-016",
@@ -2094,14 +2222,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-017",
@@ -2114,14 +2250,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-OBS"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "OBS-018",
@@ -4152,14 +4296,22 @@
       ],
       "milestone": "M04",
       "gate": "G04",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m04-observation-contract.json",
+        "integration/openttd/patches/15.3/m04/0005-versioned-policy-observation.patch",
+        "scripts/v1/run_m04_observation.py",
+        "scripts/v1/m04_preprocessing.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M04-OBSERVATION"
+      ],
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G04."
+      "reviewer_note": "G04 accepted: the frozen native encoder, exhaustive machine schema, two byte-identical eight-template actual-engine campaigns, 264192 semantic comparisons, compatibility rejection, cross-consumer byte equivalence, and matched-control non-perturbation pass."
     },
     {
       "id": "TEST-003",
@@ -4959,7 +5111,6 @@
       "summary": "Planned requirement verification suite for SCOPE requirements.",
       "runner": null,
       "requirement_ids": [
-        "SCOPE-018",
         "SCOPE-019",
         "SCOPE-020",
         "SCOPE-021",
@@ -5053,32 +5204,15 @@
     },
     {
       "id": "V1-TEST-OBS",
-      "summary": "Planned requirement verification suite for OBS requirements.",
+      "summary": "Planned matched observation-architecture experiment suite for OBS-018.",
       "runner": null,
       "requirement_ids": [
-        "OBS-001",
-        "OBS-002",
-        "OBS-003",
-        "OBS-004",
-        "OBS-005",
-        "OBS-006",
-        "OBS-007",
-        "OBS-008",
-        "OBS-009",
-        "OBS-010",
-        "OBS-011",
-        "OBS-012",
-        "OBS-013",
-        "OBS-014",
-        "OBS-015",
-        "OBS-016",
-        "OBS-017",
         "OBS-018"
       ],
       "status": "PLANNED",
       "evidence": [],
       "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
+      "reviewer_note": "OBS-001 through OBS-017 moved to the passing M04 suite; OBS-018 remains planned for M09/G09."
     },
     {
       "id": "V1-TEST-ACT",
@@ -5260,7 +5394,6 @@
       "summary": "Planned requirement verification suite for TEST requirements.",
       "runner": null,
       "requirement_ids": [
-        "TEST-002",
         "TEST-003",
         "TEST-004",
         "TEST-006",
@@ -5407,6 +5540,39 @@
       ],
       "mandatory": true,
       "reviewer_note": "Two complete current-Ubuntu campaigns are byte-identical; 98 native CTest entries and the focused M03 repository suite pass."
+    },
+    {
+      "id": "V1-TEST-M04-OBSERVATION",
+      "summary": "Verify the frozen M04 structured/spatial encoder, source semantics, preprocessing equivalence, actual-engine goldens, compatibility rejection, and non-perturbation.",
+      "runner": "scripts/v1/run_m04_observation.py",
+      "requirement_ids": [
+        "OBS-001",
+        "OBS-002",
+        "OBS-003",
+        "OBS-004",
+        "OBS-005",
+        "OBS-006",
+        "OBS-007",
+        "OBS-008",
+        "OBS-009",
+        "OBS-010",
+        "OBS-011",
+        "OBS-012",
+        "OBS-013",
+        "OBS-014",
+        "OBS-015",
+        "OBS-016",
+        "OBS-017",
+        "SCOPE-018",
+        "TEST-002"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/v1/m04-observation-goldens.json",
+        "docs/project/G04_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "Two complete current-Ubuntu campaigns are byte-identical; all 32 channels have positive fixtures and every scalar/tile transform is independently compared to the engine source projection."
     }
   ],
   "aggregate_dependencies": [

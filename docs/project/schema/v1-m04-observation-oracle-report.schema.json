@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m04-observation-oracle-report.schema.json",
+  "title": "OpenTTD-RL V1 M04 observation oracle report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "channel_positive_sums",
+    "compatibility_sha256",
+    "contract_sha256",
+    "executable_sha256",
+    "goldens_sha256",
+    "nonperturbation",
+    "schema_version",
+    "status",
+    "templates",
+    "total_semantic_comparisons"
+  ],
+  "properties": {
+    "channel_positive_sums": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "items": {"type": "number", "exclusiveMinimum": 0}
+    },
+    "compatibility_sha256": {"const": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb"},
+    "contract_sha256": {"const": "6139634cf1ae8a1b0d639596e400a12b6b6f56fe3e9a3a1ee5d92d731013877e"},
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "goldens_sha256": {"$ref": "#/$defs/sha256"},
+    "nonperturbation": {"const": "PASS"},
+    "schema_version": {"const": "openttd-rl-v1-m04-observation-oracle-report-1"},
+    "status": {"const": "PASS"},
+    "templates": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/template"}
+    },
+    "total_semantic_comparisons": {"const": 264192}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel_sums",
+        "consumer_tensor_sha256",
+        "control_stdout",
+        "nonperturbation",
+        "observed_stdout",
+        "post_setup_observation_sha256",
+        "post_setup_payload_bytes",
+        "post_setup_tensor_sha256",
+        "reset_observation_sha256",
+        "semantic_comparisons",
+        "spatial_comparisons",
+        "structured_comparisons",
+        "template_id",
+        "wrong_identity_rejected"
+      ],
+      "properties": {
+        "channel_sums": {
+          "type": "array",
+          "minItems": 32,
+          "maxItems": 32,
+          "items": {"type": "number", "minimum": 0}
+        },
+        "consumer_tensor_sha256": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["trainer", "evaluator", "onnx-runtime", "in-game-controller", "m04-bridge-oracle"],
+          "properties": {
+            "trainer": {"$ref": "#/$defs/sha256"},
+            "evaluator": {"$ref": "#/$defs/sha256"},
+            "onnx-runtime": {"$ref": "#/$defs/sha256"},
+            "in-game-controller": {"$ref": "#/$defs/sha256"},
+            "m04-bridge-oracle": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "control_stdout": {"type": "string", "pattern": "^M03_BRIDGE=CLOSED"},
+        "nonperturbation": {"const": "PASS"},
+        "observed_stdout": {"type": "string", "pattern": "^M03_BRIDGE=CLOSED"},
+        "post_setup_observation_sha256": {"$ref": "#/$defs/sha256"},
+        "post_setup_payload_bytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
+        "post_setup_tensor_sha256": {"$ref": "#/$defs/sha256"},
+        "reset_observation_sha256": {"$ref": "#/$defs/sha256"},
+        "semantic_comparisons": {"const": 33024},
+        "spatial_comparisons": {"const": 32768},
+        "structured_comparisons": {"const": 256},
+        "template_id": {"type": "string", "pattern": "^m02-template-0[1-8]$"},
+        "wrong_identity_rejected": {"const": true}
+      }
+    }
+  }
+}

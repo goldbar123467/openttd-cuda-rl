@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m04-observation-contract.schema.json",
+  "title": "OpenTTD-RL V1 M04 observation contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "semantic_version",
+    "status",
+    "contract_id",
+    "engine",
+    "boundary",
+    "tensors",
+    "slots",
+    "candidate_registry",
+    "normalization",
+    "shared_preprocessing",
+    "serialization",
+    "identity"
+  ],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v1-m04-observation-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v1-m04-observation-contract-1"},
+    "semantic_version": {"const": "1.0.0"},
+    "status": {"const": "FROZEN"},
+    "contract_id": {"const": "m04-policy-observation-v1"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["m03_bridge_compatibility_sha256", "m03_composed_source_identity_sha256", "openttd_version", "source_commit"],
+      "properties": {
+        "m03_bridge_compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "m03_composed_source_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "openttd_version": {"const": "15.3"},
+        "source_commit": {"$ref": "#/$defs/sha1"}
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "message_type", "valid_lifecycles", "engine_boundary", "may_advance_ticks", "may_consume_rng", "may_execute_commands", "may_invoke_pathfinder", "update_rule"],
+      "properties": {
+        "operation": {"const": "OBSERVE"},
+        "message_type": {"const": 8},
+        "valid_lifecycles": {"const": ["AT_BOUNDARY", "PAUSED"]},
+        "engine_boundary": {"const": "M03-complete-StateGameLoop-boundary"},
+        "may_advance_ticks": {"const": false},
+        "may_consume_rng": {"const": false},
+        "may_execute_commands": {"const": false},
+        "may_invoke_pathfinder": {"const": false},
+        "update_rule": {"const": "recompute-on-each-OBSERVE-from-one-committed-boundary"}
+      }
+    },
+    "tensors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["structured", "spatial"],
+      "properties": {
+        "structured": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dtype", "shape", "logical_order", "output_bounds", "fields"],
+          "properties": {
+            "dtype": {"const": "float32"},
+            "shape": {"const": [256]},
+            "logical_order": {"const": "feature"},
+            "output_bounds": {"const": [-1.0, 1.0]},
+            "fields": {"type": "array", "minItems": 256, "maxItems": 256, "items": {"$ref": "#/$defs/field"}}
+          }
+        },
+        "spatial": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dtype", "shape", "logical_order", "origin", "x_axis", "y_axis", "tile_mapping", "output_bounds", "channels"],
+          "properties": {
+            "dtype": {"const": "float32"},
+            "shape": {"const": [32, 32, 32]},
+            "logical_order": {"const": "channel-y-x"},
+            "origin": {"const": "TileXY(0,0)-north-corner-map-array-origin"},
+            "x_axis": {"const": "increasing-TileX-southeast-on-default-view"},
+            "y_axis": {"const": "increasing-TileY-southwest-on-default-view"},
+            "tile_mapping": {"const": "flat_index=channel*1024+TileY(tile)*32+TileX(tile)"},
+            "output_bounds": {"const": [0.0, 1.0]},
+            "channels": {"type": "array", "minItems": 32, "maxItems": 32, "items": {"$ref": "#/$defs/channel"}}
+          }
+        }
+      }
+    },
+    "slots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["town", "vehicle", "station", "route"],
+      "properties": {
+        "town": {"$ref": "#/$defs/slotPolicy"},
+        "vehicle": {"$ref": "#/$defs/slotPolicy"},
+        "station": {"$ref": "#/$defs/slotPolicy"},
+        "route": {"$ref": "#/$defs/slotPolicy"}
+      }
+    },
+    "candidate_registry": {"type": "array", "minItems": 20, "items": {"$ref": "#/$defs/candidate"}},
+    "normalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "training_fitted_statistics", "evaluation_updates", "playback_updates", "negative_values", "zero_variance", "overflow"],
+      "properties": {
+        "policy": {"const": "fixed-reviewed-engine-or-physical-scales-only"},
+        "training_fitted_statistics": {"const": []},
+        "evaluation_updates": {"const": false},
+        "playback_updates": {"const": false},
+        "negative_values": {"const": "signed-clip-then-scale"},
+        "zero_variance": {"const": "no-fitted-statistics-therefore-not-applicable"},
+        "overflow": {"const": "clip-numeric-value-and-set-declared-overflow-feature-for-slotted-entities"}
+      }
+    },
+    "shared_preprocessing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authoritative_header", "authoritative_source", "entrypoint", "native_object", "consumers", "duplicate_transform_implementations_allowed", "compatibility_rejection"],
+      "properties": {
+        "authoritative_header": {"const": "src/rl_observation.h"},
+        "authoritative_source": {"const": "src/rl_observation.cpp"},
+        "entrypoint": {"const": "EncodeRlObservation(uint64_t transition_ordinal,uint64_t tick_zero)"},
+        "native_object": {"const": "RlObservation"},
+        "consumers": {"const": ["trainer", "evaluator", "onnx-runtime", "in-game-controller", "m04-bridge-oracle"]},
+        "duplicate_transform_implementations_allowed": {"const": false},
+        "compatibility_rejection": {"const": "reject-before-tensor-use"}
+      }
+    },
+    "serialization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_tensor_bytes", "json_transport", "tensor_digest", "source_projection_policy"],
+      "properties": {
+        "canonical_tensor_bytes": {"const": "IEEE-754-binary32-little-endian-structured-then-spatial"},
+        "json_transport": {"const": "canonical-compact-JSON-numbers-round-trip-to-binary32"},
+        "tensor_digest": {"const": "sha256-canonical-tensor-bytes"},
+        "source_projection_policy": {"const": "oracle-only-never-policy-input"}
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compatibility_algorithm", "compatibility_sha256", "schema_path", "schema_sha256"],
+      "properties": {
+        "compatibility_algorithm": {"const": "sha256-canonical-json-v1"},
+        "compatibility_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_path": {"const": "docs/project/schema/v1-m04-observation-contract.schema.json"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sha1": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "name", "group", "semantic_source", "raw_type", "unit", "transform", "clip", "output_bounds", "missing", "update_boundary"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0, "maximum": 255},
+        "name": {"type": "string", "minLength": 1},
+        "group": {"enum": ["global", "town", "vehicle", "station", "route"]},
+        "semantic_source": {"type": "string", "minLength": 1},
+        "raw_type": {"type": "string", "minLength": 1},
+        "unit": {"type": "string", "minLength": 1},
+        "transform": {"type": "string", "minLength": 1},
+        "clip": {"type": ["array", "null"], "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+        "output_bounds": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+        "missing": {"type": "string", "minLength": 1},
+        "update_boundary": {"const": "M03-committed-boundary"}
+      }
+    },
+    "channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "name", "semantic_source", "raw_type", "unit", "transform", "clip", "output_bounds", "missing", "update_boundary", "positive_fixture"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0, "maximum": 31},
+        "name": {"type": "string", "minLength": 1},
+        "semantic_source": {"type": "string", "minLength": 1},
+        "raw_type": {"type": "string", "minLength": 1},
+        "unit": {"type": "string", "minLength": 1},
+        "transform": {"type": "string", "minLength": 1},
+        "clip": {"type": ["array", "null"], "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+        "output_bounds": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+        "missing": {"type": "string", "minLength": 1},
+        "update_boundary": {"const": "M03-committed-boundary"},
+        "positive_fixture": {"type": "string", "minLength": 1}
+      }
+    },
+    "slotPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximum", "slot_key", "sort_key", "tie_breaker", "presence", "overflow", "deletion", "id_reuse"],
+      "properties": {
+        "maximum": {"type": "integer", "minimum": 1, "maximum": 16},
+        "slot_key": {"type": "string", "minLength": 1},
+        "sort_key": {"type": "string", "minLength": 1},
+        "tie_breaker": {"type": "string", "minLength": 1},
+        "presence": {"type": "string", "minLength": 1},
+        "overflow": {"type": "string", "minLength": 1},
+        "deletion": {"type": "string", "minLength": 1},
+        "id_reuse": {"type": "string", "minLength": 1}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "candidate", "disposition", "rationale", "requirements"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^CAND-[0-9]{3}$"},
+        "candidate": {"type": "string", "minLength": 1},
+        "disposition": {"enum": ["INCLUDED", "EXCLUDED", "DEFERRED"]},
+        "rationale": {"type": "string", "minLength": 1},
+        "requirements": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^(OBS|SCOPE|TEST)-[0-9]{3}$"}}
+      }
+    }
+  }
+}

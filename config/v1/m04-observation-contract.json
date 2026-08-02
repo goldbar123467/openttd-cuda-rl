@@ -1,0 +1,5550 @@
+{
+  "$schema": "../../docs/project/schema/v1-m04-observation-contract.schema.json",
+  "boundary": {
+    "engine_boundary": "M03-complete-StateGameLoop-boundary",
+    "may_advance_ticks": false,
+    "may_consume_rng": false,
+    "may_execute_commands": false,
+    "may_invoke_pathfinder": false,
+    "message_type": 8,
+    "operation": "OBSERVE",
+    "update_rule": "recompute-on-each-OBSERVE-from-one-committed-boundary",
+    "valid_lifecycles": [
+      "AT_BOUNDARY",
+      "PAUSED"
+    ]
+  },
+  "candidate_registry": [
+    {
+      "candidate": "company financials",
+      "disposition": "INCLUDED",
+      "id": "CAND-001",
+      "rationale": "Balance, loan, current-quarter income/expenses, and engine-calculated company value are five independent fixed-scale fields.",
+      "requirements": [
+        "OBS-002"
+      ]
+    },
+    {
+      "candidate": "bus/depot/station/route counts",
+      "disposition": "INCLUDED",
+      "id": "CAND-002",
+      "rationale": "Counts use authoritative pools filtered to V1 company bus semantics and have explicit bounds/overflow.",
+      "requirements": [
+        "OBS-003"
+      ]
+    },
+    {
+      "candidate": "owned road and station infrastructure",
+      "disposition": "INCLUDED",
+      "id": "CAND-003",
+      "rationale": "Global summaries and separate per-tile ownership predicates preserve the distinction from any-road state.",
+      "requirements": [
+        "OBS-003",
+        "OBS-009",
+        "OBS-013"
+      ]
+    },
+    {
+      "candidate": "vehicle slots",
+      "disposition": "INCLUDED",
+      "id": "CAND-004",
+      "rationale": "Direct VehicleID slots include presence, location, age, capacity/load, profit, running state, and manual-order count.",
+      "requirements": [
+        "OBS-004"
+      ]
+    },
+    {
+      "candidate": "town population/passenger production/rating/served",
+      "disposition": "INCLUDED",
+      "id": "CAND-005",
+      "rationale": "Direct Town fields include typed rating presence and causal last-month supplied history.",
+      "requirements": [
+        "OBS-005"
+      ]
+    },
+    {
+      "candidate": "calendar and episode budgets",
+      "disposition": "INCLUDED",
+      "id": "CAND-006",
+      "rationale": "Calendar year/day phase and bridge-owned action/tick budgets are known at the committed boundary.",
+      "requirements": [
+        "OBS-006"
+      ]
+    },
+    {
+      "candidate": "recent action outcome",
+      "disposition": "DEFERRED",
+      "id": "CAND-007",
+      "rationale": "The M03 fixture action is not the M05 policy registry; causal action-history encoding waits for the frozen action contract.",
+      "requirements": [
+        "OBS-007"
+      ]
+    },
+    {
+      "candidate": "recent reward components",
+      "disposition": "DEFERRED",
+      "id": "CAND-008",
+      "rationale": "Reward components do not exist before M06 and cannot enter policy input without a later causal-history compatibility revision.",
+      "requirements": [
+        "OBS-007"
+      ]
+    },
+    {
+      "candidate": "terrain height and clear class",
+      "disposition": "INCLUDED",
+      "id": "CAND-009",
+      "rationale": "Height and clear-ground class come directly from TileHeight and TileType.",
+      "requirements": [
+        "OBS-008"
+      ]
+    },
+    {
+      "candidate": "water",
+      "disposition": "EXCLUDED",
+      "id": "CAND-010",
+      "rationale": "The frozen M02 contract forbids interior water and V1 bus actions cannot target water; an untested all-zero policy plane is rejected.",
+      "requirements": [
+        "OBS-008"
+      ]
+    },
+    {
+      "candidate": "roads and road ownership",
+      "disposition": "INCLUDED",
+      "id": "CAND-011",
+      "rationale": "Any-road, company-owned-road, and four engine RoadBits planes remain separate.",
+      "requirements": [
+        "OBS-009"
+      ]
+    },
+    {
+      "candidate": "buildings",
+      "disposition": "INCLUDED",
+      "id": "CAND-012",
+      "rationale": "The building predicate is exactly MP_HOUSE.",
+      "requirements": [
+        "OBS-010"
+      ]
+    },
+    {
+      "candidate": "town identity/influence",
+      "disposition": "INCLUDED",
+      "id": "CAND-013",
+      "rationale": "Two categorical attribution planes use stored house/road town IDs and Station::town; no nearest-town search is invoked.",
+      "requirements": [
+        "OBS-010"
+      ]
+    },
+    {
+      "candidate": "population density",
+      "disposition": "INCLUDED",
+      "id": "CAND-014",
+      "rationale": "Completed-house HouseSpec::population is normalized per tile.",
+      "requirements": [
+        "OBS-010"
+      ]
+    },
+    {
+      "candidate": "passenger production spatial",
+      "disposition": "INCLUDED",
+      "id": "CAND-015",
+      "rationale": "The frozen no-NewGRF engine AddProducedCargo classification exposes causal generation potential without sampling production RNG.",
+      "requirements": [
+        "OBS-011"
+      ]
+    },
+    {
+      "candidate": "station catchment",
+      "disposition": "INCLUDED",
+      "id": "CAND-016",
+      "rationale": "The encoder reads Station::catchment_tiles through TileIsInCatchment and never recomputes it lazily.",
+      "requirements": [
+        "OBS-011"
+      ]
+    },
+    {
+      "candidate": "bus stops and orientation",
+      "disposition": "INCLUDED",
+      "id": "CAND-017",
+      "rationale": "Bus-stop presence and four GetBayRoadStopDir one-hot planes cover every diagonal orientation.",
+      "requirements": [
+        "OBS-012",
+        "OBS-015"
+      ]
+    },
+    {
+      "candidate": "road depots and orientation",
+      "disposition": "INCLUDED",
+      "id": "CAND-018",
+      "rationale": "Depot presence and four GetRoadDepotDirection one-hot planes cover every diagonal orientation.",
+      "requirements": [
+        "OBS-012",
+        "OBS-015"
+      ]
+    },
+    {
+      "candidate": "route occupancy/path",
+      "disposition": "EXCLUDED",
+      "id": "CAND-019",
+      "rationale": "OpenTTD stores orders but not a stable future road path; invoking pathfinding in observation would violate non-perturbation.",
+      "requirements": [
+        "OBS-012",
+        "OBS-016"
+      ]
+    },
+    {
+      "candidate": "route endpoints",
+      "disposition": "INCLUDED",
+      "id": "CAND-020",
+      "rationale": "Tiles for the first two valid manual station orders are the stable engine-backed spatial route representation.",
+      "requirements": [
+        "OBS-012"
+      ]
+    },
+    {
+      "candidate": "vehicle locations",
+      "disposition": "INCLUDED",
+      "id": "CAND-021",
+      "rationale": "Primary company road vehicles are counted by current Vehicle::tile with an eight-vehicle clip.",
+      "requirements": [
+        "OBS-012"
+      ]
+    },
+    {
+      "candidate": "buildable/blocked",
+      "disposition": "INCLUDED",
+      "id": "CAND-022",
+      "rationale": "Static flat-clear feasibility and its valid-tile complement are causal cheap geometry features; M05 must combine them with command legality and masks.",
+      "requirements": [
+        "OBS-013"
+      ]
+    },
+    {
+      "candidate": "generic tile ownership",
+      "disposition": "EXCLUDED",
+      "id": "CAND-023",
+      "rationale": "MP_HOUSE has no generic OpenTTD tile owner and a categorical owner ID would conflate town/company/special owners; targeted road/infrastructure ownership is included instead.",
+      "requirements": [
+        "OBS-013"
+      ]
+    },
+    {
+      "candidate": "selected origin/destination context",
+      "disposition": "DEFERRED",
+      "id": "CAND-024",
+      "rationale": "Action selection state does not exist before the M05 action representation is frozen.",
+      "requirements": [
+        "OBS-013"
+      ]
+    },
+    {
+      "candidate": "map connectivity/path distance summaries",
+      "disposition": "DEFERRED",
+      "id": "CAND-025",
+      "rationale": "Candidate/action-specific connectivity belongs to M05; running pathfinding during M04 extraction is forbidden.",
+      "requirements": [
+        "OBS-013",
+        "OBS-016"
+      ]
+    },
+    {
+      "candidate": "station profit",
+      "disposition": "EXCLUDED",
+      "id": "CAND-026",
+      "rationale": "OpenTTD does not expose a native station profit ledger; invented attribution would not be authoritative.",
+      "requirements": [
+        "OBS-004"
+      ]
+    },
+    {
+      "candidate": "route delivery count",
+      "disposition": "EXCLUDED",
+      "id": "CAND-027",
+      "rationale": "OpenTTD cargo delivery is company-level and has no native causal per-route ledger.",
+      "requirements": [
+        "OBS-004"
+      ]
+    }
+  ],
+  "contract_id": "m04-policy-observation-v1",
+  "engine": {
+    "m03_bridge_compatibility_sha256": "4701a21ae106f6fa120db1b89c3929d16c29afafb8e0198126173137ed2af2d6",
+    "m03_composed_source_identity_sha256": "d5d14398d545c951b04325d91d444e6194553e537d4b1f16615cba44351f2ef1",
+    "openttd_version": "15.3",
+    "source_commit": "14ec60f248547d4d062a1160f0fc26d742319888"
+  },
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb",
+    "schema_path": "docs/project/schema/v1-m04-observation-contract.schema.json",
+    "schema_sha256": "0cafc71df2c8af62f93e0e52df8493b07873ad0bc598fbd5207015dc5836ee92"
+  },
+  "normalization": {
+    "evaluation_updates": false,
+    "negative_values": "signed-clip-then-scale",
+    "overflow": "clip-numeric-value-and-set-declared-overflow-feature-for-slotted-entities",
+    "playback_updates": false,
+    "policy": "fixed-reviewed-engine-or-physical-scales-only",
+    "training_fitted_statistics": [],
+    "zero_variance": "no-fitted-statistics-therefore-not-applicable"
+  },
+  "schema_version": "openttd-rl-v1-m04-observation-contract-1",
+  "semantic_version": "1.0.0",
+  "serialization": {
+    "canonical_tensor_bytes": "IEEE-754-binary32-little-endian-structured-then-spatial",
+    "json_transport": "canonical-compact-JSON-numbers-round-trip-to-binary32",
+    "source_projection_policy": "oracle-only-never-policy-input",
+    "tensor_digest": "sha256-canonical-tensor-bytes"
+  },
+  "shared_preprocessing": {
+    "authoritative_header": "src/rl_observation.h",
+    "authoritative_source": "src/rl_observation.cpp",
+    "compatibility_rejection": "reject-before-tensor-use",
+    "consumers": [
+      "trainer",
+      "evaluator",
+      "onnx-runtime",
+      "in-game-controller",
+      "m04-bridge-oracle"
+    ],
+    "duplicate_transform_implementations_allowed": false,
+    "entrypoint": "EncodeRlObservation(uint64_t transition_ordinal,uint64_t tick_zero)",
+    "native_object": "RlObservation"
+  },
+  "slots": {
+    "route": {
+      "deletion": "slot presence becomes zero at the next committed boundary",
+      "id_reuse": "a reused engine ID deliberately replaces the prior entity in the same slot; no stale features survive",
+      "maximum": 8,
+      "overflow": "omit routes whose VehicleID>=8 and set structured overflow.routes or overflow.vehicles",
+      "presence": "local slot presence field; all other missing slot values are zero",
+      "slot_key": "same slot as owning primary company road VehicleID",
+      "sort_key": "none-direct-index-addressing",
+      "tie_breaker": "not-applicable-unique-engine-pool-ID"
+    },
+    "station": {
+      "deletion": "slot presence becomes zero at the next committed boundary",
+      "id_reuse": "a reused engine ID deliberately replaces the prior entity in the same slot; no stale features survive",
+      "maximum": 16,
+      "overflow": "omit IDs>=16 and set structured overflow.stations",
+      "presence": "local slot presence field; all other missing slot values are zero",
+      "slot_key": "company bus StationID if <16",
+      "sort_key": "none-direct-index-addressing",
+      "tie_breaker": "not-applicable-unique-engine-pool-ID"
+    },
+    "town": {
+      "deletion": "slot presence becomes zero at the next committed boundary",
+      "id_reuse": "a reused engine ID deliberately replaces the prior entity in the same slot; no stale features survive",
+      "maximum": 2,
+      "overflow": "omit IDs>=2 and set structured overflow.towns",
+      "presence": "local slot presence field; all other missing slot values are zero",
+      "slot_key": "TownID if <2",
+      "sort_key": "none-direct-index-addressing",
+      "tie_breaker": "not-applicable-unique-engine-pool-ID"
+    },
+    "vehicle": {
+      "deletion": "slot presence becomes zero at the next committed boundary",
+      "id_reuse": "a reused engine ID deliberately replaces the prior entity in the same slot; no stale features survive",
+      "maximum": 8,
+      "overflow": "omit IDs>=8 and set structured overflow.vehicles",
+      "presence": "local slot presence field; all other missing slot values are zero",
+      "slot_key": "primary company road VehicleID if <8",
+      "sort_key": "none-direct-index-addressing",
+      "tie_breaker": "not-applicable-unique-engine-pool-ID"
+    }
+  },
+  "status": "FROZEN",
+  "tensors": {
+    "spatial": {
+      "channels": [
+        {
+          "clip": null,
+          "index": 0,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "valid_tile",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "every M02 template interior",
+          "raw_type": "bool",
+          "semantic_source": "GetTileType(tile)!=MP_VOID",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 1,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "void_tile",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "every M02 template border",
+          "raw_type": "bool",
+          "semantic_source": "GetTileType(tile)==MP_VOID",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            256
+          ],
+          "index": 2,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "terrain_height",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "every M02 template interior height one",
+          "raw_type": "uint8",
+          "semantic_source": "TileHeight(tile)",
+          "transform": "clip(raw,0,256)/256",
+          "unit": "height levels",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 3,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "clear_ground",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "every M02 template clear interior",
+          "raw_type": "bool",
+          "semantic_source": "GetTileType(tile)==MP_CLEAR",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 4,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_any",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "every M02 template route",
+          "raw_type": "bool",
+          "semantic_source": "MayHaveRoad(tile)&&HasTileRoadType(tile,RTT_ROAD)",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 5,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "scripted setup company depot connector",
+          "raw_type": "bool",
+          "semantic_source": "road_any&&GetRoadOwner(tile,RTT_ROAD)==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 6,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_edge_ne",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "horizontal/turn pattern corpus",
+          "raw_type": "RoadBits",
+          "semantic_source": "GetAnyRoadBits(tile,RTT_ROAD)&ROAD_NE",
+          "transform": "exact bit predicate",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 7,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_edge_se",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "vertical/turn pattern corpus",
+          "raw_type": "RoadBits",
+          "semantic_source": "GetAnyRoadBits(tile,RTT_ROAD)&ROAD_SE",
+          "transform": "exact bit predicate",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 8,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_edge_sw",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "horizontal/turn pattern corpus",
+          "raw_type": "RoadBits",
+          "semantic_source": "GetAnyRoadBits(tile,RTT_ROAD)&ROAD_SW",
+          "transform": "exact bit predicate",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 9,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_edge_nw",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "vertical/turn pattern corpus",
+          "raw_type": "RoadBits",
+          "semantic_source": "GetAnyRoadBits(tile,RTT_ROAD)&ROAD_NW",
+          "transform": "exact bit predicate",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 10,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "building",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "every M02 town",
+          "raw_type": "bool",
+          "semantic_source": "GetTileType(tile)==MP_HOUSE",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 11,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "town_0_attribution",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "every M02 town zero",
+          "raw_type": "TownID predicate",
+          "semantic_source": "house GetTownIndex, normal-road GetTownIndex, or road-stop Station::town equals TownID 0",
+          "transform": "exact predicate",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 12,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "town_1_attribution",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "every M02 town one",
+          "raw_type": "TownID predicate",
+          "semantic_source": "house GetTownIndex, normal-road GetTownIndex, or road-stop Station::town equals TownID 1",
+          "transform": "exact predicate",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 13,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "town_center",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "all M02 town centers",
+          "raw_type": "bool",
+          "semantic_source": "tile==Town::xy for any town",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            256
+          ],
+          "index": 14,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "population_density",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "all passenger-generating M02 houses",
+          "raw_type": "uint8",
+          "semantic_source": "completed MP_HOUSE HouseSpec::population",
+          "transform": "clip(raw,0,256)/256",
+          "unit": "people/tile",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 15,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "passenger_generation_potential",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "all M02 passenger source houses",
+          "raw_type": "bool",
+          "semantic_source": "completed MP_HOUSE AddProducedCargo(tile)[passengers]!=0 with frozen no-NewGRF profile",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 16,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "bus_stop",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "scripted setup all templates",
+          "raw_type": "bool",
+          "semantic_source": "IsStationRoadStopTile&&IsBusStop&&IsBayRoadStopTile",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 17,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "bus_stop_facing_ne",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "west-approach stops in corpus",
+          "raw_type": "DiagDirection predicate",
+          "semantic_source": "bus_stop&&GetBayRoadStopDir(tile)==DIAGDIR_NE",
+          "transform": "exact one-hot",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 18,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "bus_stop_facing_se",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "south-approach stops in corpus",
+          "raw_type": "DiagDirection predicate",
+          "semantic_source": "bus_stop&&GetBayRoadStopDir(tile)==DIAGDIR_SE",
+          "transform": "exact one-hot",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 19,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "bus_stop_facing_sw",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "east-approach stops in corpus",
+          "raw_type": "DiagDirection predicate",
+          "semantic_source": "bus_stop&&GetBayRoadStopDir(tile)==DIAGDIR_SW",
+          "transform": "exact one-hot",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 20,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "bus_stop_facing_nw",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "north-approach stops in corpus",
+          "raw_type": "DiagDirection predicate",
+          "semantic_source": "bus_stop&&GetBayRoadStopDir(tile)==DIAGDIR_NW",
+          "transform": "exact one-hot",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 21,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_depot",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "scripted setup all templates",
+          "raw_type": "bool",
+          "semantic_source": "IsRoadDepotTile(tile)",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 22,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_depot_facing_ne",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "east entrance depot corpus fixture",
+          "raw_type": "DiagDirection predicate",
+          "semantic_source": "road_depot&&GetRoadDepotDirection(tile)==DIAGDIR_NE",
+          "transform": "exact one-hot",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 23,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_depot_facing_se",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "south entrance depot corpus fixture",
+          "raw_type": "DiagDirection predicate",
+          "semantic_source": "road_depot&&GetRoadDepotDirection(tile)==DIAGDIR_SE",
+          "transform": "exact one-hot",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 24,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_depot_facing_sw",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "west entrance depot corpus fixture",
+          "raw_type": "DiagDirection predicate",
+          "semantic_source": "road_depot&&GetRoadDepotDirection(tile)==DIAGDIR_SW",
+          "transform": "exact one-hot",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 25,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "road_depot_facing_nw",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "north entrance depot corpus fixture",
+          "raw_type": "DiagDirection predicate",
+          "semantic_source": "road_depot&&GetRoadDepotDirection(tile)==DIAGDIR_NW",
+          "transform": "exact one-hot",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 26,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "route_endpoint",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "scripted two-stop route all templates",
+          "raw_type": "bool",
+          "semantic_source": "station road-stop tile referenced by either of first two valid manual station orders of any in-scope bus",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            8
+          ],
+          "index": 27,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "vehicle_presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "scripted bus all templates",
+          "raw_type": "uint8",
+          "semantic_source": "count in-scope primary buses with Vehicle::tile equal tile",
+          "transform": "clip(raw,0,8)/8",
+          "unit": "vehicles/tile",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 28,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "static_road_buildable",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "clear flat tiles all templates",
+          "raw_type": "bool",
+          "semantic_source": "GetTileType(tile)==MP_CLEAR&&GetTileSlope(tile)==SLOPE_FLAT",
+          "transform": "exact static predicate",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 29,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "static_blocked",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "town roads/buildings all templates",
+          "raw_type": "bool",
+          "semantic_source": "GetTileType(tile)!=MP_VOID&&!static_road_buildable",
+          "transform": "exact static complement on valid tiles",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 30,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "company_owned_infrastructure",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "scripted setup all templates",
+          "raw_type": "bool",
+          "semantic_source": "company-owned road or company-owned bus-stop tile or company-owned road-depot tile",
+          "transform": "exact boolean union",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "index": 31,
+          "missing": "zero means predicate false/no magnitude",
+          "name": "station_catchment",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "positive_fixture": "scripted bus stations all templates",
+          "raw_type": "bool",
+          "semantic_source": "any company bus Station::TileIsInCatchment(tile) cached engine bitmap",
+          "transform": "exact boolean union",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        }
+      ],
+      "dtype": "float32",
+      "logical_order": "channel-y-x",
+      "origin": "TileXY(0,0)-north-corner-map-array-origin",
+      "output_bounds": [
+        0.0,
+        1.0
+      ],
+      "shape": [
+        32,
+        32,
+        32
+      ],
+      "tile_mapping": "flat_index=channel*1024+TileY(tile)*32+TileX(tile)",
+      "x_axis": "increasing-TileX-southeast-on-default-view",
+      "y_axis": "increasing-TileY-southwest-on-default-view"
+    },
+    "structured": {
+      "dtype": "float32",
+      "fields": [
+        {
+          "clip": [
+            -1048576,
+            1048576
+          ],
+          "group": "global",
+          "index": 0,
+          "missing": "not-missing",
+          "name": "company.balance",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Company::money",
+          "transform": "clip(raw,-1048576,1048576)/1048576",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            524288
+          ],
+          "group": "global",
+          "index": 1,
+          "missing": "not-missing",
+          "name": "company.loan",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Company::current_loan",
+          "transform": "clip(raw,0,524288)/524288",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -1048576,
+            1048576
+          ],
+          "group": "global",
+          "index": 2,
+          "missing": "not-missing",
+          "name": "company.current_quarter_income",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Company::cur_economy.income",
+          "transform": "clip(raw,-1048576,1048576)/1048576",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -1048576,
+            1048576
+          ],
+          "group": "global",
+          "index": 3,
+          "missing": "not-missing",
+          "name": "company.current_quarter_expenses",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Company::cur_economy.expenses",
+          "transform": "clip(raw,-1048576,1048576)/1048576",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -1048576,
+            1048576
+          ],
+          "group": "global",
+          "index": 4,
+          "missing": "not-missing",
+          "name": "company.value",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "CalculateCompanyValue(Company::Get(CompanyID::Begin()))",
+          "transform": "clip(raw,-1048576,1048576)/1048576",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "global",
+          "index": 5,
+          "missing": "not-missing",
+          "name": "company.delivered_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Company::cur_economy.delivered_cargo[CT_PASSENGERS]",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers/current economy period",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            8
+          ],
+          "group": "global",
+          "index": 6,
+          "missing": "not-missing",
+          "name": "counts.buses",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "count Vehicle::Iterate where VEH_ROAD, owner=company and IsPrimaryVehicle",
+          "transform": "clip(raw,0,8)/8",
+          "unit": "vehicles",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            8
+          ],
+          "group": "global",
+          "index": 7,
+          "missing": "not-missing",
+          "name": "counts.road_depots",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Depot::GetNumItems under frozen bus-only V1 scope",
+          "transform": "clip(raw,0,8)/8",
+          "unit": "depots",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "global",
+          "index": 8,
+          "missing": "not-missing",
+          "name": "counts.bus_stations",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "count Station::Iterate where owner=company and facilities has BusStop",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "stations",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            8
+          ],
+          "group": "global",
+          "index": 9,
+          "missing": "not-missing",
+          "name": "counts.routes",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "count in-scope buses with two distinct valid manual go-to-station endpoints",
+          "transform": "clip(raw,0,8)/8",
+          "unit": "routes",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1024
+          ],
+          "group": "global",
+          "index": 10,
+          "missing": "not-missing",
+          "name": "ownership.company_road_tiles",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "count map tiles where MayHaveRoad and GetRoadOwner(RTT_ROAD)=company",
+          "transform": "clip(raw,0,1024)/1024",
+          "unit": "tiles",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "global",
+          "index": 11,
+          "missing": "not-missing",
+          "name": "ownership.company_station_units",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Company::infrastructure.station",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "station infrastructure units",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -4,
+            4
+          ],
+          "group": "global",
+          "index": 12,
+          "missing": "not-missing",
+          "name": "time.calendar_year_offset",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TimerGameCalendar::year-1950",
+          "transform": "clip(raw,-4,4)/4",
+          "unit": "calendar years from 1950",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1024
+          ],
+          "group": "global",
+          "index": 13,
+          "missing": "not-missing",
+          "name": "time.calendar_elapsed_days",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint64",
+          "semantic_source": "(TimerGameTick::counter-tick_zero)/Ticks::DAY_TICKS",
+          "transform": "clip(raw,0,1024)/1024",
+          "unit": "calendar days from reset",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            74
+          ],
+          "group": "global",
+          "index": 14,
+          "missing": "not-missing",
+          "name": "time.calendar_day_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "DateFract:uint16",
+          "semantic_source": "TimerGameCalendar::date_fract",
+          "transform": "clip(raw,0,Ticks::DAY_TICKS)/Ticks::DAY_TICKS",
+          "unit": "ticks within calendar day",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            128
+          ],
+          "group": "global",
+          "index": 15,
+          "missing": "not-missing",
+          "name": "time.reference_step_phase",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint64",
+          "semantic_source": "(TimerGameTick::counter-tick_zero)%128",
+          "transform": "raw/128",
+          "unit": "ticks",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            512
+          ],
+          "group": "global",
+          "index": 16,
+          "missing": "not-missing",
+          "name": "episode.actions_used",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint64",
+          "semantic_source": "M03 BridgeWorker::transition_ordinal",
+          "transform": "clip(raw,0,512)/512",
+          "unit": "actions",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            512
+          ],
+          "group": "global",
+          "index": 17,
+          "missing": "not-missing",
+          "name": "episode.actions_remaining",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint64",
+          "semantic_source": "512-M03 BridgeWorker::transition_ordinal saturated at zero",
+          "transform": "clip(raw,0,512)/512",
+          "unit": "actions",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            65536
+          ],
+          "group": "global",
+          "index": 18,
+          "missing": "not-missing",
+          "name": "episode.ticks_used",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint64",
+          "semantic_source": "TimerGameTick::counter-tick_zero",
+          "transform": "clip(raw,0,65536)/65536",
+          "unit": "ticks",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            65536
+          ],
+          "group": "global",
+          "index": 19,
+          "missing": "not-missing",
+          "name": "episode.ticks_remaining",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint64",
+          "semantic_source": "65536-(TimerGameTick::counter-tick_zero) saturated at zero",
+          "transform": "clip(raw,0,65536)/65536",
+          "unit": "ticks",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2
+          ],
+          "group": "global",
+          "index": 20,
+          "missing": "not-missing",
+          "name": "counts.towns",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Town::GetNumItems",
+          "transform": "clip(raw,0,2)/2",
+          "unit": "towns",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "global",
+          "index": 21,
+          "missing": "not-missing",
+          "name": "company.identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "CompanyID:uint8",
+          "semantic_source": "Company::index",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "engine company ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "global",
+          "index": 22,
+          "missing": "not-missing",
+          "name": "ownership.any_company_infrastructure",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "company road tile count or Company::infrastructure.station or Depot::GetNumItems nonzero",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "global",
+          "index": 23,
+          "missing": "not-missing",
+          "name": "overflow.towns",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Town::GetNumItems>2",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "global",
+          "index": 24,
+          "missing": "not-missing",
+          "name": "overflow.vehicles",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "any in-scope Vehicle::index>=8",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "global",
+          "index": 25,
+          "missing": "not-missing",
+          "name": "overflow.stations",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "any in-scope Station::index>=16",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "global",
+          "index": 26,
+          "missing": "not-missing",
+          "name": "overflow.routes",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "in-scope route count>8",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1024
+          ],
+          "group": "global",
+          "index": 27,
+          "missing": "not-missing",
+          "name": "map.static_road_buildable_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "count tiles where MP_CLEAR and GetTileSlope(tile)==SLOPE_FLAT",
+          "transform": "clip(raw,0,1024)/1024",
+          "unit": "tiles",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "town",
+          "index": 28,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Town::GetIfValid(TownID{0})!=nullptr",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            65535
+          ],
+          "group": "town",
+          "index": 29,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TownID:uint16",
+          "semantic_source": "Town::GetIfValid(TownID{0})->index",
+          "transform": "(raw+1)/65536",
+          "unit": "engine town ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "town",
+          "index": 30,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Town::GetIfValid(TownID{0})->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "town",
+          "index": 31,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Town::GetIfValid(TownID{0})->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1024
+          ],
+          "group": "town",
+          "index": 32,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].population",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Town::GetIfValid(TownID{0})->cache.population",
+          "transform": "clip(raw,0,1024)/1024",
+          "unit": "people",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "town",
+          "index": 33,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].passenger_production_last_month",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Town::GetIfValid(TownID{0})->GetCargoSupplied(passengers)->history[LAST_MONTH].production",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers/month",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            255
+          ],
+          "group": "town",
+          "index": 34,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].passenger_transported_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint8",
+          "semantic_source": "Town::GetIfValid(TownID{0})->GetPercentTransported(passengers)",
+          "transform": "raw/256",
+          "unit": "fraction in 1/256",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "town",
+          "index": 35,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].rating_present",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Town::GetIfValid(TownID{0})->have_ratings.Test(company)",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -1000,
+            1000
+          ],
+          "group": "town",
+          "index": 36,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].rating",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "int16",
+          "semantic_source": "Town::GetIfValid(TownID{0})->ratings[company] when rating_present",
+          "transform": "clip(raw,-1000,1000)/1000",
+          "unit": "OpenTTD town rating",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "town",
+          "index": 37,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[0].served",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Town::GetIfValid(TownID{0})->GetPercentTransported(passengers)!=0",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "town",
+          "index": 38,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Town::GetIfValid(TownID{1})!=nullptr",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            65535
+          ],
+          "group": "town",
+          "index": 39,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TownID:uint16",
+          "semantic_source": "Town::GetIfValid(TownID{1})->index",
+          "transform": "(raw+1)/65536",
+          "unit": "engine town ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "town",
+          "index": 40,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Town::GetIfValid(TownID{1})->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "town",
+          "index": 41,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Town::GetIfValid(TownID{1})->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1024
+          ],
+          "group": "town",
+          "index": 42,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].population",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Town::GetIfValid(TownID{1})->cache.population",
+          "transform": "clip(raw,0,1024)/1024",
+          "unit": "people",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "town",
+          "index": 43,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].passenger_production_last_month",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Town::GetIfValid(TownID{1})->GetCargoSupplied(passengers)->history[LAST_MONTH].production",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers/month",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            255
+          ],
+          "group": "town",
+          "index": 44,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].passenger_transported_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint8",
+          "semantic_source": "Town::GetIfValid(TownID{1})->GetPercentTransported(passengers)",
+          "transform": "raw/256",
+          "unit": "fraction in 1/256",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "town",
+          "index": 45,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].rating_present",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Town::GetIfValid(TownID{1})->have_ratings.Test(company)",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -1000,
+            1000
+          ],
+          "group": "town",
+          "index": 46,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].rating",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "int16",
+          "semantic_source": "Town::GetIfValid(TownID{1})->ratings[company] when rating_present",
+          "transform": "clip(raw,-1000,1000)/1000",
+          "unit": "OpenTTD town rating",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "town",
+          "index": 47,
+          "missing": "zero; town-slot presence at local index 0 is the typed mask",
+          "name": "town[1].served",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Town::GetIfValid(TownID{1})->GetPercentTransported(passengers)!=0",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 48,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1048575
+          ],
+          "group": "vehicle",
+          "index": 49,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleID:uint32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->index",
+          "transform": "(raw+1)/1048576",
+          "unit": "engine vehicle ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 50,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileX(Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 51,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileY(Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2048
+          ],
+          "group": "vehicle",
+          "index": 52,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].age",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TimerGameCalendar::Date:int32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->age",
+          "transform": "clip(raw,0,2048)/2048",
+          "unit": "calendar days",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            64
+          ],
+          "group": "vehicle",
+          "index": 53,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].capacity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(raw,0,64)/64",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "vehicle",
+          "index": 54,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].load_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->cargo.StoredCount()/Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "vehicle",
+          "index": 55,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 56,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].running",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "!Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->vehstatus[Stopped]&&!Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->vehstatus[Crashed]",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "vehicle",
+          "index": 57,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[0].manual_order_count",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleOrderID:uint8",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{0}) filtered to primary company road vehicle->GetNumManualOrders()",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "orders",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 58,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1048575
+          ],
+          "group": "vehicle",
+          "index": 59,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleID:uint32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->index",
+          "transform": "(raw+1)/1048576",
+          "unit": "engine vehicle ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 60,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileX(Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 61,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileY(Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2048
+          ],
+          "group": "vehicle",
+          "index": 62,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].age",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TimerGameCalendar::Date:int32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->age",
+          "transform": "clip(raw,0,2048)/2048",
+          "unit": "calendar days",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            64
+          ],
+          "group": "vehicle",
+          "index": 63,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].capacity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(raw,0,64)/64",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "vehicle",
+          "index": 64,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].load_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->cargo.StoredCount()/Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "vehicle",
+          "index": 65,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 66,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].running",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "!Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->vehstatus[Stopped]&&!Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->vehstatus[Crashed]",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "vehicle",
+          "index": 67,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[1].manual_order_count",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleOrderID:uint8",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{1}) filtered to primary company road vehicle->GetNumManualOrders()",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "orders",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 68,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1048575
+          ],
+          "group": "vehicle",
+          "index": 69,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleID:uint32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->index",
+          "transform": "(raw+1)/1048576",
+          "unit": "engine vehicle ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 70,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileX(Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 71,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileY(Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2048
+          ],
+          "group": "vehicle",
+          "index": 72,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].age",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TimerGameCalendar::Date:int32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->age",
+          "transform": "clip(raw,0,2048)/2048",
+          "unit": "calendar days",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            64
+          ],
+          "group": "vehicle",
+          "index": 73,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].capacity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(raw,0,64)/64",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "vehicle",
+          "index": 74,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].load_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->cargo.StoredCount()/Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "vehicle",
+          "index": 75,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 76,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].running",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "!Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->vehstatus[Stopped]&&!Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->vehstatus[Crashed]",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "vehicle",
+          "index": 77,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[2].manual_order_count",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleOrderID:uint8",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{2}) filtered to primary company road vehicle->GetNumManualOrders()",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "orders",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 78,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1048575
+          ],
+          "group": "vehicle",
+          "index": 79,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleID:uint32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->index",
+          "transform": "(raw+1)/1048576",
+          "unit": "engine vehicle ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 80,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileX(Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 81,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileY(Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2048
+          ],
+          "group": "vehicle",
+          "index": 82,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].age",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TimerGameCalendar::Date:int32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->age",
+          "transform": "clip(raw,0,2048)/2048",
+          "unit": "calendar days",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            64
+          ],
+          "group": "vehicle",
+          "index": 83,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].capacity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(raw,0,64)/64",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "vehicle",
+          "index": 84,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].load_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->cargo.StoredCount()/Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "vehicle",
+          "index": 85,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 86,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].running",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "!Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->vehstatus[Stopped]&&!Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->vehstatus[Crashed]",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "vehicle",
+          "index": 87,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[3].manual_order_count",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleOrderID:uint8",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{3}) filtered to primary company road vehicle->GetNumManualOrders()",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "orders",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 88,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1048575
+          ],
+          "group": "vehicle",
+          "index": 89,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleID:uint32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->index",
+          "transform": "(raw+1)/1048576",
+          "unit": "engine vehicle ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 90,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileX(Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 91,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileY(Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2048
+          ],
+          "group": "vehicle",
+          "index": 92,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].age",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TimerGameCalendar::Date:int32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->age",
+          "transform": "clip(raw,0,2048)/2048",
+          "unit": "calendar days",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            64
+          ],
+          "group": "vehicle",
+          "index": 93,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].capacity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(raw,0,64)/64",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "vehicle",
+          "index": 94,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].load_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->cargo.StoredCount()/Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "vehicle",
+          "index": 95,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 96,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].running",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "!Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->vehstatus[Stopped]&&!Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->vehstatus[Crashed]",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "vehicle",
+          "index": 97,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[4].manual_order_count",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleOrderID:uint8",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{4}) filtered to primary company road vehicle->GetNumManualOrders()",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "orders",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 98,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1048575
+          ],
+          "group": "vehicle",
+          "index": 99,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleID:uint32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->index",
+          "transform": "(raw+1)/1048576",
+          "unit": "engine vehicle ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 100,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileX(Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 101,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileY(Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2048
+          ],
+          "group": "vehicle",
+          "index": 102,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].age",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TimerGameCalendar::Date:int32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->age",
+          "transform": "clip(raw,0,2048)/2048",
+          "unit": "calendar days",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            64
+          ],
+          "group": "vehicle",
+          "index": 103,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].capacity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(raw,0,64)/64",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "vehicle",
+          "index": 104,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].load_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->cargo.StoredCount()/Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "vehicle",
+          "index": 105,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 106,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].running",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "!Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->vehstatus[Stopped]&&!Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->vehstatus[Crashed]",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "vehicle",
+          "index": 107,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[5].manual_order_count",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleOrderID:uint8",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{5}) filtered to primary company road vehicle->GetNumManualOrders()",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "orders",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 108,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1048575
+          ],
+          "group": "vehicle",
+          "index": 109,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleID:uint32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->index",
+          "transform": "(raw+1)/1048576",
+          "unit": "engine vehicle ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 110,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileX(Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 111,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileY(Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2048
+          ],
+          "group": "vehicle",
+          "index": 112,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].age",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TimerGameCalendar::Date:int32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->age",
+          "transform": "clip(raw,0,2048)/2048",
+          "unit": "calendar days",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            64
+          ],
+          "group": "vehicle",
+          "index": 113,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].capacity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(raw,0,64)/64",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "vehicle",
+          "index": 114,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].load_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->cargo.StoredCount()/Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "vehicle",
+          "index": 115,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 116,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].running",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "!Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->vehstatus[Stopped]&&!Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->vehstatus[Crashed]",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "vehicle",
+          "index": 117,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[6].manual_order_count",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleOrderID:uint8",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{6}) filtered to primary company road vehicle->GetNumManualOrders()",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "orders",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 118,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1048575
+          ],
+          "group": "vehicle",
+          "index": 119,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].identity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleID:uint32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->index",
+          "transform": "(raw+1)/1048576",
+          "unit": "engine vehicle ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 120,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileX(Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "vehicle",
+          "index": 121,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "int32",
+          "semantic_source": "TileY(Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->tile)",
+          "transform": "raw/32 when tile valid",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            2048
+          ],
+          "group": "vehicle",
+          "index": 122,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].age",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "TimerGameCalendar::Date:int32",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->age",
+          "transform": "clip(raw,0,2048)/2048",
+          "unit": "calendar days",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            64
+          ],
+          "group": "vehicle",
+          "index": 123,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].capacity",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(raw,0,64)/64",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "vehicle",
+          "index": 124,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].load_fraction",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->cargo.StoredCount()/Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "vehicle",
+          "index": 125,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "vehicle",
+          "index": 126,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].running",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "!Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->vehstatus[Stopped]&&!Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->vehstatus[Crashed]",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            16
+          ],
+          "group": "vehicle",
+          "index": 127,
+          "missing": "zero; vehicle-slot presence at local index 0 is the typed mask",
+          "name": "vehicle[7].manual_order_count",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "VehicleOrderID:uint8",
+          "semantic_source": "Vehicle::GetIfValid(VehicleID{7}) filtered to primary company road vehicle->GetNumManualOrders()",
+          "transform": "clip(raw,0,16)/16",
+          "unit": "orders",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 128,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[0].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{0}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 129,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[0].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{0}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 130,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[0].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{0}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 131,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[0].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{0}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 132,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[0].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{0}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 133,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[1].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{1}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 134,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[1].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{1}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 135,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[1].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{1}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 136,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[1].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{1}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 137,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[1].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{1}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 138,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[2].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{2}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 139,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[2].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{2}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 140,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[2].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{2}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 141,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[2].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{2}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 142,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[2].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{2}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 143,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[3].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{3}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 144,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[3].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{3}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 145,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[3].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{3}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 146,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[3].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{3}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 147,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[3].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{3}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 148,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[4].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{4}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 149,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[4].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{4}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 150,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[4].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{4}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 151,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[4].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{4}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 152,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[4].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{4}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 153,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[5].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{5}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 154,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[5].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{5}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 155,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[5].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{5}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 156,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[5].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{5}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 157,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[5].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{5}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 158,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[6].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{6}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 159,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[6].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{6}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 160,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[6].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{6}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 161,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[6].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{6}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 162,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[6].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{6}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 163,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[7].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{7}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 164,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[7].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{7}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 165,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[7].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{7}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 166,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[7].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{7}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 167,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[7].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{7}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 168,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[8].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{8}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 169,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[8].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{8}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 170,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[8].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{8}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 171,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[8].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{8}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 172,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[8].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{8}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 173,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[9].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{9}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 174,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[9].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{9}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 175,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[9].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{9}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 176,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[9].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{9}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 177,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[9].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{9}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 178,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[10].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{10}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 179,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[10].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{10}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 180,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[10].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{10}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 181,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[10].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{10}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 182,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[10].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{10}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 183,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[11].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{11}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 184,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[11].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{11}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 185,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[11].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{11}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 186,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[11].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{11}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 187,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[11].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{11}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 188,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[12].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{12}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 189,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[12].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{12}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 190,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[12].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{12}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 191,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[12].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{12}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 192,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[12].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{12}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 193,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[13].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{13}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 194,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[13].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{13}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 195,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[13].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{13}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 196,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[13].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{13}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 197,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[13].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{13}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 198,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[14].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{14}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 199,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[14].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{14}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 200,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[14].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{14}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 201,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[14].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{14}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 202,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[14].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{14}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 203,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[15].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{15}) filtered to company BusStop facility exists",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 204,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[15].x",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileX(Station::GetIfValid(StationID{15}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile x",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            31
+          ],
+          "group": "station",
+          "index": 205,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[15].y",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "TileY(Station::GetIfValid(StationID{15}) filtered to company BusStop facility->xy)",
+          "transform": "raw/32",
+          "unit": "tile y",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "station",
+          "index": 206,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[15].owned_by_company",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "Station::GetIfValid(StationID{15}) filtered to company BusStop facility->owner==CompanyID::Begin()",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            4096
+          ],
+          "group": "station",
+          "index": 207,
+          "missing": "zero; station-slot presence at local index 0 is the typed mask; identity is the slot index",
+          "name": "station[15].waiting_passengers",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint32",
+          "semantic_source": "Station::GetIfValid(StationID{15}) filtered to company BusStop facility->goods[passengers].cargo.TotalCount() when GoodsEntry::HasData",
+          "transform": "clip(raw,0,4096)/4096",
+          "unit": "passengers",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 208,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[0].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "route derived from manual go-to-station orders of vehicle slot 0 has two valid distinct endpoints",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 209,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[0].endpoint_0_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "first valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 0",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 210,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[0].endpoint_1_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "second distinct valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 0",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 211,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[0].active",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "vehicle slot 0 is neither stopped nor crashed",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "route",
+          "index": 212,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[0].utilization",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "vehicle slot 0 cargo.StoredCount()/cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "route",
+          "index": 213,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[0].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "vehicle slot 0 GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 214,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[1].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "route derived from manual go-to-station orders of vehicle slot 1 has two valid distinct endpoints",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 215,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[1].endpoint_0_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "first valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 1",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 216,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[1].endpoint_1_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "second distinct valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 1",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 217,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[1].active",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "vehicle slot 1 is neither stopped nor crashed",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "route",
+          "index": 218,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[1].utilization",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "vehicle slot 1 cargo.StoredCount()/cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "route",
+          "index": 219,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[1].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "vehicle slot 1 GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 220,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[2].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "route derived from manual go-to-station orders of vehicle slot 2 has two valid distinct endpoints",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 221,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[2].endpoint_0_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "first valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 2",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 222,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[2].endpoint_1_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "second distinct valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 2",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 223,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[2].active",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "vehicle slot 2 is neither stopped nor crashed",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "route",
+          "index": 224,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[2].utilization",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "vehicle slot 2 cargo.StoredCount()/cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "route",
+          "index": 225,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[2].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "vehicle slot 2 GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 226,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[3].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "route derived from manual go-to-station orders of vehicle slot 3 has two valid distinct endpoints",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 227,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[3].endpoint_0_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "first valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 3",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 228,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[3].endpoint_1_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "second distinct valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 3",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 229,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[3].active",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "vehicle slot 3 is neither stopped nor crashed",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "route",
+          "index": 230,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[3].utilization",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "vehicle slot 3 cargo.StoredCount()/cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "route",
+          "index": 231,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[3].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "vehicle slot 3 GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 232,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[4].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "route derived from manual go-to-station orders of vehicle slot 4 has two valid distinct endpoints",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 233,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[4].endpoint_0_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "first valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 4",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 234,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[4].endpoint_1_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "second distinct valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 4",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 235,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[4].active",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "vehicle slot 4 is neither stopped nor crashed",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "route",
+          "index": 236,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[4].utilization",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "vehicle slot 4 cargo.StoredCount()/cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "route",
+          "index": 237,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[4].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "vehicle slot 4 GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 238,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[5].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "route derived from manual go-to-station orders of vehicle slot 5 has two valid distinct endpoints",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 239,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[5].endpoint_0_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "first valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 5",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 240,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[5].endpoint_1_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "second distinct valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 5",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 241,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[5].active",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "vehicle slot 5 is neither stopped nor crashed",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "route",
+          "index": 242,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[5].utilization",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "vehicle slot 5 cargo.StoredCount()/cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "route",
+          "index": 243,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[5].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "vehicle slot 5 GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 244,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[6].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "route derived from manual go-to-station orders of vehicle slot 6 has two valid distinct endpoints",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 245,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[6].endpoint_0_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "first valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 6",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 246,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[6].endpoint_1_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "second distinct valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 6",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 247,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[6].active",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "vehicle slot 6 is neither stopped nor crashed",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "route",
+          "index": 248,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[6].utilization",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "vehicle slot 6 cargo.StoredCount()/cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "route",
+          "index": 249,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[6].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "vehicle slot 6 GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 250,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[7].presence",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "route derived from manual go-to-station orders of vehicle slot 7 has two valid distinct endpoints",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 251,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[7].endpoint_0_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "first valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 7",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            15
+          ],
+          "group": "route",
+          "index": 252,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[7].endpoint_1_station",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "StationID:uint16",
+          "semantic_source": "second distinct valid endpoint StationID from route derived from manual go-to-station orders of vehicle slot 7",
+          "transform": "(raw+1)/16",
+          "unit": "engine station ID",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": null,
+          "group": "route",
+          "index": 253,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[7].active",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "bool",
+          "semantic_source": "vehicle slot 7 is neither stopped nor crashed",
+          "transform": "exact boolean",
+          "unit": "boolean",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            0,
+            1
+          ],
+          "group": "route",
+          "index": 254,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[7].utilization",
+          "output_bounds": [
+            0,
+            1
+          ],
+          "raw_type": "uint16 ratio",
+          "semantic_source": "vehicle slot 7 cargo.StoredCount()/cargo_cap",
+          "transform": "clip(load,0,capacity)/capacity; zero if capacity zero",
+          "unit": "fraction",
+          "update_boundary": "M03-committed-boundary"
+        },
+        {
+          "clip": [
+            -262144,
+            262144
+          ],
+          "group": "route",
+          "index": 255,
+          "missing": "zero; route-slot presence at local index 0 is the typed mask; route identity is its vehicle slot",
+          "name": "route[7].profit_this_year",
+          "output_bounds": [
+            -1,
+            1
+          ],
+          "raw_type": "Money:int64",
+          "semantic_source": "vehicle slot 7 GetDisplayProfitThisYear()",
+          "transform": "clip(raw,-262144,262144)/262144",
+          "unit": "OpenTTD base-currency unit",
+          "update_boundary": "M03-committed-boundary"
+        }
+      ],
+      "logical_order": "feature",
+      "output_bounds": [
+        -1.0,
+        1.0
+      ],
+      "shape": [
+        256
+      ]
+    }
+  }
+}

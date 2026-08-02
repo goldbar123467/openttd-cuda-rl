@@ -224,6 +224,17 @@ post-horizon cases are classified without silently committing another
 transition. The policy observation, mask, random/legal-policy, telemetry, and
 debug-overlay portions remain owned by later gates.
 
+`G04` closes the observation subset with two byte-identical all-template native
+roots. For each template, an independent oracle compares 256 structured values
+and 32,768 spatial values to a raw actual-engine source projection, for 264,192
+comparisons overall. Observed and no-observation control workers have identical
+post-step snapshots; repeated encodings are byte-identical; wrong compatibility
+identities fail without mutation; and every spatial channel has a positive
+orientation-pattern fixture. Trainer, evaluator, ONNX Runtime, in-game, and
+oracle consumer adapters receive identical canonical native tensor bytes. Action
+mask, random/legal-policy, telemetry, and debug-overlay portions remain owned by
+later gates.
+
 ## PPO and model verification
 
 ### Algorithm reference corpus

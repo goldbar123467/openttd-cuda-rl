@@ -81,7 +81,7 @@ cover the whole statement.
 | `SCOPE-015` | Seeds are fixed when requested, configurable, recorded, and applied to all owned RNG streams. | Seed contract tests and run manifest. | `PASS` |
 | `SCOPE-016` | Scenario generation is reproducible from its versioned configuration and seed. | Independent repeated-reset digest campaign. | `PASS` |
 | `SCOPE-017` | Evaluation is deterministic wherever the pinned OpenTTD engine permits; known nondeterminism is measured and disclosed. | Repeated evaluation report and exception ledger. | `PASS` |
-| `SCOPE-018` | The agent can inspect towns, population/economic features, and road state through documented observations. | Observation semantic tests. | `NOT_STARTED` |
+| `SCOPE-018` | The agent can inspect towns, population/economic features, and road state through documented observations. | Observation semantic tests. | `PASS` |
 | `SCOPE-019` | The agent can choose two towns or population centers to connect. | Action integration trajectory. | `NOT_STARTED` |
 | `SCOPE-020` | The agent can build required road segments or paths. | Native-command integration tests. | `NOT_STARTED` |
 | `SCOPE-021` | The agent can place valid bus stops and required depots. | Placement and legality integration tests. | `NOT_STARTED` |
@@ -165,23 +165,23 @@ An omitted candidate is not silently assumed irrelevant.
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `OBS-001` | The schema supports structured features and map-aligned spatial channels. | Versioned schemas and encoder tests. | `NOT_STARTED` |
-| `OBS-002` | Company balance, loan, income, and expenses are dispositioned and, if included, precisely scaled. | Feature registry rows and value tests. | `NOT_STARTED` |
-| `OBS-003` | Bus count, station count, and infrastructure ownership are dispositioned. | Registry and controlled-state tests. | `NOT_STARTED` |
-| `OBS-004` | Vehicle profitability and route status are dispositioned without future leakage. | Registry and temporal test. | `NOT_STARTED` |
-| `OBS-005` | Town population, passenger production, and passenger ratings are dispositioned. | Registry and engine-state comparison. | `NOT_STARTED` |
-| `OBS-006` | Current date and remaining action budget are dispositioned. | Registry and boundary tests. | `NOT_STARTED` |
-| `OBS-007` | Recent reward components, if observed, use only causal history available in deployment. | Temporal/no-leakage test. | `NOT_STARTED` |
-| `OBS-008` | Terrain and water spatial channels are dispositioned. | Per-tile fixtures and channel digest. | `NOT_STARTED` |
-| `OBS-009` | Roads and company-owned roads are dispositioned separately where ownership matters. | Per-tile fixtures and ownership test. | `NOT_STARTED` |
-| `OBS-010` | Buildings, town influence, and population density are dispositioned. | Synthetic-map semantic tests. | `NOT_STARTED` |
-| `OBS-011` | Passenger production and station catchment are dispositioned spatially. | Catchment/production fixture tests. | `NOT_STARTED` |
-| `OBS-012` | Bus stops, route occupancy, and vehicle locations are dispositioned spatially. | Controlled route snapshot tests. | `NOT_STARTED` |
-| `OBS-013` | Buildable tiles, blocked tiles, and ownership are dispositioned spatially. | Legality/encoder differential tests. | `NOT_STARTED` |
-| `OBS-014` | Every feature/channel defines semantic source, shape, type, scale, normalization, missing-value rule, and update boundary. | Schema lint and review. | `NOT_STARTED` |
-| `OBS-015` | Spatial tensors have an explicit coordinate origin, axis order, channel order, and tile-to-index mapping. | Pattern-map orientation tests. | `NOT_STARTED` |
-| `OBS-016` | Observation extraction has no mutation, RNG consumption, pathfinding side effect, or lazy-state perturbation. | Instrumented non-perturbation test. | `NOT_STARTED` |
-| `OBS-017` | Training, evaluator, ONNX, and in-game paths use the same encoder implementation or byte-equivalent fixtures. | Cross-runtime golden vectors. | `NOT_STARTED` |
+| `OBS-001` | The schema supports structured features and map-aligned spatial channels. | Versioned schemas and encoder tests. | `PASS` |
+| `OBS-002` | Company balance, loan, income, and expenses are dispositioned and, if included, precisely scaled. | Feature registry rows and value tests. | `PASS` |
+| `OBS-003` | Bus count, station count, and infrastructure ownership are dispositioned. | Registry and controlled-state tests. | `PASS` |
+| `OBS-004` | Vehicle profitability and route status are dispositioned without future leakage. | Registry and temporal test. | `PASS` |
+| `OBS-005` | Town population, passenger production, and passenger ratings are dispositioned. | Registry and engine-state comparison. | `PASS` |
+| `OBS-006` | Current date and remaining action budget are dispositioned. | Registry and boundary tests. | `PASS` |
+| `OBS-007` | Recent reward components, if observed, use only causal history available in deployment. | Temporal/no-leakage test. | `PASS` |
+| `OBS-008` | Terrain and water spatial channels are dispositioned. | Per-tile fixtures and channel digest. | `PASS` |
+| `OBS-009` | Roads and company-owned roads are dispositioned separately where ownership matters. | Per-tile fixtures and ownership test. | `PASS` |
+| `OBS-010` | Buildings, town influence, and population density are dispositioned. | Synthetic-map semantic tests. | `PASS` |
+| `OBS-011` | Passenger production and station catchment are dispositioned spatially. | Catchment/production fixture tests. | `PASS` |
+| `OBS-012` | Bus stops, route occupancy, and vehicle locations are dispositioned spatially. | Controlled route snapshot tests. | `PASS` |
+| `OBS-013` | Buildable tiles, blocked tiles, and ownership are dispositioned spatially. | Legality/encoder differential tests. | `PASS` |
+| `OBS-014` | Every feature/channel defines semantic source, shape, type, scale, normalization, missing-value rule, and update boundary. | Schema lint and review. | `PASS` |
+| `OBS-015` | Spatial tensors have an explicit coordinate origin, axis order, channel order, and tile-to-index mapping. | Pattern-map orientation tests. | `PASS` |
+| `OBS-016` | Observation extraction has no mutation, RNG consumption, pathfinding side effect, or lazy-state perturbation. | Instrumented non-perturbation test. | `PASS` |
+| `OBS-017` | Training, evaluator, ONNX, and in-game paths use the same encoder implementation or byte-equivalent fixtures. | Cross-runtime golden vectors. | `PASS` |
 | `OBS-018` | MLP, CNN, and combined comparisons use equivalent seeds, settings, budgets, and evaluation protocols. | Matched experiment manifest. | `NOT_STARTED` |
 
 ## Action and legality requirements
@@ -323,7 +323,7 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
 | `TEST-001` | Test environment reset and seed reproducibility. | Unit/integration/repeat campaign. | `PASS` |
-| `TEST-002` | Test observation extraction, normalization, and every spatial channel. | Golden/differential tests. | `NOT_STARTED` |
+| `TEST-002` | Test observation extraction, normalization, and every spatial channel. | Golden/differential tests. | `PASS` |
 | `TEST-003` | Test action encoding, decoding, legality, and masking. | Unit/property/integration tests. | `NOT_STARTED` |
 | `TEST-004` | Test every reward component and scalar aggregation. | Unit/scenario tests. | `NOT_STARTED` |
 | `TEST-005` | Test tick stepping and game-state synchronization. | Boundary/differential tests. | `PASS` |
