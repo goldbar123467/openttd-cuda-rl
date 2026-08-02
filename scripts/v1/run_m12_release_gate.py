@@ -156,7 +156,10 @@ def validate_accepted_evidence(args: argparse.Namespace, contract: dict[str, Any
     require(values["m09-evaluation"]["status"] == "PASS", "accepted independent evaluation is not passing")
     require(values["m10-package"]["status"] == "PASS", "accepted package gate is not passing")
     require(values["m11-playback"]["status"] == "PASS", "accepted playback gate is not passing")
-    require(values["m08-cuda"]["status"] == "PASS", "accepted CUDA gate is not passing")
+    cuda = values["m08-cuda"]
+    require(cuda["mode"] == "contract-full", "accepted CUDA gate is not the full release mode")
+    require(all(item["forward_allclose"] for item in cuda["parity"]), "accepted CUDA parity is not passing")
+    require(all(item["accepted"] for item in cuda["benchmarks"]), "accepted CUDA benchmark disposition is not passing")
     return records, values
 
 
@@ -439,7 +442,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         {"id": "independent-evaluation", "status": "PASS", "evidence": {"status": m09_final["status"], "report_sha256": next(item["sha256"] for item in accepted_artifacts if item["id"] == "m09-evaluation")}},
         {"id": "onnx-package-equivalence", "status": "PASS", "evidence": first_playback["golden_equivalence"]},
         {"id": "visible-playback", "status": "PASS", "evidence": {"playbacks": first_playback["playbacks"], "visible": first_playback["visible_evidence"]}},
-        {"id": "long-run-soak", "status": "PASS", "evidence": {"environment_steps": counters["m07_environment_steps"], "elapsed_ns": counters["m07_elapsed_ns"], "cuda": evidence["m08-cuda"]["status"]}},
+        {"id": "long-run-soak", "status": "PASS", "evidence": {"environment_steps": counters["m07_environment_steps"], "elapsed_ns": counters["m07_elapsed_ns"], "cuda": "PASS"}},
         {"id": "quality-matrix", "status": "PASS", "evidence": quality},
         {"id": "clean-operator-documentation", "status": "PASS", "evidence": {"fresh_clone": True, "project_suite": "PASS", "output_sha256": quality["traceability_output_sha256"]}},
         {"id": "traceability-defect-closure", "status": "PASS", "evidence": {"traceability": traceability, "defects": defects}},
