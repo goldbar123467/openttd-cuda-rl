@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v1-m10-model-package-contract.schema.json",
+  "title": "OpenTTD-RL V1 M10 model export, package, and equivalence contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "contract_id", "semantic_version", "status", "compatibility", "checkpoint_policy", "exporter", "runtime", "models", "graph", "package", "golden_corpus", "tolerances", "sampled_distribution", "rejection_matrix", "installation", "success", "requirements", "identity"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v1-m10-model-package-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v1-m10-model-package-contract-1"},
+    "contract_id": {"const": "m10-onnx-package-three-runtime-v1"},
+    "semantic_version": {"const": 1},
+    "status": {"const": "FROZEN"},
+    "compatibility": {"type": "object", "additionalProperties": {"$ref": "#/$defs/sha256"}, "minProperties": 6},
+    "checkpoint_policy": {"type": "object", "additionalProperties": false, "required": ["training_format", "evaluation_format", "deployment_format", "migration", "training_state_in_deployment", "source_read_only"], "properties": {"training_format": {"type": "string"}, "evaluation_format": {"type": "string"}, "deployment_format": {"type": "string"}, "migration": {"type": "string"}, "training_state_in_deployment": {"const": false}, "source_read_only": {"const": true}}},
+    "exporter": {"type": "object", "required": ["controller", "python", "torch", "onnx", "onnxscript", "method", "opset", "fallback", "reproducibility"]},
+    "runtime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "version", "provider", "archive_sha256", "training_dependency", "cuda_dependency"],
+      "properties": {
+        "name": {"const": "ONNX Runtime"}, "version": {"const": "1.28.0"},
+        "provider": {"const": "CPUExecutionProvider"}, "archive_sha256": {"$ref": "#/$defs/sha256"},
+        "training_dependency": {"const": false}, "cuda_dependency": {"const": false}
+      }
+    },
+    "models": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object", "required": ["architecture_id", "architecture_version", "source_package_id", "run_seed", "inputs"]}},
+    "graph": {"type": "object", "required": ["outputs", "dynamic_axis", "training_nodes", "recurrent_state"]},
+    "package": {"type": "object", "required": ["format", "id_algorithm", "manifest_fields", "payload_files", "maximum_file_bytes", "complete_inventory"]},
+    "golden_corpus": {"type": "object", "required": ["format", "cases_per_architecture", "synthetic_cases", "live_cases", "generation_seed", "fields", "mask_patterns", "stochastic_seeds"]},
+    "tolerances": {"type": "object", "required": ["scope", "policy_logits", "masked_probabilities", "value", "mask", "greedy_action", "stochastic_seed_replay", "nonfinite"]},
+    "sampled_distribution": {"type": "object", "required": ["cases_per_architecture", "samples_per_case_per_runtime", "sampling_seed", "total_variation_maximum", "maximum_bin_difference", "minimum_expected_count_disposition"]},
+    "rejection_matrix": {"type": "array", "minItems": 14, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "installation": {"type": "object", "required": ["root", "atomic", "uninstall", "training_dependencies", "unknown_files"]},
+    "success": {"type": "object", "required": ["graph_inspection", "golden_equivalence", "package_integrity", "compatibility_mutations", "reproducible_export", "inference_only_load"]},
+    "requirements": {"const": ["LIFE-013", "LIFE-014", "LIFE-017", "STACK-006", "STACK-007", "PPO-021", "MODEL-001", "MODEL-002", "MODEL-003", "MODEL-004", "MODEL-005", "MODEL-006", "MODEL-007", "MODEL-008", "MODEL-009", "TEST-011", "TEST-012"]},
+    "identity": {"type": "object", "additionalProperties": false, "required": ["compatibility_algorithm", "compatibility_sha256", "schema_path", "schema_sha256"], "properties": {"compatibility_algorithm": {"const": "sha256-canonical-json-v1"}, "compatibility_sha256": {"$ref": "#/$defs/sha256"}, "schema_path": {"const": "docs/project/schema/v1-m10-model-package-contract.schema.json"}, "schema_sha256": {"$ref": "#/$defs/sha256"}}}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

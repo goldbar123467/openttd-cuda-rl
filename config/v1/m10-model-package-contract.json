@@ -1,0 +1,154 @@
+{
+  "$schema": "../../docs/project/schema/v1-m10-model-package-contract.schema.json",
+  "schema_version": "openttd-rl-v1-m10-model-package-contract-1",
+  "contract_id": "m10-onnx-package-three-runtime-v1",
+  "semantic_version": 1,
+  "status": "FROZEN",
+  "compatibility": {
+    "observation": "7f8a46af1fe2a2c23e755c71b3bc2d04c9a0d057c573e901e5c9ed9178ca13eb",
+    "action_and_mask": "215c7d3ebeea97f1629debee4a2d10301838ccfd3085e4828685591677b58536",
+    "reward_trajectory": "9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e",
+    "architecture": "52c8b622b79d793e85ef749822e6886cd7cdda63194a471d38ab25da910e101d",
+    "evaluation": "c64c9876c1f6cf46dcc2642bd4628ed45f4659d1866a047d4e51def60dab9a5e",
+    "seed_ledger": "fcfdb820abb6db783df412d6496f68ce41bfd3def630ced637fe1d00dbbcd8ed"
+  },
+  "checkpoint_policy": {
+    "training_format": "openttd-rl-v1-m07-checkpoint-1-with-optimizer-and-rng",
+    "evaluation_format": "openttd-rl-evaluation-model-v1-immutable-native-tensors",
+    "deployment_format": "openttd-rl-deployment-package-v1-onnx-inference-only",
+    "migration": "none-in-v1-exact-format-and-compatibility-required",
+    "training_state_in_deployment": false,
+    "source_read_only": true
+  },
+  "exporter": {
+    "controller": "m10_export_orchestrator-cpp20",
+    "python": "3.12.3",
+    "torch": "2.13.0+cpu",
+    "onnx": "1.22.0",
+    "onnxscript": "0.7.1",
+    "method": "torch.export-backed-torch.onnx.export-dynamo-true",
+    "opset": 18,
+    "fallback": false,
+    "reproducibility": "two-independent-exports-require-byte-identical-model.onnx"
+  },
+  "runtime": {
+    "name": "ONNX Runtime",
+    "version": "1.28.0",
+    "provider": "CPUExecutionProvider",
+    "archive_sha256": "a3e1b79d7bb1bf09696ce675f49e4064e6c81f6202b8225624fff0e93f8d6407",
+    "training_dependency": false,
+    "cuda_dependency": false
+  },
+  "models": [
+    {
+      "architecture_id": "structured-mlp-v1",
+      "architecture_version": 1,
+      "source_package_id": "e21039cd66eaeb1f54a3e19271d2e2e71695496b54001a8afe17e01a669ed611",
+      "run_seed": 2026090103,
+      "inputs": [{"name": "structured", "dtype": "float32", "shape": ["batch", 256]}]
+    },
+    {
+      "architecture_id": "spatial-cnn-v1",
+      "architecture_version": 1,
+      "source_package_id": "f58a5db69b4917916c250dddb8822a22c548d21b5fc4f92c91e0c8706e1519a6",
+      "run_seed": 2026090101,
+      "inputs": [{"name": "spatial", "dtype": "float32", "shape": ["batch", 32, 32, 32]}]
+    },
+    {
+      "architecture_id": "combined-cnn-mlp-v1",
+      "architecture_version": 1,
+      "source_package_id": "074b3c3838d9c4b53235d8f9ccc060047f7ce29929511fda6086f072c53b62e3",
+      "run_seed": 2026090101,
+      "inputs": [
+        {"name": "structured", "dtype": "float32", "shape": ["batch", 256]},
+        {"name": "spatial", "dtype": "float32", "shape": ["batch", 32, 32, 32]}
+      ]
+    }
+  ],
+  "graph": {
+    "outputs": [
+      {"name": "policy_logits", "dtype": "float32", "shape": ["batch", 41]},
+      {"name": "value", "dtype": "float32", "shape": ["batch"]}
+    ],
+    "dynamic_axis": "batch-only-positive-bounded-1-through-64",
+    "training_nodes": "forbidden",
+    "recurrent_state": "none-v1-feed-forward"
+  },
+  "package": {
+    "format": "openttd-rl-deployment-package-v1",
+    "id_algorithm": "sha256-canonical-manifest-without-package-id-v1",
+    "manifest_fields": [
+      "format", "compatibility_version", "package_id", "architecture", "inputs", "outputs",
+      "normalization", "recurrent_state", "compatibility", "provenance", "seeds", "evaluation",
+      "files", "installation"
+    ],
+    "payload_files": ["model.onnx", "golden.jsonl", "evaluation.json", "INSTALL.md"],
+    "maximum_file_bytes": 67108864,
+    "complete_inventory": "manifest-plus-exact-payload-list-no-symlinks-no-unknown-files"
+  },
+  "golden_corpus": {
+    "format": "canonical-json-lines-float32-values-v1",
+    "cases_per_architecture": 12,
+    "synthetic_cases": 8,
+    "live_cases": 4,
+    "generation_seed": 2026101001,
+    "fields": [
+      "case_id", "source", "structured", "spatial", "legal_mask", "policy_logits",
+      "masked_probabilities", "value", "greedy_action", "stochastic_seed", "stochastic_action"
+    ],
+    "mask_patterns": ["wait-only", "all-legal", "deterministic-sparse", "native-live-mask"],
+    "stochastic_seeds": [2026101011, 2026101012, 2026101013]
+  },
+  "tolerances": {
+    "scope": "float32-cpu-native-versus-onnxruntime-standalone-versus-ingame-adapter",
+    "policy_logits": {"absolute": 0.00002, "relative": 0.00002},
+    "masked_probabilities": {"absolute": 0.000002, "relative": 0.00002},
+    "value": {"absolute": 0.00002, "relative": 0.00002},
+    "mask": "byte-exact",
+    "greedy_action": "exact",
+    "stochastic_seed_replay": "exact-when-probability-vectors-are-byte-identical-otherwise-statistical-gate",
+    "nonfinite": "reject"
+  },
+  "sampled_distribution": {
+    "cases_per_architecture": 3,
+    "samples_per_case_per_runtime": 100000,
+    "sampling_seed": 2026101099,
+    "total_variation_maximum": 0.015,
+    "maximum_bin_difference": 0.005,
+    "minimum_expected_count_disposition": "merge-tail-for-chi-square-report-but-gate-on-tv-and-maximum-bin"
+  },
+  "rejection_matrix": [
+    "package-format", "compatibility-version", "package-id", "architecture-id", "architecture-version",
+    "observation-compatibility", "action-compatibility", "mask-compatibility", "reward-compatibility",
+    "m09-evaluation-compatibility", "m10-compatibility", "onnx-opset", "onnxruntime-version",
+    "openttd-upstream-commit", "environment-version", "input-name", "input-shape", "input-dtype",
+    "output-name", "output-shape", "output-dtype", "normalization", "recurrent-state", "file-digest",
+    "missing-file", "unknown-file", "symlink", "truncated-onnx", "nonfinite-input", "all-illegal-mask"
+  ],
+  "installation": {
+    "root": "openttd-rl/models/<package-id>",
+    "atomic": "copy-to-temporary-validate-rename",
+    "uninstall": "remove-exact-content-addressed-package-directory",
+    "training_dependencies": "forbidden",
+    "unknown_files": "reject"
+  },
+  "success": {
+    "graph_inspection": "all-three-opset18-graphs-have-exact-typed-signatures-and-no-training-state",
+    "golden_equivalence": "all-36-cases-pass-every-output-tolerance-and-exact-actions",
+    "package_integrity": "all-payload-digests-and-content-addresses-pass",
+    "compatibility_mutations": "every-listed-mutation-rejected-before-inference",
+    "reproducible_export": "two-independent-export-roots-produce-identical-onnx-bytes-and-package-ids",
+    "inference_only_load": "onnxruntime-cpu-deployment-target-links-no-libtorch-python-optimizer-or-cuda-training-library"
+  },
+  "requirements": [
+    "LIFE-013", "LIFE-014", "LIFE-017", "STACK-006", "STACK-007", "PPO-021",
+    "MODEL-001", "MODEL-002", "MODEL-003", "MODEL-004", "MODEL-005", "MODEL-006",
+    "MODEL-007", "MODEL-008", "MODEL-009", "TEST-011", "TEST-012"
+  ],
+  "identity": {
+    "compatibility_algorithm": "sha256-canonical-json-v1",
+    "compatibility_sha256": "e77edf9be1343970a55becbb05da96a6b9a17edbd8df2c7999701dd8fa1f33b6",
+    "schema_path": "docs/project/schema/v1-m10-model-package-contract.schema.json",
+    "schema_sha256": "3259c114abee1a59c39f43b09b162e8c5fabe3d1cc8d204061a1bfe053d6325f"
+  }
+}
