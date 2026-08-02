@@ -1,0 +1,123 @@
+{
+  "action_extension": {
+    "families": [
+      "SELECT_AIRPORT_TYPE",
+      "BUILD_AIRPORT",
+      "REMOVE_AIRPORT",
+      "JOIN_AIRPORT_STATION",
+      "OPEN_CLOSE_AIRPORT",
+      "BUY_AIRPLANE",
+      "BUY_HELICOPTER",
+      "REFIT_AIRCRAFT",
+      "CLONE_AIRCRAFT",
+      "SELL_AIRCRAFT",
+      "SET_AIRCRAFT_ORDERS",
+      "SET_AIRCRAFT_TIMETABLE",
+      "SET_AIRCRAFT_SERVICE_INTERVAL",
+      "SET_AIRCRAFT_AUTOREPLACE",
+      "START_STOP_AIRCRAFT",
+      "SEND_AIRCRAFT_TO_HANGAR",
+      "SELECT_TRANSPORT_MODE",
+      "BUILD_MULTIMODAL_TRANSFER",
+      "SET_MULTIMODAL_TRANSFER_ORDER",
+      "RECOVER_AIRPORT_CONGESTION",
+      "RECOVER_AIRCRAFT_ROUTE",
+      "SELECT_MODE_SPECIALIST",
+      "SAVE_ROUTER_CHECKPOINT",
+      "LOAD_ROUTER_CHECKPOINT"
+    ],
+    "legality": "native-command-test-before-execute",
+    "transaction_failure": "rollback-or-no-state-change"
+  },
+  "baseline": {
+    "generalist": {
+      "content_unique_id": "484f4745",
+      "m14_outcome": "QUALIFIED_ACTIVE",
+      "m19_requirement": "air-capable-scenario-qualified-active-or-retained-generalist-active-with-native-air-oracle",
+      "name": "AAAHogEx",
+      "package_version": 115
+    },
+    "lufthansa": {
+      "archive_sha256": "ac313debff38dc9937439f90068930653fc7ce2c8d6e94ee11dc4c10cb3e3a3b",
+      "content_unique_id": "4c554654",
+      "m14_outcome": "REJECTED",
+      "m19_disposition": "retain-rejection-no-repair-no-relabel",
+      "name": "Lufthansa",
+      "package_version": 2,
+      "reason": "byte-pinned package contains invalid generated markup and a truncated main script"
+    },
+    "service_comparators": [
+      "no-build-zero-service",
+      "no-start-zero-service",
+      "closed-destination-zero-delivery-until-recovery"
+    ]
+  },
+  "counts": {
+    "airport_specs": 10,
+    "buildable_airport_types": 9,
+    "native_cases": 20,
+    "native_runs": 40,
+    "probes": 10,
+    "transport_modes": 4
+  },
+  "native_probes": {
+    "catalog": "runtime projection of all base airport specifications and aircraft engines",
+    "construction": "all nine buildable airport types plus date, terrain, authority, spread, noise, ownership, join, cost and removal legality",
+    "failure": "airport close and reopen, deterministic crash projection, renewal accounting and bounded route recovery",
+    "helicopter": "profitable helicopter service with native capacity, refit, order, service and range semantics",
+    "lifecycle": "airplane and helicopter purchase, refit, clone, orders, timetable, service, autoreplace, save/load and sale",
+    "multimodal": "conserved road, water and air journey with feeder credit and exactly one final-delivery payment",
+    "occupancy": "time-stepped terminal, helipad, runway, taxiway, hangar, movement-state and queue oracle",
+    "router": "mode-neutral road, rail, water and air graph, deterministic specialist selection and checkpoint recovery",
+    "service": "profitable airplane passenger and freight service with range and noise safety",
+    "recovery": "scripted congestion, closed destination and reopened-airport recovery within the frozen horizon"
+  },
+  "observation_extension": {
+    "bounded_tables": [
+      "airport_specs",
+      "airport_layouts",
+      "airport_tiles",
+      "airport_noise",
+      "airport_blocks",
+      "airport_terminals",
+      "airport_helipads",
+      "airport_runways",
+      "airport_hangars",
+      "aircraft_engines",
+      "aircraft",
+      "aircraft_orders",
+      "aircraft_timetables",
+      "aircraft_movement_states",
+      "aircraft_range_masks",
+      "airport_queue_health",
+      "multimodal_nodes",
+      "mode_specialists",
+      "router_state"
+    ],
+    "graph_edges": [
+      "airport-serves",
+      "air-order-targets",
+      "air-range-reaches",
+      "airport-block-reserves",
+      "transfer-feeds",
+      "mode-node-connects",
+      "specialist-controls-mode",
+      "router-selects-specialist"
+    ],
+    "m18_compatibility": "append-only typed extension; M15 tensor/candidate bytes and M16-M18 tables remain unchanged"
+  },
+  "schema_version": "openttd-rl-v2-m19-air-contract-1",
+  "semantics": {
+    "airport_catalog": "the ten base specifications include nine buildable types and the disabled oil-rig specification; availability is never inferred from display names",
+    "competence": "airplane and helicopter services must produce positive final delivery and company income on two deterministic seeds each",
+    "crash_fixture": "seeded crash and disaster paths may use bounded fixture initiation, while state transitions, vehicle loss and accounting remain native",
+    "exact_replay": "every native case runs in two fresh processes with normalized byte-identical reports",
+    "loading_fixture": "bounded source packets and otherwise unavailable sink acceptance may be fixture setup; vehicle movement, transfer, delivery and payment remain native",
+    "multimodal": "one journey must use road, water and air legs, conserve cargo at every boundary, defer company cash through feeder legs and make exactly one final payment",
+    "occupancy": "native AirportBlocks and aircraft position, previous-position, movement-state and target-airport fields are the queue and congestion authority",
+    "opponents": "Lufthansa rejection remains evidence because the locked package is malformed; active qualification must use an unmodified qualified generalist and cannot claim Lufthansa activity",
+    "recovery": "congestion or a closed destination must become observable, remain bounded and complete profitable service after native recovery actions",
+    "router": "the router consumes only frozen observations and masks, selects explicit mode specialists deterministically and restores byte-identical routing state from checkpoint"
+  },
+  "version": "m19-air-v1"
+}

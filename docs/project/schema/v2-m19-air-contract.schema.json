@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m19-air-contract.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "action_extension": {
+      "additionalProperties": false,
+      "properties": {
+        "families": {"items": {"type": "string"}, "maxItems": 24, "minItems": 24, "type": "array", "uniqueItems": true},
+        "legality": {"const": "native-command-test-before-execute"},
+        "transaction_failure": {"const": "rollback-or-no-state-change"}
+      },
+      "required": ["families", "legality", "transaction_failure"],
+      "type": "object"
+    },
+    "baseline": {
+      "additionalProperties": false,
+      "properties": {
+        "generalist": {
+          "additionalProperties": false,
+          "properties": {
+            "content_unique_id": {"const": "484f4745"},
+            "m14_outcome": {"const": "QUALIFIED_ACTIVE"},
+            "m19_requirement": {"minLength": 30, "type": "string"},
+            "name": {"const": "AAAHogEx"},
+            "package_version": {"const": 115}
+          },
+          "required": ["content_unique_id", "m14_outcome", "m19_requirement", "name", "package_version"],
+          "type": "object"
+        },
+        "lufthansa": {
+          "additionalProperties": false,
+          "properties": {
+            "archive_sha256": {"const": "ac313debff38dc9937439f90068930653fc7ce2c8d6e94ee11dc4c10cb3e3a3b"},
+            "content_unique_id": {"const": "4c554654"},
+            "m14_outcome": {"const": "REJECTED"},
+            "m19_disposition": {"const": "retain-rejection-no-repair-no-relabel"},
+            "name": {"const": "Lufthansa"},
+            "package_version": {"const": 2},
+            "reason": {"minLength": 30, "type": "string"}
+          },
+          "required": ["archive_sha256", "content_unique_id", "m14_outcome", "m19_disposition", "name", "package_version", "reason"],
+          "type": "object"
+        },
+        "service_comparators": {"const": ["no-build-zero-service", "no-start-zero-service", "closed-destination-zero-delivery-until-recovery"]}
+      },
+      "required": ["generalist", "lufthansa", "service_comparators"],
+      "type": "object"
+    },
+    "counts": {
+      "additionalProperties": false,
+      "properties": {
+        "airport_specs": {"const": 10},
+        "buildable_airport_types": {"const": 9},
+        "native_cases": {"const": 20},
+        "native_runs": {"const": 40},
+        "probes": {"const": 10},
+        "transport_modes": {"const": 4}
+      },
+      "required": ["airport_specs", "buildable_airport_types", "native_cases", "native_runs", "probes", "transport_modes"],
+      "type": "object"
+    },
+    "native_probes": {
+      "additionalProperties": {"minLength": 12, "type": "string"},
+      "maxProperties": 10,
+      "minProperties": 10,
+      "required": ["catalog", "construction", "failure", "helicopter", "lifecycle", "multimodal", "occupancy", "recovery", "router", "service"],
+      "type": "object"
+    },
+    "observation_extension": {
+      "additionalProperties": false,
+      "properties": {
+        "bounded_tables": {"items": {"type": "string"}, "minItems": 19, "type": "array", "uniqueItems": true},
+        "graph_edges": {"items": {"type": "string"}, "minItems": 8, "type": "array", "uniqueItems": true},
+        "m18_compatibility": {"minLength": 20, "type": "string"}
+      },
+      "required": ["bounded_tables", "graph_edges", "m18_compatibility"],
+      "type": "object"
+    },
+    "schema_version": {"const": "openttd-rl-v2-m19-air-contract-1"},
+    "semantics": {
+      "additionalProperties": false,
+      "properties": {
+        "airport_catalog": {"minLength": 30, "type": "string"},
+        "competence": {"minLength": 20, "type": "string"},
+        "crash_fixture": {"minLength": 30, "type": "string"},
+        "exact_replay": {"minLength": 20, "type": "string"},
+        "loading_fixture": {"minLength": 20, "type": "string"},
+        "multimodal": {"minLength": 30, "type": "string"},
+        "occupancy": {"minLength": 30, "type": "string"},
+        "opponents": {"minLength": 30, "type": "string"},
+        "recovery": {"minLength": 30, "type": "string"},
+        "router": {"minLength": 30, "type": "string"}
+      },
+      "required": ["airport_catalog", "competence", "crash_fixture", "exact_replay", "loading_fixture", "multimodal", "occupancy", "opponents", "recovery", "router"],
+      "type": "object"
+    },
+    "version": {"const": "m19-air-v1"}
+  },
+  "required": ["action_extension", "baseline", "counts", "native_probes", "observation_extension", "schema_version", "semantics", "version"],
+  "type": "object"
+}

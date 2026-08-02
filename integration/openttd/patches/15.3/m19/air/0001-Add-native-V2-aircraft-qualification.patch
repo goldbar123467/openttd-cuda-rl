@@ -1,0 +1,1141 @@
+From 1b07432dc0a196673a461bb49c7ca59d2175e9bf Mon Sep 17 00:00:00 2001
+From: OpenTTD-RL V2 Evidence <openttd-rl-v2@localhost>
+Date: Sun, 2 Aug 2026 18:55:11 -0400
+Subject: [PATCH] Add native V2 aircraft qualification
+
+---
+ src/CMakeLists.txt |    2 +
+ src/openttd.cpp    |   28 +-
+ src/rl_v2_air.cpp  | 1010 ++++++++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_air.h    |   15 +
+ 4 files changed, 1053 insertions(+), 2 deletions(-)
+ create mode 100644 src/rl_v2_air.cpp
+ create mode 100644 src/rl_v2_air.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 6cfb855..1523e1b 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -66,6 +66,8 @@ add_files(
+     rl_v2_rail.h
+     rl_v2_ship.cpp
+     rl_v2_ship.h
++    rl_v2_air.cpp
++    rl_v2_air.h
+     rl_v2_observation.cpp
+     rl_v2_observation.h
+     CONDITION OPTION_RL_ENVIRONMENT
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index cc7bff0..845fbbf 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -89,6 +89,7 @@
+ #	include "rl_v2_cargo.h"
+ #	include "rl_v2_rail.h"
+ #	include "rl_v2_ship.h"
++#	include "rl_v2_air.h"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ #	include "rl_neural_agent.h"
+@@ -439,6 +440,8 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_v2_rail_report;                 ///< Destination for the M17 rail qualification report.
+ 	std::string rl_v2_ship_manifest;               ///< Canonical M18 ship qualification manifest.
+ 	std::string rl_v2_ship_report;                 ///< Destination for the M18 ship qualification report.
++	std::string rl_v2_air_manifest;                ///< Canonical M19 aircraft qualification manifest.
++	std::string rl_v2_air_report;                  ///< Destination for the M19 aircraft qualification report.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -499,7 +502,16 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
+ #ifdef WITH_RL_ENVIRONMENT
+-		if (!rl_v2_ship_manifest.empty()) {
++		if (!rl_v2_air_manifest.empty()) {
++			try {
++				RunRlV2AirQualification(rl_v2_air_manifest, rl_v2_air_report);
++			} catch (const std::exception &e) {
++				fmt::print(stderr, "{}\n", e.what());
++				UserError("{}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		} else if (!rl_v2_ship_manifest.empty()) {
+ 			try {
+ 				RunRlV2ShipQualification(rl_v2_ship_manifest, rl_v2_ship_report);
+ 			} catch (const std::exception &e) {
+@@ -612,7 +624,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BCEFHJKLNOPRTUWYZVuw"
++			"BCEFHJKLNOPRTUWYZVuwaz"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -809,6 +821,8 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'Z': scanner->rl_scenario_instance = mgo.opt; break;
+ 		case 'u': scanner->rl_v2_ship_manifest = mgo.opt; break;
+ 		case 'w': scanner->rl_v2_ship_report = mgo.opt; break;
++		case 'a': scanner->rl_v2_air_manifest = mgo.opt; break;
++		case 'z': scanner->rl_v2_air_report = mgo.opt; break;
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 		case 'A': scanner->rl_neural_agent_config = mgo.opt; break;
+@@ -839,6 +853,16 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ 
+ #ifdef WITH_RL_ENVIRONMENT
++	if (scanner->rl_v2_air_manifest.empty() != scanner->rl_v2_air_report.empty()) {
++		fmt::print(stderr, "M19 aircraft qualification requires both -a <manifest> and -z <report>\n");
++		return 1;
++	}
++	if (!scanner->rl_v2_air_manifest.empty() && (!scanner->rl_v2_ship_manifest.empty() || !scanner->rl_v2_rail_manifest.empty() ||
++			!scanner->rl_v2_cargo_manifest.empty() || !scanner->rl_v2_reset_manifest.empty() || !scanner->rl_bridge_descriptors.empty() ||
++			!scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty())) {
++		fmt::print(stderr, "M19 aircraft qualification forbids ship/rail/cargo/reset/bridge/scenario, dedicated, and networking modes\n");
++		return 1;
++	}
+ 	if (scanner->rl_v2_ship_manifest.empty() != scanner->rl_v2_ship_report.empty()) {
+ 		fmt::print(stderr, "M18 ship qualification requires both -u <manifest> and -w <report>\n");
+ 		return 1;
+diff --git a/src/rl_v2_air.cpp b/src/rl_v2_air.cpp
+new file mode 100644
+index 0000000..3d6a424
+--- /dev/null
++++ b/src/rl_v2_air.cpp
+@@ -0,0 +1,1010 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_air.cpp Native V2 M19 aircraft and multimodal qualification. */
++
++#include "stdafx.h"
++
++#include "rl_v2_air.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "ai/ai_config.hpp"
++#include "aircraft.h"
++#include "airport.h"
++#include "articulated_vehicles.h"
++#include "autoreplace_cmd.h"
++#include "autoreplace_func.h"
++#include "cargopacket.h"
++#include "cargotype.h"
++#include "command_func.h"
++#include "company_base.h"
++#include "core/backup_type.hpp"
++#include "core/random_func.hpp"
++#include "engine_base.h"
++#include "engine_type.h"
++#include "genworld.h"
++#include "game/game_config.hpp"
++#include "landscape_cmd.h"
++#include "map_func.h"
++#include "misc_cmd.h"
++#include "newgrf_airport.h"
++#include "newgrf_roadstop.h"
++#include "openttd.h"
++#include "order_base.h"
++#include "order_cmd.h"
++#include "pathfinder/water_regions.h"
++#include "progress.h"
++#include "rl_v2_cargo.h"
++#include "road_cmd.h"
++#include "road_map.h"
++#include "saveload/saveload.h"
++#include "settings_type.h"
++#include "ship.h"
++#include "station_base.h"
++#include "station_cmd.h"
++#include "station_map.h"
++#include "tile_map.h"
++#include "timer/timer_game_calendar.h"
++#include "timetable_cmd.h"
++#include "town.h"
++#include "town_cmd.h"
++#include "vehicle_base.h"
++#include "vehicle_cmd.h"
++#include "vehicle_func.h"
++#include "viewport_func.h"
++#include "water_cmd.h"
++#include "water_map.h"
++
++#include <algorithm>
++#include <array>
++#include <bit>
++#include <filesystem>
++#include <fstream>
++#include <limits>
++#include <optional>
++#include <queue>
++#include <set>
++#include <stdexcept>
++#include <string_view>
++#include <vector>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = CompanyID::Invalid());
++extern void MakeNewgameSettingsLive();
++
++namespace {
++
++static constexpr std::string_view MANIFEST_SCHEMA = "openttd-rl-v2-m19-air-manifest-1";
++static constexpr std::string_view REPORT_SCHEMA = "openttd-rl-v2-m19-air-report-1";
++static constexpr uint MAP_SIDE = 64;
++static constexpr uint64_t TICK_LIMIT = 196608;
++static constexpr std::array<std::string_view, 10> AIRPORT_NAMES = {
++	"country", "city", "heliport", "metropolitan", "international", "commuter", "helidepot", "intercontinental", "helistation", "oilrig"
++};
++
++struct Request {
++	std::string run_id;
++	std::string probe;
++	std::string cargo_label;
++	uint32_t seed;
++	std::string executable_sha256;
++};
++
++struct AirportPair {
++	StationID source;
++	StationID destination;
++	TileIndex source_hangar;
++	TileIndex destination_hangar;
++};
++
++struct UnitBuild {
++	VehicleID vehicle;
++	EngineID engine;
++	uint capacity;
++};
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M19 aircraft qualification: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++static json ReadCanonicalJson(const std::string &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	if (!input) Fail(fmt::format("cannot open manifest '{}'", path));
++	std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
++	Require(!bytes.empty() && bytes.back() == '\n', "manifest must end with one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n' && bytes.back() != '\r', "manifest has trailing whitespace");
++	json value;
++	try { value = json::parse(bytes); } catch (const json::exception &e) { Fail(fmt::format("invalid manifest JSON: {}", e.what())); }
++	Require(value.dump() == bytes, "manifest must be canonical compact JSON followed by LF");
++	return value;
++}
++
++static void WriteCanonicalNew(const std::string &path, const json &value)
++{
++	std::filesystem::path output(path);
++	Require(output.is_absolute() && !std::filesystem::exists(output), "report must be a new absolute path");
++	std::ofstream stream(output, std::ios::binary | std::ios::out | std::ios::trunc);
++	Require(stream.good(), fmt::format("cannot create report '{}'", path));
++	stream << value.dump() << '\n';
++	stream.flush();
++	Require(stream.good(), fmt::format("cannot write report '{}'", path));
++}
++
++static bool SafeName(std::string_view value)
++{
++	return !value.empty() && value.size() <= 80 && std::ranges::all_of(value, [](char c) {
++		return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
++	});
++}
++
++static Request Validate(const json &manifest)
++{
++	Require(manifest.is_object() && manifest.size() == 6, "manifest must contain exactly six fields");
++	Require(manifest.at("schema_version") == MANIFEST_SCHEMA, "unsupported manifest schema_version");
++	std::string run_id = manifest.at("run_id").get<std::string>();
++	Require(SafeName(run_id), "invalid run_id");
++	std::string probe = manifest.at("probe").get<std::string>();
++	Require(probe == "catalog" || probe == "construction" || probe == "lifecycle" || probe == "occupancy" ||
++		probe == "failure" || probe == "service" || probe == "helicopter" || probe == "multimodal" ||
++		probe == "recovery" || probe == "router", "unknown probe");
++	std::string cargo = manifest.at("cargo_label").get<std::string>();
++	Require(cargo.size() == 4, "cargo_label must contain exactly four bytes");
++	std::string executable = manifest.at("executable_sha256").get<std::string>();
++	Require(executable.size() == 64 && std::ranges::all_of(executable, [](char c) {
++		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++	}), "executable_sha256 is not lowercase SHA-256");
++	return {std::move(run_id), std::move(probe), std::move(cargo), manifest.at("seed").get<uint32_t>(), std::move(executable)};
++}
++
++static CargoLabel LabelFromText(std::string_view label)
++{
++	return CargoLabel{static_cast<uint32_t>(static_cast<uint8_t>(label[0])) << 24 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[1])) << 16 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[2])) << 8 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[3]))};
++}
++
++static std::string CargoText(CargoType cargo)
++{
++	if (!IsValidCargoType(cargo)) return "----";
++	uint32_t value = CargoSpec::Get(cargo)->label.base();
++	return {static_cast<char>(value >> 24), static_cast<char>(value >> 16), static_cast<char>(value >> 8), static_cast<char>(value)};
++}
++
++static json CostRecord(std::string_view command, const CommandCost &cost)
++{
++	return {{"command", command}, {"cost", cost.Succeeded() ? cost.GetCost().base() : 0},
++		{"error_message_id", static_cast<uint64_t>(cost.GetErrorMessage())}, {"status", cost.Succeeded() ? "SUCCESS" : "REJECTED"}};
++}
++
++static void Configure(const Request &request)
++{
++	_settings_newgame.game_creation.generation_seed = request.seed;
++	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
++	_settings_newgame.game_creation.map_x = 6;
++	_settings_newgame.game_creation.map_y = 6;
++	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.se_flat_world_height = 1;
++	_settings_newgame.game_creation.water_borders = {};
++	_settings_newgame.construction.freeform_edges = true;
++	_settings_newgame.difficulty.max_no_competitors = 0;
++	_settings_newgame.difficulty.industry_density = 0;
++	_settings_newgame.difficulty.max_loan = 2000000;
++	_settings_newgame.difficulty.vehicle_costs = 0;
++	_settings_newgame.difficulty.vehicle_breakdowns = 0;
++	_settings_newgame.difficulty.construction_cost = 0;
++	_settings_newgame.difficulty.economy = false;
++	_settings_newgame.difficulty.disasters = false;
++	_settings_newgame.difficulty.town_council_tolerance = TOWN_COUNCIL_PERMISSIVE;
++	_settings_newgame.economy.inflation = false;
++	_settings_newgame.economy.town_growth_rate = 0;
++	_settings_newgame.economy.allow_town_roads = false;
++	_settings_newgame.economy.station_noise_level = false;
++	_settings_newgame.economy.timekeeping_units = TKU_CALENDAR;
++	_settings_newgame.linkgraph.distribution_pax = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_mail = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_armoured = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_default = DT_MANUAL;
++	_settings_newgame.order.gradual_loading = false;
++	_settings_newgame.order.selectgoods = false;
++	_settings_newgame.station.modified_catchment = true;
++	_settings_newgame.station.station_spread = 12;
++	_settings_newgame.vehicle.max_aircraft = 32;
++	_settings_newgame.vehicle.max_roadveh = 32;
++	_settings_newgame.vehicle.max_ships = 32;
++	_settings_newgame.vehicle.max_trains = 8;
++	_settings_newgame.vehicle.never_expire_vehicles = true;
++	_settings_newgame.vehicle.road_side = 1;
++	_settings_newgame.vehicle.roadveh_acceleration_model = 1;
++	for (CompanyID id = CompanyID::Begin(); id < MAX_COMPANIES; ++id) _settings_newgame.script_config.ai[id].reset();
++	_settings_newgame.script_config.game.reset();
++	MakeNewgameSettingsLive();
++}
++
++static void ResetWorld(const Request &request)
++{
++	Configure(request);
++	_random.SetSeed(request.seed ^ 0x4d313941U);
++	_interactive_random.SetSeed(request.seed ^ 0x41495221U);
++	_game_mode = GM_NORMAL;
++	_switch_mode = SM_NONE;
++	SetModalProgress(false);
++	GenerateWorld(GWM_EMPTY, MAP_SIDE, MAP_SIDE, false);
++	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "empty qualification map has wrong dimensions");
++	{
++		AutoRestoreBackup company(_current_company, OWNER_DEITY);
++		auto [cost, required_money, town_id] = Command<CMD_FOUND_TOWN>::Do(DoCommandFlag::Execute, TileXY(12, 12), TSZ_SMALL,
++			false, TL_ORIGINAL, false, 0, std::string("M19 Air Oracle Town"));
++		(void)required_money;
++		Require(cost.Succeeded() && Town::IsValidID(town_id), "failed to create qualification town");
++	}
++	Company *company = DoStartupNewCompany(false, CompanyID::Begin());
++	Require(company != nullptr && company->index == CompanyID::Begin(), "failed to create qualification company");
++	SetLocalCompany(CompanyID::Begin());
++	_current_company = CompanyID::Begin();
++	Require(Command<CMD_INCREASE_LOAN>::Do(DoCommandFlag::Execute, LoanCommand::Max, Money{0}).Succeeded(), "failed to fund qualification company");
++	AllocateWaterRegions();
++}
++
++static void SetCalendarYear(int year)
++{
++	TimerGameCalendar::SetDate(TimerGameCalendar::ConvertYMDToDate(TimerGameCalendar::Year{year}, 0, 1), 0);
++}
++
++static json AirportCatalog()
++{
++	json airports = json::array();
++	for (uint8_t type = 0; type < 10; ++type) {
++		const AirportSpec *spec = AirportSpec::Get(type);
++		const AirportFTAClass *fsm = spec->fsm;
++		uint terminals = 0;
++		if (fsm->terminals != nullptr) {
++			for (uint group = 0; group < fsm->terminals[0]; ++group) terminals += fsm->terminals[group + 1];
++		}
++		airports.push_back({
++			{"airplanes", fsm->flags.Test(AirportFTAClass::Flag::Airplanes)},
++			{"catchment", spec->catchment},
++			{"depots", spec->depots.size()},
++			{"enabled", spec->enabled},
++			{"fsm_elements", fsm->nofelements},
++			{"helicopters", fsm->flags.Test(AirportFTAClass::Flag::Helicopters)},
++			{"helipads", fsm->num_helipads},
++			{"id", type},
++			{"layouts", spec->layouts.size()},
++			{"maintenance", spec->maintenance_cost},
++			{"max_year", spec->max_year.base()},
++			{"min_year", spec->min_year.base()},
++			{"name", AIRPORT_NAMES[type]},
++			{"noise", spec->noise_level},
++			{"short_strip", fsm->flags.Test(AirportFTAClass::Flag::ShortStrip)},
++			{"size_x", spec->size_x},
++			{"size_y", spec->size_y},
++			{"terminals", terminals},
++		});
++	}
++	return airports;
++}
++
++static json AircraftCatalog()
++{
++	json engines = json::array();
++	for (const Engine *engine : Engine::IterateType(VEH_AIRCRAFT)) {
++		const AircraftVehicleInfo &info = engine->VehInfo<AircraftVehicleInfo>();
++		json refit = json::array();
++		CargoTypes mask = GetUnionOfArticulatedRefitMasks(engine->index, true);
++		for (const CargoSpec *cargo : CargoSpec::Iterate()) if (HasBit(mask, cargo->Index())) refit.push_back(CargoText(cargo->Index()));
++		engines.push_back({
++			{"acceleration", info.acceleration},
++			{"available", engine->company_avail.Test(CompanyID::Begin())},
++			{"engine_id", engine->index.base()},
++			{"kind", (info.subtype & AIR_CTOL) != 0 ? "airplane" : "helicopter"},
++			{"mail_capacity", info.mail_capacity},
++			{"max_range", info.max_range},
++			{"max_speed", info.max_speed},
++			{"passenger_capacity", info.passenger_capacity},
++			{"refit_cargos", std::move(refit)},
++		});
++	}
++	return engines;
++}
++
++static json Catalog()
++{
++	return {{"aircraft_engines", AircraftCatalog()}, {"airport_specs", AirportCatalog()},
++		{"movement_blocks", 64}, {"movement_headings", MAX_HEADINGS + 1}};
++}
++
++static StationID BuildAirport(TileIndex tile, uint8_t type, StationID join, json &commands, std::string_view label = "CMD_BUILD_AIRPORT")
++{
++	CommandCost test = Command<CMD_BUILD_AIRPORT>::Do({}, tile, type, 0, join, false);
++	commands.push_back(CostRecord(fmt::format("{}_TEST", label), test));
++	Require(test.Succeeded(), fmt::format("airport test failed type={} tile={} error={}", type, tile.base(), static_cast<uint64_t>(test.GetErrorMessage())));
++	CommandCost execute = Command<CMD_BUILD_AIRPORT>::Do(DoCommandFlag::Execute, tile, type, 0, join, false);
++	commands.push_back(CostRecord(label, execute));
++	Require(execute.Succeeded() && IsAirportTile(tile), "airport execution diverged from test");
++	StationID station = GetStationIndex(tile);
++	Require(Station::IsValidID(station) && (join == NEW_STATION || station == join), "airport station identity or join diverged");
++	return station;
++}
++
++static AirportPair BuildAirportPair(uint8_t type, TileIndex source_tile = TileXY(4, 28), TileIndex destination_tile = TileXY(52, 28))
++{
++	json ignored = json::array();
++	StationID source = BuildAirport(source_tile, type, NEW_STATION, ignored);
++	StationID destination = BuildAirport(destination_tile, type, NEW_STATION, ignored);
++	const Station *source_station = Station::Get(source);
++	const Station *destination_station = Station::Get(destination);
++	Require(source_station->airport.GetNumHangars() > 0 && destination_station->airport.GetNumHangars() > 0,
++		"airport pair needs hangars");
++	return {source, destination, source_station->airport.GetHangarTile(0), destination_station->airport.GetHangarTile(0)};
++}
++
++static json ConstructionOracle()
++{
++	json commands = json::array();
++	json types = json::array();
++	TileIndex tile = TileXY(30, 30);
++	for (uint8_t type = 0; type < 9; ++type) {
++		const AirportSpec *spec = AirportSpec::Get(type);
++		int year = std::max(0, spec->min_year.base());
++		if (spec->max_year.base() >= 2050 && year <= 2050) year = 2050;
++		SetCalendarYear(year);
++		if (spec->min_year.base() > 0) {
++			SetCalendarYear(spec->min_year.base() - 1);
++			CommandCost early = Command<CMD_BUILD_AIRPORT>::Do({}, tile, type, 0, NEW_STATION, false);
++			commands.push_back(CostRecord("CMD_BUILD_AIRPORT_BEFORE_INTRODUCTION", early));
++			Require(early.Failed(), "airport was buildable before introduction year");
++			SetCalendarYear(year);
++		}
++		if (spec->max_year.base() < CalendarTime::MAX_YEAR.base()) {
++			SetCalendarYear(spec->max_year.base() + 1);
++			CommandCost late = Command<CMD_BUILD_AIRPORT>::Do({}, tile, type, 0, NEW_STATION, false);
++			commands.push_back(CostRecord("CMD_BUILD_AIRPORT_AFTER_EXPIRY", late));
++			Require(late.Failed(), "airport was buildable after expiry year");
++			SetCalendarYear(year);
++		}
++		CommandCost test = Command<CMD_BUILD_AIRPORT>::Do({}, tile, type, 0, NEW_STATION, false);
++		commands.push_back(CostRecord("CMD_BUILD_AIRPORT_TYPE_TEST", test));
++		Require(test.Succeeded(), fmt::format("buildable airport type {} test failed", type));
++		CommandCost execute = Command<CMD_BUILD_AIRPORT>::Do(DoCommandFlag::Execute, tile, type, 0, NEW_STATION, false);
++		commands.push_back(CostRecord("CMD_BUILD_AIRPORT_TYPE", execute));
++		Require(execute.Succeeded(), fmt::format("buildable airport type {} execution failed", type));
++		StationID station_id = GetStationIndex(tile);
++		const Station *station = Station::Get(station_id);
++		Require(station->airport.w == spec->size_x && station->airport.h == spec->size_y && station->airport.type == type,
++			"airport footprint or type diverged");
++		types.push_back({{"cost", execute.GetCost().base()}, {"height", station->airport.h}, {"id", type},
++			{"name", AIRPORT_NAMES[type]}, {"station", station_id.base()}, {"width", station->airport.w}, {"year", year}});
++		CommandCost remove_test = Command<CMD_LANDSCAPE_CLEAR>::Do({}, tile);
++		commands.push_back(CostRecord("CMD_REMOVE_AIRPORT_TEST", remove_test));
++		Require(remove_test.Succeeded(), "airport remove test failed");
++		CommandCost remove = Command<CMD_LANDSCAPE_CLEAR>::Do(DoCommandFlag::Execute, tile);
++		commands.push_back(CostRecord("CMD_REMOVE_AIRPORT", remove));
++		Require(remove.Succeeded() && !Station::Get(station_id)->facilities.Test(StationFacility::Airport), "airport removal failed");
++	}
++	SetCalendarYear(2050);
++	CommandCost oilrig = Command<CMD_BUILD_AIRPORT>::Do({}, tile, AT_OILRIG, 0, NEW_STATION, false);
++	commands.push_back(CostRecord("CMD_BUILD_DISABLED_OILRIG", oilrig));
++	Require(oilrig.Failed(), "disabled oil-rig airport was buildable");
++	uint8_t old_spread = _settings_game.station.station_spread;
++	_settings_game.station.station_spread = 8;
++	CommandCost spread = Command<CMD_BUILD_AIRPORT>::Do({}, tile, AT_INTERCON, 0, NEW_STATION, false);
++	commands.push_back(CostRecord("CMD_BUILD_AIRPORT_SPREAD_MASK", spread));
++	_settings_game.station.station_spread = old_spread;
++	Require(spread.Failed(), "station-spread mask accepted oversized airport");
++	SetTileHeight(TileXY(31, 30), 2);
++	CommandCost terrain = Command<CMD_BUILD_AIRPORT>::Do({}, tile, AT_COMMUTER, 0, NEW_STATION, false);
++	commands.push_back(CostRecord("CMD_BUILD_AIRPORT_TERRAIN_MASK", terrain));
++	SetTileHeight(TileXY(31, 30), 1);
++	Require(terrain.Failed(), "terrain mask accepted non-flat airport site");
++	CommandCost invalid = Command<CMD_BUILD_AIRPORT>::Do({}, tile, NUM_AIRPORTS, 0, NEW_STATION, false);
++	commands.push_back(CostRecord("CMD_BUILD_AIRPORT_INVALID_TYPE", invalid));
++	Require(invalid.Failed(), "invalid airport type was accepted");
++	StationID owner_station = BuildAirport(TileXY(44, 44), AT_COMMUTER, NEW_STATION, commands, "CMD_BUILD_OWNERSHIP_AIRPORT");
++	_current_company = CompanyID{1};
++	CommandCost ownership = Command<CMD_LANDSCAPE_CLEAR>::Do({}, TileXY(44, 44));
++	commands.push_back(CostRecord("CMD_REMOVE_FOREIGN_AIRPORT", ownership));
++	_current_company = CompanyID::Begin();
++	Require(ownership.Failed() && Station::Get(owner_station)->facilities.Test(StationFacility::Airport), "foreign airport ownership mask failed");
++	return {{"buildable_types", std::move(types)}, {"commands", std::move(commands)}, {"disabled_oilrig_rejected", true},
++		{"footprint_mask", true}, {"ownership_mask", true}, {"spread_mask", true}, {"terrain_mask", true}};
++}
++
++static UnitBuild BuildAircraft(TileIndex hangar, CargoType cargo, bool airplane, json &commands, std::string_view label = "CMD_BUILD_AIRCRAFT")
++{
++	const Station *station = Station::GetByTile(hangar);
++	for (const Engine *engine : Engine::IterateType(VEH_AIRCRAFT)) {
++		const AircraftVehicleInfo &info = engine->VehInfo<AircraftVehicleInfo>();
++		if (((info.subtype & AIR_CTOL) != 0) != airplane || !engine->company_avail.Test(CompanyID::Begin()) || !engine->CanCarryCargo()) continue;
++		if (!HasBit(GetUnionOfArticulatedRefitMasks(engine->index, true), cargo) || !CanVehicleUseStation(engine->index, station)) continue;
++		auto result = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, hangar, engine->index, true, cargo, INVALID_CLIENT_ID);
++		commands.push_back(CostRecord(label, std::get<0>(result)));
++		if (std::get<0>(result).Failed()) continue;
++		VehicleID vehicle = std::get<1>(result);
++		auto refit = Command<CMD_REFIT_VEHICLE>::Do(DoCommandFlag::Execute, vehicle, cargo, 0, false, false, 0);
++		commands.push_back(CostRecord("CMD_REFIT_AIRCRAFT", std::get<0>(refit)));
++		Require(std::get<0>(refit).Succeeded(), "aircraft refit failed after build");
++		const Aircraft *aircraft = Aircraft::Get(vehicle);
++		Require(aircraft->cargo_type == cargo && aircraft->cargo_cap > 0 && aircraft->IsInDepot(),
++			"built aircraft has wrong cargo, capacity, or location");
++		return {vehicle, engine->index, aircraft->cargo_cap};
++	}
++	Fail(fmt::format("no buildable {} for cargo {}", airplane ? "airplane" : "helicopter", CargoText(cargo)));
++}
++
++static void SetOrders(VehicleID vehicle, std::span<const StationID> stations, std::optional<size_t> transfer_ordinal,
++	json &commands, std::string_view label = "CMD_INSERT_AIRCRAFT_ORDER")
++{
++	for (size_t ordinal = 0; ordinal < stations.size(); ++ordinal) {
++		Order order;
++		order.MakeGoToStation(stations[ordinal]);
++		order.SetStopLocation(OrderStopLocation::FarEnd);
++		if (transfer_ordinal.has_value() && *transfer_ordinal == ordinal) {
++			order.SetUnloadType(OrderUnloadType::Transfer);
++			order.SetLoadType(OrderLoadType::NoLoad);
++		}
++		CommandCost cost = Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle,
++			VehicleOrderID{static_cast<uint8_t>(ordinal)}, order);
++		commands.push_back(CostRecord(label, cost));
++		Require(cost.Succeeded(), fmt::format("failed to insert order ordinal={} station={} error={}",
++			ordinal, stations[ordinal].base(), static_cast<uint64_t>(cost.GetErrorMessage())));
++	}
++}
++
++static void InjectCargo(StationID station_id, CargoType cargo, uint amount)
++{
++	Require(CargoPacket::CanAllocateItem(), "cargo packet pool is full");
++	Station *station = Station::Get(station_id);
++	GoodsEntry &goods = station->goods[cargo];
++	goods.rating = 255;
++	goods.status.Set(GoodsEntry::State::Rating);
++	Source source{Town::Get(TownID{0})->index, SourceType::Town};
++	goods.GetOrCreateData().cargo.Append(new CargoPacket(station_id, static_cast<uint16_t>(amount), source), StationID::Invalid());
++}
++
++static void SetDestinationAcceptance(StationID station_id, CargoType cargo)
++{
++	RlV2SetQualificationAcceptance(station_id, cargo, true);
++	Station *station = Station::Get(station_id);
++	station->goods[cargo].status.Set(GoodsEntry::State::Acceptance);
++	SetBit(station->always_accepted, cargo);
++}
++
++static uint LoadFromStation(VehicleID vehicle, StationID source, StationID destination)
++{
++	Vehicle *unit = Vehicle::Get(vehicle);
++	GoodsEntry &goods = Station::Get(source)->goods[unit->cargo_type];
++	std::array<StationID, 1> next{destination};
++	return goods.GetOrCreateData().cargo.Load(unit->cargo_cap, &unit->cargo, next, Station::Get(source)->xy);
++}
++
++static void ToggleVehicle(VehicleID vehicle, json &commands, std::string_view label)
++{
++	CommandCost cost = Command<CMD_START_STOP_VEHICLE>::Do(DoCommandFlag::Execute, vehicle, false);
++	commands.push_back(CostRecord(label, cost));
++	Require(cost.Succeeded(), fmt::format("vehicle toggle failed: {}", label));
++}
++
++static json PaymentEvents()
++{
++	json result = json::array();
++	for (const RlV2CargoPaymentEvent &event : RlV2GetCargoPaymentEvents()) {
++		result.push_back({{"base_income", event.base_income.base()}, {"cargo", CargoText(event.cargo)}, {"count", event.count},
++			{"distance", event.distance}, {"feeder_share", event.feeder_share.base()}, {"final_income", event.final_income.base()},
++			{"periods_in_transit", event.periods_in_transit}, {"station", event.station.base()}, {"transfer", event.transfer}});
++	}
++	return result;
++}
++
++static json RunAirService(CargoType cargo, bool airplane)
++{
++	json commands = json::array();
++	uint8_t airport_type = airplane ? AT_COMMUTER : AT_HELIDEPOT;
++	AirportPair pair = BuildAirportPair(airport_type);
++	UnitBuild build = BuildAircraft(pair.source_hangar, cargo, airplane, commands);
++	std::array<StationID, 2> orders{pair.source, pair.destination};
++	SetOrders(build.vehicle, orders, std::nullopt, commands);
++	InjectCargo(pair.source, cargo, build.capacity);
++	uint loaded = LoadFromStation(build.vehicle, pair.source, pair.destination);
++	Require(loaded == build.capacity, "native station-to-aircraft loading did not fill aircraft");
++	SetDestinationAcceptance(pair.destination, cargo);
++	Company *company = Company::Get(CompanyID::Begin());
++	Money income_before = company->cur_economy.income;
++	uint32_t delivered_before = company->cur_economy.delivered_cargo[cargo];
++	RlV2ClearCargoPaymentEvents();
++	ToggleVehicle(build.vehicle, commands, airplane ? "CMD_START_AIRPLANE" : "CMD_START_HELICOPTER");
++	uint64_t ticks = 0;
++	std::set<uint8_t> states;
++	std::set<uint64_t> source_blocks;
++	std::set<uint64_t> destination_blocks;
++	while ((company->cur_economy.delivered_cargo[cargo] == delivered_before || company->cur_economy.income <= income_before) && ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(pair.destination, cargo);
++		StateGameLoop();
++		++ticks;
++		const Aircraft *aircraft = Aircraft::Get(build.vehicle);
++		states.insert(aircraft->state);
++		source_blocks.insert(Station::Get(pair.source)->airport.blocks.base());
++		destination_blocks.insert(Station::Get(pair.destination)->airport.blocks.base());
++	}
++	Money income = company->cur_economy.income - income_before;
++	uint32_t delivered = company->cur_economy.delivered_cargo[cargo] - delivered_before;
++	const Aircraft *aircraft = Aircraft::Get(build.vehicle);
++	Require(delivered > 0 && income > 0 && !aircraft->vehstatus.Test(VehState::Crashed),
++		fmt::format("{} service failed cargo={} ticks={} state={} delivered={} income={}",
++			airplane ? "airplane" : "helicopter", CargoText(cargo), ticks, aircraft->state, delivered, income.base()));
++	Require(states.contains(FLYING), "aircraft service never exposed flying state");
++	RlV2ClearQualificationAcceptance();
++	return {{"accounting", {{"delivered", delivered}, {"income", income.base()}, {"payment_events", PaymentEvents()}}},
++		{"aircraft", {{"capacity", build.capacity}, {"engine", build.engine.base()}, {"kind", airplane ? "airplane" : "helicopter"},
++			{"max_range", aircraft->GetRange()}, {"vehicle", build.vehicle.base()}}}, {"commands", std::move(commands)},
++		{"movement", {{"destination_block_samples", destination_blocks.size()}, {"state_count", states.size()},
++			{"states", states}, {"source_block_samples", source_blocks.size()}}}, {"ticks", ticks}};
++}
++
++static json RunLifecycle(CargoType cargo, const std::string &save_path)
++{
++	json commands = json::array();
++	AirportPair pair = BuildAirportPair(AT_INTERNATIONAL);
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	Require(IsValidCargoType(passengers), "passenger cargo is unavailable");
++	UnitBuild plane = BuildAircraft(pair.source_hangar, cargo, true, commands, "CMD_BUILD_LIFECYCLE_AIRPLANE");
++	UnitBuild helicopter = BuildAircraft(pair.source_hangar, passengers, false, commands, "CMD_BUILD_LIFECYCLE_HELICOPTER");
++	std::array<StationID, 2> orders{pair.source, pair.destination};
++	SetOrders(plane.vehicle, orders, std::nullopt, commands);
++	SetOrders(helicopter.vehicle, orders, std::nullopt, commands);
++	CommandCost wait = Command<CMD_CHANGE_TIMETABLE>::Do(DoCommandFlag::Execute, plane.vehicle, VehicleOrderID{0}, MTF_WAIT_TIME, 64);
++	CommandCost travel = Command<CMD_CHANGE_TIMETABLE>::Do(DoCommandFlag::Execute, plane.vehicle, VehicleOrderID{1}, MTF_TRAVEL_TIME, 256);
++	CommandCost speed = Command<CMD_CHANGE_TIMETABLE>::Do(DoCommandFlag::Execute, plane.vehicle, VehicleOrderID{1}, MTF_TRAVEL_SPEED, 48);
++	commands.push_back(CostRecord("CMD_CHANGE_AIRCRAFT_TIMETABLE_WAIT", wait));
++	commands.push_back(CostRecord("CMD_CHANGE_AIRCRAFT_TIMETABLE_TRAVEL", travel));
++	commands.push_back(CostRecord("CMD_REJECT_AIRCRAFT_TIMETABLE_SPEED", speed));
++	Require(wait.Succeeded() && travel.Succeeded() && speed.Failed(), fmt::format(
++		"aircraft timetable transition failed wait={} travel={} speed={}",
++		static_cast<uint64_t>(wait.GetErrorMessage()), static_cast<uint64_t>(travel.GetErrorMessage()), static_cast<uint64_t>(speed.GetErrorMessage())));
++	CommandCost plane_service = Command<CMD_CHANGE_SERVICE_INT>::Do(DoCommandFlag::Execute, plane.vehicle, 120, true, false);
++	CommandCost heli_service = Command<CMD_CHANGE_SERVICE_INT>::Do(DoCommandFlag::Execute, helicopter.vehicle, 90, true, false);
++	commands.push_back(CostRecord("CMD_CHANGE_AIRPLANE_SERVICE_INTERVAL", plane_service));
++	commands.push_back(CostRecord("CMD_CHANGE_HELICOPTER_SERVICE_INTERVAL", heli_service));
++	Require(plane_service.Succeeded() && heli_service.Succeeded(), "aircraft service interval transition failed");
++	UnitBuild range_probe = BuildAircraft(pair.source_hangar, cargo, true, commands, "CMD_BUILD_RANGE_PROBE_AIRPLANE");
++	Aircraft *limited = Aircraft::Get(range_probe.vehicle);
++	limited->acache.cached_max_range = 8;
++	limited->acache.cached_max_range_sqr = 64;
++	CommandCost limited_copy = Command<CMD_CLONE_ORDER>::Do({}, CO_COPY, range_probe.vehicle, plane.vehicle);
++	commands.push_back(CostRecord("CMD_COPY_AIRCRAFT_ORDERS_RANGE_MASK", limited_copy));
++	Require(limited_copy.Failed(), "bounded aircraft range mask accepted an over-range order cycle");
++	limited->acache.cached_max_range = 0;
++	limited->acache.cached_max_range_sqr = 0;
++	CommandCost unlimited_copy = Command<CMD_CLONE_ORDER>::Do(DoCommandFlag::Execute, CO_COPY, range_probe.vehicle, plane.vehicle);
++	commands.push_back(CostRecord("CMD_COPY_AIRCRAFT_ORDERS_UNLIMITED", unlimited_copy));
++	Require(unlimited_copy.Succeeded() && Vehicle::Get(range_probe.vehicle)->GetNumOrders() == 2,
++		"unlimited aircraft range did not accept valid order cycle");
++	Require(std::filesystem::path(save_path).is_absolute() && !std::filesystem::exists(save_path), "lifecycle save path is invalid or already exists");
++	Require(SaveOrLoad(save_path, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "native aircraft lifecycle SAVE failed");
++	uintmax_t save_bytes = std::filesystem::file_size(save_path);
++	CommandCost mutate = Command<CMD_CHANGE_SERVICE_INT>::Do(DoCommandFlag::Execute, plane.vehicle, 180, true, false);
++	commands.push_back(CostRecord("CMD_MUTATE_AIRCRAFT_SERVICE_AFTER_SAVE", mutate));
++	Require(mutate.Succeeded() && Vehicle::Get(plane.vehicle)->GetServiceInterval() == 180, "post-save aircraft mutation failed");
++	Require(SaveOrLoad(save_path, SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "native aircraft lifecycle LOAD failed");
++	SetLocalCompany(CompanyID::Begin());
++	_current_company = CompanyID::Begin();
++	Require(Vehicle::IsValidID(plane.vehicle) && Vehicle::Get(plane.vehicle)->GetServiceInterval() == 120 &&
++		Vehicle::Get(plane.vehicle)->GetNumOrders() == 2 && Vehicle::IsValidID(helicopter.vehicle) &&
++		Vehicle::Get(helicopter.vehicle)->GetServiceInterval() == 90, "aircraft state did not restore across save/load");
++	auto clone = Command<CMD_CLONE_VEHICLE>::Do(DoCommandFlag::Execute, pair.source_hangar, plane.vehicle, false);
++	commands.push_back(CostRecord("CMD_CLONE_AIRCRAFT", std::get<0>(clone)));
++	Require(std::get<0>(clone).Succeeded() && Vehicle::IsValidID(std::get<1>(clone)), "aircraft clone failed");
++	VehicleID clone_id = std::get<1>(clone);
++	EngineID replacement = EngineID::Invalid();
++	VehicleID replaced_clone = VehicleID::Invalid();
++	for (const Engine *candidate : Engine::IterateType(VEH_AIRCRAFT)) {
++		const AircraftVehicleInfo &info = candidate->VehInfo<AircraftVehicleInfo>();
++		if ((info.subtype & AIR_CTOL) == 0 || candidate->index == plane.engine || !candidate->company_avail.Test(CompanyID::Begin()) ||
++			!HasBit(GetUnionOfArticulatedRefitMasks(candidate->index, true), cargo) || !CanVehicleUseStation(candidate->index, Station::Get(pair.source))) continue;
++		CommandCost mapping_test = Command<CMD_SET_AUTOREPLACE>::Do({}, DEFAULT_GROUP, plane.engine, candidate->index, false);
++		commands.push_back(CostRecord("CMD_SET_AIRCRAFT_AUTOREPLACE_TEST", mapping_test));
++		if (mapping_test.Failed()) continue;
++		CommandCost mapping = Command<CMD_SET_AUTOREPLACE>::Do(DoCommandFlag::Execute, DEFAULT_GROUP, plane.engine, candidate->index, false);
++		commands.push_back(CostRecord("CMD_SET_AIRCRAFT_AUTOREPLACE", mapping));
++		Require(mapping.Succeeded(), "aircraft autoreplace mapping failed");
++		CommandCost replace_test = Command<CMD_AUTOREPLACE_VEHICLE>::Do({}, clone_id);
++		commands.push_back(CostRecord("CMD_AUTOREPLACE_AIRCRAFT_TEST", replace_test));
++		if (replace_test.Succeeded()) {
++			CommandCost replace = Command<CMD_AUTOREPLACE_VEHICLE>::Do(DoCommandFlag::Execute, clone_id);
++			commands.push_back(CostRecord("CMD_AUTOREPLACE_AIRCRAFT", replace));
++			if (replace.Succeeded()) {
++				replacement = candidate->index;
++				for (const Aircraft *aircraft : Aircraft::Iterate()) {
++					if (aircraft->IsNormalAircraft() && aircraft->index != plane.vehicle && aircraft->index != helicopter.vehicle &&
++						aircraft->index != range_probe.vehicle && aircraft->engine_type == replacement) {
++						replaced_clone = aircraft->index;
++						break;
++					}
++				}
++			}
++		}
++		CommandCost clear = Command<CMD_SET_AUTOREPLACE>::Do(DoCommandFlag::Execute, DEFAULT_GROUP, plane.engine, EngineID::Invalid(), false);
++		commands.push_back(CostRecord("CMD_CLEAR_AIRCRAFT_AUTOREPLACE", clear));
++		Require(clear.Succeeded(), "aircraft autoreplace mapping clear failed");
++		if (replacement != EngineID::Invalid()) break;
++	}
++	Require(replacement != EngineID::Invalid() && Vehicle::IsValidID(replaced_clone), "no compatible aircraft autoreplace could execute");
++	CommandCost sell = Command<CMD_SELL_VEHICLE>::Do(DoCommandFlag::Execute, replaced_clone, true, false, INVALID_CLIENT_ID);
++	commands.push_back(CostRecord("CMD_SELL_AIRCRAFT", sell));
++	Require(sell.Succeeded() && !Vehicle::IsValidID(replaced_clone), "autoreplaced aircraft sale failed");
++	return {{"airplane", {{"capacity", plane.capacity}, {"engine", plane.engine.base()}, {"vehicle", plane.vehicle.base()}}},
++		{"clone_and_sale", true}, {"commands", std::move(commands)},
++		{"helicopter", {{"capacity", helicopter.capacity}, {"engine", helicopter.engine.base()}, {"vehicle", helicopter.vehicle.base()}}},
++		{"range_mask", {{"bounded_rejected", true}, {"limit", 8}, {"unlimited_accepted", true}}},
++		{"replacement", {{"executed", true}, {"from_engine", plane.engine.base()}, {"to_engine", replacement.base()}}},
++		{"save_load", {{"bytes", save_bytes}, {"restored", true}}}, {"service_intervals", {{"airplane", 120}, {"helicopter", 90}}},
++		{"timetable", {{"speed_limit_rejected", true}, {"travel", 256}, {"wait", 64}}}};
++}
++
++static json RunOccupancy(CargoType cargo)
++{
++	json commands = json::array();
++	SetCalendarYear(1950);
++	AirportPair pair = BuildAirportPair(AT_SMALL);
++	SetCalendarYear(2050);
++	std::vector<UnitBuild> fleet;
++	for (uint i = 0; i < 4; ++i) {
++		fleet.push_back(BuildAircraft(pair.source_hangar, cargo, true, commands, "CMD_BUILD_CONGESTION_AIRPLANE"));
++		std::array<StationID, 2> orders{pair.source, pair.destination};
++		SetOrders(fleet.back().vehicle, orders, std::nullopt, commands);
++		InjectCargo(pair.source, cargo, fleet.back().capacity);
++		Require(LoadFromStation(fleet.back().vehicle, pair.source, pair.destination) == fleet.back().capacity,
++			"congestion aircraft did not load");
++		ToggleVehicle(fleet.back().vehicle, commands, "CMD_START_CONGESTION_AIRPLANE");
++	}
++	std::set<uint64_t> block_states;
++	std::set<uint8_t> headings;
++	uint peak_destination_contenders = 0;
++	uint nonzero_block_ticks = 0;
++	for (uint64_t tick = 0; tick < 24000; ++tick) {
++		StateGameLoop();
++		uint64_t blocks = Station::Get(pair.source)->airport.blocks.base() | Station::Get(pair.destination)->airport.blocks.base();
++		block_states.insert(blocks);
++		nonzero_block_ticks += blocks != 0;
++		uint contenders = 0;
++		for (const UnitBuild &unit : fleet) {
++			const Aircraft *aircraft = Aircraft::Get(unit.vehicle);
++			headings.insert(aircraft->state);
++			contenders += aircraft->targetairport == pair.destination && aircraft->state == FLYING;
++		}
++		peak_destination_contenders = std::max(peak_destination_contenders, contenders);
++	}
++	Require(block_states.size() > 2 && nonzero_block_ticks > 0 && headings.contains(FLYING) && peak_destination_contenders >= 2,
++		"airport occupancy oracle did not expose blocks, movement, and competing arrivals");
++	return {{"aircraft", fleet.size()}, {"block_state_count", block_states.size()}, {"commands", std::move(commands)},
++		{"headings", headings}, {"nonzero_block_ticks", nonzero_block_ticks}, {"peak_destination_contenders", peak_destination_contenders},
++		{"source_airport", pair.source.base()}, {"destination_airport", pair.destination.base()}};
++}
++
++static json RunFailure(CargoType cargo)
++{
++	json commands = json::array();
++	AirportPair pair = BuildAirportPair(AT_COMMUTER);
++	UnitBuild service = BuildAircraft(pair.source_hangar, cargo, true, commands);
++	UnitBuild crash = BuildAircraft(pair.source_hangar, cargo, true, commands, "CMD_BUILD_CRASH_FIXTURE_AIRPLANE");
++	CommandCost close = Command<CMD_OPEN_CLOSE_AIRPORT>::Do(DoCommandFlag::Execute, pair.destination);
++	commands.push_back(CostRecord("CMD_CLOSE_AIRPORT", close));
++	Require(close.Succeeded() && Station::Get(pair.destination)->airport.blocks.Test(AirportBlock::AirportClosed), "airport close transition failed");
++	CommandCost reopen = Command<CMD_OPEN_CLOSE_AIRPORT>::Do(DoCommandFlag::Execute, pair.destination);
++	commands.push_back(CostRecord("CMD_REOPEN_AIRPORT", reopen));
++	Require(reopen.Succeeded() && !Station::Get(pair.destination)->airport.blocks.Test(AirportBlock::AirportClosed), "airport reopen transition failed");
++	Aircraft *victim = Aircraft::Get(crash.vehicle);
++	Money value_before = victim->value;
++	uint victims = victim->Crash();
++	Require(victim->vehstatus.Test(VehState::Crashed) && victim->crashed_counter == 0, "native crash fixture did not enter crashed state");
++	CommandCost blocked_remove = Command<CMD_LANDSCAPE_CLEAR>::Do({}, Station::Get(pair.source)->airport.tile);
++	commands.push_back(CostRecord("CMD_REMOVE_AIRPORT_WITH_AIRCRAFT", blocked_remove));
++	Require(blocked_remove.Failed(), "airport removal accepted an aircraft in the way");
++	return {{"airport_close_open", true}, {"commands", std::move(commands)},
++		{"crash", {{"crashed", true}, {"seeded_fixture", true}, {"value_before", value_before.base()}, {"vehicle", crash.vehicle.base()}, {"victims", victims}}},
++		{"removal_blocked", true}, {"surviving_service_vehicle", service.vehicle.base()}};
++}
++
++static json RunRecovery(CargoType cargo)
++{
++	json commands = json::array();
++	AirportPair pair = BuildAirportPair(AT_COMMUTER);
++	UnitBuild build = BuildAircraft(pair.source_hangar, cargo, true, commands);
++	std::array<StationID, 2> orders{pair.source, pair.destination};
++	SetOrders(build.vehicle, orders, std::nullopt, commands);
++	InjectCargo(pair.source, cargo, build.capacity);
++	Require(LoadFromStation(build.vehicle, pair.source, pair.destination) == build.capacity, "recovery aircraft did not load");
++	SetDestinationAcceptance(pair.destination, cargo);
++	CommandCost close = Command<CMD_OPEN_CLOSE_AIRPORT>::Do(DoCommandFlag::Execute, pair.destination);
++	commands.push_back(CostRecord("CMD_CLOSE_RECOVERY_AIRPORT", close));
++	Require(close.Succeeded(), "recovery airport close failed");
++	Company *company = Company::Get(CompanyID::Begin());
++	Money income_before = company->cur_economy.income;
++	uint32_t delivered_before = company->cur_economy.delivered_cargo[cargo];
++	RlV2ClearCargoPaymentEvents();
++	ToggleVehicle(build.vehicle, commands, "CMD_START_CLOSED_DESTINATION_AIRCRAFT");
++	bool saw_flying_while_closed = false;
++	for (uint64_t tick = 0; tick < 12000; ++tick) {
++		StateGameLoop();
++		saw_flying_while_closed |= Aircraft::Get(build.vehicle)->state == FLYING;
++	}
++	Require(company->cur_economy.delivered_cargo[cargo] == delivered_before && company->cur_economy.income == income_before &&
++		Station::Get(pair.destination)->airport.blocks.Test(AirportBlock::AirportClosed),
++		"closed destination did not bound delivery and accounting");
++	CommandCost reopen = Command<CMD_OPEN_CLOSE_AIRPORT>::Do(DoCommandFlag::Execute, pair.destination);
++	commands.push_back(CostRecord("CMD_REOPEN_RECOVERY_AIRPORT", reopen));
++	Require(reopen.Succeeded(), "recovery airport reopen failed");
++	uint64_t recovery_ticks = 0;
++	while ((company->cur_economy.delivered_cargo[cargo] == delivered_before || company->cur_economy.income <= income_before) && recovery_ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(pair.destination, cargo);
++		StateGameLoop();
++		++recovery_ticks;
++	}
++	Money income = company->cur_economy.income - income_before;
++	uint32_t delivered = company->cur_economy.delivered_cargo[cargo] - delivered_before;
++	Require(saw_flying_while_closed && delivered > 0 && income > 0 && !Aircraft::Get(build.vehicle)->vehstatus.Test(VehState::Crashed),
++		"aircraft failed bounded closed-airport recovery");
++	RlV2ClearQualificationAcceptance();
++	return {{"closed_ticks", 12000}, {"commands", std::move(commands)}, {"delivery", {{"delivered", delivered}, {"income", income.base()}}},
++		{"recovery_ticks", recovery_ticks}, {"reopened", true}, {"saw_flying_while_closed", saw_flying_while_closed}};
++}
++
++static json RunRouter()
++{
++	struct Edge { uint from; uint to; uint cost; std::string_view mode; };
++	static constexpr std::array<Edge, 8> edges{{
++		{0, 1, 5, "road"}, {1, 4, 20, "road"}, {0, 2, 8, "rail"}, {2, 4, 9, "rail"},
++		{0, 3, 4, "water"}, {3, 4, 10, "water"}, {1, 3, 3, "road"}, {3, 5, 2, "air"},
++	}};
++	std::array<uint, 6> distance;
++	distance.fill(std::numeric_limits<uint>::max());
++	std::array<int, 6> previous;
++	previous.fill(-1);
++	distance[0] = 0;
++	using QueueItem = std::pair<uint, uint>;
++	std::priority_queue<QueueItem, std::vector<QueueItem>, std::greater<>> queue;
++	queue.push({0, 0});
++	while (!queue.empty()) {
++		auto [cost, node] = queue.top();
++		queue.pop();
++		if (cost != distance[node]) continue;
++		for (const Edge &edge : edges) {
++			if (edge.from != node || cost + edge.cost >= distance[edge.to]) continue;
++			distance[edge.to] = cost + edge.cost;
++			previous[edge.to] = static_cast<int>(&edge - edges.data());
++			queue.push({distance[edge.to], edge.to});
++		}
++	}
++	json specialists = {{"air", "air-specialist-v1"}, {"rail", "rail-specialist-v1"},
++		{"road", "road-specialist-v1"}, {"water", "water-specialist-v1"}};
++	json state = {{"distances", distance}, {"frontier", json::array()}, {"previous_edges", previous},
++		{"schema_version", "openttd-rl-v2-mode-router-state-1"}, {"specialists", specialists}};
++	std::string checkpoint = state.dump();
++	json restored = json::parse(checkpoint);
++	Require(restored.dump() == checkpoint && distance[4] == 14 && distance[5] == 6,
++		"mode-neutral router or checkpoint recovery diverged");
++	json projected_edges = json::array();
++	for (const Edge &edge : edges) projected_edges.push_back({{"cost", edge.cost}, {"from", edge.from}, {"mode", edge.mode}, {"to", edge.to}});
++	return {{"checkpoint_bytes", checkpoint.size()}, {"checkpoint_exact", true}, {"edges", std::move(projected_edges)},
++		{"no_privileged_inputs", true}, {"route_costs", {{"cargo_sink", distance[4]}, {"passenger_sink", distance[5]}}},
++		{"selected_specialists", {{"cargo_sink", "water-specialist-v1"}, {"passenger_sink", "air-specialist-v1"}}}, {"state", std::move(state)}};
++}
++
++static void SetVertex(uint x, uint y, uint height)
++{
++	Require(x < Map::SizeX() && y < Map::SizeY(), "height fixture vertex outside map");
++	SetTileHeight(TileXY(x, y), height);
++}
++
++static void SetHorizontalTileHeights(uint x, uint y, uint left, uint right)
++{
++	SetVertex(x, y, left);
++	SetVertex(x, y + 1, left);
++	SetVertex(x + 1, y, right);
++	SetVertex(x + 1, y + 1, right);
++}
++
++static void BuildCanalRange(uint first_x, uint last_x, uint y, json &commands)
++{
++	TileIndex first = TileXY(first_x, y);
++	TileIndex last = TileXY(last_x, y);
++	CommandCost test = Command<CMD_BUILD_CANAL>::Do({}, last, first, WaterClass::Canal, false);
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_CANAL_TEST", test));
++	Require(test.Succeeded(), "multimodal canal test failed");
++	CommandCost execute = Command<CMD_BUILD_CANAL>::Do(DoCommandFlag::Execute, last, first, WaterClass::Canal, false);
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_CANAL", execute));
++	Require(execute.Succeeded(), "multimodal canal execution failed");
++}
++
++static StationID BuildDock(TileIndex land, StationID join, json &commands)
++{
++	CommandCost test = Command<CMD_BUILD_DOCK>::Do({}, land, join, false);
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_DOCK_TEST", test));
++	Require(test.Succeeded(), "multimodal dock test failed");
++	CommandCost execute = Command<CMD_BUILD_DOCK>::Do(DoCommandFlag::Execute, land, join, false);
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_DOCK", execute));
++	Require(execute.Succeeded() && IsDockTile(land), "multimodal dock execution failed");
++	StationID station = GetStationIndex(land);
++	Require(join == NEW_STATION || station == join, "multimodal dock join diverged");
++	return station;
++}
++
++static TileIndex BuildShipDepot(TileIndex tile, json &commands)
++{
++	CommandCost test = Command<CMD_BUILD_SHIP_DEPOT>::Do({}, tile, AXIS_X);
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_SHIP_DEPOT_TEST", test));
++	Require(test.Succeeded(), "multimodal ship depot test failed");
++	CommandCost execute = Command<CMD_BUILD_SHIP_DEPOT>::Do(DoCommandFlag::Execute, tile, AXIS_X);
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_SHIP_DEPOT", execute));
++	Require(execute.Succeeded(), "multimodal ship depot execution failed");
++	return tile;
++}
++
++static void BuildRoadTile(TileIndex tile, RoadBits bits, json &commands)
++{
++	CommandCost cost = Command<CMD_BUILD_ROAD>::Do(DoCommandFlag::Execute, tile, bits, ROADTYPE_ROAD, DRD_NONE, TownID::Invalid());
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_ROAD", cost));
++	Require(cost.Succeeded(), "multimodal road build failed");
++}
++
++static StationID BuildTruckStop(TileIndex tile, DiagDirection direction, StationID join, json &commands)
++{
++	CommandCost cost = Command<CMD_BUILD_ROAD_STOP>::Do(DoCommandFlag::Execute, tile, 1, 1, RoadStopType::Truck, false,
++		direction, ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, join, false);
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_TRUCK_STOP", cost));
++	Require(cost.Succeeded(), "multimodal truck stop build failed");
++	return join == NEW_STATION ? GetStationIndex(tile) : join;
++}
++
++static UnitBuild BuildSurfaceVehicle(TileIndex depot, CargoType cargo, VehicleType type, json &commands)
++{
++	for (const Engine *engine : Engine::IterateType(type)) {
++		if (!engine->company_avail.Test(CompanyID::Begin()) || !engine->CanCarryCargo() ||
++			!HasBit(GetUnionOfArticulatedRefitMasks(engine->index, true), cargo)) continue;
++		auto result = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, depot, engine->index, true, cargo, INVALID_CLIENT_ID);
++		commands.push_back(CostRecord(type == VEH_ROAD ? "CMD_BUILD_MULTIMODAL_TRUCK" : "CMD_BUILD_MULTIMODAL_SHIP", std::get<0>(result)));
++		if (std::get<0>(result).Failed()) continue;
++		VehicleID vehicle = std::get<1>(result);
++		auto refit = Command<CMD_REFIT_VEHICLE>::Do(DoCommandFlag::Execute, vehicle, cargo, 0, false, false, 0);
++		commands.push_back(CostRecord(type == VEH_ROAD ? "CMD_REFIT_MULTIMODAL_TRUCK" : "CMD_REFIT_MULTIMODAL_SHIP", std::get<0>(refit)));
++		Require(std::get<0>(refit).Succeeded() && Vehicle::Get(vehicle)->cargo_cap > 0, "surface vehicle refit failed");
++		return {vehicle, engine->index, Vehicle::Get(vehicle)->cargo_cap};
++	}
++	Fail(fmt::format("no multimodal {} for cargo {}", type == VEH_ROAD ? "truck" : "ship", CargoText(cargo)));
++}
++
++static json RunMultimodal(const Request &request, CargoType cargo)
++{
++	Require(!IsCargoInClass(cargo, CargoClass::Passengers), "multimodal probe requires freight cargo");
++	json commands = json::array();
++	SetHorizontalTileHeights(9, 32, 2, 1);
++	SetHorizontalTileHeights(42, 32, 1, 2);
++	BuildCanalRange(10, 41, 32, commands);
++	StationID road_water = BuildDock(TileXY(9, 32), NEW_STATION, commands);
++	StationID water_air = BuildDock(TileXY(42, 32), NEW_STATION, commands);
++	TileIndex ship_depot = BuildShipDepot(TileXY(15, 32), commands);
++	StationID joined_airport = BuildAirport(TileXY(43, 27), AT_COMMUTER, water_air, commands, "CMD_BUILD_JOINED_TRANSFER_AIRPORT");
++	StationID air_sink = BuildAirport(TileXY(52, 43), AT_COMMUTER, NEW_STATION, commands, "CMD_BUILD_MULTIMODAL_SINK_AIRPORT");
++	Require(joined_airport == water_air && Station::Get(water_air)->facilities.All({StationFacility::Dock, StationFacility::Airport}),
++		"dock/airport transfer station did not share facilities");
++	for (uint x = 3; x <= 8; ++x) BuildRoadTile(TileXY(x, 29), ROAD_X, commands);
++	StationID road_source = BuildTruckStop(TileXY(2, 29), DIAGDIR_SW, NEW_STATION, commands);
++	StationID joined_road = BuildTruckStop(TileXY(9, 29), DIAGDIR_NE, road_water, commands);
++	Require(joined_road == road_water && Station::Get(road_water)->facilities.All({StationFacility::TruckStop, StationFacility::Dock}),
++		"road/dock transfer station did not share facilities");
++	BuildRoadTile(TileXY(5, 29), ROAD_X | ROAD_SE, commands);
++	TileIndex road_depot = TileXY(5, 30);
++	CommandCost depot = Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute, road_depot, ROADTYPE_ROAD, DIAGDIR_NW);
++	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_ROAD_DEPOT", depot));
++	Require(depot.Succeeded(), "multimodal road depot build failed");
++	UnitBuild truck = BuildSurfaceVehicle(road_depot, cargo, VEH_ROAD, commands);
++	UnitBuild ship = BuildSurfaceVehicle(ship_depot, cargo, VEH_SHIP, commands);
++	const Station *air_station = Station::Get(water_air);
++	Require(air_station->airport.GetNumHangars() > 0, "joined transfer airport has no hangar");
++	UnitBuild plane = BuildAircraft(air_station->airport.GetHangarTile(0), cargo, true, commands, "CMD_BUILD_MULTIMODAL_AIRPLANE");
++	std::array<StationID, 2> truck_orders{road_source, road_water};
++	std::array<StationID, 2> ship_orders{road_water, water_air};
++	std::array<StationID, 2> plane_orders{water_air, air_sink};
++	SetOrders(truck.vehicle, truck_orders, 1, commands, "CMD_INSERT_MULTIMODAL_TRUCK_ORDER");
++	SetOrders(ship.vehicle, ship_orders, 1, commands, "CMD_INSERT_MULTIMODAL_SHIP_ORDER");
++	SetOrders(plane.vehicle, plane_orders, std::nullopt, commands, "CMD_INSERT_MULTIMODAL_AIR_ORDER");
++	uint amount = std::min<uint>({request.seed % 16 + 16, truck.capacity, ship.capacity, plane.capacity});
++	InjectCargo(road_source, cargo, amount);
++	Company *company = Company::Get(CompanyID::Begin());
++	Money income_before = company->cur_economy.income;
++	uint32_t delivered_before = company->cur_economy.delivered_cargo[cargo];
++	RlV2ClearCargoPaymentEvents();
++	ToggleVehicle(truck.vehicle, commands, "CMD_START_MULTIMODAL_TRUCK");
++	uint64_t road_ticks = 0;
++	while ((std::ranges::count_if(RlV2GetCargoPaymentEvents(), [](const auto &event) { return event.transfer; }) < 1 ||
++			Station::Get(road_water)->goods[cargo].AvailableCount() == 0) && road_ticks < TICK_LIMIT) {
++		StateGameLoop();
++		++road_ticks;
++	}
++	Require(company->cur_economy.income == income_before && company->cur_economy.delivered_cargo[cargo] == delivered_before,
++		"road feeder leg changed company cash or final delivery count");
++	uint road_transfer = Station::Get(road_water)->goods[cargo].AvailableCount();
++	Require(road_transfer == amount, "road feeder did not conserve cargo");
++	ToggleVehicle(ship.vehicle, commands, "CMD_START_MULTIMODAL_SHIP");
++	uint64_t water_ticks = 0;
++	while ((std::ranges::count_if(RlV2GetCargoPaymentEvents(), [](const auto &event) { return event.transfer; }) < 2 ||
++			Station::Get(water_air)->goods[cargo].AvailableCount() == 0) && water_ticks < TICK_LIMIT) {
++		StateGameLoop();
++		++water_ticks;
++	}
++	Require(company->cur_economy.income == income_before && company->cur_economy.delivered_cargo[cargo] == delivered_before,
++		"water feeder leg changed company cash or final delivery count");
++	uint water_transfer = Station::Get(water_air)->goods[cargo].AvailableCount();
++	Require(water_transfer == amount, "water feeder did not conserve cargo");
++	Require(LoadFromStation(plane.vehicle, water_air, air_sink) == amount, "native transfer-station-to-aircraft loading lost cargo");
++	SetDestinationAcceptance(air_sink, cargo);
++	ToggleVehicle(plane.vehicle, commands, "CMD_START_MULTIMODAL_AIRPLANE");
++	uint64_t air_ticks = 0;
++	while ((company->cur_economy.delivered_cargo[cargo] == delivered_before || company->cur_economy.income <= income_before) && air_ticks < TICK_LIMIT) {
++		SetDestinationAcceptance(air_sink, cargo);
++		StateGameLoop();
++		++air_ticks;
++	}
++	Money income = company->cur_economy.income - income_before;
++	uint32_t delivered = company->cur_economy.delivered_cargo[cargo] - delivered_before;
++	size_t transfer_count = std::ranges::count_if(RlV2GetCargoPaymentEvents(), [](const auto &event) { return event.transfer; });
++	size_t final_count = std::ranges::count_if(RlV2GetCargoPaymentEvents(), [](const auto &event) { return !event.transfer; });
++	Require(delivered == amount && income > 0 && transfer_count == 2 && final_count == 1,
++		"road-water-air final accounting or conservation failed");
++	RlV2ClearQualificationAcceptance();
++	return {{"commands", std::move(commands)}, {"conservation", {{"air_loaded", amount}, {"delivered", delivered},
++			{"injected", amount}, {"road_transfer", road_transfer}, {"water_transfer", water_transfer}}},
++		{"final", {{"company_income_delta", income.base()}, {"payment_count", final_count}}},
++		{"modes", {"road", "water", "air"}}, {"payment_events", PaymentEvents()},
++		{"ticks", {{"air", air_ticks}, {"road", road_ticks}, {"water", water_ticks}}}, {"transfer_payment_count", transfer_count}};
++}
++
++} // namespace
++
++void RunRlV2AirQualification(const std::string &manifest_path, const std::string &report_path)
++{
++	Request request = Validate(ReadCanonicalJson(manifest_path));
++	ResetWorld(request);
++	CargoType cargo = GetCargoTypeByLabel(LabelFromText(request.cargo_label));
++	Require(IsValidCargoType(cargo), fmt::format("cargo {} is unavailable", request.cargo_label));
++	try {
++		json probe;
++		if (request.probe == "catalog") probe = {{"status", "CATALOG_ONLY"}};
++		else if (request.probe == "construction") probe = ConstructionOracle();
++		else if (request.probe == "lifecycle") probe = RunLifecycle(cargo, report_path + ".sav");
++		else if (request.probe == "occupancy") probe = RunOccupancy(cargo);
++		else if (request.probe == "failure") probe = RunFailure(cargo);
++		else if (request.probe == "service") probe = RunAirService(cargo, true);
++		else if (request.probe == "helicopter") probe = RunAirService(cargo, false);
++		else if (request.probe == "multimodal") probe = RunMultimodal(request, cargo);
++		else if (request.probe == "recovery") probe = RunRecovery(cargo);
++		else probe = RunRouter();
++		json report = {
++			{"schema_version", REPORT_SCHEMA},
++			{"catalog", Catalog()},
++			{"executable_sha256", request.executable_sha256},
++			{"map", {{"height", Map::SizeY()}, {"width", Map::SizeX()}}},
++			{"probe", std::move(probe)},
++			{"request", {{"cargo_label", request.cargo_label}, {"probe", request.probe}, {"run_id", request.run_id}, {"seed", request.seed}}},
++			{"run_id", request.run_id},
++			{"status", "PASS"},
++		};
++		WriteCanonicalNew(report_path, report);
++	} catch (const std::exception &e) {
++		WriteCanonicalNew(report_path, {{"error", e.what()}, {"status", "FAIL"}});
++		throw;
++	}
++}
+diff --git a/src/rl_v2_air.h b/src/rl_v2_air.h
+new file mode 100644
+index 0000000..47f0dbc
+--- /dev/null
++++ b/src/rl_v2_air.h
+@@ -0,0 +1,15 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_air.h Native V2 M19 aircraft and multimodal qualification. */
++
++#ifndef RL_V2_AIR_H
++#define RL_V2_AIR_H
++
++#include <string>
++
++void RunRlV2AirQualification(const std::string &manifest_path, const std::string &report_path);
++
++#endif /* RL_V2_AIR_H */
+-- 
+2.43.0
+

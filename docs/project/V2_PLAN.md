@@ -9,11 +9,12 @@
 - Machine research baseline: [`config/v2/research-baseline.json`](../../config/v2/research-baseline.json)
 - Pinned setting inventory: [`config/v2/setting-inventory.json`](../../config/v2/setting-inventory.json)
 - Frozen competition protocol: [`config/v2/m14-competition-manifest.json`](../../config/v2/m14-competition-manifest.json)
-- Current gate: [`G18 PASS`](G18_GATE_REPORT.md); stopping point before M19
+- Current gate: [`G19 PASS`](G19_GATE_REPORT.md); stopping point before M20
 - M15 contract: [`M15_SCALABLE_CONTRACT.md`](M15_SCALABLE_CONTRACT.md)
 - M16 contract: [`M16_CARGO_INDUSTRY_CONTRACT.md`](M16_CARGO_INDUSTRY_CONTRACT.md)
 - M17 contract: [`M17_RAIL_NETWORK_CONTRACT.md`](M17_RAIL_NETWORK_CONTRACT.md)
 - M18 contract: [`M18_SHIP_WATERWAY_CONTRACT.md`](M18_SHIP_WATERWAY_CONTRACT.md)
+- M19 contract: [`M19_AIR_MULTIMODAL_CONTRACT.md`](M19_AIR_MULTIMODAL_CONTRACT.md)
 
 V2 expands V1 to scalable maps, every base-game transport/cargo system,
 multimodal planning and reproducible competition against external OpenTTD AIs.
@@ -141,6 +142,15 @@ Required outputs:
 masks, congested-airport recovery, at least three-mode end-to-end cargo/passenger
 journeys, Lufthansa and multimodal-AI qualification, and all earlier regressions.
 
+[`G19_GATE_REPORT.md`](G19_GATE_REPORT.md) records the pass: 20 cases and 40
+exact-twin native runs cover all ten probes, fixed-wing and helicopter service,
+closed-airport recovery, and conserved road-water-air transfer. The byte-pinned
+Lufthansa archive receives a truthful `REJECTED`/`EXCLUDED` qualification
+disposition because its source is malformed; it is not repaired or relabeled.
+AAAHogEx remains the active generalist, with its zero-aircraft scenario limitation
+reported explicitly and native air competence supplied by the qualification
+oracle.
+
 ### M20 — Competitive companies and external-AI tournament
 
 Required outputs:
@@ -242,14 +252,16 @@ feature does not satisfy V2.
 
 ## Immediate implementation order
 
-M18 is complete and frozen at the requested stopping point. M19 is next in the
-dependency order but has not started. Its next authorized sequence is:
+M19 is complete and frozen at the requested main-branch checkpoint. M20 is next
+in dependency order. Its next authorized sequence is:
 
-1. freeze airport, helicopter, range, noise, occupancy, vehicle and lifecycle
-   contracts;
-2. extend native observations/actions for aircraft and airport state;
-3. build deterministic fixed-wing, helicopter, congestion and failure corpora;
-4. prove native legality, movement, delivery, recovery and at least three-mode
-   transfer accounting; and
-5. retain the complete G18 water, G17 rail, G16 cargo, G15 scalable/passenger and
-   V1 compatibility boundaries in every future M19 artifact.
+1. freeze shared-company, slot/start-delay, public-observation, scoring, failure,
+   and tournament-manifest contracts;
+2. extend the native harness for one RL company against one or many isolated
+   NoAI companies on one shared map;
+3. build deterministic solo, head-to-head, round-robin, mixed-field, fault, and
+   paired slot-swap corpora;
+4. prove manifest replay, public-state-only inference, complete scheduled-run
+   accounting, and uncertainty reporting; and
+5. retain the complete G19 air/multimodal, G18 water, G17 rail, G16 cargo, G15
+   scalable/passenger, and V1 compatibility boundaries in every M20 artifact.

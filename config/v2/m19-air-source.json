@@ -1,0 +1,38 @@
+{
+  "base": {
+    "commit": "70c13453e2c1c6e122df8323938460778e116f79",
+    "tree": "cb30c85604f73cd29b5a12b6d50990847fc2f5e8"
+  },
+  "build": {
+    "cmake_arguments": [
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+      "-DOPTION_RL_ENVIRONMENT=ON",
+      "-DOPTION_RL_NEURAL_AGENT=OFF",
+      "-DOPTION_USE_ASSERTS=ON"
+    ],
+    "open_gfx": {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m19-air-a/build/baseset/opengfx-8.0.tar",
+      "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c"
+    },
+    "upstream_ctest": {
+      "passed": 98,
+      "total": 98
+    }
+  },
+  "executable": {
+    "bytes": 416293112,
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m19-air-a/build/openttd",
+    "sha256": "75d262c0b6ed839c16fe8fb341a0541c86fa746078e8253b4581eef10cff19bd"
+  },
+  "patch": {
+    "path": "integration/openttd/patches/15.3/m19/air/0001-Add-native-V2-aircraft-qualification.patch",
+    "sha256": "dbbab4f4b999bb2af484890ee1527f145f0d9f84b863ca5755e914618c004f4c"
+  },
+  "retained_artifact": "/home/thecl/.codex/artifacts/openttd-rl/v2-m19-air-a",
+  "schema_version": "openttd-rl-v2-m19-air-source-1",
+  "source": {
+    "commit": "1b07432dc0a196673a461bb49c7ca59d2175e9bf",
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m19-air-a/source",
+    "tree": "ada560ed740f522bf7327703201e657503b6f9b9"
+  }
+}

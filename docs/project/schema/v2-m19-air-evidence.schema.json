@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M19 aircraft evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_root", "contract_sha256", "source_sha256", "executable_sha256", "execution", "baselines", "aggregate", "cases", "status"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m19-air-evidence-1"},
+    "artifact_root": {"type": "string"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "source_sha256": {"$ref": "#/$defs/sha256"},
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "execution": {
+      "type": "object", "additionalProperties": false, "required": ["network_calls", "process_limits", "sandbox"],
+      "properties": {"network_calls": {"const": "none"}, "process_limits": {"const": true}, "sandbox": {"enum": ["bubblewrap", "rlimit-only"]}}
+    },
+    "baselines": {
+      "type": "object", "additionalProperties": false, "required": ["generalist", "lufthansa", "native_air_oracle"],
+      "properties": {"generalist": {"type": "object"}, "lufthansa": {"type": "object"}, "native_air_oracle": {"const": true}}
+    },
+    "aggregate": {
+      "type": "object", "additionalProperties": true, "required": ["cases", "native_runs", "twin_exact_cases", "airport_specs", "buildable_airport_types", "aircraft_engine_entries", "probes", "maximum_wall_seconds"],
+      "properties": {"cases": {"const": 20}, "native_runs": {"const": 40}, "twin_exact_cases": {"const": 20}, "airport_specs": {"const": 10}, "buildable_airport_types": {"const": 9}, "aircraft_engine_entries": {"const": 41}, "probes": {"const": 10}, "maximum_wall_seconds": {"exclusiveMinimum": 0, "type": "number"}}
+    },
+    "cases": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/case"}},
+    "status": {"const": "PASS"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "twin": {
+      "type": "object", "additionalProperties": false, "required": ["name", "normalized_sha256", "report_path", "report_sha256", "wall_seconds"],
+      "properties": {"name": {"enum": ["a", "b"]}, "normalized_sha256": {"$ref": "#/$defs/sha256"}, "report_path": {"type": "string"}, "report_sha256": {"$ref": "#/$defs/sha256"}, "wall_seconds": {"minimum": 0, "type": "number"}}
+    },
+    "case": {
+      "type": "object", "additionalProperties": false, "required": ["case_id", "cargo", "probe", "seed", "metrics", "twin_exact", "twins"],
+      "properties": {"case_id": {"type": "string"}, "cargo": {"type": "string"}, "probe": {"type": "string"}, "seed": {"minimum": 0, "type": "integer"}, "metrics": {"type": "object"}, "twin_exact": {"const": true}, "twins": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/twin"}}}
+    }
+  }
+}
