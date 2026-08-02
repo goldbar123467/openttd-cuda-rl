@@ -39,17 +39,40 @@ comparisons and matched-control non-perturbation evidence.
 boundary-bound legality masks, shared safe sampling, normal OpenTTD native command
 paths, route rollback, six outcome classes, and detailed subcommand logs. Two
 byte-identical campaigns compare 614 native/oracle masks and build profitable
-passenger service on every template. The immediate next milestone is M06 reward,
-termination, trajectory, and rollout-contract work only; PPO and CUDA training
-remain downstream.
+passenger service on every template.
 
-`M06` is now in progress. Its foundation compatibility
+`M06/G06` passes. Its compatibility
 `9d8f9c2fc6074d899fa3b0047c55e3fb15cc5c17cddeaceaa1fd5389e53c8c9e`
 dispositions all 18 reward candidates, freezes eight checked rational component
 transforms, types 13 episode outcomes, and bounds content-addressed trajectory
-segments. The pure reference suite passes, but G06 remains open until native
-quarter-safe deltas, the writer, actual-engine termination/economy evidence, and
-exploit campaigns pass.
+segments. Native quarter-safe deltas, the writer, actual-engine termination and
+economy evidence, exploit guards, and byte-exact trajectories all pass.
+
+`M07/G07` passes with trusted C++/LibTorch clipped PPO, frozen structured MLP,
+exact process recovery, structured monitoring, and the retained 8,192-step,
+64-update CPU soak. `M08/G08` passes with the spatial CNN and combined CNN/MLP,
+CPU/CUDA numerical parity, measured RTX 5070 acceleration, telemetry, and live
+OpenTTD updates for all three architectures.
+
+`M09/G09` passes independent final-blind multi-seed evaluation. The selected
+combined policy beats random and WAIT baselines, delivers a final-set mean of
+150 passengers, earns mean operating profit 424, and remains profitable under
+the frozen stochastic and robustness campaigns. `M10/G10` passes reproducible
+opset-18 packaging, three-runtime equivalence, content-addressed installation,
+and 30 fail-closed mutations for all three architectures.
+
+`M11/G11` passes normal-game C++ neural control. Both held-back scenarios build
+and operate visible paid passenger service, inspection and policy controls work,
+greedy and seeded playback reproduce exactly, and the playable dependency
+closure contains ONNX Runtime but no trainer, LibTorch, CUDA, or Python.
+
+`M12/G12` passes the final clean-host release gate. A fresh clone rebuilds both
+OpenTTD variants and the C++/CUDA/ONNX stack, passes 12 release campaigns, emits
+a canonical provenance manifest, closes all 217 V1 requirements with zero
+nonclosed defects, and is documented in
+`docs/project/V1_RELEASE_REPRODUCTION.md`. Version 1 is complete; the next work
+must begin as an explicitly contracted post-V1 milestone rather than extending
+the frozen V1 boundary.
 
 ## M05/G05 completion checkpoint — 2026-08-01
 

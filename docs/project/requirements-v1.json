@@ -6494,14 +6494,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "REPRO-002",
@@ -6515,14 +6526,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "REPRO-003",
@@ -6536,14 +6558,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "REPRO-004",
@@ -6557,14 +6590,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "REPRO-005",
@@ -6578,14 +6622,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "REPRO-006",
@@ -6599,14 +6654,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "REPRO-007",
@@ -6620,14 +6686,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "REPRO-008",
@@ -6641,14 +6718,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "REPRO-009",
@@ -6662,14 +6750,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-REPRO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "TEST-001",
@@ -7245,15 +7344,26 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST",
-        "V1-TEST-TRACEABILITY-CONTRACT"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-TRACEABILITY-CONTRACT",
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "ARCH-001",
@@ -7454,14 +7564,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-DONE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "DONE-002",
@@ -7475,14 +7596,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-DONE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "DONE-003",
@@ -7537,14 +7669,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-DONE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "DONE-005",
@@ -7558,14 +7701,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-DONE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "DONE-006",
@@ -7579,14 +7733,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-DONE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "DONE-007",
@@ -7600,14 +7765,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-DONE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "DONE-008",
@@ -7621,14 +7797,25 @@
       ],
       "milestone": "M12",
       "gate": "G12",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-DONE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m12-release-contract.json",
+        "docs/project/schema/v1-m12-release-contract.schema.json",
+        "docs/project/schema/v1-m12-release-manifest.schema.json",
+        "scripts/v1/validate_m12_release_contract.py",
+        "scripts/v1/run_m12_release_gate.py",
+        "scripts/v1/run_m12_foundation_tests.sh",
+        "tests/project/traceability/test_v1_m12_release.py",
+        "docs/project/V1_RELEASE_REPRODUCTION.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M12-RELEASE"
+      ],
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G12."
+      "reviewer_note": "G12 passes all 12 frozen release campaigns from clean roots, emits a complete canonical provenance manifest, reproduces build/training/recovery/evaluation/package/playback, closes the quality matrix, and retains zero nonclosed defects."
     },
     {
       "id": "EXP-001",
@@ -7853,56 +8040,6 @@
   ],
   "tests": [
     {
-      "id": "V1-TEST-REPRO",
-      "summary": "Planned requirement verification suite for REPRO requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "REPRO-001",
-        "REPRO-002",
-        "REPRO-003",
-        "REPRO-004",
-        "REPRO-005",
-        "REPRO-006",
-        "REPRO-007",
-        "REPRO-008",
-        "REPRO-009"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-TEST",
-      "summary": "Planned requirement verification suite for TEST requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "TEST-016"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-DONE",
-      "summary": "Planned requirement verification suite for DONE requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "DONE-001",
-        "DONE-002",
-        "DONE-004",
-        "DONE-005",
-        "DONE-006",
-        "DONE-007",
-        "DONE-008"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
       "id": "V1-TEST-EXP",
       "summary": "Planned requirement verification suite for EXP requirements.",
       "runner": null,
@@ -7930,10 +8067,12 @@
       "requirement_ids": [
         "TEST-016"
       ],
-      "status": "IMPLEMENTED",
-      "evidence": [],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
       "mandatory": true,
-      "reviewer_note": "The contract runner exists; TEST-016 remains NOT_STARTED because the complete release quality matrix does not yet exist."
+      "reviewer_note": "G12 passes the complete release quality matrix in addition to the traceability contract runner."
     },
     {
       "id": "V1-TEST-M02-SCENARIO-RESET",
@@ -8374,6 +8513,36 @@
       ],
       "mandatory": true,
       "reviewer_note": "The retained G11 artifact passes every frozen controller, normal-game playback, visibility, reproducibility, inspection, control, failure, and production-dependency criterion."
+    },
+    {
+      "id": "V1-TEST-M12-RELEASE",
+      "summary": "M12 clean-host release, provenance, reproduction, quality, traceability, and defect-closure gate.",
+      "runner": "scripts/v1/run_m12_foundation_tests.sh",
+      "requirement_ids": [
+        "REPRO-001",
+        "REPRO-002",
+        "REPRO-003",
+        "REPRO-004",
+        "REPRO-005",
+        "REPRO-006",
+        "REPRO-007",
+        "REPRO-008",
+        "REPRO-009",
+        "TEST-016",
+        "DONE-001",
+        "DONE-002",
+        "DONE-004",
+        "DONE-005",
+        "DONE-006",
+        "DONE-007",
+        "DONE-008"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G12_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The retained G12 release artifacts pass all frozen campaigns; the final runner requires every V1 row PASS and zero nonclosed defects."
     }
   ],
   "aggregate_dependencies": [

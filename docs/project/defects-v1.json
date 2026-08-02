@@ -12,7 +12,7 @@
     "total_nonclosed": 0
   },
   "diagnostics": {
-    "last_reviewed_date": "2026-07-31",
-    "review_note": "The V1 implementation ledger starts empty. Historical P0 defects remain in the separate P0 ledger and do not become V1 defects unless an adapted component is shown to affect a V1 requirement."
+    "last_reviewed_date": "2026-08-02",
+    "review_note": "G12 reviewed the complete M00 through M12 release evidence and found zero nonclosed or release-blocking V1 defects or divergences. Historical P0 defects remain in the separate P0 ledger and do not become V1 defects unless an adapted component is shown to affect a V1 requirement."
   }
 }

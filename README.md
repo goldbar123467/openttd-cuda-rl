@@ -5,12 +5,12 @@ reinforcement-learning platform for OpenTTD. Version 1 is deliberately narrow: a
 single learning company must learn profitable passenger-bus operation on controlled
 32 by 32 maps with PPO, then export a policy that can be watched inside OpenTTD.
 
-The repository is not at Version 1 yet. Its accepted V1 substrate now passes
-M00 through M11: reproducible OpenTTD, the controlled passenger-bus environment,
-frozen observations/actions/rewards, trusted C++ PPO, all three initial model
+Version 1 is complete. Its accepted implementation passes M00 through M12:
+reproducible OpenTTD, the controlled passenger-bus environment, frozen
+observations/actions/rewards, trusted C++ PPO, all three initial model
 architectures, measured CUDA training, independent profitable-policy evaluation,
-portable ONNX packages with three-runtime equivalence, and visible normal-game
-neural control. The
+portable ONNX packages with three-runtime equivalence, visible normal-game
+neural control, and clean supported-host release reproduction. The
 unfinished legacy P0 64 by 64 road-freight workstream remains retained for
 deterministic tooling and historical evidence, not as bus or RL progress.
 
@@ -98,6 +98,11 @@ deterministic tooling and historical evidence, not as bus or RL progress.
 36. [`docs/project/G11_GATE_REPORT.md`](docs/project/G11_GATE_REPORT.md) — passed
     visible final-scenario playback, determinism, timing, rejection, and
     inference-only dependency gate.
+37. [`docs/project/V1_RELEASE_REPRODUCTION.md`](docs/project/V1_RELEASE_REPRODUCTION.md)
+    — clean-host build, train, resume, evaluate, export, install, play, and
+    troubleshooting guide.
+38. [`docs/project/G12_GATE_REPORT.md`](docs/project/G12_GATE_REPORT.md) — passed
+    final release, traceability, defect, quality, and fresh-root reproduction gate.
 
 ## Current status
 
@@ -117,7 +122,8 @@ deterministic tooling and historical evidence, not as bus or RL progress.
 | CUDA training path | All-model numerical parity, measured CNN inference/update benefit, GPU telemetry, and explicit failure classes | `M08/G08 PASS`; enabled only for measured workloads |
 | Independent evaluation | Optimizer-free read-only evaluator, matched nine-run architecture campaign, three baselines, unseen final layouts, stochastic seeds, confidence intervals, and robustness matrix | `M09/G09 PASS`; frozen selected package |
 | ONNX export/equivalence | Reproducible opset 18 exports/packages for all architectures, 36 native/standalone/in-game golden cases, sampled distributions, 30 rejection mutations, and inference-only dependency closure | `M10/G10 PASS`; frozen portable package boundary |
-| In-game neural agent | Source-integrated C++ controller, accepted combined ONNX policy, greedy/seeded modes, 128–1024 tick interval, native inspection/pause/step controls, canonical logs, visible paid-service evidence, and fail-closed dependency audit | `M11/G11 PASS`; ready for release closure |
+| In-game neural agent | Source-integrated C++ controller, accepted combined ONNX policy, greedy/seeded modes, 128–1024 tick interval, native inspection/pause/step controls, canonical logs, visible paid-service evidence, and fail-closed dependency audit | `M11/G11 PASS`; frozen playback boundary |
+| V1 release/reproduction | Fresh clean clone, dual OpenTTD builds, C++/CUDA/ONNX rebuild, 12 release campaigns, full quality matrix, complete provenance manifest, zero nonclosed defects, and clean operator guide | `M12/G12 PASS`; Version 1 complete |
 
 This table is intentionally conservative. A legacy freight fixture, a buildable
 OpenTTD submodule, or a passing tape test does not prove a V1 bus-platform item.

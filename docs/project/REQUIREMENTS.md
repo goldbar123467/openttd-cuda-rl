@@ -308,15 +308,15 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `REPRO-001` | Record outer repository commit, dirty-state policy, and OpenTTD upstream commit. | Run manifest validation. | `NOT_STARTED` |
-| `REPRO-002` | Record build configuration, compiler version, operating system, CPU model, GPU model, and CUDA version when applicable. | Run manifest validation. | `NOT_STARTED` |
-| `REPRO-003` | Record PPO configuration and neural architecture identifier/configuration. | Run manifest validation. | `NOT_STARTED` |
-| `REPRO-004` | Record observation, action, mask, reward, environment, and compatibility schema versions/digests. | Run manifest validation. | `NOT_STARTED` |
-| `REPRO-005` | Record all scenario, environment, model initialization, sampling, shuffle, and evaluation seeds. | Seed-ledger validation. | `NOT_STARTED` |
-| `REPRO-006` | Record wall duration, environment steps, simulation ticks, updates, and evaluation results. | Counter/log validation. | `NOT_STARTED` |
-| `REPRO-007` | Record hashes of checkpoints and exported model packages. | Artifact-manifest validation. | `NOT_STARTED` |
-| `REPRO-008` | A model lacking required provenance cannot become an accepted research artifact. | Package rejection test. | `NOT_STARTED` |
-| `REPRO-009` | Documentation reconstructs the complete accepted workflow from a clean supported host. | Independent reproduction report. | `NOT_STARTED` |
+| `REPRO-001` | Record outer repository commit, dirty-state policy, and OpenTTD upstream commit. | Run manifest validation. | `PASS` |
+| `REPRO-002` | Record build configuration, compiler version, operating system, CPU model, GPU model, and CUDA version when applicable. | Run manifest validation. | `PASS` |
+| `REPRO-003` | Record PPO configuration and neural architecture identifier/configuration. | Run manifest validation. | `PASS` |
+| `REPRO-004` | Record observation, action, mask, reward, environment, and compatibility schema versions/digests. | Run manifest validation. | `PASS` |
+| `REPRO-005` | Record all scenario, environment, model initialization, sampling, shuffle, and evaluation seeds. | Seed-ledger validation. | `PASS` |
+| `REPRO-006` | Record wall duration, environment steps, simulation ticks, updates, and evaluation results. | Counter/log validation. | `PASS` |
+| `REPRO-007` | Record hashes of checkpoints and exported model packages. | Artifact-manifest validation. | `PASS` |
+| `REPRO-008` | A model lacking required provenance cannot become an accepted research artifact. | Package rejection test. | `PASS` |
+| `REPRO-009` | Documentation reconstructs the complete accepted workflow from a clean supported host. | Independent reproduction report. | `PASS` |
 
 ## Mandatory test subjects
 
@@ -337,7 +337,7 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | `TEST-013` | Test headless long-run stability and desynchronization detection. | Soak and fault campaign. | `PASS` |
 | `TEST-014` | Test every CLI metric against its authoritative counter/source. | Monitor accuracy suite. | `PASS` |
 | `TEST-015` | Critical gameplay behavior has both code-level assertions and actual-engine integration coverage. | Traceability lint. | `PASS` |
-| `TEST-016` | Release gates include sanitizer, static-analysis, resource-bound, malformed-input, and failure-artifact checks appropriate to changed native code. | Quality-matrix result. | `NOT_STARTED` |
+| `TEST-016` | Release gates include sanitizer, static-analysis, resource-bound, malformed-input, and failure-artifact checks appropriate to changed native code. | Quality-matrix result. | `PASS` |
 
 ## Required architecture comparison
 
@@ -355,14 +355,14 @@ These rows summarize conjunctions; they do not replace lower-level rows.
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `DONE-001` | All V1 scope, lifecycle, environment, PPO, model, runtime, monitoring, evaluation, reproducibility, and test rows pass. | Machine-generated traceability closure plus review. | `NOT_STARTED` |
-| `DONE-002` | Extended training has no unresolved desynchronization or numerical defect. | Soak reports and zero release-blocking ledger entries. | `NOT_STARTED` |
+| `DONE-001` | All V1 scope, lifecycle, environment, PPO, model, runtime, monitoring, evaluation, reproducibility, and test rows pass. | Machine-generated traceability closure plus review. | `PASS` |
+| `DONE-002` | Extended training has no unresolved desynchronization or numerical defect. | Soak reports and zero release-blocking ledger entries. | `PASS` |
 | `DONE-003` | At least one policy passes both baseline superiority (`EVAL-012`) and reliable profitability (`EVAL-013`). | Final independent evaluation report. | `PASS` |
-| `DONE-004` | MLP, CNN, and combined models are trainable and the required matched comparison is complete. | Architecture comparison report. | `NOT_STARTED` |
-| `DONE-005` | Existing AI support passes `AI-001` through `AI-004`. | Baseline workflow report. | `NOT_STARTED` |
-| `DONE-006` | The complete model pipeline passes export, package, equivalence, rejection, install, and visible-play gates. | End-to-end acceptance bundle. | `NOT_STARTED` |
-| `DONE-007` | A clean supported host can reproduce the documented workflow. | Independent reproduction evidence. | `NOT_STARTED` |
-| `DONE-008` | No known correctness defect can invalidate accepted results. | Reviewed defect ledger and final gate. | `NOT_STARTED` |
+| `DONE-004` | MLP, CNN, and combined models are trainable and the required matched comparison is complete. | Architecture comparison report. | `PASS` |
+| `DONE-005` | Existing AI support passes `AI-001` through `AI-004`. | Baseline workflow report. | `PASS` |
+| `DONE-006` | The complete model pipeline passes export, package, equivalence, rejection, install, and visible-play gates. | End-to-end acceptance bundle. | `PASS` |
+| `DONE-007` | A clean supported host can reproduce the documented workflow. | Independent reproduction evidence. | `PASS` |
+| `DONE-008` | No known correctness defect can invalidate accepted results. | Reviewed defect ledger and final gate. | `PASS` |
 
 ## Post-V1 expansion requirements
 
