@@ -408,6 +408,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     clean_traceability = traceability_state(clean_root, args.allow_preclosure)
     quality = run_quality(args, clean_root, recorder)
     source = args.artifact_root / "composed-source/openttd"
+    source.parent.mkdir()
     result_tree = compose_m11_source(clean_root, source)
     headless_build = args.artifact_root / "build/openttd-headless"
     playable_build = args.artifact_root / "build/openttd-playable"
