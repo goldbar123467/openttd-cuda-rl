@@ -110,24 +110,24 @@ cover the whole statement.
 | `LIFE-012` | Save native training checkpoints and recover from the declared boundary. | Interrupted-run recovery comparison. | `PASS` |
 | `LIFE-013` | Export compatible trained networks to ONNX. | Export gate result. | `PASS` |
 | `LIFE-014` | Convert or package an exported model for the in-game inference runtime. | Package schema and install test. | `PASS` |
-| `LIFE-015` | Load the package in a normal playable OpenTTD build. | In-game load/compatibility test. | `NOT_STARTED` |
-| `LIFE-016` | Let a user visibly watch the policy control its bus company. | Documented end-to-end acceptance run. | `NOT_STARTED` |
+| `LIFE-015` | Load the package in a normal playable OpenTTD build. | In-game load/compatibility test. | `PASS` |
+| `LIFE-016` | Let a user visibly watch the policy control its bus company. | Documented end-to-end acceptance run. | `PASS` |
 | `LIFE-017` | Training, ONNX, and in-game paths share equivalent preprocessing, schemas, masks, and output interpretation. | Cross-runtime equivalence suite. | `PASS` |
 
 ## Implementation stack and boundaries
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `STACK-001` | C++ owns core environment integration, control, training infrastructure, evaluation, export, and inference. | Build graph and source ownership audit. | `NOT_STARTED` |
+| `STACK-001` | C++ owns core environment integration, control, training infrastructure, evaluation, export, and inference. | Build graph and source ownership audit. | `PASS` |
 | `STACK-002` | CUDA accelerates only workloads with a measured correctness-preserving benefit. | CPU baseline, profile, parity, and speed report. | `PASS` |
 | `STACK-003` | CUDA may cover batched inference, PPO optimization, tensor preprocessing, rollout processing, state encoding, evaluation, or CNN execution. | Per-kernel design and benchmark evidence. | `PASS` |
 | `STACK-004` | OpenTTD simulation remains on CPU unless an explicit semantic-parity gate approves a subsystem. | Architecture audit and parity result. | `PASS` |
-| `STACK-005` | Python remains auxiliary and is not the production environment or training authority. | Packaging/build/source audit. | `NOT_STARTED` |
+| `STACK-005` | Python remains auxiliary and is not the production environment or training authority. | Packaging/build/source audit. | `PASS` |
 | `STACK-006` | ONNX is the primary portable neural-network interchange format. | Export/package schema. | `PASS` |
 | `STACK-007` | The ONNX execution backend is pinned and explicitly validated. | Dependency manifest and equivalence tests. | `PASS` |
 | `STACK-008` | Initial spatial policies use CNNs; new architecture families require baseline validation first. | Model registry and roadmap gate. | `PASS` |
 | `STACK-009` | The OpenTTD/RL interface does not depend on screen scraping, simulated input, or menu navigation. | Source audit and integration design review. | `PASS` |
-| `STACK-010` | Training-only dependencies are not required for normal in-game inference. | Clean inference-only build/install test. | `NOT_STARTED` |
+| `STACK-010` | Training-only dependencies are not required for normal in-game inference. | Clean inference-only build/install test. | `PASS` |
 | `STACK-011` | The accepted production training path uses at least one correctness-validated CUDA-accelerated neural/tensor workload with a measured benefit over its CPU reference on declared hardware. | CUDA parity and benchmark report. | `PASS` |
 
 ## PPO algorithm and operational requirements
@@ -249,15 +249,15 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 | `MODEL-007` | Native, ONNX, and in-game inference compare policy logits, probabilities, values, masks, greedy actions, and recurrent state if introduced. | Equivalence report. | `PASS` |
 | `MODEL-008` | Sampled-action distributions are statistically compared under a preregistered tolerance and sample count. | Distribution-test artifact. | `PASS` |
 | `MODEL-009` | Numerical tolerances are justified, versioned, and reject out-of-bound exports. | Tolerance ADR and negative tests. | `PASS` |
-| `MODEL-010` | The documented workflow covers train, export, validate, package install, launch, agent selection/configuration, game start, and visible play. | Clean-machine acceptance run. | `NOT_STARTED` |
-| `MODEL-011` | In-game inference supports deterministic greedy mode. | Repeated playback test. | `NOT_STARTED` |
-| `MODEL-012` | In-game inference may use an explicitly seeded stochastic mode. | Configuration and distribution test. | `NOT_STARTED` |
-| `MODEL-013` | Inference interval is adjustable within validated safe bounds. | Boundary/timing tests. | `NOT_STARTED` |
-| `MODEL-014` | Playback exposes model metadata and actionable compatibility errors. | UI/console acceptance tests. | `NOT_STARTED` |
-| `MODEL-015` | Playback supports optional action logging and optional debug overlays. | Configuration and render/trace tests. | `NOT_STARTED` |
-| `MODEL-016` | Playback provides pause and step controls where engine integration makes them practical; unsupported cases are documented. | Control test or reviewed disposition. | `NOT_STARTED` |
-| `MODEL-017` | Inspection mode reports current action, confidence, value, legal action count, reward-relevant state, route target, model name, and version. | Inspection-output accuracy tests. | `NOT_STARTED` |
-| `MODEL-018` | Normal in-game inference installs without trainer, optimizer, or CUDA-training dependencies. | Inference-only package test. | `NOT_STARTED` |
+| `MODEL-010` | The documented workflow covers train, export, validate, package install, launch, agent selection/configuration, game start, and visible play. | Clean-machine acceptance run. | `PASS` |
+| `MODEL-011` | In-game inference supports deterministic greedy mode. | Repeated playback test. | `PASS` |
+| `MODEL-012` | In-game inference may use an explicitly seeded stochastic mode. | Configuration and distribution test. | `PASS` |
+| `MODEL-013` | Inference interval is adjustable within validated safe bounds. | Boundary/timing tests. | `PASS` |
+| `MODEL-014` | Playback exposes model metadata and actionable compatibility errors. | UI/console acceptance tests. | `PASS` |
+| `MODEL-015` | Playback supports optional action logging and optional debug overlays. | Configuration and render/trace tests. | `PASS` |
+| `MODEL-016` | Playback provides pause and step controls where engine integration makes them practical; unsupported cases are documented. | Control test or reviewed disposition. | `PASS` |
+| `MODEL-017` | Inspection mode reports current action, confidence, value, legal action count, reward-relevant state, route target, model name, and version. | Inspection-output accuracy tests. | `PASS` |
+| `MODEL-018` | Normal in-game inference installs without trainer, optimizer, or CUDA-training dependencies. | Inference-only package test. | `PASS` |
 
 ## Headless runtime and monitoring requirements
 

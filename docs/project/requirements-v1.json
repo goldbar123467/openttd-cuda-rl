@@ -1315,14 +1315,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "LIFE-016",
@@ -1335,14 +1349,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "LIFE-017",
@@ -1394,14 +1422,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Whole-program C++ ownership can be audited only after the final V1 production controller exists; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "STACK-002",
@@ -1497,14 +1539,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "The auxiliary-only Python boundary can be audited completely only after training, export, and deployment exist; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "STACK-006",
@@ -1651,14 +1707,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "STACK-011",
@@ -4760,14 +4830,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "MODEL-011",
@@ -4782,14 +4866,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "MODEL-012",
@@ -4804,14 +4902,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "MODEL-013",
@@ -4826,14 +4938,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "MODEL-014",
@@ -4848,14 +4974,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "MODEL-015",
@@ -4870,14 +5010,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "MODEL-016",
@@ -4892,14 +5046,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "MODEL-017",
@@ -4914,14 +5082,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "MODEL-018",
@@ -4936,14 +5118,28 @@
       ],
       "milestone": "M11",
       "gate": "G11",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m11-playback-contract.json",
+        "docs/project/schema/v1-m11-playback-config.schema.json",
+        "docs/project/schema/v1-m11-playback-contract.schema.json",
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "integration/openttd/patches/15.3/m11/README.md",
+        "integration/openttd/patches/15.3/m11/series",
+        "scripts/v1/run_m11_foundation_tests.sh",
+        "scripts/v1/run_m11_playback_gate.py",
+        "scripts/v1/validate_m11_playback_contract.py",
+        "tests/project/traceability/test_v1_m11_playback.py",
+        "docs/project/M11_NORMAL_GAME_PLAYBACK.md"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M11-PLAYBACK"
+      ],
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G11."
+      "reviewer_note": "The retained G11 artifact passes visible paid-service playback on both final scenarios, exact greedy and seeded replay, all safe inference intervals, native inspection and controls, golden in-game equivalence, six fail-closed cases, and the inference-only C++/ONNX Runtime dependency boundary."
     },
     {
       "id": "RUN-001",
@@ -7657,53 +7853,6 @@
   ],
   "tests": [
     {
-      "id": "V1-TEST-LIFE",
-      "summary": "Planned requirement verification suite for LIFE requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "LIFE-015",
-        "LIFE-016"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-STACK",
-      "summary": "Planned requirement verification suite for STACK requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "STACK-001",
-        "STACK-005",
-        "STACK-010"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-MODEL",
-      "summary": "Planned requirement verification suite for MODEL requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "MODEL-010",
-        "MODEL-011",
-        "MODEL-012",
-        "MODEL-013",
-        "MODEL-014",
-        "MODEL-015",
-        "MODEL-016",
-        "MODEL-017",
-        "MODEL-018"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
       "id": "V1-TEST-REPRO",
       "summary": "Planned requirement verification suite for REPRO requirements.",
       "runner": null,
@@ -8198,6 +8347,33 @@
       ],
       "mandatory": true,
       "reviewer_note": "The retained G10 artifact passes all frozen deterministic, statistical, reproducibility, integrity, install-boundary, and mutation criteria."
+    },
+    {
+      "id": "V1-TEST-M11-PLAYBACK",
+      "summary": "M11 normal-game controller, visible playback, inspection, control, timing, equivalence, dependency, and rejection gate.",
+      "runner": "scripts/v1/run_m11_foundation_tests.sh",
+      "requirement_ids": [
+        "LIFE-015",
+        "LIFE-016",
+        "STACK-001",
+        "STACK-005",
+        "STACK-010",
+        "MODEL-010",
+        "MODEL-011",
+        "MODEL-012",
+        "MODEL-013",
+        "MODEL-014",
+        "MODEL-015",
+        "MODEL-016",
+        "MODEL-017",
+        "MODEL-018"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G11_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The retained G11 artifact passes every frozen controller, normal-game playback, visibility, reproducibility, inspection, control, failure, and production-dependency criterion."
     }
   ],
   "aggregate_dependencies": [
