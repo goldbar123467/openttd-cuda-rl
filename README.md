@@ -6,9 +6,10 @@ single learning company must learn profitable passenger-bus operation on control
 32 by 32 maps with PPO, then export a policy that can be watched inside OpenTTD.
 
 The repository is not at Version 1 yet. Its accepted V1 substrate now passes
-M00 through M08: reproducible OpenTTD, the controlled passenger-bus environment,
+M00 through M10: reproducible OpenTTD, the controlled passenger-bus environment,
 frozen observations/actions/rewards, trusted C++ PPO, all three initial model
-architectures, and a correctness-validated measured CUDA training path. The
+architectures, measured CUDA training, independent profitable-policy evaluation,
+and portable ONNX packages with three-runtime equivalence. The
 unfinished legacy P0 64 by 64 road-freight workstream remains retained for
 deterministic tooling and historical evidence, not as bus or RL progress.
 
@@ -39,7 +40,7 @@ deterministic tooling and historical evidence, not as bus or RL progress.
     — current dirty-worktree identity and preservation boundary.
 11. [`docs/decisions/`](docs/decisions/) — accepted project decisions. V1's source,
     integration, toolchain, evidence, publication, and legacy boundaries are ADRs
-    0007 through 0013.
+    0007 through 0014.
 12. [`docs/project/G00_GATE_REPORT.md`](docs/project/G00_GATE_REPORT.md) — passed
     authority/preservation gate and its historical M01 handoff boundary.
 13. [`docs/project/M01_SOURCE_PREPARATION.md`](docs/project/M01_SOURCE_PREPARATION.md)
@@ -88,6 +89,8 @@ deterministic tooling and historical evidence, not as bus or RL progress.
     CPU/CUDA parity, performance, monitoring, and live-integration gate.
 33. [`docs/project/G09_GATE_REPORT.md`](docs/project/G09_GATE_REPORT.md) — passed
     independent multi-seed evaluation, baselines, profitability, and robustness gate.
+34. [`docs/project/G10_GATE_REPORT.md`](docs/project/G10_GATE_REPORT.md) — passed
+    reproducible ONNX package, three-runtime equivalence, and rejection gate.
 
 ## Current status
 
@@ -106,7 +109,7 @@ deterministic tooling and historical evidence, not as bus or RL progress.
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
 | CUDA training path | All-model numerical parity, measured CNN inference/update benefit, GPU telemetry, and explicit failure classes | `M08/G08 PASS`; enabled only for measured workloads |
 | Independent evaluation | Optimizer-free read-only evaluator, matched nine-run architecture campaign, three baselines, unseen final layouts, stochastic seeds, confidence intervals, and robustness matrix | `M09/G09 PASS`; frozen selected package |
-| ONNX export/equivalence | No implementation | Not started |
+| ONNX export/equivalence | Reproducible opset 18 exports/packages for all architectures, 36 native/standalone/in-game golden cases, sampled distributions, 30 rejection mutations, and inference-only dependency closure | `M10/G10 PASS`; frozen portable package boundary |
 | In-game neural agent | No implementation | Not started |
 
 This table is intentionally conservative. A legacy freight fixture, a buildable

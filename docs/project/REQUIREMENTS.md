@@ -108,11 +108,11 @@ cover the whole statement.
 | `LIFE-010` | Train actor-critic PPO policies in the production C++/CUDA path. | Trainer convergence and algorithm tests. | `PASS` |
 | `LIFE-011` | Evaluate saved policies in a process and dataset independent from training. | Evaluation run artifact. | `PASS` |
 | `LIFE-012` | Save native training checkpoints and recover from the declared boundary. | Interrupted-run recovery comparison. | `PASS` |
-| `LIFE-013` | Export compatible trained networks to ONNX. | Export gate result. | `NOT_STARTED` |
-| `LIFE-014` | Convert or package an exported model for the in-game inference runtime. | Package schema and install test. | `NOT_STARTED` |
+| `LIFE-013` | Export compatible trained networks to ONNX. | Export gate result. | `PASS` |
+| `LIFE-014` | Convert or package an exported model for the in-game inference runtime. | Package schema and install test. | `PASS` |
 | `LIFE-015` | Load the package in a normal playable OpenTTD build. | In-game load/compatibility test. | `NOT_STARTED` |
 | `LIFE-016` | Let a user visibly watch the policy control its bus company. | Documented end-to-end acceptance run. | `NOT_STARTED` |
-| `LIFE-017` | Training, ONNX, and in-game paths share equivalent preprocessing, schemas, masks, and output interpretation. | Cross-runtime equivalence suite. | `NOT_STARTED` |
+| `LIFE-017` | Training, ONNX, and in-game paths share equivalent preprocessing, schemas, masks, and output interpretation. | Cross-runtime equivalence suite. | `PASS` |
 
 ## Implementation stack and boundaries
 
@@ -123,8 +123,8 @@ cover the whole statement.
 | `STACK-003` | CUDA may cover batched inference, PPO optimization, tensor preprocessing, rollout processing, state encoding, evaluation, or CNN execution. | Per-kernel design and benchmark evidence. | `PASS` |
 | `STACK-004` | OpenTTD simulation remains on CPU unless an explicit semantic-parity gate approves a subsystem. | Architecture audit and parity result. | `PASS` |
 | `STACK-005` | Python remains auxiliary and is not the production environment or training authority. | Packaging/build/source audit. | `NOT_STARTED` |
-| `STACK-006` | ONNX is the primary portable neural-network interchange format. | Export/package schema. | `NOT_STARTED` |
-| `STACK-007` | The ONNX execution backend is pinned and explicitly validated. | Dependency manifest and equivalence tests. | `NOT_STARTED` |
+| `STACK-006` | ONNX is the primary portable neural-network interchange format. | Export/package schema. | `PASS` |
+| `STACK-007` | The ONNX execution backend is pinned and explicitly validated. | Dependency manifest and equivalence tests. | `PASS` |
 | `STACK-008` | Initial spatial policies use CNNs; new architecture families require baseline validation first. | Model registry and roadmap gate. | `PASS` |
 | `STACK-009` | The OpenTTD/RL interface does not depend on screen scraping, simulated input, or menu navigation. | Source audit and integration design review. | `PASS` |
 | `STACK-010` | Training-only dependencies are not required for normal in-game inference. | Clean inference-only build/install test. | `NOT_STARTED` |
@@ -154,7 +154,7 @@ cover the whole statement.
 | `PPO-018` | Losses, activations, gradients, parameters, advantages, and returns are checked for NaN and infinity. | Fault-injection tests. | `PASS` |
 | `PPO-019` | Numerical failures stop safely and retain a diagnostic checkpoint/artifact. | Failure-path integration test. | `PASS` |
 | `PPO-020` | Training and evaluation metrics are emitted to structured logs. | Metrics-schema and accuracy tests. | `PASS` |
-| `PPO-021` | The trainer exports inference networks and required metadata. | Model pipeline gate. | `NOT_STARTED` |
+| `PPO-021` | The trainer exports inference networks and required metadata. | Model pipeline gate. | `PASS` |
 | `PPO-022` | No second RL algorithm is implemented before PPO and V1 gates pass. | Dependency/source audit. | `PASS` |
 
 ## Observation requirements
@@ -240,15 +240,15 @@ Included terms require exact units, timing, clipping, weighting, and exploit tes
 
 | ID | Normative requirement | Acceptance evidence | Status |
 |---|---|---|---|
-| `MODEL-001` | Every architecture has a stable identifier and versioned definition. | Model registry. | `NOT_STARTED` |
-| `MODEL-002` | Native training checkpoints are distinct from deployment packages. | File schemas and round-trip tests. | `NOT_STARTED` |
-| `MODEL-003` | Export includes all inference outputs required by deployment, including policy and value outputs. | ONNX graph inspection. | `NOT_STARTED` |
-| `MODEL-004` | Each package contains ONNX bytes, model version, architecture ID, observation schema, spatial schema, input shapes/types, normalization, action schema, mask schema, output definitions, training commit/config, OpenTTD commit, environment version, seeds, evaluation results, and compatibility version. | Package-schema validation. | `NOT_STARTED` |
-| `MODEL-005` | Every packaged file has a cryptographic digest and the manifest covers the complete package. | Package integrity test. | `NOT_STARTED` |
-| `MODEL-006` | Incompatible environment, schema, runtime, or game versions fail clearly before control begins. | Compatibility mutation tests. | `NOT_STARTED` |
-| `MODEL-007` | Native, ONNX, and in-game inference compare policy logits, probabilities, values, masks, greedy actions, and recurrent state if introduced. | Equivalence report. | `NOT_STARTED` |
-| `MODEL-008` | Sampled-action distributions are statistically compared under a preregistered tolerance and sample count. | Distribution-test artifact. | `NOT_STARTED` |
-| `MODEL-009` | Numerical tolerances are justified, versioned, and reject out-of-bound exports. | Tolerance ADR and negative tests. | `NOT_STARTED` |
+| `MODEL-001` | Every architecture has a stable identifier and versioned definition. | Model registry. | `PASS` |
+| `MODEL-002` | Native training checkpoints are distinct from deployment packages. | File schemas and round-trip tests. | `PASS` |
+| `MODEL-003` | Export includes all inference outputs required by deployment, including policy and value outputs. | ONNX graph inspection. | `PASS` |
+| `MODEL-004` | Each package contains ONNX bytes, model version, architecture ID, observation schema, spatial schema, input shapes/types, normalization, action schema, mask schema, output definitions, training commit/config, OpenTTD commit, environment version, seeds, evaluation results, and compatibility version. | Package-schema validation. | `PASS` |
+| `MODEL-005` | Every packaged file has a cryptographic digest and the manifest covers the complete package. | Package integrity test. | `PASS` |
+| `MODEL-006` | Incompatible environment, schema, runtime, or game versions fail clearly before control begins. | Compatibility mutation tests. | `PASS` |
+| `MODEL-007` | Native, ONNX, and in-game inference compare policy logits, probabilities, values, masks, greedy actions, and recurrent state if introduced. | Equivalence report. | `PASS` |
+| `MODEL-008` | Sampled-action distributions are statistically compared under a preregistered tolerance and sample count. | Distribution-test artifact. | `PASS` |
+| `MODEL-009` | Numerical tolerances are justified, versioned, and reject out-of-bound exports. | Tolerance ADR and negative tests. | `PASS` |
 | `MODEL-010` | The documented workflow covers train, export, validate, package install, launch, agent selection/configuration, game start, and visible play. | Clean-machine acceptance run. | `NOT_STARTED` |
 | `MODEL-011` | In-game inference supports deterministic greedy mode. | Repeated playback test. | `NOT_STARTED` |
 | `MODEL-012` | In-game inference may use an explicitly seeded stochastic mode. | Configuration and distribution test. | `NOT_STARTED` |
@@ -332,8 +332,8 @@ are errors unless a reviewed schema explicitly marks them inapplicable.
 | `TEST-008` | Test bankruptcy and every episode termination/truncation reason. | Scenario tests. | `PASS` |
 | `TEST-009` | Test PPO advantages, clipping, losses, minibatching, shuffling, masking, gradients, and optimizer updates. | Reference-vector and differential tests. | `PASS` |
 | `TEST-010` | Test checkpoint save, reload, incompatibility, and interruption recovery. | Round-trip/recovery tests. | `PASS` |
-| `TEST-011` | Test ONNX export and native/ONNX/in-game equivalence. | Cross-runtime gate. | `NOT_STARTED` |
-| `TEST-012` | Test incompatible model rejection for every compatibility field. | Mutation matrix. | `NOT_STARTED` |
+| `TEST-011` | Test ONNX export and native/ONNX/in-game equivalence. | Cross-runtime gate. | `PASS` |
+| `TEST-012` | Test incompatible model rejection for every compatibility field. | Mutation matrix. | `PASS` |
 | `TEST-013` | Test headless long-run stability and desynchronization detection. | Soak and fault campaign. | `PASS` |
 | `TEST-014` | Test every CLI metric against its authoritative counter/source. | Monitor accuracy suite. | `PASS` |
 | `TEST-015` | Critical gameplay behavior has both code-level assertions and actual-engine integration coverage. | Traceability lint. | `PASS` |

@@ -1237,14 +1237,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "LIFE-014",
@@ -1257,14 +1276,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "LIFE-015",
@@ -1317,14 +1355,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-LIFE"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "STACK-001",
@@ -1460,14 +1517,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "STACK-007",
@@ -1480,14 +1556,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-STACK"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "STACK-008",
@@ -2623,14 +2718,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-PPO"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "PPO-022",
@@ -4277,14 +4391,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-002",
@@ -4299,14 +4432,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-003",
@@ -4321,14 +4473,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-004",
@@ -4343,14 +4514,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-005",
@@ -4365,14 +4555,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-006",
@@ -4387,14 +4596,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-007",
@@ -4409,14 +4637,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-008",
@@ -4431,14 +4678,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-009",
@@ -4453,14 +4719,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-MODEL"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "MODEL-010",
@@ -6551,14 +6836,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "TEST-012",
@@ -6572,14 +6876,33 @@
       ],
       "milestone": "M10",
       "gate": "G10",
-      "status": "NOT_STARTED",
-      "implementation": [],
-      "test_ids": [
-        "V1-TEST-TEST"
+      "status": "PASS",
+      "implementation": [
+        "config/v1/m10-model-package-contract.json",
+        "docs/project/schema/v1-m10-model-package-contract.schema.json",
+        "docs/decisions/0014-v1-onnx-equivalence-tolerances.md",
+        "training/v1/CMakeLists.txt",
+        "training/v1/include/openttd_rl/deployment/deployment_model.h",
+        "training/v1/src/deployment_model.cpp",
+        "training/v1/src/m09_evaluator_main.cpp",
+        "training/v1/src/m10_export_orchestrator_main.cpp",
+        "training/v1/src/m10_onnx_evaluator_main.cpp",
+        "scripts/v1/m09_evaluator_client.py",
+        "scripts/v1/m10_deployment_client.py",
+        "scripts/v1/m10_export_model.py",
+        "scripts/v1/run_m10_package_gate.py",
+        "scripts/v1/run_m10_foundation_tests.sh",
+        "scripts/v1/validate_m10_model_package_contract.py",
+        "tests/project/traceability/test_v1_m10_model_package.py"
       ],
-      "evidence": [],
+      "test_ids": [
+        "V1-TEST-M10-PACKAGE"
+      ],
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
       "legacy_evidence": [],
-      "reviewer_note": "Initial machine mapping; implementation and acceptance evidence remain pending for G10."
+      "reviewer_note": "G10 passes with exact repeat exports and content-addressed packages for all three architectures; 36 native/standalone/in-game golden cases, nine 100,000-sample distribution cases, complete package provenance/digests/install instructions, an inference-only ONNX Runtime dependency closure, and all 30 frozen compatibility, graph, corruption, and input mutations rejected."
     },
     {
       "id": "TEST-013",
@@ -7338,11 +7661,8 @@
       "summary": "Planned requirement verification suite for LIFE requirements.",
       "runner": null,
       "requirement_ids": [
-        "LIFE-013",
-        "LIFE-014",
         "LIFE-015",
-        "LIFE-016",
-        "LIFE-017"
+        "LIFE-016"
       ],
       "status": "PLANNED",
       "evidence": [],
@@ -7356,21 +7676,7 @@
       "requirement_ids": [
         "STACK-001",
         "STACK-005",
-        "STACK-006",
-        "STACK-007",
         "STACK-010"
-      ],
-      "status": "PLANNED",
-      "evidence": [],
-      "mandatory": true,
-      "reviewer_note": "The owning milestone must replace or implement this planned suite before any linked requirement can pass."
-    },
-    {
-      "id": "V1-TEST-PPO",
-      "summary": "Planned requirement verification suite for PPO requirements.",
-      "runner": null,
-      "requirement_ids": [
-        "PPO-021"
       ],
       "status": "PLANNED",
       "evidence": [],
@@ -7382,15 +7688,6 @@
       "summary": "Planned requirement verification suite for MODEL requirements.",
       "runner": null,
       "requirement_ids": [
-        "MODEL-001",
-        "MODEL-002",
-        "MODEL-003",
-        "MODEL-004",
-        "MODEL-005",
-        "MODEL-006",
-        "MODEL-007",
-        "MODEL-008",
-        "MODEL-009",
         "MODEL-010",
         "MODEL-011",
         "MODEL-012",
@@ -7431,8 +7728,6 @@
       "summary": "Planned requirement verification suite for TEST requirements.",
       "runner": null,
       "requirement_ids": [
-        "TEST-011",
-        "TEST-012",
         "TEST-016"
       ],
       "status": "PLANNED",
@@ -7873,6 +8168,36 @@
       ],
       "mandatory": true,
       "reviewer_note": "The M09 preregistration, read-only evaluator, matched campaign, baseline matrix, final economic gate, statistical report, and robustness evidence pass."
+    },
+    {
+      "id": "V1-TEST-M10-PACKAGE",
+      "summary": "M10 export, content-addressed package, three-runtime equivalence, distribution, dependency, and rejection gate.",
+      "runner": "scripts/v1/run_m10_foundation_tests.sh",
+      "requirement_ids": [
+        "LIFE-013",
+        "LIFE-014",
+        "LIFE-017",
+        "MODEL-001",
+        "MODEL-002",
+        "MODEL-003",
+        "MODEL-004",
+        "MODEL-005",
+        "MODEL-006",
+        "MODEL-007",
+        "MODEL-008",
+        "MODEL-009",
+        "PPO-021",
+        "STACK-006",
+        "STACK-007",
+        "TEST-011",
+        "TEST-012"
+      ],
+      "status": "PASS",
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md"
+      ],
+      "mandatory": true,
+      "reviewer_note": "The retained G10 artifact passes all frozen deterministic, statistical, reproducibility, integrity, install-boundary, and mutation criteria."
     }
   ],
   "aggregate_dependencies": [
