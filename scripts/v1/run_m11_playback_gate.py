@@ -201,7 +201,7 @@ def clean_playback_campaign(args: argparse.Namespace, runtime: pathlib.Path) -> 
         report, records = assert_complete(run_root, 24)
         state = report["latest"]["reward_relevant_state"]
         families = {item["current_action"]["family"] for item in records}
-        require({"BUILD_BUS_STOP", "BUILD_ROAD_CONNECTOR", "BUILD_ROAD_DEPOT", "BUY_BUS", "ASSIGN_ROUTE", "RUN_BUS"} <= families, f"{template_id} did not exercise the complete bus lifecycle")
+        require({"BUILD_BUS_STOP", "BUILD_ROAD_CONNECTOR", "BUILD_ROAD_DEPOT", "BUY_BUS", "ASSIGN_ROUTE", "SET_RUNNING"} <= families, f"{template_id} did not exercise the complete bus lifecycle")
         require(state["primary_bus_count"] > 0 and state["delivered_passengers"] > 0 and state["income"] > 0, f"{template_id} did not reach positive service income")
         results.append({
             "action_count": len(records), "action_log_sha256": sha256_file(run_root / "actions.jsonl"),
