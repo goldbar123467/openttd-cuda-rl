@@ -138,9 +138,27 @@ rows with exact legal greedy actions and maximum absolute tensor error
 `1.33514e-05`; report SHA-256 is
 `7b8b785e6140fb190eb82c40512bd27e659211f83c084293948bd0e1b7b22fa9`.
 
+The next implementation foundation exact-copies both seven-file checkpoint
+inventories and constructs both exact six-file deployment layouts. Two builds
+from the independent export/golden roots are byte-identical. Their monolithic
+and specialist development package IDs are
+`50060fd871d3c737b41bb4523748fbaac5047fed106e9ce0a9d1b36c7637f955`
+and `d280683090b65eeea8e6cba1ab6ece3ca561a1b1d1708840f8616855ff44ac5a`;
+the package-build report SHA-256 is
+`d9e533a0c948ec7096017597fb1f4bca6f184fe8da8fe733d39ecd09ee2dfa90`.
+The independent Python validator and inference-only C++ loader accept both. The
+loader links ONNX Runtime, OpenSSL Crypto, and standard system libraries only.
+All 28 frozen rejection labels pass: both validators reject all 24 package,
+manifest, graph, and file mutations, while the runtime rejects all four invalid
+input/mask/batch requests. Mutation report SHA-256 is
+`33b6311b526bdb7fbadd94b982eb5032576c0769418562cd1ee8a1fc5836c906`.
+Fifteen package tests independently cover canonical identity, exact inventory,
+graph and golden semantics, recurrence, evaluation links, path leakage, and the
+C++ load/request boundary.
+
 These are development prototype measurements, not retained G23 evidence. No
-checkpoint copy, six-file deployment package, package ID, three-runtime result,
-visible campaign, clean-root result, release manifest, tag, or V2 release has
-yet been accepted. All nine `V2-RELEASE-*` requirements remain `PLANNED`. The
-next work is exact package construction and validation followed by the
-source-integrated in-game runtime and its third equivalence result.
+checkpoint package, deployment package, package ID, three-runtime result, visible
+campaign, clean-root result, release manifest, tag, or V2 release has yet been
+accepted. All nine `V2-RELEASE-*` requirements remain `PLANNED`. Copied-
+checkpoint load/resume and the source-integrated in-game runtime must pass before
+the prototype packages can become retained G23 candidates.

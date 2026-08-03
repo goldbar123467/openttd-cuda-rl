@@ -503,4 +503,25 @@ std::string m23_sha256_file(const std::filesystem::path &path)
     return result;
 }
 
+std::string m23_sha256_bytes(std::string_view value)
+{
+    std::array<unsigned char, EVP_MAX_MD_SIZE> digest{};
+    unsigned int length = 0;
+    auto *context = EVP_MD_CTX_new();
+    if (context == nullptr) throw std::runtime_error("cannot allocate M23 byte SHA-256 context");
+    const bool success = EVP_DigestInit_ex(context, EVP_sha256(), nullptr) == 1 &&
+        EVP_DigestUpdate(context, value.data(), value.size()) == 1 &&
+        EVP_DigestFinal_ex(context, digest.data(), &length) == 1;
+    EVP_MD_CTX_free(context);
+    if (!success || length != 32) throw std::runtime_error("cannot hash M23 bytes");
+    static constexpr char alphabet[] = "0123456789abcdef";
+    std::string result;
+    result.reserve(64);
+    for (unsigned int index = 0; index < length; ++index) {
+        result.push_back(alphabet[digest[index] >> 4U]);
+        result.push_back(alphabet[digest[index] & 0x0FU]);
+    }
+    return result;
+}
+
 } // namespace openttd_rl::v2

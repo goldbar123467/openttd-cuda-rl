@@ -63,6 +63,12 @@ v2_enable_strict_warnings(m23_onnx_evaluator)
 set_target_properties(m23_onnx_evaluator PROPERTIES BUILD_RPATH "${V2_ONNXRUNTIME_ROOT}/lib")
 target_link_options(m23_onnx_evaluator PRIVATE "LINKER:--disable-new-dtags")
 
+add_executable(m23_package_smoke ../src/m23_package_smoke_main.cpp)
+target_link_libraries(m23_package_smoke PRIVATE openttd_rl_v2_m23_onnx)
+v2_enable_strict_warnings(m23_package_smoke)
+set_target_properties(m23_package_smoke PROPERTIES BUILD_RPATH "${V2_ONNXRUNTIME_ROOT}/lib")
+target_link_options(m23_package_smoke PRIVATE "LINKER:--disable-new-dtags")
+
 if(V2_M23_DEPLOYMENT_ONLY)
   return()
 endif()

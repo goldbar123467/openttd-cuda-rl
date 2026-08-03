@@ -57,6 +57,7 @@ void validate_m23_golden_record(const M23GoldenRecord &record);
 void write_m23_golden_file(const std::filesystem::path &path, const std::vector<M23GoldenRecord> &records);
 [[nodiscard]] std::vector<M23GoldenRecord> read_m23_golden_file(const std::filesystem::path &path);
 [[nodiscard]] std::string m23_sha256_file(const std::filesystem::path &path);
+[[nodiscard]] std::string m23_sha256_bytes(std::string_view value);
 
 } // namespace openttd_rl::v2
 

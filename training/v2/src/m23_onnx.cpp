@@ -1,9 +1,14 @@
 #include "openttd_rl/v2/m23_onnx.h"
+#include "openttd_rl/v2/m23_golden.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <fstream>
+#include <limits>
+#include <sstream>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 
 namespace openttd_rl::v2 {
@@ -16,6 +21,12 @@ constexpr std::array<std::string_view, 4> kInputNames = {
 constexpr std::array<std::string_view, 3> kOutputNames = {
     "program_logits", "program_value", "next_hidden",
 };
+constexpr std::string_view kPackageFormat = "openttd-rl-v2-deployment-package-1";
+constexpr std::string_view kLearningContract = "f3ae8f89dfb6edf19b910c55f55845279b77ddd7be5adbd1db244984f968b07b";
+constexpr std::string_view kSourceTree = "f8985045f9ba14bad1e46a81cb58fdbb8037f277";
+constexpr std::string_view kMonolithicCheckpoint = "03894fd1238b69b6724d82eb441380312be4e8226efa602fa5e43972f7fa9f5f";
+constexpr std::string_view kSpecialistCheckpoint = "458b2b1413ca483cb9b061518ce9d80e5e9afc85852a66015d81da07bcc7fd2f";
+constexpr std::uintmax_t kMaximumPackageFileBytes = 67108864U;
 
 void require(bool condition, const char *message)
 {
@@ -48,6 +59,84 @@ void require_finite(const std::vector<float> &values, const char *message)
     require(std::all_of(values.begin(), values.end(), [](float value) { return std::isfinite(value); }), message);
 }
 
+[[nodiscard]] std::string bounded_text(const std::filesystem::path &path, std::uintmax_t maximum)
+{
+    require(std::filesystem::is_regular_file(path) && !std::filesystem::is_symlink(path),
+        "M23 package text is not a regular file");
+    const auto size = std::filesystem::file_size(path);
+    require(size > 0U && size <= maximum, "M23 package text size is invalid");
+    std::ifstream stream(path, std::ios::binary);
+    require(stream.good(), "M23 package text cannot be opened");
+    std::string value(static_cast<std::size_t>(size), '\0');
+    stream.read(value.data(), static_cast<std::streamsize>(value.size()));
+    require(stream.good() || stream.eof(), "M23 package text cannot be read");
+    require(stream.gcount() == static_cast<std::streamsize>(value.size()), "M23 package text was truncated");
+    return value;
+}
+
+[[nodiscard]] std::string manifest_string(const std::string &manifest, std::string_view key)
+{
+    const std::string marker = "\"" + std::string(key) + "\":\"";
+    const auto start = manifest.find(marker);
+    require(start != std::string::npos && manifest.find(marker, start + marker.size()) == std::string::npos,
+        "M23 deployment manifest string field is missing or duplicated");
+    const auto value_start = start + marker.size();
+    const auto end = manifest.find('"', value_start);
+    require(end != std::string::npos, "M23 deployment manifest string field is unterminated");
+    return manifest.substr(value_start, end - value_start);
+}
+
+[[nodiscard]] std::uint64_t manifest_integer(const std::string &manifest, std::string_view key)
+{
+    const std::string marker = "\"" + std::string(key) + "\":";
+    const auto start = manifest.find(marker);
+    require(start != std::string::npos && manifest.find(marker, start + marker.size()) == std::string::npos,
+        "M23 deployment manifest integer field is missing or duplicated");
+    auto end = start + marker.size();
+    require(end < manifest.size() && manifest[end] >= '0' && manifest[end] <= '9',
+        "M23 deployment manifest integer field is invalid");
+    std::uint64_t value = 0;
+    while (end < manifest.size() && manifest[end] >= '0' && manifest[end] <= '9') {
+        const auto digit = static_cast<std::uint64_t>(manifest[end] - '0');
+        require(value <= (std::numeric_limits<std::uint64_t>::max() - digit) / 10U,
+            "M23 deployment manifest integer field overflows");
+        value = value * 10U + digit;
+        ++end;
+    }
+    return value;
+}
+
+[[nodiscard]] std::string manifest_identity_payload(const std::string &manifest)
+{
+    const std::string marker = ",\"package_id\":\"";
+    const auto start = manifest.find(marker);
+    require(start != std::string::npos && manifest.find(marker, start + marker.size()) == std::string::npos,
+        "M23 deployment package_id is missing or duplicated");
+    const auto value_start = start + marker.size();
+    const auto end = manifest.find('"', value_start);
+    require(end != std::string::npos && end - value_start == 64U, "M23 deployment package_id is invalid");
+    std::string result = manifest;
+    result.erase(start, end + 1U - start);
+    return result;
+}
+
+void validate_package_inventory(const std::filesystem::path &root)
+{
+    constexpr std::array<std::string_view, 6> expected = {
+        "INSTALL.md", "MODEL_CARD.md", "evaluation.json", "golden.jsonl", "manifest.json", "model.onnx",
+    };
+    std::vector<std::string> observed;
+    for (const auto &entry : std::filesystem::directory_iterator(root)) {
+        require(!entry.is_symlink() && entry.is_regular_file(), "M23 deployment package contains a symlink or nonfile");
+        const auto size = entry.file_size();
+        require(size > 0U && size <= kMaximumPackageFileBytes, "M23 deployment package file size is invalid");
+        observed.push_back(entry.path().filename().string());
+    }
+    std::sort(observed.begin(), observed.end());
+    require(observed.size() == expected.size() && std::equal(observed.begin(), observed.end(), expected.begin()),
+        "M23 deployment package file inventory drifted");
+}
+
 } // namespace
 
 M23OnnxModel::M23OnnxModel(std::filesystem::path model_path, std::string architecture_id) :
@@ -60,6 +149,8 @@ M23OnnxModel::M23OnnxModel(std::filesystem::path model_path, std::string archite
         "M23 ONNX model must be an absolute regular file");
     require(architecture_id_ == "monolithic-generalist-v1" || architecture_id_ == "specialist-router-v1",
         "M23 ONNX architecture is unsupported");
+    require(std::string_view(OrtGetApiBase()->GetVersionString()) == "1.28.0",
+        "M23 ONNX Runtime version mismatch");
     options_.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
     options_.SetIntraOpNumThreads(1);
     options_.SetInterOpNumThreads(1);
@@ -153,6 +244,53 @@ M23OnnxOutput M23OnnxModel::run(
         result.greedy_program[row] = action;
     }
     return result;
+}
+
+M23DeploymentPackage::M23DeploymentPackage(std::filesystem::path package_path) :
+    package_path_(std::move(package_path))
+{
+    require(package_path_.is_absolute() && std::filesystem::is_directory(package_path_) &&
+            !std::filesystem::is_symlink(package_path_),
+        "M23 deployment package must be an absolute nonsymlink directory");
+    validate_package_inventory(package_path_);
+    const auto manifest = bounded_text(package_path_ / "manifest.json", 65536U);
+    require(manifest.find_first_of(" \n\r\t") == std::string::npos,
+        "M23 deployment manifest is not compact canonical JSON");
+    package_id_ = manifest_string(manifest, "package_id");
+    require(package_path_.filename() == package_id_ &&
+            m23_sha256_bytes(manifest_identity_payload(manifest)) == package_id_,
+        "M23 deployment package content address mismatch");
+    architecture_id_ = manifest_string(manifest, "architecture_id");
+    checkpoint_id_ = manifest_string(manifest, "checkpoint_id");
+    const bool monolithic = architecture_id_ == "monolithic-generalist-v1" &&
+        checkpoint_id_ == kMonolithicCheckpoint &&
+        manifest_string(manifest, "role") == "accepted-default-in-game-policy";
+    const bool specialist = architecture_id_ == "specialist-router-v1" &&
+        checkpoint_id_ == kSpecialistCheckpoint &&
+        manifest_string(manifest, "role") == "published-matched-comparison";
+    require(monolithic || specialist, "M23 deployment architecture/checkpoint selection mismatch");
+    require(manifest_string(manifest, "format") == kPackageFormat &&
+            manifest_integer(manifest, "compatibility_version") == 1U &&
+            manifest_integer(manifest, "architecture_version") == 1U &&
+            manifest_integer(manifest, "onnx_opset") == 18U &&
+            manifest_integer(manifest, "recurrent_width") == 256U &&
+            manifest_string(manifest, "learning_contract_sha256") == kLearningContract &&
+            manifest_string(manifest, "source_tree_id") == kSourceTree &&
+            manifest_string(manifest, "onnxruntime_version") == "1.28.0" &&
+            manifest_string(manifest, "normalization") ==
+                "already-normalized-public-float32-features-no-runtime-fitting" &&
+            manifest_string(manifest, "recurrent_reset_semantics") ==
+                "true-row-zeros-hidden-before-GRUCell-false-row-carries-hidden" &&
+            manifest_string(manifest, "training_dependencies") == "forbidden",
+        "M23 deployment package compatibility mismatch");
+    for (const auto name : {"model.onnx", "golden.jsonl", "evaluation.json", "INSTALL.md", "MODEL_CARD.md"}) {
+        require(m23_sha256_file(package_path_ / name) == manifest_string(manifest, name),
+            "M23 deployment package payload digest mismatch");
+    }
+    model_sha256_ = m23_sha256_file(package_path_ / "model.onnx");
+    require(model_sha256_ == manifest_string(manifest, "model_sha256"),
+        "M23 deployment package model provenance mismatch");
+    model_ = std::make_unique<M23OnnxModel>(package_path_ / "model.onnx", architecture_id_);
 }
 
 } // namespace openttd_rl::v2

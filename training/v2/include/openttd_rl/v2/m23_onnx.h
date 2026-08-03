@@ -45,6 +45,31 @@ private:
     std::unique_ptr<Ort::Session> session_;
 };
 
+class M23DeploymentPackage {
+public:
+    explicit M23DeploymentPackage(std::filesystem::path package_path);
+
+    M23DeploymentPackage(const M23DeploymentPackage &) = delete;
+    M23DeploymentPackage &operator=(const M23DeploymentPackage &) = delete;
+    M23DeploymentPackage(M23DeploymentPackage &&) = delete;
+    M23DeploymentPackage &operator=(M23DeploymentPackage &&) = delete;
+
+    [[nodiscard]] M23OnnxModel &model() noexcept { return *model_; }
+    [[nodiscard]] const std::string &architecture_id() const noexcept { return architecture_id_; }
+    [[nodiscard]] const std::string &checkpoint_id() const noexcept { return checkpoint_id_; }
+    [[nodiscard]] const std::string &package_id() const noexcept { return package_id_; }
+    [[nodiscard]] const std::string &model_sha256() const noexcept { return model_sha256_; }
+    [[nodiscard]] const std::filesystem::path &package_path() const noexcept { return package_path_; }
+
+private:
+    std::filesystem::path package_path_;
+    std::string architecture_id_;
+    std::string checkpoint_id_;
+    std::string package_id_;
+    std::string model_sha256_;
+    std::unique_ptr<M23OnnxModel> model_;
+};
+
 } // namespace openttd_rl::v2
 
 #endif
