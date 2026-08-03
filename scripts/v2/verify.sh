@@ -153,6 +153,14 @@ PYTHONPATH="$repository_root/scripts/v2" \
     "$tools_python" "$repository_root/scripts/v2/validate_m20_competition_evidence.py" \
     --root "$repository_root"
 
+PYTHONPATH="$repository_root/scripts/v2" \
+    "$tools_python" "$repository_root/scripts/v2/validate_m21_broad_source.py" \
+    --root "$repository_root"
+
+PYTHONPATH="$repository_root/scripts/v2" \
+    "$tools_python" "$repository_root/scripts/v2/validate_m21_broad_evidence.py" \
+    --root "$repository_root"
+
 "$tools_python" "$repository_root/scripts/v2/validate_traceability.py" \
     --root "$repository_root"
 

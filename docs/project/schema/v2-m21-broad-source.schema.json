@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m21-broad-source.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["base", "build", "executable", "patch", "retained_artifact", "runtime", "schema_version", "source"],
+  "properties": {
+    "base": {"$ref": "#/$defs/git"},
+    "build": {"type": "object", "required": ["cmake_arguments", "open_gfx", "upstream_ctest"], "properties": {"cmake_arguments": {"type": "array", "minItems": 4, "items": {"type": "string"}}, "open_gfx": {"$ref": "#/$defs/file"}, "upstream_ctest": {"const": {"passed": 98, "total": 98}}}, "additionalProperties": false},
+    "executable": {"$ref": "#/$defs/file"},
+    "patch": {"type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/$defs/sha256"}}},
+    "retained_artifact": {"type": "string", "pattern": "^/"},
+    "runtime": {"type": "object", "additionalProperties": false, "required": ["configs", "content_files", "content_root", "gamescript_root", "network_calls_during_qualification"], "properties": {"configs": {"type": "object", "required": ["base", "content", "gamescript"], "additionalProperties": {"type": "object", "required": ["path", "sha256"], "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/$defs/sha256"}}}}, "content_files": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"type": "object", "additionalProperties": false, "required": ["bytes", "name", "sha256"], "properties": {"bytes": {"type": "integer", "minimum": 1}, "name": {"type": "string", "pattern": "^[a-z]+\\.grf$"}, "sha256": {"$ref": "#/$defs/sha256"}}}}, "content_root": {"type": "string", "pattern": "^/"}, "gamescript_root": {"type": "string", "pattern": "^/"}, "network_calls_during_qualification": {"const": "none"}}},
+    "schema_version": {"const": "openttd-rl-v2-m21-broad-source-1"},
+    "source": {"type": "object", "additionalProperties": false, "required": ["commit", "path", "tree"], "properties": {"commit": {"$ref": "#/$defs/git40"}, "path": {"type": "string", "pattern": "^/"}, "tree": {"$ref": "#/$defs/git40"}}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git40": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "git": {"type": "object", "additionalProperties": false, "required": ["commit", "tree"], "properties": {"commit": {"$ref": "#/$defs/git40"}, "tree": {"$ref": "#/$defs/git40"}}},
+    "file": {"type": "object", "additionalProperties": false, "required": ["bytes", "path", "sha256"], "properties": {"bytes": {"type": "integer", "minimum": 1}, "path": {"type": "string"}, "sha256": {"$ref": "#/$defs/sha256"}}}
+  }
+}

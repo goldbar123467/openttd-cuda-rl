@@ -54,11 +54,11 @@ class V2TraceabilityTests(unittest.TestCase):
     def test_repository_traceability_passes(self) -> None:
         summary = validate_traceability.validate(self.root)
         self.assertEqual(summary.requirements, 86)
-        self.assertEqual(summary.passed, 60)
+        self.assertEqual(summary.passed, 69)
         self.assertEqual(summary.in_progress, 0)
-        self.assertEqual(summary.planned, 26)
+        self.assertEqual(summary.planned, 17)
         self.assertEqual(summary.tests, 26)
-        self.assertEqual(summary.tests_passed, 23)
+        self.assertEqual(summary.tests_passed, 24)
         self.assertEqual(summary.nonclosed_defects, 0)
 
     def test_requirements_schema_hash_drift_fails(self) -> None:

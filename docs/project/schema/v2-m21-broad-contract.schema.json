@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m21-broad-contract.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["acceptance", "capabilities", "cases", "coverage", "identities", "negative_cases", "newgrfs", "probes", "replicates", "schema_version", "version"],
+  "properties": {
+    "acceptance": {"type": "object", "minProperties": 7},
+    "capabilities": {"type": "array", "minItems": 14, "maxItems": 14, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z_]+$"}},
+    "cases": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"$ref": "#/$defs/case"}},
+    "coverage": {"type": "object", "required": ["command_dispositions", "feature_domains", "matrix", "research_baseline_sha256"], "properties": {"command_dispositions": {"const": 145}, "feature_domains": {"const": 18}, "matrix": {"const": "config/v2/m21-broad-coverage.json"}, "research_baseline_sha256": {"$ref": "#/$defs/sha256"}}, "additionalProperties": true},
+    "identities": {"type": "object", "minProperties": 5, "additionalProperties": {"$ref": "#/$defs/sha256"}},
+    "negative_cases": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object", "additionalProperties": false, "required": ["case_id", "diagnostic", "mutation"], "properties": {"case_id": {"type": "string"}, "diagnostic": {"type": "string", "minLength": 8}, "mutation": {"enum": ["unknown-capability", "unknown-content-id", "unknown-schema"]}}}},
+    "newgrfs": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"type": "object", "additionalProperties": false, "required": ["id", "md5"], "properties": {"id": {"type": "string", "pattern": "^[0-9a-f]{8}$"}, "md5": {"type": "string", "pattern": "^[0-9a-f]{32}$"}}}},
+    "probes": {"type": "object", "additionalProperties": false, "required": ["authority_economy", "calendar", "content", "events", "gamescript"], "properties": {"authority_economy": {"type": "string"}, "calendar": {"type": "string"}, "content": {"type": "string"}, "events": {"type": "string"}, "gamescript": {"type": "string"}}},
+    "replicates": {"const": ["a", "b"]},
+    "schema_version": {"const": "openttd-rl-v2-m21-broad-contract-1"},
+    "version": {"const": "m21-broad-v1"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "case": {"type": "object", "additionalProperties": false, "required": ["case_id", "landscape", "probe", "seed"], "properties": {"case_id": {"type": "string", "pattern": "^[a-z0-9-]+$"}, "landscape": {"enum": ["temperate", "arctic", "tropic", "toyland"]}, "probe": {"enum": ["calendar", "authority_economy", "events", "gamescript", "content"]}, "seed": {"type": "integer", "minimum": 1, "maximum": 4294967295}}}
+  }
+}

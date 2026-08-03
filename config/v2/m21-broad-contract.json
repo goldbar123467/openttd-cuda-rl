@@ -1,0 +1,87 @@
+{
+  "acceptance": {
+    "all_cases_required": true,
+    "arbitrary_newgrf_universality": false,
+    "capability_schema_closed": true,
+    "fresh_process_per_run": true,
+    "negative_rejections_before_world": true,
+    "replicates_exact_after_run_id_normalization": true,
+    "save_load_required_for_stateful_probes": true
+  },
+  "capabilities": [
+    "aircraft_vehicle",
+    "airport",
+    "cargo",
+    "cargo_refit",
+    "industry",
+    "object",
+    "rail_station",
+    "rail_type",
+    "road_type",
+    "road_vehicle",
+    "ship_vehicle",
+    "train_vehicle",
+    "tram_type",
+    "tram_vehicle"
+  ],
+  "cases": [
+    {"case_id": "calendar-temperate-s0", "landscape": "temperate", "probe": "calendar", "seed": 21001},
+    {"case_id": "calendar-temperate-s1", "landscape": "temperate", "probe": "calendar", "seed": 21002},
+    {"case_id": "calendar-arctic-s0", "landscape": "arctic", "probe": "calendar", "seed": 21101},
+    {"case_id": "calendar-arctic-s1", "landscape": "arctic", "probe": "calendar", "seed": 21102},
+    {"case_id": "calendar-tropic-s0", "landscape": "tropic", "probe": "calendar", "seed": 21201},
+    {"case_id": "calendar-tropic-s1", "landscape": "tropic", "probe": "calendar", "seed": 21202},
+    {"case_id": "calendar-toyland-s0", "landscape": "toyland", "probe": "calendar", "seed": 21301},
+    {"case_id": "calendar-toyland-s1", "landscape": "toyland", "probe": "calendar", "seed": 21302},
+    {"case_id": "authority-economy-s0", "landscape": "temperate", "probe": "authority_economy", "seed": 21401},
+    {"case_id": "authority-economy-s1", "landscape": "temperate", "probe": "authority_economy", "seed": 21402},
+    {"case_id": "events-s0", "landscape": "temperate", "probe": "events", "seed": 21501},
+    {"case_id": "events-s1", "landscape": "temperate", "probe": "events", "seed": 21502},
+    {"case_id": "gamescript-s0", "landscape": "temperate", "probe": "gamescript", "seed": 21601},
+    {"case_id": "gamescript-s1", "landscape": "temperate", "probe": "gamescript", "seed": 21602},
+    {"case_id": "content-s0", "landscape": "temperate", "probe": "content", "seed": 21701},
+    {"case_id": "content-s1", "landscape": "temperate", "probe": "content", "seed": 21702}
+  ],
+  "coverage": {
+    "command_dispositions": 145,
+    "feature_domains": 18,
+    "future_stage_domains_must_retain_accepted_foundations": ["V2-FEAT-017", "V2-FEAT-018"],
+    "matrix": "config/v2/m21-broad-coverage.json",
+    "policy_optional_may_use_deliberate_presentation_proof": true,
+    "research_baseline_sha256": "c95c06cccd9c8a37d87441f6a101c8655ca05d3797bf7b780841117b76a7dadf"
+  },
+  "identities": {
+    "content_lock_sha256": "31d2ebd04f8eea4226e1f50a4dba28b1f11567bc2f7a1b33d059102d2346e266",
+    "content_request_sha256": "ddf54bc195010bb01b3991035a46ff772c574a3af89e5d197c1b10ee1b2de7d5",
+    "gamescript_info_sha256": "389551c12b89da966a3c7ce72a13e9371c096f5b634b40f2b463aceb93ee1989",
+    "gamescript_main_sha256": "fbf4b436b584ae88c7eaf8ddb5e4bb3862cc821726f7fb6b64c1aab34d1c7a56",
+    "m20_evidence_sha256": "ab59a139a95878f304b1b1b64167a2664987db5813a5590b006be609c4a85845"
+  },
+  "negative_cases": [
+    {"case_id": "reject-unknown-capability", "diagnostic": "unknown capability 'unknown_vehicle'", "mutation": "unknown-capability"},
+    {"case_id": "reject-unknown-content-id", "diagnostic": "active NewGRF identity set differs", "mutation": "unknown-content-id"},
+    {"case_id": "reject-unknown-schema", "diagnostic": "unsupported manifest schema_version", "mutation": "unknown-schema"}
+  ],
+  "newgrfs": [
+    {"id": "414e0201", "md5": "0da3a80b986bc3c17c20ca4ce9ca26aa"},
+    {"id": "415a1001", "md5": "dece45389ddc1434da0601a48fea1171"},
+    {"id": "43415000", "md5": "fbae0c1acfda5ae8b95b4da230a395fe"},
+    {"id": "454e1401", "md5": "211fdb32134c562a11e6545e9c7108fc"},
+    {"id": "4e445903", "md5": "ea3772bb12318c0cb851ab92769bd913"},
+    {"id": "4f472b31", "md5": "4e0b2d42462f295f36afba90d239a323"},
+    {"id": "52415608", "md5": "c808c4b56d0589a5605ddedba6732094"},
+    {"id": "52580101", "md5": "d7400dacf064356088e0a13b836a52b9"},
+    {"id": "54574606", "md5": "08ec4b3153f574a84b8aff3eccf0a7ef"},
+    {"id": "9787eafe", "md5": "04acd20a006e345283d6464678affa8b"}
+  ],
+  "probes": {
+    "authority_economy": "native authority positive/negative commands, exclusive-rights competitor/expiry, subsidy award, inflation price/payment, recession/recovery, and save/load",
+    "calendar": "seven native calendar snapshots from 1900 through 2100 in every landscape, engine/facility introduction and expiry, cargo catalog, and save/load",
+    "content": "exact ten-NewGRF runtime identities, closed 14-capability projection, and non-vacuous vehicle/type/cargo/industry/object catalogs",
+    "events": "breakdowns and disasters enabled/disabled, explicit reward semantics, bounded recovery, and save/load",
+    "gamescript": "live pinned Game Script plus native goals, questions, stories, leagues, company responses, and save/load"
+  },
+  "replicates": ["a", "b"],
+  "schema_version": "openttd-rl-v2-m21-broad-contract-1",
+  "version": "m21-broad-v1"
+}

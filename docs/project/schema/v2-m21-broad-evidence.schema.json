@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m21-broad-evidence.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["aggregate", "artifact_root", "cases", "contract_sha256", "coverage_sha256", "execution", "executable_sha256", "identities", "negative_cases", "schema_version", "source_sha256", "status"],
+  "properties": {
+    "aggregate": {"type": "object", "additionalProperties": false, "required": ["cases", "command_dispositions", "exact_twins", "feature_domains", "maximum_wall_seconds", "native_runs", "negative_cases"], "properties": {"cases": {"const": 16}, "command_dispositions": {"const": 145}, "exact_twins": {"const": 16}, "feature_domains": {"const": 18}, "maximum_wall_seconds": {"type": "number", "minimum": 0}, "native_runs": {"const": 32}, "negative_cases": {"const": 3}}},
+    "artifact_root": {"type": "string", "pattern": "^/"},
+    "cases": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"type": "object", "additionalProperties": false, "required": ["case_id", "landscape", "probe", "replicates", "seed", "twin_exact"], "properties": {"case_id": {"type": "string"}, "landscape": {"enum": ["temperate", "arctic", "tropic", "toyland"]}, "probe": {"enum": ["calendar", "authority_economy", "events", "gamescript", "content"]}, "replicates": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/replicate"}}, "seed": {"type": "integer"}, "twin_exact": {"const": true}}}},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "coverage_sha256": {"$ref": "#/$defs/sha256"},
+    "execution": {"const": {"fresh_process_per_run": true, "network_calls": "none", "process_limits": true, "sandbox": "rlimit-only"}},
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "identities": {"type": "object", "minProperties": 5, "additionalProperties": {"$ref": "#/$defs/sha256"}},
+    "negative_cases": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object", "additionalProperties": false, "required": ["case_id", "diagnostic", "exit_code", "log_path", "report_absent"], "properties": {"case_id": {"type": "string"}, "diagnostic": {"type": "string"}, "exit_code": {"type": "integer", "minimum": 1}, "log_path": {"type": "string"}, "report_absent": {"const": true}}}},
+    "schema_version": {"const": "openttd-rl-v2-m21-broad-evidence-1"},
+    "source_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"const": "PASS"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "save": {"type": ["object", "null"], "required": ["bytes", "sha256"], "properties": {"bytes": {"type": "integer", "minimum": 1}, "sha256": {"$ref": "#/$defs/sha256"}}, "additionalProperties": false},
+    "replicate": {"type": "object", "additionalProperties": false, "required": ["name", "normalized_sha256", "report_path", "report_sha256", "save", "wall_seconds"], "properties": {"name": {"enum": ["a", "b"]}, "normalized_sha256": {"$ref": "#/$defs/sha256"}, "report_path": {"type": "string"}, "report_sha256": {"$ref": "#/$defs/sha256"}, "save": {"$ref": "#/$defs/save"}, "wall_seconds": {"type": "number", "minimum": 0}}}
+  }
+}

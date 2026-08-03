@@ -1,4 +1,4 @@
-From 073d33b5906c0d7907bc9a4c6bad7680376ef939 Mon Sep 17 00:00:00 2001
+From 6429d55789885e7d144f3c663223384821814149 Mon Sep 17 00:00:00 2001
 From: Clark Kitchen <clarkkitchen22@gmail.com>
 Date: Sun, 2 Aug 2026 22:28:14 -0400
 Subject: [PATCH] Add native V2 broad-feature qualification
@@ -6,9 +6,9 @@ Subject: [PATCH] Add native V2 broad-feature qualification
 ---
  src/CMakeLists.txt  |   2 +
  src/openttd.cpp     |  29 +-
- src/rl_v2_broad.cpp | 685 ++++++++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_broad.cpp | 688 ++++++++++++++++++++++++++++++++++++++++++++
  src/rl_v2_broad.h   |  15 +
- 4 files changed, 729 insertions(+), 2 deletions(-)
+ 4 files changed, 732 insertions(+), 2 deletions(-)
  create mode 100644 src/rl_v2_broad.cpp
  create mode 100644 src/rl_v2_broad.h
 
@@ -102,10 +102,10 @@ index f69480a..b65a1a5 100644
  		return 1;
 diff --git a/src/rl_v2_broad.cpp b/src/rl_v2_broad.cpp
 new file mode 100644
-index 0000000..ac44d2b
+index 0000000..734b3bc
 --- /dev/null
 +++ b/src/rl_v2_broad.cpp
-@@ -0,0 +1,685 @@
+@@ -0,0 +1,688 @@
 +/*
 + * This file is part of OpenTTD.
 + * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -428,10 +428,13 @@ index 0000000..ac44d2b
 +	TimerGameCalendar::SetDate(TimerGameCalendar::ConvertYMDToDate(TimerGameCalendar::Year{year}, 0, 1), 0);
 +}
 +
-+static json EngineSnapshot(int year)
++static json EngineSnapshot(int year, bool update = true)
 +{
-+	SetCalendarYear(year);
-+	StartupEngines();
++	if (update) {
++		SetCalendarYear(year);
++		StartupEngines();
++	}
++	Require(TimerGameCalendar::year == TimerGameCalendar::Year{year}, "calendar snapshot year differs");
 +	json by_type = json::object();
 +	for (VehicleType type : {VEH_TRAIN, VEH_ROAD, VEH_SHIP, VEH_AIRCRAFT}) {
 +		uint total = 0;
@@ -466,7 +469,7 @@ index 0000000..ac44d2b
 +	Require(SaveOrLoad(save_path, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "calendar SAVE failed");
 +	SetCalendarYear(2100);
 +	Require(SaveOrLoad(save_path, SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "calendar LOAD failed");
-+	json after = EngineSnapshot(2050);
++	json after = EngineSnapshot(2050, false);
 +	Require(before == after && TimerGameCalendar::year == TimerGameCalendar::Year{2050}, "calendar projection did not restore exactly");
 +	uint cargo_count = 0;
 +	for ([[maybe_unused]] const CargoSpec *cargo : CargoSpec::Iterate()) ++cargo_count;

@@ -1,0 +1,58 @@
+{
+  "base": {
+    "commit": "95af5ebe73d4353e3d50f6bb54c02bb74bf1b8b4",
+    "tree": "bca05d858ae5de2a9aa7d3f080ccb2f5677cb7e2"
+  },
+  "build": {
+    "cmake_arguments": [
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+      "-DOPTION_RL_ENVIRONMENT=ON",
+      "-DOPTION_RL_NEURAL_AGENT=OFF",
+      "-DOPTION_USE_ASSERTS=ON"
+    ],
+    "open_gfx": {
+      "bytes": 5396480,
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a/build-broad/baseset/opengfx-8.0.tar",
+      "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c"
+    },
+    "upstream_ctest": {"passed": 98, "total": 98}
+  },
+  "executable": {
+    "bytes": 424406664,
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a/build-broad/openttd",
+    "sha256": "c5bd829505a201cc760c31ddcee3d8baff507134d526eae80a92b0fdc52b8d9c"
+  },
+  "patch": {
+    "path": "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+    "sha256": "8f118ae510e8f39c0605e8d96f155af5121275025ccd70ce6b46dac259696101"
+  },
+  "retained_artifact": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a",
+  "runtime": {
+    "configs": {
+      "base": {"path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a/base.cfg", "sha256": "b23c83b3fd8ad48796ff86f26311670bbddb417a16884e4aea3e3e43587bc69d"},
+      "content": {"path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a/content.cfg", "sha256": "f9b7c931d9bad6715cfeea6ae3a90365fc04ab763fa74f8556f7c46cfd092874"},
+      "gamescript": {"path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a/gamescript.cfg", "sha256": "564fccd2144859cb8b36bbfd3c4a1a57b2f428fb10429c2407befadc9a2c51ac"}
+    },
+    "content_files": [
+      {"bytes": 1247782, "name": "fish.grf", "sha256": "3a7d7578ba477b2ebb3a57d52548b9bb0b0cc931a6c5c19a620a41a37f78536d"},
+      {"bytes": 727614, "name": "rattroads.grf", "sha256": "0d3969b56859988dc4a12f5538dd4dab3e1f3e6df655ca92d3544f6bf9963892"},
+      {"bytes": 1418267, "name": "airports.grf", "sha256": "eee51e40b08bb4a91f44b53650fd9375e7b653d61428d4d64bb4bf4865453902"},
+      {"bytes": 111163, "name": "stations.grf", "sha256": "dbc9501ba0146aa7329a168d8933eb799979c7dd7ac197150d2adacfaaee4baf"},
+      {"bytes": 4042547, "name": "industries.grf", "sha256": "e96988a20a623e089dc17d3e6c98b9f3c80405e9a548565febb4d8d11d1533db"},
+      {"bytes": 280435, "name": "trains.grf", "sha256": "70c8096a8b0aac6ea59fa0a3d78330fe6e67b86db5a7983de161ccf7c23e95c1"},
+      {"bytes": 2490213, "name": "aircraft.grf", "sha256": "397ea103164fe2ed14431bcc80e13e9d78c42a7a894201fb02dcf254f418a941"},
+      {"bytes": 4624843, "name": "objects.grf", "sha256": "3025a9dde5b24057dc9c64f48cb8ef2f3bb355565d692cc47fd95720e0c39484"},
+      {"bytes": 3736577, "name": "tracks.grf", "sha256": "3a9fcc4200cb2d2e4face94981142fcccb1cf01267a08db652db65d069d662dc"},
+      {"bytes": 2380212, "name": "roadhog.grf", "sha256": "aa9d9d99a99ece9810e4232161de9641d5444158d889237cadf2b7e68936b572"}
+    ],
+    "content_root": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a/build-broad/newgrf/m21",
+    "gamescript_root": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a/build-broad/game/m21coverage",
+    "network_calls_during_qualification": "none"
+  },
+  "schema_version": "openttd-rl-v2-m21-broad-source-1",
+  "source": {
+    "commit": "6429d55789885e7d144f3c663223384821814149",
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m21-broad-a/source",
+    "tree": "4273ecf8d52735b1ccac74c3e2ddd4ee73e3fa2a"
+  }
+}

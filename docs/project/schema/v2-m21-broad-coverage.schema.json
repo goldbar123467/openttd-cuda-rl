@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m21-broad-coverage.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["command_dispositions", "feature_domains", "schema_version", "summary"],
+  "properties": {
+    "command_dispositions": {"type": "array", "minItems": 145, "maxItems": 145, "items": {"type": "object", "additionalProperties": false, "required": ["command", "disposition", "evidence", "occurrence", "proof_kind", "semantic_path"], "properties": {"command": {"type": "string", "pattern": "^CMD_[A-Z0-9_]+$"}, "disposition": {"enum": ["policy-required", "policy-optional", "benchmark-admin"]}, "evidence": {"$ref": "#/$defs/evidence"}, "occurrence": {"type": "integer", "minimum": 1}, "proof_kind": {"type": "string", "minLength": 8}, "semantic_path": {"type": "string", "minLength": 8}}}},
+    "feature_domains": {"type": "array", "minItems": 18, "maxItems": 18, "items": {"type": "object", "additionalProperties": false, "required": ["acceptance_families", "baseline_gate", "evidence", "feature_id", "proof_kind", "stage_boundary"], "properties": {"acceptance_families": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}, "baseline_gate": {"type": "string", "pattern": "^G(?:1[4-9]|2[0-3])$"}, "evidence": {"$ref": "#/$defs/evidence"}, "feature_id": {"type": "string", "pattern": "^V2-FEAT-[0-9]{3}$"}, "proof_kind": {"type": "string", "minLength": 8}, "stage_boundary": {"type": "string", "minLength": 8}}}},
+    "schema_version": {"const": "openttd-rl-v2-m21-broad-coverage-1"},
+    "summary": {"const": {"benchmark_admin": 45, "commands": 145, "feature_domains": 18, "policy_optional": 19, "policy_required": 81}}
+  },
+  "$defs": {"evidence": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^(config|docs|integration)/.+"}}}
+}

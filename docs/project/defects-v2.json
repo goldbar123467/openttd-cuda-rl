@@ -4,7 +4,40 @@
   "schema_sha256": "57e4a9a0d583fec27d233f08e60fbf00e5898cde71b7f86715d4941c4220ffe7",
   "ledger_kind": "openttd-rl-v2-project-defect-ledger",
   "scope": "V2-M14-through-M23",
-  "entries": [],
+  "entries": [
+    {
+      "id": "V2-DEF-0001",
+      "kind": "DEFECT",
+      "title": "Calendar save/load oracle re-ran randomized engine startup after loading",
+      "severity": "MAJOR",
+      "blocks_release": true,
+      "status": "CLOSED",
+      "discovery_date": "2026-08-02",
+      "affected_requirement_ids": [
+        "V2-BROAD-001",
+        "V2-BROAD-009"
+      ],
+      "affected_gates": [
+        "G21"
+      ],
+      "first_observed": "The second temperate seed in the first complete M21 exact-twin matrix failed the calendar save/load comparison.",
+      "impact": "A seed-dependent qualification failure could incorrectly classify correct restored engine state as divergent and prevented G21 acceptance.",
+      "root_cause": "The post-load comparison called StartupEngines again; that mutating initialization path can consume introduction randomness instead of reading the state restored from the save.",
+      "reproducer": [
+        "scripts/v2/run_m21_broad_matrix.py"
+      ],
+      "evidence": [
+        "config/v2/m21-broad-source.json",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "fix_revision": "6429d55789885e7d144f3c663223384821814149",
+      "regression_test": "tests/project/v2/test_v2_m21_broad_evidence.py",
+      "closure_evidence": [
+        "config/v2/m21-broad-evidence.json",
+        "docs/project/G21_GATE_REPORT.md"
+      ]
+    }
+  ],
   "open_counts": {
     "defects": 0,
     "divergences": 0,
@@ -13,6 +46,6 @@
   },
   "diagnostics": {
     "last_reviewed_date": "2026-08-02",
-    "review_note": "The accepted M14-G20 implementation has zero known V2 code defects or divergences. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes unmodified external-AI choices as stochastic fresh-process replicates while requiring exact manifest, public save/load, and score projection replay; that declared boundary is not a divergence. Planned M21-M23 requirements are not defects merely because their gates have not run."
+    "review_note": "The accepted M14-G21 implementation has zero nonclosed V2 defects or divergences. V2-DEF-0001 records and closes the seed-dependent M21 calendar-oracle defect found by the complete matrix. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set. Planned M22-M23 requirements are not defects merely because their gates have not run."
   }
 }

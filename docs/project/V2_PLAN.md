@@ -9,13 +9,14 @@
 - Machine research baseline: [`config/v2/research-baseline.json`](../../config/v2/research-baseline.json)
 - Pinned setting inventory: [`config/v2/setting-inventory.json`](../../config/v2/setting-inventory.json)
 - Frozen competition protocol: [`config/v2/m14-competition-manifest.json`](../../config/v2/m14-competition-manifest.json)
-- Current gate: [`G20 PASS`](G20_GATE_REPORT.md); main-branch checkpoint before M21
+- Current gate: [`G21 PASS`](G21_GATE_REPORT.md); M22 generalist learning is active
 - M15 contract: [`M15_SCALABLE_CONTRACT.md`](M15_SCALABLE_CONTRACT.md)
 - M16 contract: [`M16_CARGO_INDUSTRY_CONTRACT.md`](M16_CARGO_INDUSTRY_CONTRACT.md)
 - M17 contract: [`M17_RAIL_NETWORK_CONTRACT.md`](M17_RAIL_NETWORK_CONTRACT.md)
 - M18 contract: [`M18_SHIP_WATERWAY_CONTRACT.md`](M18_SHIP_WATERWAY_CONTRACT.md)
 - M19 contract: [`M19_AIR_MULTIMODAL_CONTRACT.md`](M19_AIR_MULTIMODAL_CONTRACT.md)
 - M20 contract: [`M20_COMPETITION_CONTRACT.md`](M20_COMPETITION_CONTRACT.md)
+- M21 contract: [`M21_BROAD_CONTENT_CONTRACT.md`](M21_BROAD_CONTENT_CONTRACT.md)
 
 V2 expands V1 to scalable maps, every base-game transport/cargo system,
 multimodal planning and reproducible competition against external OpenTTD AIs.
@@ -194,6 +195,14 @@ Required outputs:
 have executable acceptance or deliberate environment/presentation evidence. The
 pinned content pack passes; no arbitrary-NewGRF universality claim is allowed.
 
+[`G21_GATE_REPORT.md`](G21_GATE_REPORT.md) records the pass: 16 cases and 32
+exact-twin native runs cover four climates from 1900 through 2100, authority and
+economy transitions, breakdown/disaster recovery, a live pinned Game Script,
+and the exact ten-package/14-capability content set. Three unknown
+capability/content/schema mutations fail before world/report creation, all 18
+feature rows and 145 command occurrences are mapped, and G14-G20/V1 regressions
+remain accepted.
+
 ### M22 — Generalist learning, scale and robustness
 
 Required outputs:
@@ -262,18 +271,19 @@ feature does not satisfy V2.
 
 ## Immediate implementation order
 
-M20 is complete and frozen at the requested main-branch checkpoint. M21 is next
-in dependency order. Its next authorized sequence is:
+M21 is complete and frozen at G21. M22 is next in dependency order. Its active
+sequence is:
 
-1. freeze the all-climate, calendar, economy-event, Game Script, NewGRF, and
-   capability-discovery contracts;
-2. cross long calendar boundaries for engine/facility introduction, expiry,
-   inflation, recessions, breakdowns, disasters, subsidies, exclusivity, and
-   local-authority behavior;
-3. exercise goals, questions, stories, league tables, save/load, and every
-   script-facing command disposition with pinned Game Script fixtures;
-4. byte-pin the declared compatibility content pack and prove representative
-   tram, cargo, industry, station, object, road, rail, ship, and aircraft
-   capabilities while failing closed on unknown content; and
-5. retain the complete G20 competition and G14-G19/V1 correctness boundaries in
-   every M21 artifact.
+1. freeze generalist curriculum, architecture, optimizer/checkpoint, CUDA,
+   retention, and independent-evaluation contracts before training;
+2. extend the accepted M15 recurrent policy to the G16-G21 typed
+   cargo/road/rail/water/air/company/event observations and hierarchical actions;
+3. run matched monolithic, specialist-router, and non-neural baselines under
+   preregistered budgets with multiple development seeds;
+4. prove CPU/CUDA numerical semantics, interrupted/uninterrupted exact recovery,
+   finite optimization, and frozen prior-stage retention throughout training;
+5. select from development data only, then execute every preregistered unseen
+   final mode/climate/size/cargo/opponent run once, retaining failures and
+   uncertainty; and
+6. require profitable/service-capable independent evidence in every transport
+   mode plus all G14-G21/V1 regressions before G22 can pass.

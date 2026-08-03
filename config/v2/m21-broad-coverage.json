@@ -1,0 +1,2090 @@
+{
+  "command_dispositions": [
+    {
+      "command": "CMD_ADD_SHARED_VEHICLE_GROUP",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_ADD_VEHICLE_GROUP",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_ALTER_GROUP",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "company-finance-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_AUTOFILL_TIMETABLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_AUTOREPLACE_VEHICLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_AIRPORT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m19/air/0001-Add-native-V2-aircraft-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "air-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_BRIDGE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m18/ship/0001-Add-native-V2-ship-qualification.patch",
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "normal-company-generic-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_BUOY",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m18/ship/0001-Add-native-V2-ship-qualification.patch",
+        "config/v2/m18-ship-contract.json",
+        "config/v2/m18-ship-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "water-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_CANAL",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m18/ship/0001-Add-native-V2-ship-qualification.patch",
+        "config/v2/m18-ship-contract.json",
+        "config/v2/m18-ship-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "water-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_DOCK",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m18/ship/0001-Add-native-V2-ship-qualification.patch",
+        "config/v2/m18-ship-contract.json",
+        "config/v2/m18-ship-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "water-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_INDUSTRY",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "road-cargo-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_BUILD_LOCK",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m18/ship/0001-Add-native-V2-ship-qualification.patch",
+        "config/v2/m18-ship-contract.json",
+        "config/v2/m18-ship-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "water-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_LONG_ROAD",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "road-cargo-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_RAILROAD_TRACK",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "rail-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_BUILD_RAIL_STATION",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_RAIL_WAYPOINT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_ROAD",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "road-cargo-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_ROAD_DEPOT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "road-cargo-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_ROAD_STOP",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "road-cargo-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_ROAD_WAYPOINT",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "road-cargo-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_BUILD_SHIP_DEPOT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m18/ship/0001-Add-native-V2-ship-qualification.patch",
+        "config/v2/m18-ship-contract.json",
+        "config/v2/m18-ship-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "water-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_SIGNAL_TRACK",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "rail-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_BUILD_SINGLE_RAIL",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_SINGLE_SIGNAL",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_TRAIN_DEPOT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BUILD_TUNNEL",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "normal-company-generic-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_BUILD_VEHICLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_BULK_CHANGE_TIMETABLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_BUY_COMPANY",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m20/competition/0001-Add-native-V2-competition-qualification.patch",
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "company-finance-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_CHANGE_COMPANY_SETTING",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "company-finance-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_CHANGE_SERVICE_INT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_CHANGE_TIMETABLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_CLEAR_AREA",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "normal-company-generic-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_CLONE_ORDER",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m19/air/0001-Add-native-V2-aircraft-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_CLONE_VEHICLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_CONVERT_RAIL",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_CONVERT_ROAD",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "road-cargo-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_CREATE_GROUP",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "company-finance-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_DECREASE_LOAN",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m15/action/0001-OpenTTD-RL-V2-M15-hierarchical-native-actions.patch",
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "company-finance-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_DELETE_GROUP",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "company-finance-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_DELETE_ORDER",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m05/0006-explicit-bus-actions-and-masks.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_DEPOT_MASS_AUTOREPLACE",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_DEPOT_SELL_ALL_VEHICLES",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_DO_TOWN_ACTION",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "normal-company-generic-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_FORCE_TRAIN_PROCEED",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "rail-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_FOUND_TOWN",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "normal-company-generic-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_GIVE_MONEY",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "company-finance-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_INCREASE_LOAN",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m15/action/0001-OpenTTD-RL-V2-M15-hierarchical-native-actions.patch",
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "company-finance-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_INSERT_ORDER",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_LANDSCAPE_CLEAR",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m18/ship/0001-Add-native-V2-ship-qualification.patch",
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "normal-company-generic-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_LEVEL_LAND",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "normal-company-generic-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_MASS_START_STOP",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "normal-company-generic-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_MODIFY_ORDER",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_MOVE_ORDER",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_MOVE_RAIL_VEHICLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_OPEN_CLOSE_AIRPORT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m19/air/0001-Add-native-V2-aircraft-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "air-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_ORDER_REFIT",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "road-cargo-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_PLANT_TREE",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "normal-company-generic-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_REFIT_VEHICLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "road-cargo-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_REMOVE_ALL_VEHICLES_GROUP",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_REMOVE_FROM_RAIL_STATION",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_REMOVE_FROM_RAIL_WAYPOINT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_REMOVE_FROM_ROAD_WAYPOINT",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "road-cargo-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_REMOVE_LONG_ROAD",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "road-cargo-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_REMOVE_RAILROAD_TRACK",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "rail-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_REMOVE_ROAD_STOP",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "road-cargo-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_REMOVE_SIGNAL_TRACK",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "rail-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_REMOVE_SINGLE_RAIL",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_REMOVE_SINGLE_SIGNAL",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "rail-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_REVERSE_TRAIN_DIRECTION",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "rail-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_SELL_VEHICLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m06/0007-native-reward-termination.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_SEND_VEHICLE_TO_DEPOT",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m15/action/0001-OpenTTD-RL-V2-M15-hierarchical-native-actions.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_SET_AUTOREPLACE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_SET_GROUP_FLAG",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "company-finance-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_SET_TIMETABLE_START",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_SET_VEHICLE_ON_TIME",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_SKIP_TO_ORDER",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "all-mode-vehicle-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_START_STOP_VEHICLE",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "all-mode-vehicle-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_TERRAFORM_LAND",
+      "disposition": "policy-required",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-policy-command",
+      "semantic_path": "normal-company-generic-transaction-native-test-execute"
+    },
+    {
+      "command": "CMD_TURN_ROADVEH",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "road-cargo-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_WANT_ENGINE_PREVIEW",
+      "disposition": "policy-required",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "bounded-higher-level-policy-transaction",
+      "semantic_path": "company-finance-transaction-authoritative-test-before-execute"
+    },
+    {
+      "command": "CMD_BUILD_OBJECT",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_BUILD_OBJECT_AREA",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_GOAL_QUESTION_ANSWER",
+      "disposition": "policy-optional",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-company-script-response",
+      "semantic_path": "pinned-gamescript-observe-and-respond"
+    },
+    {
+      "command": "CMD_MOVE_SIGN",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_MOVE_STATION_NAME",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_MOVE_WAYPOINT_NAME",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_PLACE_SIGN",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_RENAME_COMPANY",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_RENAME_DEPOT",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_RENAME_PRESIDENT",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_RENAME_SIGN",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_RENAME_STATION",
+      "disposition": "policy-optional",
+      "evidence": [
+        "integration/openttd/patches/15.3/m17/rail/0001-Add-native-V2-rail-qualification.patch",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-safe-presentation-command",
+      "semantic_path": "generic-typed-optional-presentation-path"
+    },
+    {
+      "command": "CMD_RENAME_VEHICLE",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_RENAME_WAYPOINT",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_SET_COMPANY_COLOUR",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_SET_COMPANY_MANAGER_FACE",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_SET_GROUP_LIVERY",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_SET_VEHICLE_VISIBILITY",
+      "disposition": "policy-optional",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "deliberate-presentation-only-proof",
+      "semantic_path": "safe-generic-presentation-path-excluded-from-economic-competence"
+    },
+    {
+      "command": "CMD_STORY_PAGE_BUTTON",
+      "disposition": "policy-optional",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-company-script-response",
+      "semantic_path": "pinned-gamescript-observe-and-respond"
+    },
+    {
+      "command": "CMD_CHANGE_BANK_BALANCE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m20/competition/0001-Add-native-V2-competition-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_CHANGE_SETTING",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_CLEAR_ORDER_BACKUP",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_COMPANY_ALLOW_LIST_CTRL",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_COMPANY_CTRL",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m20/competition/0001-Add-native-V2-competition-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_CREATE_GOAL",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_CREATE_LEAGUE_TABLE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_CREATE_LEAGUE_TABLE_ELEMENT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_CREATE_STORY_PAGE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_CREATE_STORY_PAGE_ELEMENT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_CREATE_SUBSIDY",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m20/competition/0001-Add-native-V2-competition-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_CUSTOM_NEWS_ITEM",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_DELETE_TOWN",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_ENGINE_CTRL",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_EXPAND_TOWN",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m02/scenario/0003-deterministic-passenger-bus-scenario-reset.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_GOAL_QUESTION",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_INDUSTRY_SET_EXCLUSIVITY",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_INDUSTRY_SET_FLAGS",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_INDUSTRY_SET_PRODUCTION",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_INDUSTRY_SET_TEXT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_MONEY_CHEAT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_PAUSE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m11/0009-normal-game-neural-agent.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_PLACE_HOUSE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_REMOVE_GOAL",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_REMOVE_LEAGUE_TABLE_ELEMENT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_REMOVE_STORY_PAGE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_REMOVE_STORY_PAGE_ELEMENT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_RENAME_ENGINE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_RENAME_TOWN",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_SCROLL_VIEWPORT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_SET_COMPANY_MAX_LOAN",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_SET_GOAL_COMPLETED",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_SET_GOAL_DESTINATION",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_SET_GOAL_PROGRESS",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_SET_GOAL_TEXT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_SET_STORY_PAGE_DATE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_SET_STORY_PAGE_TITLE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_SHOW_STORY_PAGE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_TOWN_CARGO_GOAL",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_TOWN_GROWTH_RATE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_TOWN_RATING",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_TOWN_SET_TEXT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_UPDATE_LEAGUE_TABLE_ELEMENT_DATA",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    },
+    {
+      "command": "CMD_UPDATE_LEAGUE_TABLE_ELEMENT_SCORE",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch",
+        "config/v2/m21-broad-evidence.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "native-admin-fixture-only",
+      "semantic_path": "orchestrator-only-never-policy-legal"
+    },
+    {
+      "command": "CMD_UPDATE_STORY_PAGE_ELEMENT",
+      "disposition": "benchmark-admin",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "config/v2/m15-action-contract.json",
+        "config/v2/m21-broad-contract.json"
+      ],
+      "occurrence": 1,
+      "proof_kind": "admin-denied-from-policy",
+      "semantic_path": "closed-policy-surface-denies-admin-command"
+    }
+  ],
+  "feature_domains": [
+    {
+      "acceptance_families": [
+        "contract",
+        "determinism",
+        "deployment",
+        "v1-regression"
+      ],
+      "baseline_gate": "G14",
+      "evidence": [
+        "config/v2/research-baseline.json",
+        "docs/project/G14_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-001",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "save-load",
+        "determinism",
+        "resource",
+        "v1-regression"
+      ],
+      "baseline_gate": "G15",
+      "evidence": [
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json",
+        "config/v2/m15-policy-evidence.json",
+        "config/v2/m15-competence-evidence.json",
+        "docs/project/G15_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-002",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "determinism",
+        "resource",
+        "deployment",
+        "v1-regression"
+      ],
+      "baseline_gate": "G15",
+      "evidence": [
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json",
+        "config/v2/m15-policy-evidence.json",
+        "config/v2/m15-competence-evidence.json",
+        "docs/project/G15_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-003",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "determinism",
+        "deployment",
+        "v1-regression"
+      ],
+      "baseline_gate": "G15",
+      "evidence": [
+        "config/v2/m15-scalable-contract.json",
+        "config/v2/m15-action-evidence.json",
+        "config/v2/m15-policy-evidence.json",
+        "config/v2/m15-competence-evidence.json",
+        "docs/project/G15_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-004",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "learning",
+        "v1-regression"
+      ],
+      "baseline_gate": "G16",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "docs/project/G16_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-005",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "save-load",
+        "determinism",
+        "learning",
+        "v1-regression"
+      ],
+      "baseline_gate": "G16",
+      "evidence": [
+        "config/v2/m16-cargo-contract.json",
+        "config/v2/m16-cargo-evidence.json",
+        "docs/project/G16_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-006",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "save-load",
+        "determinism",
+        "resource",
+        "learning",
+        "v1-regression"
+      ],
+      "baseline_gate": "G17",
+      "evidence": [
+        "config/v2/m17-rail-contract.json",
+        "config/v2/m17-rail-evidence.json",
+        "docs/project/G17_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-007",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "save-load",
+        "determinism",
+        "learning",
+        "v1-regression"
+      ],
+      "baseline_gate": "G18",
+      "evidence": [
+        "config/v2/m18-ship-contract.json",
+        "config/v2/m18-ship-evidence.json",
+        "docs/project/G18_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-008",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "save-load",
+        "determinism",
+        "learning",
+        "v1-regression"
+      ],
+      "baseline_gate": "G19",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "docs/project/G19_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-009",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "save-load",
+        "determinism",
+        "learning",
+        "v1-regression"
+      ],
+      "baseline_gate": "G19",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "docs/project/G19_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-010",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "learning",
+        "v1-regression"
+      ],
+      "baseline_gate": "G19",
+      "evidence": [
+        "config/v2/m19-air-contract.json",
+        "config/v2/m19-air-evidence.json",
+        "docs/project/G19_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-011",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "save-load",
+        "determinism",
+        "competition",
+        "v1-regression"
+      ],
+      "baseline_gate": "G20",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "docs/project/G20_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-012",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "save-load",
+        "determinism",
+        "resource",
+        "competition",
+        "v1-regression"
+      ],
+      "baseline_gate": "G20",
+      "evidence": [
+        "config/v2/m20-competition-contract.json",
+        "config/v2/m20-competition-evidence.json",
+        "docs/project/G20_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-013",
+      "proof_kind": "accepted-prior-gate-regression",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "save-load",
+        "determinism",
+        "learning",
+        "v1-regression"
+      ],
+      "baseline_gate": "G21",
+      "evidence": [
+        "config/v2/m21-broad-contract.json",
+        "config/v2/m21-broad-source.json",
+        "config/v2/m21-broad-evidence.json",
+        "docs/project/G21_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-014",
+      "proof_kind": "m21-native-and-contract",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "save-load",
+        "determinism",
+        "deployment",
+        "v1-regression"
+      ],
+      "baseline_gate": "G21",
+      "evidence": [
+        "config/v2/m21-broad-contract.json",
+        "config/v2/m21-broad-source.json",
+        "config/v2/m21-broad-evidence.json",
+        "docs/project/G21_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-015",
+      "proof_kind": "m21-native-and-contract",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "differential",
+        "save-load",
+        "determinism",
+        "deployment",
+        "v1-regression"
+      ],
+      "baseline_gate": "G21",
+      "evidence": [
+        "config/v2/m21-broad-contract.json",
+        "config/v2/m21-broad-source.json",
+        "config/v2/m21-broad-evidence.json",
+        "docs/project/G21_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-016",
+      "proof_kind": "m21-native-and-contract",
+      "stage_boundary": "accepted-at-or-before-G21"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "determinism",
+        "resource",
+        "learning",
+        "competition",
+        "deployment",
+        "v1-regression"
+      ],
+      "baseline_gate": "G22",
+      "evidence": [
+        "config/v2/m15-policy-contract.json",
+        "config/v2/m15-policy-evidence.json",
+        "docs/project/G07_GATE_REPORT.md",
+        "docs/project/G08_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-017",
+      "proof_kind": "accepted-foundation-for-future-stage",
+      "stage_boundary": "V2-specific learning/release acceptance remains owned by G22"
+    },
+    {
+      "acceptance_families": [
+        "contract",
+        "native-positive",
+        "native-negative",
+        "determinism",
+        "competition",
+        "deployment",
+        "v1-regression"
+      ],
+      "baseline_gate": "G23",
+      "evidence": [
+        "docs/project/G10_GATE_REPORT.md",
+        "docs/project/G11_GATE_REPORT.md",
+        "docs/project/G12_GATE_REPORT.md",
+        "docs/project/G13_GATE_REPORT.md"
+      ],
+      "feature_id": "V2-FEAT-018",
+      "proof_kind": "accepted-foundation-for-future-stage",
+      "stage_boundary": "V2-specific learning/release acceptance remains owned by G23"
+    }
+  ],
+  "schema_version": "openttd-rl-v2-m21-broad-coverage-1",
+  "summary": {
+    "benchmark_admin": 45,
+    "commands": 145,
+    "feature_domains": 18,
+    "policy_optional": 19,
+    "policy_required": 81
+  }
+}
