@@ -175,7 +175,7 @@
       "title": "M22 follow-up acceptance omitted routing-labeled multimodal service cases",
       "severity": "MAJOR",
       "blocks_release": true,
-      "status": "DIAGNOSED",
+      "status": "CLOSED",
       "discovery_date": "2026-08-03",
       "affected_requirement_ids": [
         "V2-LEARN-007",
@@ -192,21 +192,27 @@
       ],
       "evidence": [
         "README.md",
-        "config/v2/m22-followup-evaluation-evidence.json"
+        "config/v2/m22-followup-evaluation-evidence.json",
+        "config/v2/m22-followup-v2-evaluation-evidence.json",
+        "docs/project/G22_GATE_REPORT.md"
       ],
-      "fix_revision": null,
-      "regression_test": "tests/project/v2/test_v2_m22_followup_evaluation_evidence.py",
-      "closure_evidence": []
+      "fix_revision": "07b8967fa3d287bd6f7e8ca6bb61f27a5a013a69",
+      "regression_test": "tests/project/v2/test_v2_m22_followup_v2_evaluation_source.py",
+      "closure_evidence": [
+        "config/v2/m22-followup-v2-evaluation-evidence.json",
+        "tests/project/v2/test_v2_m22_followup_v2_evaluation_evidence.py",
+        "docs/project/G22_GATE_REPORT.md"
+      ]
     }
   ],
   "open_counts": {
-    "defects": 1,
+    "defects": 0,
     "divergences": 0,
-    "release_blocking": 1,
-    "total_nonclosed": 1
+    "release_blocking": 0,
+    "total_nonclosed": 0
   },
   "diagnostics": {
     "last_reviewed_date": "2026-08-03",
-    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records and closes the M22 sampler and retention-classification failure found by the first complete matched development execution. V2-DEF-0003 records and closes the retained-runtime OpenGFX ordering, smoke-parent, and M15 tier-projection defects. V2-DEF-0004 records and closes the pre-case final-adapter failure. V2-DEF-0005 records and closes the four native harness/runtime boundary classes exposed by immutable final-v1: the corrected independent follow-up executed 42/42 native cases without a classified failure. V2-DEF-0006 remains diagnosed and release-blocking because follow-up-v1's frozen acceptance function omitted its two routing-labeled, positive-service multimodal cases; the complete zero-failure result remains FAIL and will not be relabeled or rerun. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
+    "review_note": "The accepted M14-G22 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records and closes the M22 sampler and retention-classification failure found by the first complete matched development execution. V2-DEF-0003 records and closes the retained-runtime OpenGFX ordering, smoke-parent, and M15 tier-projection defects. V2-DEF-0004 records and closes the pre-case final-adapter failure. V2-DEF-0005 records and closes the four native harness/runtime boundary classes exposed by immutable final-v1. V2-DEF-0006 records and closes follow-up-v1's routing-labeled multimodal aggregate omission: follow-up-v1 remains immutable FAIL, while separately source-frozen follow-up-v2 admitted the exact required-program inventory and passed 42/42 cases with zero classified failures. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, G21 claims only the finite ten-package NewGRF compatibility set, and G22 claims only its frozen finite curriculum and independent 42-case suite."
   }
 }
