@@ -208,6 +208,7 @@ M22CampaignUpdateResult M22Campaign::run_update()
     std::vector<torch::Tensor> rewards;
     auto bootstrap = torch::ones({config.rollout_steps, config.parallel_environments}, torch::kFloat32);
     auto continuation = torch::ones_like(bootstrap);
+    M22CampaignUpdateResult result;
     double reward_sum = 0.0;
     std::uint64_t correct = 0;
     std::vector<const M22CorpusEntry *> current(8, nullptr);
@@ -233,6 +234,8 @@ M22CampaignUpdateResult M22Campaign::run_update()
         for (std::int64_t environment = 0; environment < config.parallel_environments; ++environment) {
             const auto &entry = *current[static_cast<std::size_t>(environment)];
             case_order.push_back(entry.program);
+            ++result.case_program_counts[entry.program];
+            ++result.action_counts[static_cast<std::size_t>(action_view[environment])];
             const double reward = entry.rewards[static_cast<std::size_t>(action_view[environment])];
             reward_view[environment] = static_cast<float>(reward);
             reward_sum += reward;
@@ -267,7 +270,6 @@ M22CampaignUpdateResult M22Campaign::run_update()
         concatenate(compact_steps), action_vector, log_vector, value_matrix.flatten(),
         m22_normalize_advantages(gae.advantages.flatten()), gae.returns.flatten(),
     };
-    M22CampaignUpdateResult result;
     result.case_order_sha256 = case_order_sha256(case_order);
     result.actions_sha256 = tensor_sha256("m22-actions-i64-v1", action_vector);
     result.log_probabilities_sha256 = tensor_sha256("m22-log-probabilities-f32-v1", log_vector);
@@ -381,7 +383,18 @@ std::string m22_campaign_update_json(const M22CampaignUpdateResult &result)
 {
     std::ostringstream output;
     output << std::setprecision(17)
-           << "{\"approximate_kl\":" << result.trainer.approximate_kl
+           << "{\"action_counts\":[";
+    for (std::size_t index = 0; index < result.action_counts.size(); ++index) {
+        if (index > 0) output << ',';
+        output << result.action_counts[index];
+    }
+    output << "],\"approximate_kl\":" << result.trainer.approximate_kl
+           << ",\"case_program_counts\":[";
+    for (std::size_t index = 0; index < result.case_program_counts.size(); ++index) {
+        if (index > 0) output << ',';
+        output << result.case_program_counts[index];
+    }
+    output << ']'
            << ",\"clip_fraction\":" << result.trainer.clip_fraction
            << ",\"correct_program_fraction\":" << result.correct_program_fraction
            << ",\"entropy\":" << result.trainer.entropy

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <numeric>
 #include <stdexcept>
 #include <string>
 
@@ -75,6 +76,9 @@ void run(const torch::Device &device, const std::filesystem::path &corpus_path)
             sha256(boundary.log_probabilities_sha256) && sha256(boundary.values_sha256) &&
             sha256(boundary.rewards_sha256) && sha256(boundary.hidden_state_sha256),
             "M22 campaign did not publish complete exact-recovery trace identities");
+    require(std::accumulate(boundary.case_program_counts.begin(), boundary.case_program_counts.end(), UINT32_C(0)) == 128U &&
+            std::accumulate(boundary.action_counts.begin(), boundary.action_counts.end(), UINT32_C(0)) == 128U,
+            "M22 campaign case/action count projection drifted");
     const auto temporary = std::filesystem::temp_directory_path() /
         ("openttd-rl-m22-campaign-" + std::to_string(::getpid()) + "-" + (device.is_cuda() ? "cuda" : "cpu"));
     if (!std::filesystem::create_directory(temporary)) throw std::runtime_error("cannot create M22 campaign test directory");

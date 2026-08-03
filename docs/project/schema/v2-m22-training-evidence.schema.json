@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-training-evidence.schema.json",
+  "title": "OpenTTD-RL V2 M22 complete matched training evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "configuration", "device", "identity", "isolation", "source", "runs", "provisional_development_selection", "summary", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m22-training-evidence-1"},
+    "status": {"const": "PASS"},
+    "configuration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architectures", "candidate_updates", "device", "seeds", "transitions_per_seed", "updates_per_seed"],
+      "properties": {
+        "architectures": {"const": ["monolithic-generalist-v1", "specialist-router-v1"]},
+        "candidate_updates": {"const": [8, 16, 24, 32, 40, 48]}, "device": {"const": "cuda:0"},
+        "seeds": {"const": [1910917137, 1360150311, 1636894266]},
+        "transitions_per_seed": {"const": 6144}, "updates_per_seed": {"const": 48}
+      }
+    },
+    "device": {
+      "type": "object", "additionalProperties": false,
+      "required": ["compute_capability", "driver_version", "index", "memory_mib", "name", "nvidia_smi_sha256", "uuid"],
+      "properties": {
+        "compute_capability": {"const": "12.0"}, "driver_version": {"type": "string", "minLength": 1},
+        "index": {"const": 0}, "memory_mib": {"type": "integer", "minimum": 1024},
+        "name": {"type": "string", "minLength": 1}, "nvidia_smi_sha256": {"$ref": "#/$defs/sha256"},
+        "uuid": {"type": "string", "pattern": "^GPU-[0-9A-Fa-f-]+$"}
+      }
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["bubblewrap_sha256", "campaign_executable_sha256", "corpus_binary_sha256", "learning_contract_sha256", "native_corpus_sha256", "recovery_evidence_sha256", "training_schema_sha256"],
+      "properties": {
+        "bubblewrap_sha256": {"$ref": "#/$defs/sha256"}, "campaign_executable_sha256": {"$ref": "#/$defs/sha256"},
+        "corpus_binary_sha256": {"$ref": "#/$defs/sha256"}, "learning_contract_sha256": {"$ref": "#/$defs/sha256"},
+        "native_corpus_sha256": {"$ref": "#/$defs/sha256"}, "recovery_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "training_schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "isolation": {"$ref": "#/$defs/isolation"},
+    "source": {"$ref": "#/$defs/source"},
+    "runs": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"$ref": "#/$defs/run"}},
+    "provisional_development_selection": {"$ref": "#/$defs/selection"},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architecture_superiority_claimed", "campaigns", "candidate_checkpoints", "development_eligible_checkpoints", "finite_updates", "matched_baseline_campaigns", "maximum_wall_seconds", "total_transitions"],
+      "properties": {
+        "architecture_superiority_claimed": {"const": false}, "campaigns": {"const": 6},
+        "candidate_checkpoints": {"const": 36}, "development_eligible_checkpoints": {"type": "integer", "minimum": 1, "maximum": 36},
+        "finite_updates": {"const": 288}, "matched_baseline_campaigns": {"const": 18},
+        "maximum_wall_seconds": {"type": "number", "exclusiveMinimum": 0}, "total_transitions": {"const": 36864}
+      }
+    },
+    "report_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "isolation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_root_only_writable", "bubblewrap", "final_manifest_accessed", "final_manifest_binding", "network_namespace", "root_filesystem"],
+      "properties": {
+        "artifact_root_only_writable": {"const": true}, "bubblewrap": {"const": true},
+        "final_manifest_accessed": {"const": false}, "final_manifest_binding": {"const": "read-only-empty-file"},
+        "network_namespace": {"const": "unshared"}, "root_filesystem": {"const": "read-only"}
+      }
+    },
+    "source_file": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["clean", "files", "repository_commit", "tree_sha256"],
+      "properties": {
+        "clean": {"const": true}, "files": {"type": "array", "minItems": 20, "items": {"$ref": "#/$defs/source_file"}},
+        "repository_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "file": {
+      "type": "object", "additionalProperties": false, "required": ["bytes", "name", "sha256"],
+      "properties": {"bytes": {"type": "integer", "minimum": 1}, "name": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "checkpoint": {
+      "type": "object", "additionalProperties": false, "required": ["files", "id", "path", "update"],
+      "properties": {
+        "files": {"type": "array", "minItems": 7, "maxItems": 7, "items": {"$ref": "#/$defs/file"}},
+        "id": {"$ref": "#/$defs/sha256"}, "path": {"type": "string", "minLength": 1},
+        "update": {"type": "integer", "minimum": 8, "maximum": 48, "multipleOf": 8}
+      }
+    },
+    "trace": {
+      "type": "object", "additionalProperties": false,
+      "required": ["actions_sha256", "case_order_sha256", "hidden_state_sha256", "log_probabilities_sha256", "rewards_sha256", "values_sha256"],
+      "properties": {
+        "actions_sha256": {"$ref": "#/$defs/sha256"}, "case_order_sha256": {"$ref": "#/$defs/sha256"},
+        "hidden_state_sha256": {"$ref": "#/$defs/sha256"}, "log_probabilities_sha256": {"$ref": "#/$defs/sha256"},
+        "rewards_sha256": {"$ref": "#/$defs/sha256"}, "values_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "retention": {
+      "type": "object", "additionalProperties": false,
+      "required": ["accuracy", "catastrophic_regression", "checkpoint_allowed", "introduced_programs", "mean_reward", "pass_mask", "passed_programs", "selection_eligible", "stage", "update"],
+      "properties": {
+        "accuracy": {"type": "number"}, "catastrophic_regression": {"const": false}, "checkpoint_allowed": {"const": true},
+        "introduced_programs": {"type": "integer", "minimum": 1, "maximum": 16}, "mean_reward": {"type": "number"},
+        "pass_mask": {"type": "integer", "minimum": 0}, "passed_programs": {"type": "integer", "minimum": 0, "maximum": 16},
+        "selection_eligible": {"type": "boolean"}, "stage": {"type": "integer", "minimum": 0, "maximum": 6},
+        "update": {"type": "integer", "minimum": 1, "maximum": 48}
+      }
+    },
+    "counts": {"type": "array", "minItems": 17, "maxItems": 17, "items": {"type": "integer", "minimum": 0}},
+    "update": {
+      "type": "object", "additionalProperties": false,
+      "required": ["action_counts", "approximate_kl", "case_program_counts", "clip_fraction", "correct_program_fraction", "entropy", "explained_variance", "gradient_norm", "mean_rollout_reward", "policy_loss", "retention_ran", "stage", "trace", "transitions", "update", "value_loss"],
+      "properties": {
+        "action_counts": {"$ref": "#/$defs/counts"}, "approximate_kl": {"type": "number"},
+        "case_program_counts": {"$ref": "#/$defs/counts"}, "clip_fraction": {"type": "number"},
+        "correct_program_fraction": {"type": "number"}, "entropy": {"type": "number"},
+        "explained_variance": {"type": "number"}, "gradient_norm": {"type": "number", "minimum": 0},
+        "mean_rollout_reward": {"type": "number"}, "policy_loss": {"type": "number"},
+        "retention_ran": {"type": "boolean"}, "retention": {"$ref": "#/$defs/retention"},
+        "stage": {"type": "integer", "minimum": 0, "maximum": 6}, "trace": {"$ref": "#/$defs/trace"},
+        "transitions": {"type": "integer", "minimum": 128, "maximum": 6144, "multipleOf": 128},
+        "update": {"type": "integer", "minimum": 1, "maximum": 48}, "value_loss": {"type": "number"}
+      }
+    },
+    "terminal": {
+      "type": "object", "additionalProperties": false, "required": ["architecture", "seed", "transitions", "updates"],
+      "properties": {
+        "architecture": {"enum": ["monolithic-generalist-v1", "specialist-router-v1"]},
+        "seed": {"enum": [1910917137, 1360150311, 1636894266]}, "transitions": {"const": 6144}, "updates": {"const": 48}
+      }
+    },
+    "process": {
+      "type": "object", "additionalProperties": false,
+      "required": ["checkpoints", "exit_code", "log_path", "name", "pid", "stdout_sha256", "terminal", "updates", "updates_sha256", "wall_seconds"],
+      "properties": {
+        "checkpoints": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"$ref": "#/$defs/checkpoint"}},
+        "exit_code": {"const": 0}, "log_path": {"type": "string", "minLength": 1}, "name": {"const": "training"},
+        "pid": {"type": "integer", "minimum": 2}, "stdout_sha256": {"$ref": "#/$defs/sha256"},
+        "terminal": {"$ref": "#/$defs/terminal"}, "updates": {"type": "array", "minItems": 48, "maxItems": 48, "items": {"$ref": "#/$defs/update"}},
+        "updates_sha256": {"$ref": "#/$defs/sha256"}, "wall_seconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "matched_baseline": {
+      "type": "object", "additionalProperties": false,
+      "required": ["baseline", "correct_program_fraction", "matched_transitions", "mean_return", "total_return"],
+      "properties": {
+        "baseline": {"enum": ["public-heuristic-v1", "seeded-random-legal-v1", "wait-only-v1"]},
+        "correct_program_fraction": {"type": "number"}, "matched_transitions": {"const": 6144},
+        "mean_return": {"type": "number"}, "total_return": {"type": "number"}
+      }
+    },
+    "development_baseline": {
+      "type": "object", "additionalProperties": false, "required": ["baseline", "decisions", "mean_return", "success_fraction"],
+      "properties": {
+        "baseline": {"enum": ["public-heuristic-v1", "seeded-random-legal-v1", "wait-only-v1"]},
+        "decisions": {"type": "integer", "minimum": 384, "maximum": 6144, "multipleOf": 384},
+        "mean_return": {"type": "number"}, "success_fraction": {"type": "number"}
+      }
+    },
+    "eligibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["all_introduced_stages_pass", "beats_seeded_random", "beats_wait_only", "checkpoint_allowed", "final_access", "finite_metrics", "native_failures"],
+      "properties": {
+        "all_introduced_stages_pass": {"type": "boolean"}, "beats_seeded_random": {"type": "boolean"},
+        "beats_wait_only": {"type": "boolean"}, "checkpoint_allowed": {"const": true}, "final_access": {"const": false},
+        "finite_metrics": {"const": true}, "native_failures": {"const": 0}
+      }
+    },
+    "candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["checkpoint_id", "checkpoint_path", "development_baselines", "eligibility", "eligible", "mean_company_value", "mean_development_return", "service_count", "transitions", "update"],
+      "properties": {
+        "checkpoint_id": {"$ref": "#/$defs/sha256"}, "checkpoint_path": {"type": "string", "minLength": 1},
+        "development_baselines": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/development_baseline"}},
+        "eligibility": {"$ref": "#/$defs/eligibility"}, "eligible": {"type": "boolean"},
+        "mean_company_value": {"type": "number"}, "mean_development_return": {"type": "number"},
+        "service_count": {"type": "integer", "minimum": 0, "maximum": 16},
+        "transitions": {"type": "integer", "minimum": 1024, "maximum": 6144, "multipleOf": 1024},
+        "update": {"type": "integer", "enum": [8, 16, 24, 32, 40, 48]}
+      }
+    },
+    "learned": {
+      "type": "object", "additionalProperties": false, "required": ["beats_seeded_random", "beats_wait_only", "correct_program_fraction", "mean_training_return", "transitions"],
+      "properties": {"beats_seeded_random": {"const": true}, "beats_wait_only": {"const": true}, "correct_program_fraction": {"type": "number"}, "mean_training_return": {"type": "number"}, "transitions": {"const": 6144}}
+    },
+    "run": {
+      "type": "object", "additionalProperties": false,
+      "required": ["action_counts", "architecture", "candidates", "case_program_counts", "learned", "matched_baselines", "process", "provisional_selection", "seed", "throughput_transitions_per_second"],
+      "properties": {
+        "action_counts": {"$ref": "#/$defs/counts"}, "architecture": {"enum": ["monolithic-generalist-v1", "specialist-router-v1"]},
+        "candidates": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"$ref": "#/$defs/candidate"}},
+        "case_program_counts": {"$ref": "#/$defs/counts"}, "learned": {"$ref": "#/$defs/learned"},
+        "matched_baselines": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/matched_baseline"}},
+        "process": {"$ref": "#/$defs/process"}, "provisional_selection": {"$ref": "#/$defs/candidate"},
+        "seed": {"enum": [1910917137, 1360150311, 1636894266]},
+        "throughput_transitions_per_second": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "selection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architecture", "checkpoint_id", "checkpoint_path", "finalized", "ordering", "pending", "seed", "update"],
+      "properties": {
+        "architecture": {"enum": ["monolithic-generalist-v1", "specialist-router-v1"]}, "checkpoint_id": {"$ref": "#/$defs/sha256"},
+        "checkpoint_path": {"type": "string", "minLength": 1}, "finalized": {"const": false},
+        "ordering": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"type": "string"}},
+        "pending": {"const": "native-retention-and-device-gates"}, "seed": {"enum": [1910917137, 1360150311, 1636894266]},
+        "update": {"enum": [8, 16, 24, 32, 40, 48]}
+      }
+    }
+  }
+}

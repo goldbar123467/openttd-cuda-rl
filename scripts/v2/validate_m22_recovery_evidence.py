@@ -86,6 +86,17 @@ def validate_artifacts(report: dict[str, Any], artifact_root: pathlib.Path) -> N
                 require(observed == checkpoint["files"], "M22 recovery checkpoint artifact identity mismatch")
 
 
+def committed_source_files(root: pathlib.Path, commit: str) -> list[dict[str, str]]:
+    result = []
+    for relative in recovery.SOURCE_PATHS:
+        completed = subprocess.run(
+            ["git", "show", f"{commit}:{relative}"], cwd=root, check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        result.append({"path": relative, "sha256": hashlib.sha256(completed.stdout).hexdigest()})
+    return result
+
+
 def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pathlib.Path | None = None,
                    executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None) -> None:
     root = root.resolve()
@@ -111,15 +122,15 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
                 "M22 recovery corpus binary identity drifted")
         require(executable.resolve().is_file(), "M22 recovery executable is unavailable")
     source = report["source"]
-    expected_files = [{"path": item, "sha256": recovery.sha256(root / item)} for item in recovery.SOURCE_PATHS]
-    require(source["clean"] and source["files"] == expected_files and
-            source["tree_sha256"] == recovery.sha256_bytes(recovery.canonical_bytes(expected_files)),
-            "M22 recovery source tree identity drifted")
     commit = source["repository_commit"]
     require(re.fullmatch(r"[0-9a-f]{40}", commit) is not None, "M22 recovery repository commit is malformed")
     contained = subprocess.run(["git", "cat-file", "-e", commit + "^{commit}"], cwd=root,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     require(contained.returncode == 0, "M22 recovery source commit is not retained")
+    expected_files = committed_source_files(root, commit)
+    require(source["clean"] and source["files"] == expected_files and
+            source["tree_sha256"] == recovery.sha256_bytes(recovery.canonical_bytes(expected_files)),
+            "M22 recovery source tree identity drifted")
     require(report["configuration"] == {
         "architectures": list(recovery.ARCHITECTURES), "continue_updates": 8, "device": "cuda:0",
         "fork_update": 16, "run_seed": 1910917137, "total_updates": 24, "transitions_per_update": 128,

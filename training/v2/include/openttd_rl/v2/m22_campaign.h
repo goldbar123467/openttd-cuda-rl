@@ -1,6 +1,7 @@
 #ifndef OPENTTD_RL_V2_M22_CAMPAIGN_H
 #define OPENTTD_RL_V2_M22_CAMPAIGN_H
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -27,6 +28,8 @@ struct M22CampaignUpdateResult {
     std::uint32_t stage{};
     double mean_rollout_reward{};
     double correct_program_fraction{};
+    std::array<std::uint32_t, kM22ProgramCount> case_program_counts{};
+    std::array<std::uint32_t, kM22ProgramCount> action_counts{};
     std::string case_order_sha256;
     std::string actions_sha256;
     std::string log_probabilities_sha256;
