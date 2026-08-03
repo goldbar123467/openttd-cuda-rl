@@ -47,9 +47,14 @@ seed or required-program input. A cumulative OpenTTD 15.3 patch adds token-gated
 all-or-none final width, height, and climate overrides to the accepted G15-G21
 native harnesses without changing their default behavior. The evaluator passes
 its structural/schema gates and a real selected-checkpoint CPU smoke; the patched
-engine builds cleanly and has passed actual-world cargo, rail, and ship smokes.
-The final manifest has not been opened or executed, so the complete 42-case
-one-shot evaluation remains open. No G22 pass or V2 release claim has been made.
+engine builds cleanly and has passed representative actual-world source smokes
+through all seven G15-G21 capability gates. A manifest-generic native dispatcher
+now accepts one caller-supplied public case plus its private execution seed,
+removes the seed and required-program label from its public projection, and
+launches exactly one network-unshared OpenTTD process with the frozen final-world
+overrides. The final manifest has not been opened or executed, so the complete
+42-case one-shot evaluation remains open. No G22 pass or V2 release claim has
+been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -117,6 +122,7 @@ one-shot evaluation remains open. No G22 pass or V2 release claim has been made.
 · [`M22 final-only evaluation manifest`](config/v2/m22-evaluation-manifest.json)
 · [`M22 optimizer-free evaluator report schema`](docs/project/schema/v2-m22-evaluator-report.schema.json)
 · [`M22 final-world native harness patch`](integration/openttd/patches/15.3/m22/final/0001-Add-M22-final-world-overrides.patch)
+· [`M22 one-case native dispatcher`](scripts/v2/m22_final_native.py)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
 · [`M14 competition protocol`](docs/project/M14_INVENTORY_AND_COMPETITION.md)
@@ -283,11 +289,25 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   only the frozen width/height/climate domain when the private activation token
   and all three overrides are present. It propagates the actual world shape and
   climate through G15-G21, reports actual dimensions where earlier harnesses used
-  constants, and selects a buildable base passenger road engine for non-temperate
-  G15 worlds. The patched 899-step OpenTTD build succeeds; one-process native
-  smokes pass for G16 toyland cargo on 128 by 128, G17 arctic passenger rail on
-  128 by 64, and G18 tropic natural shipping on 512 by 128. These are source
-  preparation checks only, not final cases or G22 evidence.
+  constants, and selects a buildable base passenger road engine whose native
+  default cargo is passengers. Final-world G15 planning searches a wider bounded
+  area and requires passenger acceptance at both bus stops; its invariant counts
+  only learning-company vehicles so transient Toyland effect vehicles cannot
+  create a false failure. Default G15 behavior remains unchanged. G20 continues
+  to require the development split by default and requires the final split only
+  while the complete private M22 override is active. The regenerated cumulative
+  patch applies with whitespace checking, its incremental build succeeds, and
+  all 98 upstream CTests pass. Representative one-process source smokes pass for
+  default and final-world G15 passenger service, G16 toyland cargo, G17 arctic
+  passenger rail, G18 tropic natural shipping, G19 toyland air service, G20
+  tropic competition against the real byte-pinned AAAHogEx, and G21 arctic
+  content plus tropic Game Script coverage. The new one-case dispatcher owns the
+  G15-G21 request/report translation, fixed final-only environment, isolated
+  home directories, network namespace, resource limits, process count, and
+  output hashes without opening the final manifest. Its offline boundary smoke
+  confirms that the public case omits both seed and required-program data and
+  that its source contains one process-launch site. These are source preparation
+  checks only, not final cases or G22 evidence.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -306,11 +326,13 @@ the interaction cases prove native ownership isolation. The M20 controller is a
 deterministic competence oracle, the M14 3,650-day final protocol was not run,
 and M22 must still independently evaluate the broad learned generalist. The
 selected checkpoint is now frozen and qualified before final access. The
-immediate M22 continuation is to finish the retained final-runtime preparation
-record and remaining native source smokes, commit that clean pre-final source,
-and only then run the optimizer-free, read-only, one-shot execution of all 42
-preregistered final cases with no retry, replacement, or post-result selection,
-followed by the complete uncertainty/failure report and G22 audit.
+immediate M22 continuation is to produce and validate the retained final-runtime
+record from this clean pre-final checkpoint, exercise the one-case dispatcher
+against those retained runtime inputs, and freeze the manifest-generic aggregate
+orchestration/report source. Only then may the optimizer-free, read-only,
+one-shot execution of all 42 preregistered final cases begin, with no retry,
+replacement, or post-result selection, followed by the complete uncertainty/
+failure report and G22 audit.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -486,7 +508,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary; M22 next |
-| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32, an optimizer-free single-case evaluator with no final-label channel, and a token-gated cumulative final-world patch; monolithic seed `1636894266` update 32 is finalized before final access | `M22 training/qualification PASS`; pre-final evaluator/runtime source frozen; retained runtime record, independent 42-case final suite, and G22 remain open |
+| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32, an optimizer-free single-case evaluator with no final-label channel, a token-gated cumulative final-world patch, representative native source smokes through G15-G21, and a manifest-generic one-process native dispatcher; monolithic seed `1636894266` update 32 is finalized before final access | `M22 training/qualification PASS`; pre-final evaluator/runtime checkpoint committed; retained runtime record, aggregate one-shot orchestration, independent 42-case final suite, and G22 remain open |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

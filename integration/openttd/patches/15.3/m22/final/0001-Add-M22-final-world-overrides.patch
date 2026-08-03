@@ -1,5 +1,5 @@
 diff --git a/src/rl_v2_action.cpp b/src/rl_v2_action.cpp
-index a1074e6..00ad6a4 100644
+index a1074e6..61f49c4 100644
 --- a/src/rl_v2_action.cpp
 +++ b/src/rl_v2_action.cpp
 @@ -10,6 +10,7 @@
@@ -18,16 +18,78 @@ index a1074e6..00ad6a4 100644
  #include "map_func.h"
  #include "misc_cmd.h"
  #include "newgrf_roadstop.h"
-@@ -596,7 +598,20 @@ static json RunPassengerService()
+@@ -27,6 +29,7 @@
+ #include "road_map.h"
+ #include "station_base.h"
+ #include "station_cmd.h"
++#include "station_func.h"
+ #include "station_map.h"
+ #include "saveload/saveload.h"
+ #include "tile_map.h"
+@@ -492,7 +495,8 @@ static uint32_t HousesNear(TileIndex tile)
+ 	return result;
+ }
+ 
+-static std::optional<ServiceSite> TestServiceLine(uint x, uint y, bool vertical, uint length)
++static std::optional<ServiceSite> TestServiceLine(
++	uint x, uint y, bool vertical, uint length, CargoType passengers, bool require_passenger_acceptance)
+ {
+ 	ServiceSite site{{}, INVALID_TILE, INVALID_DIAGDIR, 0};
+ 	for (uint offset = 0; offset < length; ++offset) {
+@@ -532,23 +536,28 @@ static std::optional<ServiceSite> TestServiceLine(uint x, uint y, bool vertical,
+ 	uint32_t first_houses = HousesNear(site.line.front());
+ 	uint32_t second_houses = HousesNear(site.line.back());
+ 	if (first_houses == 0 || second_houses == 0) return std::nullopt;
++	if (require_passenger_acceptance && (GetAcceptanceAroundTiles(site.line.front(), 1, 1, CA_BUS)[passengers] < 8 ||
++		GetAcceptanceAroundTiles(site.line.back(), 1, 1, CA_BUS)[passengers] < 8)) return std::nullopt;
+ 	site.house_score = std::min(first_houses, second_houses) * 10000 + first_houses + second_houses;
+ 	return site;
+ }
+ 
+-static ServiceSite FindServiceSite()
++static ServiceSite FindServiceSite(CargoType passengers, bool final_world)
+ {
+ 	std::optional<ServiceSite> best;
++	const std::vector<uint> lengths = final_world ? std::vector<uint>{6, 8, 10, 12, 14, 16} : std::vector<uint>{8, 10, 12};
++	const int search_radius = final_world ? 32 : 20;
+ 	for (const Town *town : Town::Iterate()) {
+ 		int center_x = static_cast<int>(TileX(town->xy));
+ 		int center_y = static_cast<int>(TileY(town->xy));
+ 		for (bool vertical : {false, true}) {
+-			for (uint length : {8U, 10U, 12U}) {
++			for (uint length : lengths) {
+ 				int maximum_x = static_cast<int>(Map::SizeX()) - (vertical ? 1 : static_cast<int>(length));
+ 				int maximum_y = static_cast<int>(Map::SizeY()) - (vertical ? static_cast<int>(length) : 1);
+-				for (int y = std::max(1, center_y - 20); y <= std::min(maximum_y - 1, center_y + 20); ++y) {
+-					for (int x = std::max(1, center_x - 20); x <= std::min(maximum_x - 1, center_x + 20); ++x) {
+-						auto candidate = TestServiceLine(static_cast<uint>(x), static_cast<uint>(y), vertical, length);
++				for (int y = std::max(1, center_y - search_radius); y <= std::min(maximum_y - 1, center_y + search_radius); ++y) {
++					for (int x = std::max(1, center_x - search_radius); x <= std::min(maximum_x - 1, center_x + search_radius); ++x) {
++						auto candidate = TestServiceLine(
++							static_cast<uint>(x), static_cast<uint>(y), vertical, length, passengers, final_world);
+ 						if (!candidate.has_value()) continue;
+ 						if (!best.has_value() || candidate->house_score > best->house_score ||
+ 							(candidate->house_score == best->house_score && candidate->line.front() < best->line.front())) best = std::move(candidate);
+@@ -572,7 +581,8 @@ static json RunPassengerService()
+ 	}
+ 	Require(Station::GetNumItems() == 0 && Depot::GetNumItems() == 0,
+ 		"service baseline requires an empty learning-company transport pool");
+-	ServiceSite site = FindServiceSite();
++	const auto final_world = GetRlV2FinalWorld(Map::SizeX(), Map::SizeY(), _settings_game.game_creation.landscape);
++	ServiceSite site = FindServiceSite(passengers, final_world.active);
+ 	json commands = json::array();
+ 	auto execute = [&commands](std::string_view name, auto &&call) {
+ 		CommandCost cost = call();
+@@ -596,7 +606,20 @@ static json RunPassengerService()
  		ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false); });
  	execute("CMD_BUILD_ROAD_DEPOT", [&] { return Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute,
  		site.depot, ROADTYPE_ROAD, site.depot_direction); });
 -	auto built = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, site.depot, BUS_ENGINE, true, passengers, INVALID_CLIENT_ID);
 +	EngineID service_engine = BUS_ENGINE;
-+	const auto final_world = GetRlV2FinalWorld(Map::SizeX(), Map::SizeY(), _settings_game.game_creation.landscape);
 +	if (final_world.active) {
 +		service_engine = EngineID::Invalid();
 +		for (const Engine *engine : Engine::IterateType(VEH_ROAD)) {
++			if (!engine->CanCarryCargo() || engine->GetDefaultCargoType() != passengers) continue;
 +			auto test = Command<CMD_BUILD_VEHICLE>::Do({}, site.depot, engine->index, true, passengers, INVALID_CLIENT_ID);
 +			if (std::get<0>(test).Succeeded() && std::get<2>(test) > 0) {
 +				service_engine = engine->index;
@@ -40,15 +102,44 @@ index a1074e6..00ad6a4 100644
  	commands.push_back(CommandLog("CMD_BUILD_VEHICLE", "SERVICE", std::get<0>(built)));
  	Require(std::get<0>(built).Succeeded(), "service bus purchase failed");
  	VehicleID vehicle_id = std::get<1>(built);
-@@ -621,7 +636,7 @@ static json RunPassengerService()
+@@ -615,17 +638,33 @@ static json RunPassengerService()
+ 		++ticks;
+ 	}
+ 	uint32_t delivered = company->cur_economy.delivered_cargo[passengers];
+-	Require(delivered > 0, fmt::format("service bus delivered no passengers within {} ticks", TICK_LIMIT));
++	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
++	if (delivered == 0) {
++		std::array<uint, 2> waiting{};
++		for (uint8_t index = 0; index < waiting.size(); ++index) {
++			const GoodsEntry &goods = Station::Get(StationID{index})->goods[passengers];
++			waiting[index] = goods.HasData() ? goods.GetData().cargo.TotalCount() : 0;
++		}
++		Fail(fmt::format(
++			"service bus delivered no passengers within {} ticks: engine={} tile=({}, {}) stopped={} crashed={} cargo={} order_type={} last_station={} waiting=[{}, {}]",
++			TICK_LIMIT, service_engine.base(), TileX(vehicle->tile), TileY(vehicle->tile), vehicle->vehstatus.Test(VehState::Stopped),
++			vehicle->vehstatus.Test(VehState::Crashed), vehicle->cargo.StoredCount(), to_underlying(vehicle->current_order.GetType()),
++			vehicle->last_station_visited.base(), waiting[0], waiting[1]));
++	}
+ 	Require(company->cur_economy.income > 0, "service bus produced no company income");
+ 	for (CargoType cargo = 0; cargo < NUM_CARGO; ++cargo) {
  		if (cargo != passengers) Require(company->cur_economy.delivered_cargo[cargo] == 0, "service baseline delivered non-passenger cargo");
  	}
- 	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
+-	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
 -	Require(vehicle->type == VEH_ROAD && vehicle->engine_type == BUS_ENGINE && vehicle->cargo_type == passengers,
 +	Require(vehicle->type == VEH_ROAD && vehicle->engine_type == service_engine && vehicle->cargo_type == passengers,
  		"service vehicle identity or cargo scope drifted");
  	Require(!vehicle->vehstatus.Test(VehState::Stopped) && !vehicle->vehstatus.Test(VehState::Crashed),
  		"service bus is stopped or crashed");
+-	Require(vehicle->GetNumManualOrders() == 2 && Vehicle::GetNumItems() == baseline_vehicle_count + 1 &&
++	size_t learning_company_vehicles = 0;
++	for (const Vehicle *item : Vehicle::Iterate()) {
++		if (item->owner == CompanyID::Begin()) ++learning_company_vehicles;
++	}
++	const bool vehicle_count_exact = final_world.active ? learning_company_vehicles == 1 : Vehicle::GetNumItems() == baseline_vehicle_count + 1;
++	Require(vehicle->GetNumManualOrders() == 2 && vehicle_count_exact &&
+ 		Station::GetNumItems() == 2 && Depot::GetNumItems() == 1,
+ 		"service facility, vehicle, or order count drifted");
+ 	return {
 diff --git a/src/rl_v2_air.cpp b/src/rl_v2_air.cpp
 index 3d6a424..5d34651 100644
 --- a/src/rl_v2_air.cpp
@@ -207,7 +298,7 @@ index fea6dea..3d6882d 100644
  		{"probe", std::move(probe)},
  		{"request", {{"amount", request.amount}, {"cargo_label", request.cargo_label}, {"probe", request.probe},
 diff --git a/src/rl_v2_competition.cpp b/src/rl_v2_competition.cpp
-index fbe39b4..80f17df 100644
+index fbe39b4..64899e7 100644
 --- a/src/rl_v2_competition.cpp
 +++ b/src/rl_v2_competition.cpp
 @@ -8,6 +8,7 @@
@@ -218,7 +309,18 @@ index fbe39b4..80f17df 100644
  
  #include "3rdparty/nlohmann/json.hpp"
  #include "ai/ai_config.hpp"
-@@ -248,12 +249,13 @@ static Request Validate(const json &manifest)
+@@ -198,7 +199,9 @@ static Request Validate(const json &manifest)
+ 	Require(SafeName(request.run_id), "invalid run_id");
+ 	Require(request.probe == "solo" || request.probe == "head_to_head" || request.probe == "mixed_field" ||
+ 		request.probe == "fault" || request.probe == "interaction", "unknown competition probe");
+-	Require(request.split == "development", "M20 qualification runs must use the development split");
++	const bool final_world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, LandscapeType::Temperate).active;
++	Require(request.split == (final_world ? "final" : "development"),
++		final_world ? "M22 competition runs must use the final split" : "M20 qualification runs must use the development split");
+ 	Require(IsSha256(request.competition_manifest_sha256) && IsSha256(request.m20_contract_sha256) &&
+ 		IsSha256(request.map_manifest_sha256) && IsSha256(request.settings_manifest_sha256) &&
+ 		IsSha256(request.content_manifest_sha256) && IsSha256(request.executable_sha256) && IsSha256(request.policy_package_sha256),
+@@ -248,12 +251,13 @@ static Request Validate(const json &manifest)
  
  static void Configure(const Request &request)
  {
@@ -235,7 +337,7 @@ index fbe39b4..80f17df 100644
  	_settings_newgame.game_creation.se_flat_world_height = 1;
  	_settings_newgame.game_creation.custom_town_number = 16;
  	_settings_newgame.game_creation.custom_industry_number = 24;
-@@ -295,17 +297,18 @@ static void Configure(const Request &request)
+@@ -295,17 +299,18 @@ static void Configure(const Request &request)
  
  static void ResetWorld(const Request &request)
  {
