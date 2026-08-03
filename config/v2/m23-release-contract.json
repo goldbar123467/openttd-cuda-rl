@@ -1,0 +1,404 @@
+{
+  "$schema": "../../docs/project/schema/v2-m23-release-contract.schema.json",
+  "schema_version": "openttd-rl-v2-m23-release-contract-1",
+  "schema_sha256": "29b1cbd9c46aab49e36b374aaebe39223f4bf5200b05e44887c8b9fdbad6b0a8",
+  "snapshot_date": "2026-08-03",
+  "contract_id": "m23-v2-release-and-publication-v1",
+  "semantic_version": 1,
+  "status": "FROZEN",
+  "release": {
+    "version": "2.0.0",
+    "tag": "v2.0.0",
+    "name": "OpenTTD RL V2",
+    "repository": "https://github.com/goldbar123467/openttd-cuda-rl",
+    "branch": "main",
+    "license": "GPL-2.0-only",
+    "artifact_name": "openttd-rl-v2.0.0-models-checkpoints-and-evidence.tar.gz",
+    "artifact_root": "openttd-rl-v2.0.0"
+  },
+  "foundations": {
+    "accepted_g22_commit": "e027ab69a39cbe929db0fddafebbc1696b26e0d7",
+    "openttd_release": "15.3",
+    "openttd_upstream_commit": "29f808ef0022064e6d9a83c8476d1e0f4686af86",
+    "corrected_m22_source_tree": "f8985045f9ba14bad1e46a81cb58fdbb8037f277",
+    "files": [
+      {"path": "config/v2/m22-learning-contract.json", "sha256": "f3ae8f89dfb6edf19b910c55f55845279b77ddd7be5adbd1db244984f968b07b"},
+      {"path": "config/v2/m22-native-corpus.json", "sha256": "0af952bb840bca2a80a577e2a2446845f2db749d7efbaeb06af4b94418ff6725"},
+      {"path": "config/v2/m22-training-evidence.json", "sha256": "1a0019a83816981ca355ae7c51f175fc482b2afecc45413d23d55a9ae2c177b1"},
+      {"path": "config/v2/m22-qualification-evidence.json", "sha256": "192f784c54420f99e01384c4c453e2df651c2d87b479c0bee3dc46bf3b5a3798"},
+      {"path": "config/v2/m22-followup-v2-evaluation-evidence.json", "sha256": "21e53fa3c7f7f5a15fcd9f199f0a59920082f3e03b8292ed968da44e9dc319ec"},
+      {"path": "config/v2/m22-followup-runtime-source.json", "sha256": "bea83243dc68f72ebd14d1d944a800f0087c9283d7c0f3421b854d8c8adba15c"},
+      {"path": "docs/project/G22_GATE_REPORT.md", "sha256": "5043d91b0fafb04c6fef44a57ad8123f3d2c3469b2c5d75fa6c6b81cae35254c"},
+      {"path": "config/v2/m14-competition-manifest.json", "sha256": "2218667f2ca74740bfbe57af3a978eb2ee33f925eb6e2faaed03394a04bb98ee"},
+      {"path": "config/v2/m21-content-lock.json", "sha256": "31d2ebd04f8eea4226e1f50a4dba28b1f11567bc2f7a1b33d059102d2346e266"},
+      {"path": "config/v1/m10-model-package-contract.json", "sha256": "174689b55f7c47a23d5e435b53a889343b07d9f88c3c83df648c011dcb77caf8"},
+      {"path": "config/v1/m11-playback-contract.json", "sha256": "7ae56b5c450bfc4c8d9aa0147a4da5ed182b64f5cc73172a48b62ec586c68bf4"},
+      {"path": "config/v1/m12-release-contract.json", "sha256": "59e56686bbd09a924e64f01958ab8d1d0b41f5625ad857a3976b4a6d67a4dc1c"},
+      {"path": "config/v1/m13-publication-contract.json", "sha256": "5ff5cc2ff085e0b5d3c9af8b0c76af22aadd9f48ac868290e84963c48281bb67"}
+    ],
+    "v1_boundary": "released-v1-tag-and-package-remain-byte-unchanged-and-revalidated-at-g23"
+  },
+  "checkpoint_packages": {
+    "format": "openttd-rl-v2-m22-checkpoint-package-1",
+    "directory": "checkpoints/<architecture-id>/<checkpoint-id>",
+    "id_algorithm": "m22-checkpoint-content-address-v1",
+    "copy_policy": "exact-byte-copy-no-rewrite-no-symlink-no-extra-file",
+    "maximum_total_bytes_per_checkpoint": 33554432,
+    "inventory": [
+      "COMMITTED",
+      "m22.manifest",
+      "model.pt",
+      "optimizer.pt",
+      "runtime.pt",
+      "selection.json",
+      "trainer-state.bin"
+    ],
+    "architectures": [
+      {
+        "architecture_id": "monolithic-generalist-v1",
+        "role": "development-selected-and-g22-accepted-in-game-policy",
+        "parameter_count": 1457520,
+        "run_seed": 1636894266,
+        "update": 32,
+        "checkpoint_id": "03894fd1238b69b6724d82eb441380312be4e8226efa602fa5e43972f7fa9f5f",
+        "files": [
+          {"name": "COMMITTED", "bytes": 65, "sha256": "1bce450303dd9c4d7eb43d4b8989edd01078f35cfa1287768ab10772fa7011e0"},
+          {"name": "m22.manifest", "bytes": 806, "sha256": "82e2d0ed0b49f2a3774b7a8a6187b7b7540d74149941f4e91693f1a8f3e4297e"},
+          {"name": "model.pt", "bytes": 5882820, "sha256": "ad98f92fa9dfd07b14a49373676746c87419cafcad81bc834dd8bdf435d432c3"},
+          {"name": "optimizer.pt", "bytes": 11530487, "sha256": "c4c9177f02f4bed840d5f9a671da16381682b74dc02c23bc199734690317eaff"},
+          {"name": "runtime.pt", "bytes": 10863, "sha256": "5f9869a7ae0e6d9ba8d2b3caeca7ab02d8331f51087ccb336a4cabb25df0c2d7"},
+          {"name": "selection.json", "bytes": 103, "sha256": "b8301da160f25aa27f759abc4da50f212d90e7bcc03c5f1989e1ca8a690c2cc2"},
+          {"name": "trainer-state.bin", "bytes": 27702, "sha256": "2250fbbbfbd6a77d8bf06acd6d8db67b7fe642bc7550b3f81efcf11cb5dfce36"}
+        ]
+      },
+      {
+        "architecture_id": "specialist-router-v1",
+        "role": "matched-learned-architecture-comparison",
+        "parameter_count": 1457520,
+        "run_seed": 1636894266,
+        "update": 32,
+        "checkpoint_id": "458b2b1413ca483cb9b061518ce9d80e5e9afc85852a66015d81da07bcc7fd2f",
+        "files": [
+          {"name": "COMMITTED", "bytes": 65, "sha256": "6658855c4fc5a565188474b79cac0f8a0eb8dae2da8d95f452578527e0afb102"},
+          {"name": "m22.manifest", "bytes": 802, "sha256": "dba54376419477da7f3f7c34ae8c6ca9c9432e9b475955aa2de165df3e115ecf"},
+          {"name": "model.pt", "bytes": 5882820, "sha256": "97ee5a0ad5ab65df9d729318b0423b55bf7a7b57c09e5aaf1726eceb28990595"},
+          {"name": "optimizer.pt", "bytes": 11538679, "sha256": "156599a49fa761107cd5ace9861ca451e2d863fbe2891a626eae59570ab462ee"},
+          {"name": "runtime.pt", "bytes": 10863, "sha256": "f558519ab08348ab70e5d762c33497574a3335ed76c3db0889f4c665b3222ae2"},
+          {"name": "selection.json", "bytes": 103, "sha256": "b8301da160f25aa27f759abc4da50f212d90e7bcc03c5f1989e1ca8a690c2cc2"},
+          {"name": "trainer-state.bin", "bytes": 27702, "sha256": "0c258ca38ab998c2580c098479e5e68c9ce1a1851bfdc9b5f645da51bb78d213"}
+        ]
+      }
+    ],
+    "load_test": "optimizer-model-runtime-selection-and-trainer-state-resume-smoke-for-both-architectures",
+    "publication": "both-exact-checkpoints-are-required-release-payloads"
+  },
+  "deployment_packages": {
+    "format": "openttd-rl-v2-deployment-package-1",
+    "compatibility_version": 1,
+    "directory": "models/<package-id>",
+    "id_algorithm": "sha256-canonical-manifest-without-package-id-v1",
+    "maximum_file_bytes": 67108864,
+    "complete_inventory": "manifest-plus-exact-payload-list-no-symlinks-no-unknown-files",
+    "payload_files": [
+      "model.onnx",
+      "golden.jsonl",
+      "evaluation.json",
+      "INSTALL.md",
+      "MODEL_CARD.md"
+    ],
+    "architectures": [
+      {
+        "architecture_id": "monolithic-generalist-v1",
+        "architecture_version": 1,
+        "checkpoint_id": "03894fd1238b69b6724d82eb441380312be4e8226efa602fa5e43972f7fa9f5f",
+        "role": "accepted-default-in-game-policy"
+      },
+      {
+        "architecture_id": "specialist-router-v1",
+        "architecture_version": 1,
+        "checkpoint_id": "458b2b1413ca483cb9b061518ce9d80e5e9afc85852a66015d81da07bcc7fd2f",
+        "role": "published-matched-comparison"
+      }
+    ],
+    "graph": {
+      "format": "ONNX",
+      "opset": 18,
+      "onnxruntime": "1.28.0",
+      "dynamic_axis": "batch-only-positive-bounded-1-through-32",
+      "training_nodes": "forbidden",
+      "optimizer_state": "forbidden",
+      "inputs": [
+        {"name": "public_features", "dtype": "float32", "shape": ["batch", 32]},
+        {"name": "program_mask", "dtype": "bool", "shape": ["batch", 17]},
+        {"name": "hidden_state", "dtype": "float32", "shape": ["batch", 256]},
+        {"name": "recurrent_reset", "dtype": "bool", "shape": ["batch"]}
+      ],
+      "outputs": [
+        {"name": "program_logits", "dtype": "float32", "shape": ["batch", 17]},
+        {"name": "program_value", "dtype": "float32", "shape": ["batch"]},
+        {"name": "next_hidden", "dtype": "float32", "shape": ["batch", 256]}
+      ]
+    },
+    "adapter": {
+      "source": "M22-public-32-feature-boundary-generalized-to-batch-and-recurrent-state",
+      "learned_scope": "recurrent-17-program-selection-only",
+      "normalization": "already-normalized-public-float32-features-no-runtime-fitting",
+      "mask": "boolean-at-least-one-legal-program-per-row-illegal-logits-minus-1e9",
+      "reset": "true-row-zeros-hidden-before-GRUCell-false-row-carries-hidden",
+      "base_and_program_projection": "exact-M22-evaluation-input-construction",
+      "unused_training_heads": "base-family-base-candidate-and-base-value-outputs-not-exported-but-shared-encoder-and-GRU-remain-live",
+      "nonfinite": "reject-before-inference"
+    },
+    "installation": {
+      "root": "openttd-rl/models/<package-id>",
+      "atomic": "copy-to-temporary-validate-rename",
+      "uninstall": "remove-exact-content-addressed-package-directory",
+      "unknown_files": "reject",
+      "training_dependencies": "forbidden"
+    },
+    "dependency_boundary": {
+      "required": ["OpenTTD-runtime", "ONNX-Runtime-CPU", "OpenSSL-Crypto"],
+      "forbidden": ["LibTorch", "Python-runtime", "CUDA", "optimizer", "trainer"],
+      "python_role": "export-validation-and-acceptance-orchestration-only"
+    }
+  },
+  "equivalence": {
+    "runtimes": ["native-libtorch-cpu", "standalone-onnxruntime-cpu", "source-integrated-ingame-onnxruntime-cpu"],
+    "architectures": ["monolithic-generalist-v1", "specialist-router-v1"],
+    "cases_per_architecture": 24,
+    "total_architecture_cases": 48,
+    "generation": {
+      "domain": "openttd-rl-v2-m23-golden-v1",
+      "ordinal_start": 0,
+      "seed_count": 48,
+      "canonical_encoding": "compact-sorted-json-lines-one-LF-per-record",
+      "post_result_case_change": "forbidden"
+    },
+    "case_classes": [
+      {"id": "public-final-projection", "count_per_architecture": 8},
+      {"id": "recurrent-sequence-and-reset", "count_per_architecture": 8},
+      {"id": "finite-boundary-and-mask-adversarial", "count_per_architecture": 8}
+    ],
+    "coverage": {
+      "batch_sizes": [1, 8, 32],
+      "modes": ["road", "rail", "water", "air", "multimodal", "company", "broad"],
+      "climates": ["temperate", "arctic", "tropic", "toyland"],
+      "mask_patterns": ["wait-only", "all-legal", "one-active-plus-wait", "deterministic-sparse"],
+      "recurrent": ["zero-reset", "nonzero-carry", "mixed-row-reset", "four-step-carried-sequence"]
+    },
+    "outputs": ["program_logits", "program_value", "next_hidden", "greedy_legal_program"],
+    "tolerances": {
+      "program_logits": {"absolute": 0.00005, "relative": 0.00005},
+      "program_value": {"absolute": 0.00005, "relative": 0.00005},
+      "next_hidden": {"absolute": 0.00005, "relative": 0.00005},
+      "program_mask": "byte-exact",
+      "greedy_legal_program": "exact",
+      "nonfinite": "reject"
+    },
+    "rejection_matrix": [
+      "package-format",
+      "compatibility-version",
+      "package-id",
+      "architecture-id",
+      "architecture-version",
+      "checkpoint-id",
+      "learning-contract-id",
+      "source-tree-id",
+      "onnx-opset",
+      "onnxruntime-version",
+      "input-name",
+      "input-shape",
+      "input-dtype",
+      "output-name",
+      "output-shape",
+      "output-dtype",
+      "recurrent-width",
+      "recurrent-reset-semantics",
+      "normalization",
+      "file-digest",
+      "missing-file",
+      "unknown-file",
+      "symlink",
+      "truncated-onnx",
+      "nonfinite-input",
+      "all-illegal-mask",
+      "batch-zero",
+      "batch-over-32"
+    ],
+    "success": "all-144-runtime-case-results-pass-every-float-tolerance-and-exact-mask-action-check-with-every-rejection-failing-before-control"
+  },
+  "normal_game": {
+    "source_base": {
+      "record": "config/v2/m22-followup-runtime-source.json",
+      "record_sha256": "bea83243dc68f72ebd14d1d944a800f0087c9283d7c0f3421b854d8c8adba15c",
+      "tree": "f8985045f9ba14bad1e46a81cb58fdbb8037f277"
+    },
+    "entrypoint": "openttd -B <absolute-v2-playback-config.json>",
+    "configuration": {
+      "schema_version": "openttd-rl-v2-m23-playback-config-1",
+      "canonical_encoding": "compact-sorted-json-plus-one-LF",
+      "paths": "absolute-existing-inputs-absolute-new-regular-output-files",
+      "policy_interval_ticks": {"minimum": 128, "maximum": 1024, "multiple": 128},
+      "mode": "greedy-only-for-acceptance"
+    },
+    "controller_boundary": {
+      "learned": "select-one-legal-high-level-program-from-public-state-and-carried-hidden-state",
+      "deterministic": "reviewed-program-executor-plans-and-submits-normal-OpenTTD-commands",
+      "forbidden_claim": "low-level-construction-pathfinding-or-vehicle-control-is-not-end-to-end-learned",
+      "admin_shortcuts": "forbidden-for-construction-vehicle-orders-delivery-income-competition-and-recovery",
+      "qualification_only_state_injection": "forbidden",
+      "public_visibility": "M20-allow-deny-policy-unchanged"
+    },
+    "program_executors": [
+      "wait",
+      "road-passenger",
+      "road-cargo",
+      "rail-passenger",
+      "rail-freight",
+      "ship-natural",
+      "ship-constructed",
+      "air-service",
+      "air-helicopter",
+      "multimodal-transfer",
+      "mode-router",
+      "competition-head-to-head",
+      "calendar-inspect",
+      "authority-economy",
+      "event-recovery",
+      "gamescript-response",
+      "content-discovery"
+    ],
+    "campaign_seed": {
+      "domain": "openttd-rl-v2-m23-playback-v1",
+      "ordinal_start": 0
+    },
+    "campaigns": [
+      {"id": "visible-road-passenger-kraken", "seed": 131136999, "program": "road-passenger", "mode": "road", "climate": "temperate", "map_width": 128, "map_height": 128, "opponent": "KrakenAI2"},
+      {"id": "visible-road-cargo-control", "seed": 1118866958, "program": "road-cargo", "mode": "road", "climate": "toyland", "map_width": 128, "map_height": 128, "opponent": "NoOpAI"},
+      {"id": "visible-rail-passenger-aaahogex", "seed": 936218737, "program": "rail-passenger", "mode": "rail", "climate": "arctic", "map_width": 128, "map_height": 128, "opponent": "AAAHogEx"},
+      {"id": "visible-rail-freight-kraken", "seed": 625844863, "program": "rail-freight", "mode": "rail", "climate": "tropic", "map_width": 512, "map_height": 128, "opponent": "KrakenAI2"},
+      {"id": "visible-water-aaahogex", "seed": 327830242, "program": "ship-natural", "mode": "water", "climate": "tropic", "map_width": 512, "map_height": 128, "opponent": "AAAHogEx"},
+      {"id": "visible-air-kraken", "seed": 871455497, "program": "air-service", "mode": "air", "climate": "toyland", "map_width": 128, "map_height": 128, "opponent": "KrakenAI2"},
+      {"id": "visible-multimodal-aaahogex", "seed": 1729581758, "program": "multimodal-transfer", "mode": "multimodal", "climate": "temperate", "map_width": 128, "map_height": 128, "opponent": "AAAHogEx"},
+      {"id": "visible-company-kraken", "seed": 2047174508, "program": "competition-head-to-head", "mode": "company", "climate": "arctic", "map_width": 128, "map_height": 128, "opponent": "KrakenAI2"}
+    ],
+    "campaign_acceptance": {
+      "normal_gui": true,
+      "headless_or_dedicated": false,
+      "minimum_policy_boundaries_per_campaign": 4,
+      "required_all_campaigns": true,
+      "required_mode_coverage": ["road", "rail", "water", "air", "multimodal", "company"],
+      "required_opponents": ["AAAHogEx", "KrakenAI2", "NoOpAI"],
+      "required_outcomes": ["owned-infrastructure", "owned-vehicle", "normal-orders", "vehicle-movement", "positive-delivery", "positive-operating-income", "opponent-active-when-not-control"],
+      "visible_evidence": "per-campaign-screenshot-plus-canonical-log-savegame-and-machine-report",
+      "save_load": "at-least-one-campaign-per-mode-resumes-with-identical-next-policy-output-and-controller-state"
+    },
+    "inspection": {
+      "window": "native-normal-game-window-updated-from-controller-state",
+      "required_fields": ["state", "health", "architecture", "package_id", "checkpoint_id", "program", "confidence", "value", "legal_programs", "hidden_norm", "executor_phase", "last_command", "last_error"],
+      "structured_log": "bounded-canonical-JSONL-one-record-per-policy-boundary-and-control-event"
+    },
+    "controls": {
+      "start": "stopped-or-faulted-to-running-after-full-package-validation-and-hidden-reset",
+      "stop": "running-or-paused-to-stopped-at-boundary-no-new-commands",
+      "pause": "running-to-paused-policy-and-executor-only-game-continues",
+      "step": "exactly-one-policy-boundary-while-paused",
+      "reload": "validate-new-package-off-path-then-atomic-swap-at-boundary-with-hidden-reset",
+      "game_pause": "native-OpenTTD-toolbar-and-command-unchanged"
+    },
+    "failure_policy": {
+      "startup": "fail-closed-before-controller-owns-company",
+      "runtime": "enter-faulted-state-retain-game-and-evidence",
+      "safe_fallback": "wait-program-only-no-construction-vehicle-or-order-command",
+      "recovery": "operator-reload-or-start-only-after-valid-package",
+      "required_rejections": ["missing-config", "invalid-config", "missing-package", "incompatible-package", "corrupt-model", "bad-graph-signature", "nonfinite-output", "all-illegal-mask", "executor-command-failure", "reload-incompatible-package"]
+    }
+  },
+  "operator_release": {
+    "supported_host": {
+      "os_id": "ubuntu",
+      "os_version": "24.04",
+      "architecture": "x86_64",
+      "gpu": "NVIDIA-CUDA-13.0-sm120-for-training-and-qualification",
+      "deployment": "CPU-only-ONNX-Runtime-1.28.0"
+    },
+    "guide": {
+      "path": "docs/project/V2_RELEASE_REPRODUCTION.md",
+      "one_linear_workflow": ["prerequisites", "clone", "build", "train", "resume", "evaluate", "export", "install", "play", "tournament", "verify", "troubleshoot"],
+      "commands": "copy-paste-complete-with-explicit-input-output-roots-and-no-undocumented-state"
+    },
+    "documents": [
+      "README.md",
+      "docs/project/V2_RELEASE_REPRODUCTION.md",
+      "docs/project/V2_MODEL_CARD.md",
+      "docs/project/V2_BENCHMARK.md",
+      "docs/project/V2_PUBLICATION.md",
+      "THIRD_PARTY_NOTICES.md",
+      "LICENSE"
+    ],
+    "release_manifest": {
+      "schema_version": "openttd-rl-v2-m23-release-manifest-1",
+      "canonical_encoding": "compact-sorted-json-plus-one-LF",
+      "required_sections": ["source", "host", "builds", "dependencies", "contracts", "checkpoints", "models", "seeds", "equivalence", "playback", "tournament", "artifacts", "quality", "traceability", "defects", "reproduction", "publication"]
+    },
+    "artifact_index": "every-file-size-sha256-media-type-license-origin-and-release-role",
+    "reproduction": {
+      "roots": 2,
+      "raw_roots": "distinct-empty-fresh-local-clones-at-the-accepted-g23-commit",
+      "canonical_workspace": "same-empty-canonical-symlink-path-used-sequentially-with-prefix-mapped-builds",
+      "network": "disabled-after-clone-and-declared-content-cache-validation",
+      "required_matches": ["source-tree-byte", "native-binary-byte", "ingame-binary-byte", "checkpoint-byte", "onnx-byte", "package-id", "golden-byte", "equivalence-semantic", "playback-semantic", "tournament-semantic", "release-manifest-byte", "publication-archive-byte"]
+    },
+    "quality": {
+      "v2_tests": "all-pass",
+      "v1_regression": "all-pass-unchanged",
+      "shellcheck": "all-project-shell-sources",
+      "python_compile": "all-project-python-sources",
+      "cpp_warnings": "strict-no-new-warning",
+      "git_diff_check": true,
+      "credential_scan": true,
+      "host_path_scan": true,
+      "symlink_scan": true,
+      "nonclosed_defects": 0
+    },
+    "archive": {
+      "format": "ustar-plus-gzip",
+      "canonicalization": "sorted-members-mtime-zero-uid-gid-zero-empty-owner-gzip-mtime-zero-no-filename",
+      "payload": "license-readme-notices-documents-release-manifest-artifact-index-two-checkpoints-two-deployment-packages",
+      "excluded": ["OpenTTD-binaries", "OpenTTD-source", "OpenGFX", "ONNX-Runtime", "LibTorch", "CUDA-runtime", "third-party-AI-archives", "NewGRF-archives", "private-unselected-checkpoints", "raw-private-trajectories"]
+    },
+    "publication": {
+      "tag": "v2.0.0",
+      "branch": "main",
+      "require_clean_main": true,
+      "require_origin_sync": true,
+      "require_reviewed_commit_equals_tag": true,
+      "require_release_asset_round_trip": true,
+      "require_hosted_quality": true,
+      "v1_tag_and_asset_revalidation": true,
+      "post_publish_mutation": "new-version-only-never-replace-v2.0.0-bytes"
+    }
+  },
+  "requirements": [
+    "V2-RELEASE-001",
+    "V2-RELEASE-002",
+    "V2-RELEASE-003",
+    "V2-RELEASE-004",
+    "V2-RELEASE-005",
+    "V2-RELEASE-006",
+    "V2-RELEASE-007",
+    "V2-RELEASE-008",
+    "V2-RELEASE-009"
+  ],
+  "acceptance": {
+    "freeze_before_export": true,
+    "both_checkpoint_packages": "exact-and-loadable",
+    "both_deployment_packages": "deterministic-valid-and-published",
+    "equivalence": "all-144-results-pass-and-all-rejections-fail-closed",
+    "normal_game": "all-eight-visible-campaigns-pass-with-all-modes-and-three-admitted-opponents",
+    "controls": "start-stop-pause-step-reload-health-log-fallback-and-errors-pass",
+    "reproduction": "two-independent-clean-roots-match-every-declared-semantic-and-byte-identity",
+    "definition_of_done": "all-86-v2-requirements-and-all-tests-pass-with-zero-nonclosed-defects",
+    "publication": "reviewed-main-commit-tag-release-and-round-trip-asset-identities-match-while-v1-remains-valid"
+  }
+}

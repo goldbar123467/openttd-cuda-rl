@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m23-release-contract.schema.json",
+  "title": "OpenTTD RL V2 M23 release contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "schema_sha256",
+    "snapshot_date",
+    "contract_id",
+    "semantic_version",
+    "status",
+    "release",
+    "foundations",
+    "checkpoint_packages",
+    "deployment_packages",
+    "equivalence",
+    "normal_game",
+    "operator_release",
+    "requirements",
+    "acceptance"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../../docs/project/schema/v2-m23-release-contract.schema.json"
+    },
+    "schema_version": {
+      "const": "openttd-rl-v2-m23-release-contract-1"
+    },
+    "schema_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "snapshot_date": {
+      "const": "2026-08-03"
+    },
+    "contract_id": {
+      "const": "m23-v2-release-and-publication-v1"
+    },
+    "semantic_version": {
+      "const": 1
+    },
+    "status": {
+      "const": "FROZEN"
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "tag", "name", "repository", "branch", "license", "artifact_name", "artifact_root"],
+      "properties": {
+        "version": {"const": "2.0.0"},
+        "tag": {"const": "v2.0.0"},
+        "name": {"const": "OpenTTD RL V2"},
+        "repository": {"const": "https://github.com/goldbar123467/openttd-cuda-rl"},
+        "branch": {"const": "main"},
+        "license": {"const": "GPL-2.0-only"},
+        "artifact_name": {"const": "openttd-rl-v2.0.0-models-checkpoints-and-evidence.tar.gz"},
+        "artifact_root": {"const": "openttd-rl-v2.0.0"}
+      }
+    },
+    "foundations": {"$ref": "#/$defs/object"},
+    "checkpoint_packages": {"$ref": "#/$defs/object"},
+    "deployment_packages": {"$ref": "#/$defs/object"},
+    "equivalence": {"$ref": "#/$defs/object"},
+    "normal_game": {"$ref": "#/$defs/object"},
+    "operator_release": {"$ref": "#/$defs/object"},
+    "requirements": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^V2-RELEASE-00[1-9]$"}
+    },
+    "acceptance": {"$ref": "#/$defs/object"}
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "object": {
+      "type": "object",
+      "minProperties": 1
+    }
+  }
+}

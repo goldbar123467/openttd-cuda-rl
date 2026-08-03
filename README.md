@@ -202,6 +202,7 @@ claim has been made.
 · [`M22 follow-up-v2 evidence validator`](scripts/v2/validate_m22_followup_v2_evaluation.py)
 · [`M22 follow-up-v2 evidence schema`](docs/project/schema/v2-m22-followup-v2-evaluation-evidence.schema.json)
 · [`M22 accepted follow-up-v2 evidence`](config/v2/m22-followup-v2-evaluation-evidence.json)
+· [`M23 frozen release contract`](config/v2/m23-release-contract.json)
 · [`M22 final one-shot runner`](scripts/v2/run_m22_final_evaluation.py)
 · [`M22 final evidence validator`](scripts/v2/validate_m22_final_evaluation.py)
 · [`M22 final evidence schema`](docs/project/schema/v2-m22-final-evaluation-evidence.schema.json)
@@ -227,6 +228,7 @@ claim has been made.
 · [`M21 broad-content contract`](docs/project/M21_BROAD_CONTENT_CONTRACT.md)
 · [`G21 gate report`](docs/project/G21_GATE_REPORT.md)
 · [`G22 gate report`](docs/project/G22_GATE_REPORT.md)
+· [`M23 release contract`](docs/project/M23_RELEASE_CONTRACT.md)
 
 ## Paused at the G22 release boundary
 
@@ -241,18 +243,21 @@ The selected monolithic checkpoint remains
 the retained specialist comparison checkpoint is
 `458b2b1413ca483cb9b061518ce9d80e5e9afc85852a66015d81da07bcc7fd2f`.
 
-The M23/G23 release audit is complete, but no M23 acceptance result or V2
-release is claimed. All nine `V2-RELEASE-*` requirements remain `PLANNED`. The
-remaining work is to freeze and validate versioned checkpoint and opset-18 ONNX
-packages for both learned architectures; prove native, ONNX Runtime, and in-game
-output/state equivalence; add visible normal-game operation across the retained
+The M23/G23 release audit and pre-result contract freeze are complete, but no
+M23 acceptance result or V2 release is claimed. The schema, semantic validator,
+and 26 mutation tests bind both exact learned checkpoints, two opset-18 ONNX
+packages, 144 three-runtime results, eight visible campaigns, operator controls,
+two clean-root reproductions, and reviewed-byte publication. All nine
+`V2-RELEASE-*` requirements remain `PLANNED`. The remaining work is to build and
+validate the checkpoint and ONNX packages; prove native, ONNX Runtime, and
+in-game output/state equivalence; add visible normal-game operation across the retained
 transport modes and admitted opponents with start/stop/reload, health, logs,
 safe fallback, and actionable rejection behavior; complete the operator guide,
 model card, benchmark, notices, and immutable release index; perform two
 independent clean-root reproductions; rerun the complete V2/V1 gate with zero
 nonclosed defects; and only then tag and publish the reviewed bytes. Work should
-resume by freezing the M23 release contract, schema, semantic validator, and
-mutation tests before creating any acceptance evidence. Existing V1 release
+resume with the deterministic two-architecture exporter and native/standalone
+golden harness before creating any acceptance evidence. Existing V1 release
 packages and behavior remain unchanged throughout M23.
 
 ## Version 2 implementation through G22
@@ -823,7 +828,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary |
 | V2 generalist learning | Semantic-v2 17-program/seven-stage PPO curriculum, three seeds, matched 1,457,520-parameter learned architectures and non-neural/random/wait baselines, exact recurrent-attention-graph state and update-16 recovery, six accepted 48-update CUDA campaigns, all 36 development candidates eligible, selected-checkpoint retention across all 16 active programs, measured CPU/CUDA batches 1/8/32, and a source-frozen independent 42-case suite with one manifest read, 42 evaluator/native processes, zero retries/replacements/failures, positive paired lower confidence bounds, and profitable road/rail/water/air/multimodal service; immutable final-v1 and follow-up-v1 remain `FAIL` | `M22/G22 PASS`; frozen finite curriculum and independent-suite boundary; zero nonclosed defects; M23 next |
-| V2 packaging, playback, and publication | M23 audit identifies both learned architecture packages, opset-18 three-runtime equivalence, visible normal-game controls and failure handling, one complete operator guide, two independent clean-root reproductions, immutable release documentation, full regression, and reviewed tag/assets as the remaining boundary | `M23/G23 PLANNED`; 9 requirements remain; no V2 release claim |
+| V2 packaging, playback, and publication | Pre-result M23 contract and 26 mutation tests freeze both exact checkpoints, two opset-18 packages, 144 three-runtime results, eight visible campaigns, controls/fallback/errors, one complete operator guide, two independent clean-root reproductions, immutable release documentation, full regression, and reviewed tag/assets | `M23 IN PROGRESS`; `G23 PLANNED`; 9 requirements remain; no V2 release claim |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
