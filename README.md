@@ -64,8 +64,16 @@ additional accepted-execution manifest read, one fresh optimizer-free CUDA
 evaluator process and one fresh
 network-unshared native dispatch per declared case, no retry/replacement/post-
 selection path, complete failure retention, and exact Student-t/paired baseline
-statistics. The complete 42-case one-shot evaluation remains open. No G22 pass
-or V2 release claim has been made.
+statistics. The corrected immutable execution then attempted all 42 declared
+cases in manifest order with 42 fresh evaluator processes, 42 native dispatches,
+zero retries, zero replacements, and no post-result selection. The selected
+policy chose the required program in every case and its lower paired 95-percent
+confidence bounds over seeded-random-legal and wait-only were `+0.43445` and
+`+0.99994`. The gate nevertheless fails: eight native executions did not
+complete, comprising two passenger multimodal harness rejections, four
+seed-specific 64-by-64 competition worlds without generated towns or industries,
+and two broad save failures. The complete failed evidence is retained without
+rerunning or replacing a case. No G22 pass or V2 release claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -143,6 +151,7 @@ or V2 release claim has been made.
 · [`M22 final evidence schema`](docs/project/schema/v2-m22-final-evaluation-evidence.schema.json)
 · [`M22 rejected pre-case attempt`](config/v2/m22-final-attempt-a.json)
 · [`M22 rejected-attempt schema`](docs/project/schema/v2-m22-final-attempt.schema.json)
+· [`M22 immutable failed final-v1 evidence`](config/v2/m22-final-evaluation-evidence.json)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
 · [`M14 competition protocol`](docs/project/M14_INVENTORY_AND_COMPETITION.md)
@@ -394,8 +403,28 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   `m15-competence` and `industry-chain` aliases; both now project to their already
   frozen G15 passenger-service and G16 single-leg native transactions, and the
   accessed manifest's complete 17 gate/probe pairs are regression-tested. The
-  corrected accepted execution will explicitly report this prior nonexecuting
-  manifest read rather than hiding it.
+  corrected execution explicitly reports this prior nonexecuting manifest read
+  rather than hiding it. It then attempted the complete 42-case manifest exactly
+  once in order: 42 evaluator attempts/processes, 42 native dispatches, 34 native
+  process completions, no retry, no replacement, and no post-result selection.
+  All 42 evaluator reports pass identity, process, report, and public-boundary
+  validation; all 42 learned actions equal their preregistered required programs.
+  The learned mean return is `1.21161`, and the lower paired 95-percent confidence
+  bounds over seeded-random-legal and wait-only are `0.43445` and `0.99994`.
+  The aggregate remains `FAIL`: `multimodal-passenger-a` and
+  `multimodal-passenger-b` expose a G19 native probe restricted to freight;
+  both AAAHogEx cases plus `competition-krakenai2-a` and
+  `competition-noopai-b` expose seed-specific G20 64-by-64 maps with no generated
+  towns or industries; and `broad-authority-economy` plus `broad-events` exit on
+  failed save creation after their native mutations. Those eight cases are
+  immutable failed evidence and will not be retried, replaced, or relabeled.
+  Consequently service-every-mode, opponent retention, broad retention, complete
+  G15-G21 native retention, and overall acceptance are false even though all
+  climates, map sizes, programs, and both baseline confidence requirements pass.
+  The independent live validator reports
+  `V2_M22_FINAL_EVIDENCE=FAIL cases=42 failures=10 live=true`; the ten
+  classifications comprise eight native-execution failures and two overlapping
+  broad-retention classifications, not ten distinct cases.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -412,14 +441,14 @@ and score projection, not third-party AI choices. Physical plane crashes are
 disabled in the qualification settings, while crash counts remain scored and
 the interaction cases prove native ownership isolation. The M20 controller is a
 deterministic competence oracle, the M14 3,650-day final protocol was not run,
-and M22 must still independently evaluate the broad learned generalist. The
-selected checkpoint is now frozen and qualified before final access. The
-retained final runtime is complete and validated, and the frozen optimizer-free
-evaluator build plus its synthetic CUDA preflight pass. The immediate M22
-continuation is to commit the fail-closed adapter correction and then execute all
-42 preregistered final cases exactly once with no case retry, replacement, or
-post-result selection, followed by the complete uncertainty/failure report and
-G22 audit.
+and M22 must still close native final-world qualification for the broad learned
+generalist. The selected checkpoint was frozen and qualified before final access
+and remains unchanged after the failed gate. The retained final-v1 runtime,
+optimizer-free evaluator, synthetic CUDA preflight, and complete uncertainty/
+failure report are preserved. The next M22 work is to diagnose and correct the
+three native harness/runtime defect classes, freeze any follow-up protocol before
+accessing new cases, and evaluate it independently without presenting it as a
+retry or replacement for the immutable failed final-v1 suite. G22 remains open.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -595,7 +624,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary; M22 next |
-| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32, an optimizer-free single-case evaluator with no final-label channel, a token-gated cumulative final-world patch, a retained 98-CTest engine with the complete M20/M21 content closure, eight fresh network-unshared G15-G21 source smokes, and a create-only one-shot runner with complete failure/uncertainty accounting; its first manifest read is retained as a zero-case adapter rejection and all 17 accessed public probe mappings are now covered without changing monolithic seed `1636894266` update 32 | `M22 training/qualification, retained runtime, and corrected final orchestration source PASS`; independent 42-case final suite and G22 remain open |
+| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32, an optimizer-free single-case evaluator with no final-label channel, a token-gated cumulative final-world patch, a retained 98-CTest engine with the complete M20/M21 content closure, eight fresh network-unshared G15-G21 source smokes, and a create-only one-shot runner with complete failure/uncertainty accounting; its first manifest read is retained as a zero-case adapter rejection, then immutable final-v1 attempted all 42 cases without retry/replacement and produced 42/42 required learned programs plus positive lower paired confidence bounds but failed on eight native harness/runtime executions | `M22 training/qualification and source gates PASS`; immutable final-v1 `FAIL`; native correction, independent follow-up, and G22 remain open |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
