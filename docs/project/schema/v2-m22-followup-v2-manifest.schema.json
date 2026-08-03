@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-followup-v2-manifest.schema.json",
+  "title": "OpenTTD-RL V2 M22 independent follow-up-v2 manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "acceptance", "access_policy", "aggregate_contract", "cases", "manifest_id", "prerequisites", "purpose", "schema_sha256", "schema_version", "seed_derivation", "seed_exclusions", "snapshot_date", "split", "status"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m22-followup-v2-manifest.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m22-followup-v2-manifest-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_date": {"const": "2026-08-03"},
+    "manifest_id": {"const": "m22-independent-followup-v2"},
+    "status": {"const": "FROZEN_BEFORE_FIRST_RUN"},
+    "split": {"const": "final"},
+    "purpose": {"const": "independent-post-aggregate-diagnosis-confirmation-not-retry-or-replacement"},
+    "seed_derivation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["algorithm", "domain", "ordinal_start"],
+      "properties": {
+        "algorithm": {"const": "sha256-first-31-bits-big-endian"},
+        "domain": {"const": "openttd-rl-v2-m22-independent-followup-v2"},
+        "ordinal_start": {"const": 3000}
+      }
+    },
+    "prerequisites": {
+      "type": "object", "additionalProperties": false,
+      "required": ["corrected_runtime_source_sha256", "immutable_final_v1_evidence_sha256", "immutable_followup_v1_evidence_sha256", "learning_contract_sha256", "qualification_evidence_sha256"],
+      "properties": {
+        "corrected_runtime_source_sha256": {"$ref": "#/$defs/sha256"},
+        "immutable_final_v1_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "immutable_followup_v1_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "learning_contract_sha256": {"$ref": "#/$defs/sha256"},
+        "qualification_evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "seed_exclusions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["external_diagnostic_seeds", "external_diagnostic_summary_sha256", "preflight_seeds", "repository_sources"],
+      "properties": {
+        "external_diagnostic_seeds": {"const": [1900000001, 1900000011, 1900000013, 1900000017, 1900000021, 1900000023]},
+        "external_diagnostic_summary_sha256": {"const": "3f662a56713347cdf646c93c8c10b28a137ecc2dffc446bc338ec0bc65f5b50d"},
+        "preflight_seeds": {"const": [225501, 225503]},
+        "repository_sources": {
+          "type": "array", "minItems": 13, "maxItems": 13,
+          "items": {"$ref": "#/$defs/source"}
+        }
+      }
+    },
+    "access_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["case_execution", "development_selection", "final_v1_evidence", "final_v1_cases", "followup_v1_evidence", "followup_v1_cases", "followup_v2_runner", "policy_input", "post_result_selection", "replacement", "retry", "training"],
+      "properties": {
+        "case_execution": {"const": "one-fresh-evaluator-and-one-network-unshared-native-dispatch-per-case"},
+        "development_selection": {"const": "forbidden"},
+        "final_v1_evidence": {"const": "immutable-fail-preserved"},
+        "final_v1_cases": {"const": "never-retried-replaced-or-relabeled"},
+        "followup_v1_evidence": {"const": "immutable-zero-failure-aggregate-fail-preserved"},
+        "followup_v1_cases": {"const": "never-retried-replaced-or-relabeled"},
+        "followup_v2_runner": {"const": "fresh-process-read-only-once-after-source-freeze"},
+        "policy_input": {"const": "case-public-state-only-never-seed-or-required-program"},
+        "post_result_selection": {"const": false},
+        "replacement": {"const": 0},
+        "retry": {"const": 0},
+        "training": {"const": "forbidden"}
+      }
+    },
+    "cases": {
+      "type": "array", "minItems": 42, "maxItems": 42,
+      "items": {"$ref": "#/$defs/case"}
+    },
+    "aggregate_contract": {
+      "const": {
+        "admission": "required-program-membership-independent-of-task-label",
+        "multimodal_transfer_task": "routing",
+        "positive_metrics": ["delivered", "income"],
+        "required_service_modes": ["road", "rail", "water", "air", "multimodal"],
+        "service_program_counts": {
+          "air-helicopter": 2,
+          "air-service": 2,
+          "multimodal-transfer": 2,
+          "rail-freight": 2,
+          "rail-passenger": 2,
+          "road-cargo": 8,
+          "road-passenger": 4,
+          "ship-constructed": 2,
+          "ship-natural": 2
+        },
+        "service_program_modes": {
+          "air-helicopter": "air",
+          "air-service": "air",
+          "multimodal-transfer": "multimodal",
+          "rail-freight": "rail",
+          "rail-passenger": "rail",
+          "road-cargo": "road",
+          "road-passenger": "road",
+          "ship-constructed": "water",
+          "ship-natural": "water"
+        }
+      }
+    },
+    "acceptance": {
+      "const": {
+        "case_count": 42,
+        "required_transport_modes": ["road", "rail", "water", "air", "multimodal", "company", "broad"],
+        "required_climates": ["temperate", "arctic", "tropic", "toyland"],
+        "required_map_sizes": [[64, 64], [128, 128], [512, 128], [1024, 1024]],
+        "required_opponents": ["AAAHogEx", "KrakenAI2", "NoOpAI"],
+        "minimum_replicates_per_service_mode": 2,
+        "every_case_retained": true,
+        "training_reward_is_not_acceptance": true,
+        "service": "positive native delivery and income in every road, rail, water, air, and multimodal service case",
+        "competition": "complete public-state score and failure outcome for every opponent case; universal victory is not required",
+        "retention": "every selected G15-G21 program passes its native gate oracle without a missing case",
+        "statistics": "seed-level mean, median, full range, Student-t 95 percent interval, failures and paired baseline effects"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {"path": {"type": "string", "pattern": "^config/v2/.+\\.json$"}, "sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "case": {
+      "type": "object", "additionalProperties": false,
+      "required": ["case_id", "cargo", "climate", "map_height", "map_width", "native_probe", "opponent", "required_program", "seed", "source_gate", "task", "transport_mode"],
+      "properties": {
+        "case_id": {"type": "string", "pattern": "^followup-v2-[a-z0-9-]+$"},
+        "task": {"enum": ["service", "routing", "competition", "retention"]},
+        "transport_mode": {"enum": ["road", "rail", "water", "air", "multimodal", "company", "broad"]},
+        "climate": {"enum": ["temperate", "arctic", "tropic", "toyland"]},
+        "map_width": {"enum": [64, 128, 512, 1024]},
+        "map_height": {"enum": [64, 128, 1024]},
+        "cargo": {"type": "string", "pattern": "^(?:[A-Z0-9_]{4}|not-applicable)$"},
+        "opponent": {"enum": ["AAAHogEx", "KrakenAI2", "NoOpAI", "not-applicable"]},
+        "seed": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+        "required_program": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "native_probe": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "source_gate": {"enum": ["G15", "G16", "G17", "G18", "G19", "G20", "G21"]}
+      }
+    }
+  }
+}
