@@ -1,0 +1,75 @@
+diff --git a/src/rl_v2_air.cpp b/src/rl_v2_air.cpp
+index 5d34651..efe7331 100644
+--- a/src/rl_v2_air.cpp
++++ b/src/rl_v2_air.cpp
+@@ -863,12 +863,14 @@ static void BuildRoadTile(TileIndex tile, RoadBits bits, json &commands)
+ 	Require(cost.Succeeded(), "multimodal road build failed");
+ }
+ 
+-static StationID BuildTruckStop(TileIndex tile, DiagDirection direction, StationID join, json &commands)
++static StationID BuildRoadStop(TileIndex tile, DiagDirection direction, StationID join, CargoType cargo, json &commands)
+ {
+-	CommandCost cost = Command<CMD_BUILD_ROAD_STOP>::Do(DoCommandFlag::Execute, tile, 1, 1, RoadStopType::Truck, false,
++	const bool passenger = IsCargoInClass(cargo, CargoClass::Passengers);
++	const RoadStopType stop_type = passenger ? RoadStopType::Bus : RoadStopType::Truck;
++	CommandCost cost = Command<CMD_BUILD_ROAD_STOP>::Do(DoCommandFlag::Execute, tile, 1, 1, stop_type, false,
+ 		direction, ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, join, false);
+-	commands.push_back(CostRecord("CMD_BUILD_MULTIMODAL_TRUCK_STOP", cost));
+-	Require(cost.Succeeded(), "multimodal truck stop build failed");
++	commands.push_back(CostRecord(passenger ? "CMD_BUILD_MULTIMODAL_BUS_STOP" : "CMD_BUILD_MULTIMODAL_TRUCK_STOP", cost));
++	Require(cost.Succeeded(), passenger ? "multimodal bus stop build failed" : "multimodal truck stop build failed");
+ 	return join == NEW_STATION ? GetStationIndex(tile) : join;
+ }
+ 
+@@ -891,7 +893,6 @@ static UnitBuild BuildSurfaceVehicle(TileIndex depot, CargoType cargo, VehicleTy
+ 
+ static json RunMultimodal(const Request &request, CargoType cargo)
+ {
+-	Require(!IsCargoInClass(cargo, CargoClass::Passengers), "multimodal probe requires freight cargo");
+ 	json commands = json::array();
+ 	SetHorizontalTileHeights(9, 32, 2, 1);
+ 	SetHorizontalTileHeights(42, 32, 1, 2);
+@@ -904,9 +905,11 @@ static json RunMultimodal(const Request &request, CargoType cargo)
+ 	Require(joined_airport == water_air && Station::Get(water_air)->facilities.All({StationFacility::Dock, StationFacility::Airport}),
+ 		"dock/airport transfer station did not share facilities");
+ 	for (uint x = 3; x <= 8; ++x) BuildRoadTile(TileXY(x, 29), ROAD_X, commands);
+-	StationID road_source = BuildTruckStop(TileXY(2, 29), DIAGDIR_SW, NEW_STATION, commands);
+-	StationID joined_road = BuildTruckStop(TileXY(9, 29), DIAGDIR_NE, road_water, commands);
+-	Require(joined_road == road_water && Station::Get(road_water)->facilities.All({StationFacility::TruckStop, StationFacility::Dock}),
++	StationID road_source = BuildRoadStop(TileXY(2, 29), DIAGDIR_SW, NEW_STATION, cargo, commands);
++	StationID joined_road = BuildRoadStop(TileXY(9, 29), DIAGDIR_NE, road_water, cargo, commands);
++	const StationFacility road_facility = IsCargoInClass(cargo, CargoClass::Passengers) ?
++		StationFacility::BusStop : StationFacility::TruckStop;
++	Require(joined_road == road_water && Station::Get(road_water)->facilities.All({road_facility, StationFacility::Dock}),
+ 		"road/dock transfer station did not share facilities");
+ 	BuildRoadTile(TileXY(5, 29), ROAD_X | ROAD_SE, commands);
+ 	TileIndex road_depot = TileXY(5, 30);
+diff --git a/src/rl_v2_broad.cpp b/src/rl_v2_broad.cpp
+index c6adeae..00aa495 100644
+--- a/src/rl_v2_broad.cpp
++++ b/src/rl_v2_broad.cpp
+@@ -401,10 +401,12 @@ static json RunAuthorityEconomy(const Request &request, const std::string &save_
+ 	commands.push_back({{"command", "CMD_DO_TOWN_ACTION_BUY_RIGHTS"}, {"cost", rights.GetCost().base()}, {"status", rights.Succeeded() ? "SUCCESS" : "REJECTED"}});
+ 	Require(rights_test.Succeeded() && rights.Succeeded() && rights.GetCost() == rights_test.GetCost() && town->exclusivity == CompanyID::Begin(),
+ 		"exclusive-rights test/execute parity failed");
+-	_current_company = CompanyID{1};
+-	CommandCost competitor = Command<CMD_DO_TOWN_ACTION>::Do({}, towns[0], TownAction::BuyRights);
+-	commands.push_back({{"command", "CMD_DO_TOWN_ACTION_COMPETITOR"}, {"status", competitor.Failed() ? "REJECTED" : "SUCCESS"}});
+-	Require(competitor.Failed(), "competitor bypassed active exclusive rights");
++	{
++		AutoRestoreBackup competitor_company(_current_company, CompanyID{1});
++		CommandCost competitor = Command<CMD_DO_TOWN_ACTION>::Do({}, towns[0], TownAction::BuyRights);
++		commands.push_back({{"command", "CMD_DO_TOWN_ACTION_COMPETITOR"}, {"status", competitor.Failed() ? "REJECTED" : "SUCCESS"}});
++		Require(competitor.Failed(), "competitor bypassed active exclusive rights");
++	}
+ 	town->exclusive_counter = 1;
+ 	uint8_t rights_month = TimerGameEconomy::month;
+ 	RunUntilEconomyMonthChanges(rights_month);
+@@ -507,6 +509,7 @@ static json RunEvents(const Request &request, const std::string &save_path)
+ 	Require(DisasterCount() == 0, "disabled disaster baseline is not empty");
+ 	_settings_game.difficulty.disasters = true;
+ 	for (uint y = 28; y < 36; ++y) for (uint x = 4; x < 20; ++x) MakeSea(TileXY(x, y));
++	Require(Vehicle::CanAllocateItem(), "disaster vehicle pool is exhausted");
+ 	DisasterVehicle *disaster = new DisasterVehicle(8 * TILE_SIZE + TILE_SIZE / 2, 30 * TILE_SIZE + TILE_SIZE / 2,
+ 		DIR_SE, ST_SMALL_SUBMARINE);
+ 	VehicleID disaster_id = disaster->index;
