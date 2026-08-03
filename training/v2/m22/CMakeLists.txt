@@ -120,6 +120,12 @@ v2_enable_strict_warnings(m22_campaign_gate)
 set_target_properties(m22_campaign_gate PROPERTIES BUILD_RPATH "${V2_NVIDIA_LIBRARY_PATHS}")
 target_link_options(m22_campaign_gate PRIVATE "LINKER:--disable-new-dtags")
 
+add_executable(m22_qualification_gate ../tests/m22_qualification_gate.cpp)
+target_link_libraries(m22_qualification_gate PRIVATE openttd_rl_v2_m22_policy CUDA::cudart)
+v2_enable_strict_warnings(m22_qualification_gate)
+set_target_properties(m22_qualification_gate PROPERTIES BUILD_RPATH "${V2_NVIDIA_LIBRARY_PATHS}")
+target_link_options(m22_qualification_gate PRIVATE "LINKER:--disable-new-dtags")
+
 if(BUILD_TESTING)
   add_test(NAME v2_m22_learning_cpu COMMAND m22_learning_gate --device cpu)
   set_tests_properties(v2_m22_learning_cpu PROPERTIES LABELS "v2;m22;learning;cpu;offline" TIMEOUT 300)
