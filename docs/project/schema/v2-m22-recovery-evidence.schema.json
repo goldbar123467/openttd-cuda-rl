@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-recovery-evidence.schema.json",
+  "title": "OpenTTD-RL V2 M22 exact fresh-process recovery evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "configuration", "identity", "isolation", "source", "runs", "summary", "report_sha256"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m22-recovery-evidence-1"},
+    "status": {"const": "PASS"},
+    "configuration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architectures", "continue_updates", "device", "fork_update", "run_seed", "total_updates", "transitions_per_update"],
+      "properties": {
+        "architectures": {"const": ["monolithic-generalist-v1", "specialist-router-v1"]},
+        "continue_updates": {"const": 8}, "device": {"const": "cuda:0"}, "fork_update": {"const": 16},
+        "run_seed": {"const": 1910917137}, "total_updates": {"const": 24}, "transitions_per_update": {"const": 128}
+      }
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["bubblewrap_sha256", "campaign_executable_sha256", "corpus_binary_sha256", "learning_contract_sha256", "native_corpus_sha256", "recovery_schema_sha256"],
+      "properties": {
+        "bubblewrap_sha256": {"$ref": "#/$defs/sha256"}, "campaign_executable_sha256": {"$ref": "#/$defs/sha256"},
+        "corpus_binary_sha256": {"$ref": "#/$defs/sha256"}, "learning_contract_sha256": {"$ref": "#/$defs/sha256"},
+        "native_corpus_sha256": {"$ref": "#/$defs/sha256"}, "recovery_schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "isolation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_root_only_writable", "bubblewrap", "final_manifest_accessed", "final_manifest_binding", "network_namespace", "root_filesystem"],
+      "properties": {
+        "artifact_root_only_writable": {"const": true}, "bubblewrap": {"const": true},
+        "final_manifest_accessed": {"const": false}, "final_manifest_binding": {"const": "read-only-empty-file"},
+        "network_namespace": {"const": "unshared"}, "root_filesystem": {"const": "read-only"}
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["clean", "files", "repository_commit", "tree_sha256"],
+      "properties": {
+        "clean": {"const": true},
+        "files": {"type": "array", "minItems": 19, "maxItems": 19, "items": {"$ref": "#/$defs/source_file"}},
+        "repository_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "runs": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/run"}},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architectures", "exact_architectures", "fresh_processes", "maximum_wall_seconds"],
+      "properties": {
+        "architectures": {"const": 2}, "exact_architectures": {"const": 2}, "fresh_processes": {"const": 6},
+        "maximum_wall_seconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "report_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_file": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "file": {
+      "type": "object", "additionalProperties": false, "required": ["bytes", "name", "sha256"],
+      "properties": {"bytes": {"type": "integer", "minimum": 1}, "name": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "checkpoint": {
+      "type": "object", "additionalProperties": false, "required": ["files", "id", "path", "update"],
+      "properties": {
+        "files": {"type": "array", "minItems": 7, "maxItems": 7, "items": {"$ref": "#/$defs/file"}},
+        "id": {"$ref": "#/$defs/sha256"}, "path": {"type": "string", "minLength": 1},
+        "update": {"type": "integer", "minimum": 8, "maximum": 24, "multipleOf": 8}
+      }
+    },
+    "trace": {
+      "type": "object", "additionalProperties": false,
+      "required": ["actions_sha256", "case_order_sha256", "hidden_state_sha256", "log_probabilities_sha256", "rewards_sha256", "values_sha256"],
+      "properties": {
+        "actions_sha256": {"$ref": "#/$defs/sha256"}, "case_order_sha256": {"$ref": "#/$defs/sha256"},
+        "hidden_state_sha256": {"$ref": "#/$defs/sha256"}, "log_probabilities_sha256": {"$ref": "#/$defs/sha256"},
+        "rewards_sha256": {"$ref": "#/$defs/sha256"}, "values_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "retention": {
+      "type": "object", "additionalProperties": false,
+      "required": ["accuracy", "catastrophic_regression", "checkpoint_allowed", "introduced_programs", "mean_reward", "pass_mask", "passed_programs", "selection_eligible", "stage", "update"],
+      "properties": {
+        "accuracy": {"type": "number"}, "catastrophic_regression": {"type": "boolean"}, "checkpoint_allowed": {"type": "boolean"},
+        "introduced_programs": {"type": "integer", "minimum": 1, "maximum": 16}, "mean_reward": {"type": "number"},
+        "pass_mask": {"type": "integer", "minimum": 0}, "passed_programs": {"type": "integer", "minimum": 0, "maximum": 16},
+        "selection_eligible": {"type": "boolean"}, "stage": {"type": "integer", "minimum": 0, "maximum": 6},
+        "update": {"type": "integer", "minimum": 1, "maximum": 24}
+      }
+    },
+    "update": {
+      "type": "object", "additionalProperties": false,
+      "required": ["approximate_kl", "clip_fraction", "correct_program_fraction", "entropy", "explained_variance", "gradient_norm", "mean_rollout_reward", "policy_loss", "retention_ran", "stage", "trace", "transitions", "update", "value_loss"],
+      "properties": {
+        "approximate_kl": {"type": "number"}, "clip_fraction": {"type": "number"}, "correct_program_fraction": {"type": "number"},
+        "entropy": {"type": "number"}, "explained_variance": {"type": "number"}, "gradient_norm": {"type": "number"},
+        "mean_rollout_reward": {"type": "number"}, "policy_loss": {"type": "number"}, "retention_ran": {"type": "boolean"},
+        "retention": {"$ref": "#/$defs/retention"}, "stage": {"type": "integer", "minimum": 0, "maximum": 6},
+        "trace": {"$ref": "#/$defs/trace"}, "transitions": {"type": "integer", "minimum": 128, "maximum": 3072, "multipleOf": 128},
+        "update": {"type": "integer", "minimum": 1, "maximum": 24}, "value_loss": {"type": "number"}
+      }
+    },
+    "terminal": {
+      "type": "object", "additionalProperties": false, "required": ["architecture", "seed", "transitions", "updates"],
+      "properties": {
+        "architecture": {"enum": ["monolithic-generalist-v1", "specialist-router-v1"]}, "seed": {"const": 1910917137},
+        "transitions": {"type": "integer", "minimum": 2048, "maximum": 3072}, "updates": {"type": "integer", "minimum": 16, "maximum": 24}
+      }
+    },
+    "process": {
+      "type": "object", "additionalProperties": false,
+      "required": ["checkpoints", "exit_code", "log_path", "name", "pid", "stdout_sha256", "terminal", "updates", "updates_sha256", "wall_seconds"],
+      "properties": {
+        "checkpoints": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"$ref": "#/$defs/checkpoint"}},
+        "exit_code": {"const": 0}, "log_path": {"type": "string", "minLength": 1},
+        "name": {"enum": ["uninterrupted", "prefix", "resumed"]}, "pid": {"type": "integer", "minimum": 2},
+        "stdout_sha256": {"$ref": "#/$defs/sha256"}, "terminal": {"$ref": "#/$defs/terminal"},
+        "updates": {"type": "array", "minItems": 8, "maxItems": 24, "items": {"$ref": "#/$defs/update"}},
+        "updates_sha256": {"$ref": "#/$defs/sha256"}, "wall_seconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "equivalence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["all_equivalence_fields_exact", "checkpoint_inventories_exact", "equivalence_fields", "final_checkpoint_id", "fork_checkpoint_id", "fresh_processes", "prefix_updates_exact", "resumed_updates_exact", "trace_fields"],
+      "properties": {
+        "all_equivalence_fields_exact": {"const": true}, "checkpoint_inventories_exact": {"const": true},
+        "equivalence_fields": {"type": "array", "minItems": 13, "maxItems": 13, "items": {"type": "string"}},
+        "final_checkpoint_id": {"$ref": "#/$defs/sha256"}, "fork_checkpoint_id": {"$ref": "#/$defs/sha256"},
+        "fresh_processes": {"const": true}, "prefix_updates_exact": {"const": true}, "resumed_updates_exact": {"const": true},
+        "trace_fields": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"type": "string"}}
+      }
+    },
+    "run": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architecture", "equivalence", "prefix", "resumed", "uninterrupted"],
+      "properties": {
+        "architecture": {"enum": ["monolithic-generalist-v1", "specialist-router-v1"]},
+        "equivalence": {"$ref": "#/$defs/equivalence"}, "prefix": {"$ref": "#/$defs/process"},
+        "resumed": {"$ref": "#/$defs/process"}, "uninterrupted": {"$ref": "#/$defs/process"}
+      }
+    }
+  }
+}

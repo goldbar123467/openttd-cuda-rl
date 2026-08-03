@@ -27,6 +27,12 @@ struct M22CampaignUpdateResult {
     std::uint32_t stage{};
     double mean_rollout_reward{};
     double correct_program_fraction{};
+    std::string case_order_sha256;
+    std::string actions_sha256;
+    std::string log_probabilities_sha256;
+    std::string values_sha256;
+    std::string rewards_sha256;
+    std::string hidden_state_sha256;
     bool retention_ran{};
     M22RetentionResult retention;
 };

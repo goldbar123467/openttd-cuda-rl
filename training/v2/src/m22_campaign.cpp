@@ -4,11 +4,15 @@
 #include <array>
 #include <cmath>
 #include <iomanip>
+#include <memory>
 #include <random>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 #include <vector>
+
+#include <openssl/evp.h>
 
 namespace openttd_rl::v2 {
 
@@ -27,6 +31,69 @@ const std::array<std::vector<std::uint8_t>, 7> kStagePrograms = {
     std::vector<std::uint8_t>{12, 13, 14, 15, 16},
 };
 constexpr std::array<std::uint64_t, 7> kStageStarts = {0, 4, 8, 12, 16, 20, 24};
+
+class Sha256 {
+public:
+    Sha256() : context_(EVP_MD_CTX_new(), &EVP_MD_CTX_free)
+    {
+        if (!context_ || EVP_DigestInit_ex(context_.get(), EVP_sha256(), nullptr) != 1) {
+            throw std::runtime_error("cannot initialize M22 campaign trace SHA-256");
+        }
+    }
+
+    void update(const void *data, std::size_t size)
+    {
+        if (size > 0 && EVP_DigestUpdate(context_.get(), data, size) != 1) {
+            throw std::runtime_error("cannot update M22 campaign trace SHA-256");
+        }
+    }
+
+    [[nodiscard]] std::string finish()
+    {
+        std::array<unsigned char, EVP_MAX_MD_SIZE> digest{};
+        unsigned int size = 0;
+        if (EVP_DigestFinal_ex(context_.get(), digest.data(), &size) != 1 || size != 32) {
+            throw std::runtime_error("cannot finish M22 campaign trace SHA-256");
+        }
+        constexpr char hexadecimal[] = "0123456789abcdef";
+        std::string result;
+        result.reserve(size * 2U);
+        for (unsigned int index = 0; index < size; ++index) {
+            result.push_back(hexadecimal[digest[index] >> 4U]);
+            result.push_back(hexadecimal[digest[index] & 0x0FU]);
+        }
+        return result;
+    }
+
+private:
+    std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)> context_;
+};
+
+std::string tensor_sha256(std::string_view label, const torch::Tensor &tensor)
+{
+    if (!tensor.defined()) throw std::invalid_argument("M22 campaign trace tensor is undefined");
+    const auto value = tensor.detach().to(torch::kCPU).contiguous();
+    Sha256 digest;
+    digest.update(label.data(), label.size());
+    const auto scalar_type = static_cast<std::int32_t>(value.scalar_type());
+    const auto dimensions = static_cast<std::int32_t>(value.dim());
+    digest.update(&scalar_type, sizeof(scalar_type));
+    digest.update(&dimensions, sizeof(dimensions));
+    for (const auto size : value.sizes()) digest.update(&size, sizeof(size));
+    digest.update(value.const_data_ptr(), value.nbytes());
+    return digest.finish();
+}
+
+std::string case_order_sha256(const std::vector<std::uint32_t> &case_order)
+{
+    Sha256 digest;
+    constexpr std::string_view label = "m22-case-order-u32-v1";
+    digest.update(label.data(), label.size());
+    const auto count = static_cast<std::uint64_t>(case_order.size());
+    digest.update(&count, sizeof(count));
+    digest.update(case_order.data(), case_order.size() * sizeof(case_order.front()));
+    return digest.finish();
+}
 
 M22CompactBatch concatenate(const std::vector<M22CompactBatch> &items)
 {
@@ -144,6 +211,8 @@ M22CampaignUpdateResult M22Campaign::run_update()
     double reward_sum = 0.0;
     std::uint64_t correct = 0;
     std::vector<const M22CorpusEntry *> current(8, nullptr);
+    std::vector<std::uint32_t> case_order;
+    case_order.reserve(static_cast<std::size_t>(config.rollout_steps * config.parallel_environments));
     for (std::int64_t time = 0; time < config.rollout_steps; ++time) {
         const bool reset = time % kM22SequenceLength == 0;
         if (reset) {
@@ -163,6 +232,7 @@ M22CampaignUpdateResult M22Campaign::run_update()
         const auto action_view = action.actions.accessor<std::int64_t, 1>();
         for (std::int64_t environment = 0; environment < config.parallel_environments; ++environment) {
             const auto &entry = *current[static_cast<std::size_t>(environment)];
+            case_order.push_back(entry.program);
             const double reward = entry.rewards[static_cast<std::size_t>(action_view[environment])];
             reward_view[environment] = static_cast<float>(reward);
             reward_sum += reward;
@@ -179,11 +249,14 @@ M22CampaignUpdateResult M22Campaign::run_update()
             continuation.index_put_({time, Slice()}, 0.0F);
         }
     }
+    const auto action_vector = torch::cat(actions);
+    const auto log_vector = torch::cat(logs);
+    const auto reward_matrix = torch::cat(rewards).reshape({config.rollout_steps, config.parallel_environments});
     const auto value_matrix = torch::cat(values).reshape({config.rollout_steps, config.parallel_environments});
     auto next_values = torch::zeros_like(value_matrix);
     next_values.index_put_({Slice(0, config.rollout_steps - 1), Slice()}, value_matrix.index({Slice(1), Slice()}));
     const auto gae = m22_compute_gae(
-        torch::cat(rewards).reshape({config.rollout_steps, config.parallel_environments}),
+        reward_matrix,
         value_matrix,
         next_values,
         bootstrap,
@@ -191,10 +264,16 @@ M22CampaignUpdateResult M22Campaign::run_update()
         config.gamma,
         config.gae_lambda);
     M22RolloutBatch rollout{
-        concatenate(compact_steps), torch::cat(actions), torch::cat(logs), value_matrix.flatten(),
+        concatenate(compact_steps), action_vector, log_vector, value_matrix.flatten(),
         m22_normalize_advantages(gae.advantages.flatten()), gae.returns.flatten(),
     };
     M22CampaignUpdateResult result;
+    result.case_order_sha256 = case_order_sha256(case_order);
+    result.actions_sha256 = tensor_sha256("m22-actions-i64-v1", action_vector);
+    result.log_probabilities_sha256 = tensor_sha256("m22-log-probabilities-f32-v1", log_vector);
+    result.values_sha256 = tensor_sha256("m22-values-f32-v1", value_matrix);
+    result.rewards_sha256 = tensor_sha256("m22-rewards-f32-v1", reward_matrix);
+    result.hidden_state_sha256 = tensor_sha256("m22-hidden-state-f32-v1", hidden_state_);
     result.trainer = trainer_->update(rollout);
     transition_ += static_cast<std::uint64_t>(rollout.size());
     if (transition_ != trainer_->counters().accepted_transitions) {
@@ -302,14 +381,23 @@ std::string m22_campaign_update_json(const M22CampaignUpdateResult &result)
 {
     std::ostringstream output;
     output << std::setprecision(17)
-           << "{\"correct_program_fraction\":" << result.correct_program_fraction
+           << "{\"approximate_kl\":" << result.trainer.approximate_kl
+           << ",\"clip_fraction\":" << result.trainer.clip_fraction
+           << ",\"correct_program_fraction\":" << result.correct_program_fraction
            << ",\"entropy\":" << result.trainer.entropy
+           << ",\"explained_variance\":" << result.trainer.explained_variance
            << ",\"gradient_norm\":" << result.trainer.gradient_norm
            << ",\"mean_rollout_reward\":" << result.mean_rollout_reward
            << ",\"policy_loss\":" << result.trainer.policy_loss
            << ",\"retention_ran\":" << (result.retention_ran ? "true" : "false");
     if (result.retention_ran) output << ",\"retention\":" << retention_json(result.retention);
     output << ",\"stage\":" << result.stage
+           << ",\"trace\":{\"actions_sha256\":\"" << result.actions_sha256
+           << "\",\"case_order_sha256\":\"" << result.case_order_sha256
+           << "\",\"hidden_state_sha256\":\"" << result.hidden_state_sha256
+           << "\",\"log_probabilities_sha256\":\"" << result.log_probabilities_sha256
+           << "\",\"rewards_sha256\":\"" << result.rewards_sha256
+           << "\",\"values_sha256\":\"" << result.values_sha256 << "\"}"
            << ",\"transitions\":" << result.trainer.transitions
            << ",\"update\":" << result.trainer.update
            << ",\"value_loss\":" << result.trainer.value_loss << '}';

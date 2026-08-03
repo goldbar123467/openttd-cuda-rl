@@ -17,6 +17,11 @@ void require(bool condition, const char *message)
     if (!condition) throw std::runtime_error(message);
 }
 
+bool sha256(const std::string &value)
+{
+    return value.size() == 64 && value.find_first_not_of("0123456789abcdef") == std::string::npos;
+}
+
 double maximum_parameter_difference(
     const openttd_rl::v2::GeneralistPolicy &left,
     const openttd_rl::v2::GeneralistPolicy &right)
@@ -66,6 +71,10 @@ void run(const torch::Device &device, const std::filesystem::path &corpus_path)
     require(boundary.retention_ran && boundary.retention.checkpoint_allowed &&
             uninterrupted.transition() == 512 && uninterrupted.episode() == 64,
             "M22 campaign did not reach the completed retention boundary");
+    require(sha256(boundary.case_order_sha256) && sha256(boundary.actions_sha256) &&
+            sha256(boundary.log_probabilities_sha256) && sha256(boundary.values_sha256) &&
+            sha256(boundary.rewards_sha256) && sha256(boundary.hidden_state_sha256),
+            "M22 campaign did not publish complete exact-recovery trace identities");
     const auto temporary = std::filesystem::temp_directory_path() /
         ("openttd-rl-m22-campaign-" + std::to_string(::getpid()) + "-" + (device.is_cuda() ? "cuda" : "cpu"));
     if (!std::filesystem::create_directory(temporary)) throw std::runtime_error("cannot create M22 campaign test directory");

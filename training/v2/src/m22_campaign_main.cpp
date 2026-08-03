@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <map>
+#include <set>
 #include <stdexcept>
 #include <string>
 
@@ -29,6 +30,16 @@ const std::string &required(const std::map<std::string, std::string> &args, cons
     const auto found = args.find(name);
     if (found == args.end()) throw std::invalid_argument("missing M22 campaign argument: " + name);
     return found->second;
+}
+
+std::set<std::string> argument_names(const std::map<std::string, std::string> &args)
+{
+    std::set<std::string> result;
+    for (const auto &[name, value] : args) {
+        static_cast<void>(value);
+        result.insert(name);
+    }
+    return result;
 }
 
 std::uint64_t unsigned_value(const std::string &value, const char *name)
@@ -65,9 +76,21 @@ void run(int argc, char **argv)
     std::unique_ptr<M22Campaign> campaign;
     const auto resume = args.find("--resume");
     if (resume != args.end()) {
+        const std::set<std::string> expected = {
+            "--additional-updates", "--checkpoint-root", "--corpus", "--device", "--resume",
+        };
+        if (argument_names(args) != expected) {
+            throw std::invalid_argument("resumed M22 campaign argument inventory drifted");
+        }
         auto loaded = load_m22_checkpoint(std::filesystem::absolute(resume->second), policy_device);
         campaign = std::make_unique<M22Campaign>(corpus, std::move(loaded.trainer), loaded.campaign);
     } else {
+        const std::set<std::string> expected = {
+            "--additional-updates", "--architecture", "--checkpoint-root", "--corpus", "--device", "--seed",
+        };
+        if (argument_names(args) != expected) {
+            throw std::invalid_argument("fresh M22 campaign argument inventory drifted");
+        }
         const auto architecture = parse_generalist_architecture(required(args, "--architecture"));
         const auto seed = unsigned_value(required(args, "--seed"), "run seed");
         M22PpoConfig config;
