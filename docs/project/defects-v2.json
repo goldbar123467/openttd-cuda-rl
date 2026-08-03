@@ -101,6 +101,38 @@
         "config/v2/m22-final-runtime-source.json",
         "tests/project/v2/test_v2_m22_final_runtime_source.py"
       ]
+    },
+    {
+      "id": "V2-DEF-0004",
+      "kind": "DEFECT",
+      "title": "M22 final adapter omitted two preregistered public probe aliases",
+      "severity": "MAJOR",
+      "blocks_release": true,
+      "status": "CLOSED",
+      "discovery_date": "2026-08-03",
+      "affected_requirement_ids": [
+        "V2-LEARN-007",
+        "V2-LEARN-008"
+      ],
+      "affected_gates": [
+        "G22"
+      ],
+      "first_observed": "The first clean final-runner invocation passed its fixed CUDA preflight, read the frozen manifest once, and rejected G15/m15-competence before creating the cases directory.",
+      "impact": "Zero final cases, final evaluator processes, or native dispatches ran, so no result could influence selection; however, the manifest was accessed and the source-generic adapter could not begin the preregistered suite.",
+      "root_cause": "The pre-access adapter tests covered the accepted G15 passenger-service and G16 single-leg harness names but not the manifest's public aliases m15-competence and industry-chain, both of which project to those same frozen native transactions.",
+      "reproducer": [
+        "config/v2/m22-final-attempt-a.json"
+      ],
+      "evidence": [
+        "README.md",
+        "config/v2/m22-final-attempt-a.json"
+      ],
+      "fix_revision": null,
+      "regression_test": "tests/project/v2/test_v2_m22_final_evaluation_source.py",
+      "closure_evidence": [
+        "config/v2/m22-final-attempt-a.json",
+        "tests/project/v2/test_v2_m22_final_evaluation_source.py"
+      ]
     }
   ],
   "open_counts": {
@@ -111,6 +143,6 @@
   },
   "diagnostics": {
     "last_reviewed_date": "2026-08-03",
-    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records and closes the M22 sampler and retention-classification failure found by the first complete matched development execution: its source correction, targeted CUDA reproduction, revised-source exact recovery, and complete six-campaign rerun all pass. V2-DEF-0003 records the fail-closed retained-runtime preparation attempts and closes their OpenGFX ordering, smoke-parent, and M15 tier-projection defects with the accepted 98-CTest/eight-smoke runtime record. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
+    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records and closes the M22 sampler and retention-classification failure found by the first complete matched development execution. V2-DEF-0003 records and closes the retained-runtime OpenGFX ordering, smoke-parent, and M15 tier-projection defects. V2-DEF-0004 records and closes the pre-case final-adapter failure: the first final-runner invocation read the frozen manifest but rejected an omitted public probe alias before creating the cases directory or executing any final case; the exact rejected attempt is retained and the adapter's accessed-manifest regression covers all 17 gate/probe pairs without changing the frozen checkpoint. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
   }
 }

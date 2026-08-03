@@ -113,8 +113,9 @@ def canonical_probe(case: dict[str, Any]) -> str:
     probe = case["native_probe"]
     gate = case["source_gate"]
     aliases = {
-        "G15": {"passenger-service": "passenger-service", "passenger": "passenger-service"},
-        "G16": {"single-leg": "single-leg", "cargo-service": "single-leg"},
+        "G15": {"passenger-service": "passenger-service", "passenger": "passenger-service",
+                "m15-competence": "passenger-service"},
+        "G16": {"single-leg": "single-leg", "cargo-service": "single-leg", "industry-chain": "single-leg"},
         "G17": {"passenger": "passenger", "rail-passenger": "passenger", "freight": "freight", "rail-freight": "freight"},
         "G18": {"natural": "natural", "ship-natural": "natural", "constructed": "constructed", "ship-constructed": "constructed"},
         "G19": {"service": "service", "air-service": "service", "airplane": "service", "helicopter": "helicopter",

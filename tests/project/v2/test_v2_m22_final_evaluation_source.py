@@ -80,9 +80,13 @@ class M22FinalEvaluationSourceTests(unittest.TestCase):
                 "checkpoint_id": "b" * 64, "evaluation_manifest_schema_sha256": "c" * 64,
                 "evaluator_executable_sha256": "d" * 64, "evaluator_report_schema_sha256": "e" * 64,
                 "learning_contract_sha256": "f" * 64, "native_executable_sha256": "0" * 64,
-                "native_source_tree": "1" * 40, "qualification_evidence_sha256": "2" * 64,
+                "native_source_tree": "1" * 40, "prior_attempt_sha256": "2" * 64,
+                "qualification_evidence_sha256": "2" * 64,
                 "runtime_source_sha256": "3" * 64,
             },
+            "history": {"cases_attempted": 0, "failure_category": "final-manifest-adapter", "manifest_reads": 1,
+                        "prior_attempt": "config/v2/m22-final-attempt-a.json",
+                        "status": "REJECTED_BEFORE_CASE_EXECUTION"},
             "manifest": {"case_count": 42, "id": "m22-independent-final-v1",
                          "path": "config/v2/m22-evaluation-manifest.json", "sha256": "4" * 64},
             "preflight": {"evaluator": copy.deepcopy(runs[0]["evaluator"]),
@@ -115,7 +119,7 @@ class M22FinalEvaluationSourceTests(unittest.TestCase):
 
     def test_public_capability_mapping_covers_all_sixteen_active_programs(self) -> None:
         rows = (
-            ("G15", "passenger-service", "road-passenger"), ("G16", "single-leg", "road-cargo"),
+            ("G15", "m15-competence", "road-passenger"), ("G16", "industry-chain", "road-cargo"),
             ("G17", "passenger", "rail-passenger"), ("G17", "freight", "rail-freight"),
             ("G18", "natural", "ship-natural"), ("G18", "constructed", "ship-constructed"),
             ("G19", "service", "air-service"), ("G19", "helicopter", "air-helicopter"),
@@ -131,6 +135,13 @@ class M22FinalEvaluationSourceTests(unittest.TestCase):
             actual.append(runner.public_program(case))
             self.assertEqual(actual[-1], expected)
         self.assertEqual(actual, list(runner.PROGRAMS[1:]))
+
+    def test_accessed_preregistered_manifest_has_complete_public_mapping(self) -> None:
+        manifest = runner.load(self.root / runner.learning.EVALUATION)
+        self.assertEqual(len(manifest["cases"]), 42)
+        self.assertTrue(all(runner.public_program(case) == case["required_program"] for case in manifest["cases"]))
+        self.assertEqual(len({(case["source_gate"], case["native_probe"])
+                              for case in manifest["cases"]}), 17)
 
     def test_evaluator_command_has_no_seed_or_required_program_channel(self) -> None:
         case = self.case()
@@ -219,7 +230,9 @@ class M22FinalEvaluationSourceTests(unittest.TestCase):
                 runner.write_new(path, {"value": 2})
 
     def test_source_inventory_binds_runner_validator_schema_and_native_boundaries(self) -> None:
-        self.assertEqual(len(runner.SOURCE_PATHS), 12)
+        self.assertEqual(len(runner.SOURCE_PATHS), 14)
+        self.assertIn("config/v2/m22-final-attempt-a.json", runner.SOURCE_PATHS)
+        self.assertIn("docs/project/schema/v2-m22-final-attempt.schema.json", runner.SOURCE_PATHS)
         self.assertIn("scripts/v2/run_m22_final_evaluation.py", runner.SOURCE_PATHS)
         self.assertIn("scripts/v2/validate_m22_final_evaluation.py", runner.SOURCE_PATHS)
         self.assertIn("scripts/v2/m22_final_native.py", runner.SOURCE_PATHS)

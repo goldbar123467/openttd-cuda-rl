@@ -85,6 +85,7 @@ def expected_identity(root: pathlib.Path, report: dict[str, Any]) -> dict[str, A
         "learning_contract_sha256": runner.sha256(root / runner.CONTRACT),
         "native_executable_sha256": runtime["executable"]["sha256"],
         "native_source_tree": runtime["source"]["tree"],
+        "prior_attempt_sha256": runner.sha256(root / runner.PRIOR_ATTEMPT),
         "qualification_evidence_sha256": runner.sha256(root / runner.QUALIFICATION),
         "runtime_source_sha256": runner.sha256(root / runner.RUNTIME_SOURCE),
     }
@@ -192,6 +193,13 @@ def validate_value(
     if manifest_value is None:
         manifest_value = load(manifest_path)
     contract = load(root / runner.CONTRACT)
+    prior_attempt = runner.validate_prior_attempt(root, contract)
+    require(report["history"] == {
+        "cases_attempted": prior_attempt["execution"]["cases_attempted"],
+        "failure_category": prior_attempt["failure"]["category"],
+        "manifest_reads": prior_attempt["manifest"]["reads"],
+        "prior_attempt": runner.PRIOR_ATTEMPT.as_posix(), "status": prior_attempt["status"],
+    }, "M22 rejected-attempt history projection drifted")
     runner.validate_manifest_value(
         root, manifest_value, report["manifest"]["sha256"], contract, load(root / runner.MANIFEST_SCHEMA),
     )

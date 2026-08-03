@@ -4,7 +4,7 @@
   "title": "OpenTTD-RL V2 M22 independent final evaluation evidence",
   "type": "object",
   "additionalProperties": false,
-  "required": ["acceptance", "artifact_root", "failure_counts", "identity", "manifest", "preflight", "protocol", "report_sha256", "runs", "schema_version", "source", "statistics", "status"],
+  "required": ["acceptance", "artifact_root", "failure_counts", "history", "identity", "manifest", "preflight", "protocol", "report_sha256", "runs", "schema_version", "source", "statistics", "status"],
   "properties": {
     "schema_version": {"const": "openttd-rl-v2-m22-final-evaluation-evidence-1"},
     "status": {"enum": ["PASS", "FAIL"]},
@@ -48,7 +48,7 @@
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["aggregate_schema_sha256", "bubblewrap_sha256", "checkpoint_id", "evaluation_manifest_schema_sha256", "evaluator_executable_sha256", "evaluator_report_schema_sha256", "learning_contract_sha256", "native_executable_sha256", "native_source_tree", "qualification_evidence_sha256", "runtime_source_sha256"],
+      "required": ["aggregate_schema_sha256", "bubblewrap_sha256", "checkpoint_id", "evaluation_manifest_schema_sha256", "evaluator_executable_sha256", "evaluator_report_schema_sha256", "learning_contract_sha256", "native_executable_sha256", "native_source_tree", "prior_attempt_sha256", "qualification_evidence_sha256", "runtime_source_sha256"],
       "properties": {
         "aggregate_schema_sha256": {"$ref": "#/$defs/sha256"},
         "bubblewrap_sha256": {"$ref": "#/$defs/sha256"},
@@ -59,6 +59,7 @@
         "learning_contract_sha256": {"$ref": "#/$defs/sha256"},
         "native_executable_sha256": {"$ref": "#/$defs/sha256"},
         "native_source_tree": {"$ref": "#/$defs/git"},
+        "prior_attempt_sha256": {"$ref": "#/$defs/sha256"},
         "qualification_evidence_sha256": {"$ref": "#/$defs/sha256"},
         "runtime_source_sha256": {"$ref": "#/$defs/sha256"}
       }
@@ -74,11 +75,23 @@
         "sha256": {"$ref": "#/$defs/sha256"}
       }
     },
+    "history": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases_attempted", "failure_category", "manifest_reads", "prior_attempt", "status"],
+      "properties": {
+        "cases_attempted": {"const": 0},
+        "failure_category": {"const": "final-manifest-adapter"},
+        "manifest_reads": {"const": 1},
+        "prior_attempt": {"const": "config/v2/m22-final-attempt-a.json"},
+        "status": {"const": "REJECTED_BEFORE_CASE_EXECUTION"}
+      }
+    },
     "preflight": {"$ref": "#/$defs/preflight"},
     "protocol": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["case_order", "cases_attempted", "cases_declared", "evaluator_attempts", "evaluator_processes", "manifest_reads", "native_dispatches", "native_processes", "post_result_selection", "replacements", "retries"],
+      "required": ["case_order", "cases_attempted", "cases_declared", "evaluator_attempts", "evaluator_processes", "manifest_reads", "native_dispatches", "native_processes", "post_result_selection", "prior_nonexecuting_attempts", "replacements", "retries", "total_manifest_reads"],
       "properties": {
         "case_order": {"type": "array", "minItems": 42, "maxItems": 42, "uniqueItems": true, "items": {"$ref": "#/$defs/case_id"}},
         "cases_attempted": {"const": 42},
@@ -89,8 +102,10 @@
         "native_dispatches": {"const": 42},
         "native_processes": {"type": "integer", "minimum": 0, "maximum": 42},
         "post_result_selection": {"const": false},
+        "prior_nonexecuting_attempts": {"const": 1},
         "replacements": {"const": 0},
-        "retries": {"const": 0}
+        "retries": {"const": 0},
+        "total_manifest_reads": {"const": 2}
       }
     },
     "runs": {"type": "array", "minItems": 42, "maxItems": 42, "items": {"$ref": "#/$defs/run"}},
@@ -100,7 +115,7 @@
       "required": ["clean", "files", "repository_commit", "repository_tree", "tree_sha256"],
       "properties": {
         "clean": {"const": true},
-        "files": {"type": "array", "minItems": 12, "maxItems": 12, "items": {"$ref": "#/$defs/source_file"}},
+        "files": {"type": "array", "minItems": 14, "maxItems": 14, "items": {"$ref": "#/$defs/source_file"}},
         "repository_commit": {"$ref": "#/$defs/git"},
         "repository_tree": {"$ref": "#/$defs/git"},
         "tree_sha256": {"$ref": "#/$defs/sha256"}

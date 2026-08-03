@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-final-attempt.schema.json",
+  "title": "OpenTTD-RL V2 M22 rejected pre-case final attempt record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "artifacts", "attempt_id", "execution", "failure", "identity", "manifest", "schema_sha256", "schema_version", "selection_unchanged", "source", "status"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m22-final-attempt.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m22-final-attempt-1"},
+    "schema_sha256": {"$ref": "#/$defs/sha256"},
+    "attempt_id": {"const": "m22-final-evaluation-a"},
+    "status": {"const": "REJECTED_BEFORE_CASE_EXECUTION"},
+    "selection_unchanged": {"const": true},
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repository_commit", "repository_tree", "runner_sha256"],
+      "properties": {
+        "repository_commit": {"$ref": "#/$defs/git"},
+        "repository_tree": {"$ref": "#/$defs/git"},
+        "runner_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["checkpoint_id", "evaluator_executable_sha256", "qualification_evidence_sha256", "runtime_source_sha256"],
+      "properties": {
+        "checkpoint_id": {"$ref": "#/$defs/sha256"},
+        "evaluator_executable_sha256": {"$ref": "#/$defs/sha256"},
+        "qualification_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "runtime_source_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "manifest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["cases_observed", "opened", "path", "reads", "sha256"],
+      "properties": {
+        "cases_observed": {"const": 42},
+        "opened": {"const": true},
+        "path": {"const": "config/v2/m22-evaluation-manifest.json"},
+        "reads": {"const": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "execution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["cases_attempted", "final_evaluator_processes", "native_dispatches", "preflight_evaluator_processes", "replacements", "retries"],
+      "properties": {
+        "cases_attempted": {"const": 0},
+        "final_evaluator_processes": {"const": 0},
+        "native_dispatches": {"const": 0},
+        "preflight_evaluator_processes": {"const": 1},
+        "replacements": {"const": 0},
+        "retries": {"const": 0}
+      }
+    },
+    "failure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["category", "detail"],
+      "properties": {
+        "category": {"const": "final-manifest-adapter"},
+        "detail": {"const": "unsupported M22 native gate/probe pair: G15/m15-competence"}
+      }
+    },
+    "artifacts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evaluator_report", "preflight_record", "root", "stderr", "stdout"],
+      "properties": {
+        "root": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m22-final-evaluation-a"},
+        "evaluator_report": {"$ref": "#/$defs/file"},
+        "preflight_record": {"$ref": "#/$defs/file"},
+        "stderr": {"$ref": "#/$defs/file"},
+        "stdout": {"$ref": "#/$defs/file"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "file": {
+      "type": "object", "additionalProperties": false,
+      "required": ["bytes", "path", "sha256"],
+      "properties": {
+        "bytes": {"type": "integer", "minimum": 0},
+        "path": {"type": "string", "pattern": "^preflight/"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

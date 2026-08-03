@@ -36,6 +36,8 @@ import validate_m22_learning_contract as learning
 CONTRACT = pathlib.Path("config/v2/m22-learning-contract.json")
 QUALIFICATION = pathlib.Path("config/v2/m22-qualification-evidence.json")
 RUNTIME_SOURCE = pathlib.Path("config/v2/m22-final-runtime-source.json")
+PRIOR_ATTEMPT = pathlib.Path("config/v2/m22-final-attempt-a.json")
+PRIOR_ATTEMPT_SCHEMA = pathlib.Path("docs/project/schema/v2-m22-final-attempt.schema.json")
 MANIFEST_SCHEMA = pathlib.Path("docs/project/schema/v2-m22-evaluation-manifest.schema.json")
 EVALUATOR_SCHEMA = pathlib.Path("docs/project/schema/v2-m22-evaluator-report.schema.json")
 EVIDENCE_SCHEMA = pathlib.Path("docs/project/schema/v2-m22-final-evaluation-evidence.schema.json")
@@ -47,7 +49,9 @@ EVALUATOR_PUBLIC_FIELDS = tuple(field for field in native.PUBLIC_FIELDS if field
 SERVICE_MODES = {"road", "rail", "water", "air", "multimodal"}
 EXPECTED_SIZES = {(64, 64), (128, 128), (512, 128), (1024, 1024)}
 SOURCE_PATHS = (
+    "config/v2/m22-final-attempt-a.json",
     "docs/project/schema/v2-m22-evaluator-report.schema.json",
+    "docs/project/schema/v2-m22-final-attempt.schema.json",
     "docs/project/schema/v2-m22-final-evaluation-evidence.schema.json",
     "scripts/v2/m22_final_native.py",
     "scripts/v2/run_m22_final_evaluation.py",
@@ -460,6 +464,43 @@ def checkpoint_preflight(qualification: dict[str, Any], training_root: pathlib.P
     return checkpoint, selected
 
 
+def validate_prior_attempt(root: pathlib.Path, contract: dict[str, Any]) -> dict[str, Any]:
+    record = load(root / PRIOR_ATTEMPT)
+    schema_validate(record, load(root / PRIOR_ATTEMPT_SCHEMA), "M22 rejected final attempt")
+    require(record["schema_sha256"] == sha256(root / PRIOR_ATTEMPT_SCHEMA),
+            "M22 rejected-attempt schema identity drifted")
+    require(record["manifest"]["sha256"] == contract["independent_evaluation"]["manifest_sha256"] and
+            record["manifest"]["cases_observed"] == contract["independent_evaluation"]["case_count"],
+            "M22 rejected-attempt manifest binding drifted")
+    require(record["identity"]["qualification_evidence_sha256"] == sha256(root / QUALIFICATION) and
+            record["identity"]["runtime_source_sha256"] == sha256(root / RUNTIME_SOURCE),
+            "M22 rejected-attempt prerequisite identity drifted")
+    commit = record["source"]["repository_commit"]
+    require(git(root, "cat-file", "-t", commit) == "commit" and
+            git(root, "show", "-s", "--format=%T", commit) == record["source"]["repository_tree"],
+            "M22 rejected-attempt repository identity drifted")
+    prior_source = subprocess.run(
+        ["git", "show", f"{commit}:scripts/v2/run_m22_final_evaluation.py"], cwd=root,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    require(prior_source.returncode == 0 and sha256_bytes(prior_source.stdout) == record["source"]["runner_sha256"],
+            "M22 rejected-attempt runner identity drifted")
+    artifact_root = pathlib.Path(record["artifacts"]["root"])
+    require(artifact_root.is_absolute() and artifact_root.is_dir() and not artifact_root.is_symlink(),
+            "M22 rejected-attempt artifact root is unavailable")
+    for name in ("evaluator_report", "preflight_record", "stderr", "stdout"):
+        item = record["artifacts"][name]
+        path = artifact_root / item["path"]
+        require(path.is_file() and not path.is_symlink() and path.stat().st_size == item["bytes"] and
+                sha256(path) == item["sha256"], f"M22 rejected-attempt artifact identity drifted: {name}")
+    preflight = load(artifact_root / record["artifacts"]["preflight_record"]["path"])
+    require(preflight["public_case"] == public_case(PREFLIGHT_CASE) and
+            preflight["evaluator"]["status"] == "PASS" and
+            preflight["evaluator"]["action"] == PREFLIGHT_CASE["required_program"],
+            "M22 rejected-attempt preflight semantic drifted")
+    return record
+
+
 def runtime_paths(source: dict[str, Any]) -> native.RuntimePaths:
     return native.RuntimePaths(
         executable=pathlib.Path(source["executable"]["path"]),
@@ -510,7 +551,8 @@ def acceptance(runs: list[dict[str, Any]], statistics_value: dict[str, Any], pro
     expected_protocol = {
         "cases_declared": 42, "cases_attempted": 42, "evaluator_attempts": 42,
         "evaluator_processes": 42, "manifest_reads": 1, "native_dispatches": 42,
-        "native_processes": 42, "post_result_selection": False, "replacements": 0, "retries": 0,
+        "native_processes": 42, "post_result_selection": False, "prior_nonexecuting_attempts": 1,
+        "replacements": 0, "retries": 0, "total_manifest_reads": 2,
     }
     execution = len(runs) == 42 and all(protocol[key] == value for key, value in expected_protocol.items())
     result = {
@@ -534,7 +576,8 @@ def protocol_record(runs: list[dict[str, Any]], case_ids: list[str]) -> dict[str
         "manifest_reads": 1, "native_dispatches": len(runs),
         "native_processes": sum(run["native"]["status"] == "PASS" and
                                 run["native"]["record"]["fresh_processes"] == 1 for run in runs),
-        "post_result_selection": False, "replacements": 0, "retries": 0,
+        "post_result_selection": False, "prior_nonexecuting_attempts": 1,
+        "replacements": 0, "retries": 0, "total_manifest_reads": 2,
     }
 
 
@@ -559,6 +602,7 @@ def run(
     contract = load(root / CONTRACT)
     qualification = load(root / QUALIFICATION)
     runtime_source = load(root / RUNTIME_SOURCE)
+    prior_attempt = validate_prior_attempt(root, contract)
     manifest_schema, evaluator_schema = load(root / MANIFEST_SCHEMA), load(root / EVALUATOR_SCHEMA)
     source = source_identity(root)
     expected_manifest = (root / contract["independent_evaluation"]["manifest"]).resolve()
@@ -636,12 +680,19 @@ def run(
             "learning_contract_sha256": sha256(root / CONTRACT),
             "native_executable_sha256": runtime_source["executable"]["sha256"],
             "native_source_tree": runtime_source["source"]["tree"],
+            "prior_attempt_sha256": sha256(root / PRIOR_ATTEMPT),
             "qualification_evidence_sha256": sha256(root / QUALIFICATION),
             "runtime_source_sha256": sha256(root / RUNTIME_SOURCE),
         },
         "manifest": {
             "case_count": 42, "id": manifest["manifest_id"], "path": manifest_path.relative_to(root).as_posix(),
             "sha256": manifest_sha,
+        },
+        "history": {
+            "cases_attempted": prior_attempt["execution"]["cases_attempted"],
+            "failure_category": prior_attempt["failure"]["category"],
+            "manifest_reads": prior_attempt["manifest"]["reads"],
+            "prior_attempt": PRIOR_ATTEMPT.as_posix(), "status": prior_attempt["status"],
         },
         "preflight": preflight, "protocol": protocol, "runs": runs,
         "schema_version": "openttd-rl-v2-m22-final-evaluation-evidence-1",
