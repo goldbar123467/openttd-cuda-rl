@@ -77,6 +77,11 @@ def derived_seed(label: str, seed: int) -> int:
     return value or 1
 
 
+def resource_tier(width: int, height: int) -> str:
+    """Project an accepted M15 resource tier from the final-world tile count."""
+    return "curriculum" if width * height <= 262_144 else "generalization"
+
+
 @dataclass(frozen=True)
 class RuntimePaths:
     executable: pathlib.Path
@@ -194,7 +199,8 @@ def m15_request(root: pathlib.Path, runtime: RuntimePaths, case: dict[str, Any],
         "settings_manifest_sha256": sha256(root / "config/v2/setting-inventory.json"),
         "content_manifest_sha256": sha256(runtime.opengfx), "generation_mode": "native-seeded",
         "town_target": max(2, min(128, case["map_width"] * case["map_height"] // 4096)),
-        "industry_target": 256, "company_count": 1, "resource_tier": "final",
+        "industry_target": 256, "company_count": 1,
+        "resource_tier": resource_tier(case["map_width"], case["map_height"]),
         "v1_adapter": False, "rejection_reason": None,
     }
 

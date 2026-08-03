@@ -331,7 +331,13 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   rejected before its first smoke because the shared smoke parent did not exist;
   it likewise wrote no accepted record. The runner now creates that parent
   explicitly and tests its existence before every mocked native dispatch. A
-  clean create-only retry remains required.
+  subsequent non-accepting diagnostic reached the G15 parser, which correctly
+  rejected the adapter's invented `final` resource tier before world creation.
+  The adapter now derives the accepted M15 `curriculum` or `generalization` tier
+  from tile count, with boundary coverage across the complete final map domain.
+  Replaying the non-accepting diagnostic on the already built engine then passes
+  all eight synthetic G15-G21 smokes in eight fresh, network-unshared processes.
+  A clean create-only retry remains required for accepted evidence.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -402,7 +408,7 @@ The M22 validators are part of that command and rebuild both the JSON and bounde
 native corpus representations exactly from accepted G15-G21 evidence before
 accepting them, validate the historical and active exact-recovery reports, and
 validate the accepted matched-campaign and selected-checkpoint qualification
-reports plus their fail-closed mutations. At this checkpoint the suite passes 411 V2
+reports plus their fail-closed mutations. At this checkpoint the suite passes 412 V2
 tests and the unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15

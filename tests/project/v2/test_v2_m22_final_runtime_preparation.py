@@ -90,6 +90,12 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
             self.assertNotIn("seed", public)
             self.assertNotIn("required_program", public)
 
+    def test_g15_resource_tier_covers_the_complete_final_map_domain(self) -> None:
+        self.assertEqual(native.resource_tier(64, 64), "curriculum")
+        self.assertEqual(native.resource_tier(512, 128), "curriculum")
+        self.assertEqual(native.resource_tier(512, 1024), "generalization")
+        self.assertEqual(native.resource_tier(1024, 1024), "generalization")
+
     def test_preparation_has_no_final_manifest_path_or_case_loader(self) -> None:
         source = (self.root / "scripts/v2/prepare_m22_final_runtime.py").read_text(encoding="utf-8")
         self.assertNotIn("m22-evaluation-manifest.json", source)
