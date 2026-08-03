@@ -109,7 +109,14 @@ lower paired 95-percent confidence bounds over seeded-random-legal and wait-only
 are `0.390291622196` and `1.42192802898`. Offline and live validators rehash and
 recompute the complete retained result. G22 now passes with zero nonclosed
 defects; final-v1 and follow-up-v1 remain immutable `FAIL`, and no V2 release
-claim has been made.
+claim has been made. M23 implementation now includes the deterministic two-model
+opset-18 exporter, an exact native compact-input adapter, independent C++ and
+Python golden-corpus implementations, and an inference-only ONNX Runtime 1.28.0
+adapter/evaluator. Two isolated prototype exports were byte-identical; the
+standalone native/ONNX comparison passed all 48 frozen architecture cases and
+580 rows with exact legal greedy actions and maximum absolute tensor error
+`1.33514e-05`, below the frozen combined `5e-5` tolerance. These are foundation
+results, not retained G23 package, in-game, reproduction, or release evidence.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -203,6 +210,10 @@ claim has been made.
 · [`M22 follow-up-v2 evidence schema`](docs/project/schema/v2-m22-followup-v2-evaluation-evidence.schema.json)
 · [`M22 accepted follow-up-v2 evidence`](config/v2/m22-followup-v2-evaluation-evidence.json)
 · [`M23 frozen release contract`](config/v2/m23-release-contract.json)
+· [`M23 deterministic ONNX exporter`](scripts/v2/export_m23_models.py)
+· [`M23 independent golden decoder`](scripts/v2/m23_golden.py)
+· [`M23 native/ONNX build entry point`](training/v2/m23/CMakeLists.txt)
+· [`M23 deployment source and mutation tests`](tests/project/v2/test_v2_m23_deployment_source.py)
 · [`M22 final one-shot runner`](scripts/v2/run_m22_final_evaluation.py)
 · [`M22 final evidence validator`](scripts/v2/validate_m22_final_evaluation.py)
 · [`M22 final evidence schema`](docs/project/schema/v2-m22-final-evaluation-evidence.schema.json)
@@ -230,13 +241,13 @@ claim has been made.
 · [`G22 gate report`](docs/project/G22_GATE_REPORT.md)
 · [`M23 release contract`](docs/project/M23_RELEASE_CONTRACT.md)
 
-## Paused at the G22 release boundary
+## Paused at the M23 deployment-equivalence foundation boundary
 
-Development is intentionally paused at a clean gate after the accepted G22
-commit `e027ab6`. The repository records 77 of 86 V2 requirements as `PASS`, all
-six recorded V2 defects as `CLOSED`, and the complete 543-test V2 plus 235-test
-V1 regression as passing. The accepted follow-up-v2 evidence remains 42/42 with
-zero classified failures and SHA-256
+Development is intentionally paused after completing and testing the first M23
+implementation foundation over accepted G22 commit `e027ab6`. The repository
+still records 77 of 86 V2 requirements as `PASS`, all six recorded V2 defects as
+`CLOSED`, and all nine `V2-RELEASE-*` requirements as `PLANNED`. The accepted
+follow-up-v2 evidence remains 42/42 with zero classified failures and SHA-256
 `21e53fa3c7f7f5a15fcd9f199f0a59920082f3e03b8292ed968da44e9dc319ec`.
 The selected monolithic checkpoint remains
 `03894fd1238b69b6724d82eb441380312be4e8226efa602fa5e43972f7fa9f5f`;
@@ -247,20 +258,40 @@ The M23/G23 release audit and pre-result contract freeze are complete, but no
 M23 acceptance result or V2 release is claimed. The schema, semantic validator,
 and 26 mutation tests bind both exact learned checkpoints, two opset-18 ONNX
 packages, 144 three-runtime results, eight visible campaigns, operator controls,
-two clean-root reproductions, and reviewed-byte publication. All nine
-`V2-RELEASE-*` requirements remain `PLANNED`. The remaining work is to build and
-validate the checkpoint and ONNX packages; prove native, ONNX Runtime, and
-in-game output/state equivalence; add visible normal-game operation across the retained
-transport modes and admitted opponents with start/stop/reload, health, logs,
-safe fallback, and actionable rejection behavior; complete the operator guide,
-model card, benchmark, notices, and immutable release index; perform two
-independent clean-root reproductions; rerun the complete V2/V1 gate with zero
-nonclosed defects; and only then tag and publish the reviewed bytes. Work should
-resume with the deterministic two-architecture exporter and native/standalone
-golden harness before creating any acceptance evidence. Existing V1 release
-packages and behavior remain unchanged throughout M23.
+two clean-root reproductions, and reviewed-byte publication. The new exporter
+strictly loads all 89 checkpoint tensors, exports twice in-process, canonicalizes
+the graph metadata, and rejects any byte difference. The C++ compact adapter
+reconstructs the full M22 projection and is exactly equivalent to the retained
+batch-one evaluation input while adding bounded batches 1, 8, and 32 plus mixed
+recurrent reset/carry. The independent C++/Python generator freezes 48 cases and
+580 rows; its prototype native binary has SHA-256
+`caae59eb8465bc225f2d9ea7bfdd8c22350260ecdb41f47fc022fff2fd71f93d`.
+Two clean prototype export directories were byte-identical. Their monolithic
+and specialist ONNX graphs have SHA-256
+`c3da3106ece85ec4248698d6d9db35b07dfa7f6ce27194a3bafdf6feb887cbb0`
+and `b114616d46631827bf1fda875d99bfe736f540deb57b982e9f4405dc7b7abb07`.
+The standalone ONNX Runtime evaluator passed all 48 cases, exact actions, and
+the frozen combined tolerance with maximum absolute error `1.33514e-05`; its
+report SHA-256 is
+`7b8b785e6140fb190eb82c40512bd27e659211f83c084293948bd0e1b7b22fa9`.
+A deployment-only build links ONNX Runtime and OpenSSL without LibTorch, Python,
+CUDA, an optimizer, or trainer. Seventeen source and binary-corruption tests
+cover strict tensor loading, deterministic export, frozen signatures, generator
+inventory, recurrent carry, illegal actions, nonfinite values, malformed binary
+inputs, and dependency separation.
 
-## Version 2 implementation through G22
+Those measurements are development prototypes, not accepted G23 evidence. The
+remaining work is to build and validate exact checkpoint and six-file deployment
+packages; integrate and prove the third in-game runtime; add visible normal-game
+operation across the retained transport modes and admitted opponents with
+start/stop/reload, health, logs, safe fallback, and actionable rejection
+behavior; complete the operator guide, model card, benchmark, notices, and
+immutable release index; perform two independent clean-root reproductions; rerun
+the complete V2/V1 gate with zero nonclosed defects; and only then tag and
+publish the reviewed bytes. Existing V1 release packages and behavior remain
+unchanged throughout M23.
+
+## Version 2 implementation through G22 and the M23 foundation
 
 The committed V2 work is a gate-controlled expansion, not a release candidate:
 
@@ -622,6 +653,18 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   V2-DEF-0006 is closed by this separately frozen, required-program-based
   aggregate without modifying either earlier suite. G22 accepts the finite M22
   curriculum and independent suite with zero nonclosed defects.
+- The first M23 implementation foundation exports both exact selected checkpoints
+  to deterministic opset-18 ONNX, defines a compact batch-dynamic recurrent
+  interface, reproduces the complete M22 model projection in native C++, and
+  compares original LibTorch outputs with a standalone inference-only ONNX
+  Runtime adapter. Independent C++ and Python generators agree on the frozen
+  48-case, 580-row corpus, including batches 1/8/32, adversarial legal masks,
+  carried state, and mixed resets. Prototype reruns are byte-identical and the
+  standalone comparison passes every case with exact actions and maximum
+  absolute tensor error `1.33514e-05`. This closes no `V2-RELEASE-*`
+  requirement: exact packages, the source-integrated in-game runtime, visible
+  campaigns, clean-root reproduction, documentation, manifest, and publication
+  remain pending.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -645,8 +688,9 @@ optimizer-free evaluator, synthetic CUDA preflight, and complete uncertainty/
 failure report are preserved. Diagnosis and a reviewable source correction are
 now complete, the corrected runtime is identity-bound, and the first independent
 follow-up is retained as a zero-classified-failure aggregate `FAIL`. The second
-independent suite passes and preserves all three results. M23 release packaging,
-equivalence, visible operation, clean-root reproduction, and publication are next.
+independent suite passes and preserves all three results. M23 package
+construction, in-game equivalence, visible operation, clean-root reproduction,
+and publication are next.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -698,8 +742,9 @@ is also recomputed and required to exit with its distinct evidence-failure statu
 an accidental pass or validation error fails the repository check. The accepted
 follow-up-v2 report is independently recomputed and required to pass, including
 its exact required-program service admission and immutable earlier-suite
-boundaries. At the G22 gate the suite passes 543 V2
-tests and the unchanged 235-test V1 regression. The standalone
+boundaries. At the current M23 foundation boundary the suite passes 586 V2
+tests, including the 26 pre-result contract mutations and 17 deployment-source
+mutations, plus the unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
 build definition. Its strict-warning suite now defines ten CTests: the
@@ -828,7 +873,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary |
 | V2 generalist learning | Semantic-v2 17-program/seven-stage PPO curriculum, three seeds, matched 1,457,520-parameter learned architectures and non-neural/random/wait baselines, exact recurrent-attention-graph state and update-16 recovery, six accepted 48-update CUDA campaigns, all 36 development candidates eligible, selected-checkpoint retention across all 16 active programs, measured CPU/CUDA batches 1/8/32, and a source-frozen independent 42-case suite with one manifest read, 42 evaluator/native processes, zero retries/replacements/failures, positive paired lower confidence bounds, and profitable road/rail/water/air/multimodal service; immutable final-v1 and follow-up-v1 remain `FAIL` | `M22/G22 PASS`; frozen finite curriculum and independent-suite boundary; zero nonclosed defects; M23 next |
-| V2 packaging, playback, and publication | Pre-result M23 contract and 26 mutation tests freeze both exact checkpoints, two opset-18 packages, 144 three-runtime results, eight visible campaigns, controls/fallback/errors, one complete operator guide, two independent clean-root reproductions, immutable release documentation, full regression, and reviewed tag/assets | `M23 IN PROGRESS`; `G23 PLANNED`; 9 requirements remain; no V2 release claim |
+| V2 packaging, playback, and publication | Pre-result M23 contract and 26 mutation tests freeze both exact checkpoints, two opset-18 packages, 144 three-runtime results, eight visible campaigns, controls/fallback/errors, one complete operator guide, two independent clean-root reproductions, immutable release documentation, full regression, and reviewed tag/assets. The deterministic two-model exporter, native compact adapter, independent 48-case golden corpus, inference-only ORT adapter, and 17 source/corruption tests now pass as a nonaccepting implementation foundation | `M23 IN PROGRESS`; standalone native/ORT prototype passes; `G23 PLANNED`; 9 requirements remain; no V2 release claim |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

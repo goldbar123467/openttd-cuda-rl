@@ -117,7 +117,30 @@ any later change requires a new version.
 
 ## Current state
 
-The schema, semantic validator, and 26 mutation tests pass. No checkpoint copy,
-ONNX graph, package ID, equivalence result, visible campaign, clean-root result,
-release manifest, tag, or V2 release has yet been accepted. The next work is the
-deterministic two-architecture exporter and native/standalone golden harness.
+The schema, semantic validator, and 26 mutation tests pass. The first
+implementation foundation now includes a deterministic two-architecture
+opset-18 exporter, the full native compact-input projection, independent C++ and
+Python definitions of the 48-case/580-row golden corpus, an inference-only ONNX
+Runtime 1.28.0 adapter, and a deployment-only build with no LibTorch, Python,
+CUDA, optimizer, or trainer dependency. Seventeen source and corruption tests
+cover the frozen interface, strict checkpoint loading, deterministic export,
+case inventory, recurrent reset/carry, malformed binaries, nonfinite outputs,
+illegal actions, and build separation.
+
+Two isolated prototype export directories matched byte-for-byte. The
+monolithic and specialist graphs have respective SHA-256 values
+`c3da3106ece85ec4248698d6d9db35b07dfa7f6ce27194a3bafdf6feb887cbb0`
+and `b114616d46631827bf1fda875d99bfe736f540deb57b982e9f4405dc7b7abb07`.
+The native golden binary has SHA-256
+`caae59eb8465bc225f2d9ea7bfdd8c22350260ecdb41f47fc022fff2fd71f93d`.
+The standalone native/ONNX comparison passed all 48 architecture cases and 580
+rows with exact legal greedy actions and maximum absolute tensor error
+`1.33514e-05`; report SHA-256 is
+`7b8b785e6140fb190eb82c40512bd27e659211f83c084293948bd0e1b7b22fa9`.
+
+These are development prototype measurements, not retained G23 evidence. No
+checkpoint copy, six-file deployment package, package ID, three-runtime result,
+visible campaign, clean-root result, release manifest, tag, or V2 release has
+yet been accepted. All nine `V2-RELEASE-*` requirements remain `PLANNED`. The
+next work is exact package construction and validation followed by the
+source-integrated in-game runtime and its third equivalence result.
