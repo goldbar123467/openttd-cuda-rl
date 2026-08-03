@@ -9,10 +9,14 @@ all base cargo/industry chains and transport modes, multimodal planning, and
 reproducible shared-map competition against byte-pinned OpenTTD AIs. G14 authority
 and opponent qualification, G15 scalable passenger operation, G16 cargo/industry
 accounting, G17 rail networks, G18 ships/waterways, and G19 aircraft/multimodal
-service have passed. G20 now adds native shared-map competition, fair paired
+service have passed. G20 adds native shared-map competition, fair paired
 external-AI evaluation, public-state isolation, fault containment, and complete
-scoring. This checkpoint intentionally stops at G20; M21-M23 remain planned and
-no V2 release claim has been made.
+scoring. M21 implementation has started: the finite NewGRF pack is acquired and
+locked, a passive Game Script fixture is pinned, and the first native broad-
+feature harness passes its five development probes. G21 has not passed; its
+contract, complete exact-twin matrix, frozen evidence, and traceability closure
+remain to be completed. M22-M23 remain planned and no V2 release claim has been
+made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -63,6 +67,10 @@ no V2 release claim has been made.
 · [`M20 content manifest`](config/v2/m20-content-manifest.json)
 · [`M20 competition source evidence`](config/v2/m20-competition-source.json)
 · [`M20 competition matrix evidence`](config/v2/m20-competition-evidence.json)
+· [`M21 finite content request`](config/v2/m21-content-request.json)
+· [`M21 acquired content lock`](config/v2/m21-content-lock.json)
+· [`M21 passive Game Script fixture`](config/v2/m21-gamescript/info.nut)
+· [`M21 native harness checkpoint patch`](integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
 · [`M14 competition protocol`](docs/project/M14_INVENTORY_AND_COMPETITION.md)
@@ -80,7 +88,7 @@ no V2 release claim has been made.
 · [`M20 competitive-company contract`](docs/project/M20_COMPETITION_CONTRACT.md)
 · [`G20 gate report`](docs/project/G20_GATE_REPORT.md)
 
-## Version 2 implementation through G20
+## Version 2 implementation through G20 and the M21 checkpoint
 
 The committed V2 work is a gate-controlled expansion, not a release candidate:
 
@@ -122,6 +130,25 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   score projections replay exactly. The stratified RL-minus-opponent company-
   value difference is 9,672,271.958 with a 95% interval of 9,635,177.458 to
   9,709,366.458; universal victory is not a gate requirement.
+- The current M21 checkpoint freezes a deliberately finite ten-package NewGRF
+  pack spanning 14 declared capabilities: road/tram types and vehicles, cargo
+  refit, rail types, trains and stations, cargo/industries, objects, ships,
+  aircraft, and airports. The acquisition script uses OpenTTD's content server,
+  closes dependencies, audits every archive member, rejects links/special files
+  and unsafe paths, requires a license, and records archive, GRF, catalog-runtime,
+  and license hashes. Qualification itself performs no network access and does
+  not claim arbitrary-NewGRF compatibility.
+- The checkpoint also pins `M21CoverageFixture`, a passive API-15 Game Script,
+  and retains native source commit `073d33b5906c0d7907bc9a4c6bad7680376ef939`
+  (tree `8048da6cf9faeca2310c96c114eeb2bedba1ad0a`) as an auditable patch. Its
+  five smoke probes pass calendar/climate intro-expiry boundaries; authority,
+  subsidy, exclusive-rights, inflation, recession, and recovery behavior;
+  breakdown/disaster recovery; live goal/question/story/league Game Script
+  commands; and exact runtime identity plus non-vacuous asset projection for all
+  ten NewGRFs. Unknown capabilities and content identities fail before world
+  creation/report emission, all five probes preserve their required save/load
+  state, and the source build passes 98/98 upstream CTests. These are development
+  results in retained local artifacts, not frozen G21 evidence.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -138,7 +165,10 @@ and score projection, not third-party AI choices. Physical plane crashes are
 disabled in the qualification settings, while crash counts remain scored and
 the interaction cases prove native ownership isolation. The M20 controller is a
 deterministic competence oracle, the M14 3,650-day final protocol was not run,
-and M21 broad base-game/Game Script/NewGRF coverage is next.
+and M21 broad base-game/Game Script/NewGRF coverage is in progress. The G21
+contract/schema, all-domain and all-145-command disposition mapping, repeated
+exact-twin matrix, frozen source/evidence manifests, requirements updates, and
+full regression gate remain outstanding.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -299,7 +329,8 @@ independent project and does not imply OpenTTD endorsement.
 | V2 rail networks | Four rail types, six track orientations, 116 train engine entries, 12 signal variants, native consists/orders/timetables/service/autoreplace/save-load, profitable passenger/freight runs, and a 32,768-tick two-train junction soak | `M17/G17 PASS`; frozen rail boundary |
 | V2 ships and waterways | Sea/canal/river semantics, 11 ship engines, native docks/depots/buoys/locks/aqueducts, independent region connectivity, lifecycle/save-load, profitable natural/constructed routes, conserved road transfer, bounded recovery, and ShipAI active with two ships across save/load | `M18/G18 PASS`; frozen water boundary |
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
-| V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary; M21 next |
+| V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary; G21 in progress |
+| V2 broad base game, Game Script, and finite NewGRF pack | Ten acquired and byte-locked open-license NewGRFs, 14 closed capabilities, a pinned passive API-15 Game Script, five passing native development probes, pre-world rejection of unknown capability/content identities, save/load checks, and 98/98 upstream CTests | `M21 implementation checkpoint`; `G21 NOT PASSED`; contract/matrix/evidence/traceability remain open |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

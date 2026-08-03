@@ -1,0 +1,106 @@
+{
+  "packages": [
+    {
+      "capabilities": [
+        "road_type",
+        "tram_type"
+      ],
+      "license": "GPL v2",
+      "name": "RattRoads",
+      "unique_id": "415a1001",
+      "version": "1.2.1"
+    },
+    {
+      "capabilities": [
+        "road_vehicle",
+        "tram_vehicle",
+        "cargo_refit"
+      ],
+      "license": "GPL v2",
+      "name": "Road Hog (Buses, Trucks, Trams)",
+      "unique_id": "9787eafe",
+      "version": "1.4.1"
+    },
+    {
+      "capabilities": [
+        "rail_type"
+      ],
+      "license": "CC-BY-SA v3.0",
+      "name": "Timberwolf's Tracks",
+      "unique_id": "54574606",
+      "version": "1.3.0"
+    },
+    {
+      "capabilities": [
+        "train_vehicle"
+      ],
+      "license": "GPL v2",
+      "name": "OpenGFX+ Trains",
+      "unique_id": "4f472b31",
+      "version": "0.3.0"
+    },
+    {
+      "capabilities": [
+        "rail_station"
+      ],
+      "license": "GPL v2",
+      "name": "OpenGFX+ Stations",
+      "unique_id": "454e1401",
+      "version": "1.0"
+    },
+    {
+      "capabilities": [
+        "cargo",
+        "industry"
+      ],
+      "license": "GPL v2",
+      "name": "Age of Industry Replacement Set",
+      "unique_id": "4e445903",
+      "version": "1.3.2"
+    },
+    {
+      "capabilities": [
+        "object"
+      ],
+      "license": "GPL v2",
+      "name": "FIRS and CHIPS style objects",
+      "unique_id": "52580101",
+      "version": "0.1.10"
+    },
+    {
+      "capabilities": [
+        "ship_vehicle"
+      ],
+      "license": "GPL v2",
+      "name": "Squid Ate FISH (FISH 2 - Ships)",
+      "unique_id": "414e0201",
+      "version": "2.0.3"
+    },
+    {
+      "capabilities": [
+        "aircraft_vehicle"
+      ],
+      "license": "GPL v2",
+      "name": "RAV8 (Rangless Av8)",
+      "unique_id": "52415608",
+      "version": "1.00"
+    },
+    {
+      "capabilities": [
+        "airport"
+      ],
+      "license": "GPL v2",
+      "name": "OpenGFX+ Airports",
+      "unique_id": "43415000",
+      "version": "0.5.0"
+    }
+  ],
+  "policy": {
+    "arbitrary_newgrf_universality": false,
+    "dependencies_must_be_locked": true,
+    "license_file_required": true,
+    "network_acquisition_during_qualification": false,
+    "unknown_capability": "fail-closed-before-action"
+  },
+  "schema_version": "openttd-rl-v2-m21-content-request-1"
+}

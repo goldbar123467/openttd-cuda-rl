@@ -1,0 +1,581 @@
+{
+  "acquisition": {
+    "network_calls": "content-server-only",
+    "selected_closure": 10,
+    "transcript_sha256": "474edcd924905a01546065e14587a93d4e8bc7fbb20b23d6d28c4204da980966"
+  },
+  "executable": {
+    "bytes": 420233440,
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/build-competition/openttd",
+    "sha256": "b1904e3ab79dba3854124ac9450b06b9207a12b5f33496454bda24cbf110cc5e"
+  },
+  "packages": [
+    {
+      "archive": {
+        "bytes": 1290240,
+        "path": "content_download/newgrf/414e0201-Squid_Ate_FISH_FISH_2_Ships-2.0.3.tar",
+        "sha256": "bbca24a526c87cb0364eb139144377c21869fc37491f586ce082c0fcef0754cd"
+      },
+      "capabilities": [
+        "ship_vehicle"
+      ],
+      "catalog": {
+        "catalog_md5": "0da3a80b986bc3c17c20ca4ce9ca26aa",
+        "content_id": 11151050,
+        "content_type": "NewGRF",
+        "name": "Squid Ate FISH (FISH 2 - Ships)",
+        "server_unique_id": "414E0201",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 1247782,
+          "md5": "325669c5364964775e2b73eb0c3cceb8",
+          "path": "FISH_2-2.0.3/fish.grf",
+          "sha256": "3a7d7578ba477b2ebb3a57d52548b9bb0b0cc931a6c5c19a620a41a37f78536d"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "FISH_2-2.0.3/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 6232,
+          "path": "FISH_2-2.0.3/changelog.txt",
+          "sha256": "5c26ef42bc7f48874d337c5d19011d09d9a525a45a7ad1dee30f186a1fa5a999"
+        },
+        {
+          "bytes": 1247782,
+          "path": "FISH_2-2.0.3/fish.grf",
+          "sha256": "3a7d7578ba477b2ebb3a57d52548b9bb0b0cc931a6c5c19a620a41a37f78536d"
+        },
+        {
+          "bytes": 17987,
+          "path": "FISH_2-2.0.3/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        },
+        {
+          "bytes": 6532,
+          "path": "FISH_2-2.0.3/readme.txt",
+          "sha256": "a70198de9770ec7304c26e066d0fe2efc83b2e1d6871587bbfb6fa1deedb7dd4"
+        }
+      ],
+      "requested": true,
+      "unique_id": "414e0201",
+      "version": "2.0.3"
+    },
+    {
+      "archive": {
+        "bytes": 768000,
+        "path": "content_download/newgrf/415a1001-RattRoads-1.2.1.tar",
+        "sha256": "d2f9780002f774b6403fa9a49aebb9749b220e8769f87b47a765cfa9f30980ce"
+      },
+      "capabilities": [
+        "road_type",
+        "tram_type"
+      ],
+      "catalog": {
+        "catalog_md5": "dece45389ddc1434da0601a48fea1171",
+        "content_id": 7410154,
+        "content_type": "NewGRF",
+        "name": "RattRoads",
+        "server_unique_id": "415A1001",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 727614,
+          "md5": "3995501b08da1a628116b4cec2cbd319",
+          "path": "RattRoads-1.2.1/rattroads.grf",
+          "sha256": "0d3969b56859988dc4a12f5538dd4dab3e1f3e6df655ca92d3544f6bf9963892"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "RattRoads-1.2.1/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 3963,
+          "path": "RattRoads-1.2.1/changelog.txt",
+          "sha256": "59cbdccb2180caf5ec133133c7f14542262e4caf9f4c39e57dca02107394717c"
+        },
+        {
+          "bytes": 17987,
+          "path": "RattRoads-1.2.1/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        },
+        {
+          "bytes": 727614,
+          "path": "RattRoads-1.2.1/rattroads.grf",
+          "sha256": "0d3969b56859988dc4a12f5538dd4dab3e1f3e6df655ca92d3544f6bf9963892"
+        },
+        {
+          "bytes": 5557,
+          "path": "RattRoads-1.2.1/readme.txt",
+          "sha256": "9b971f60e23760d4e0bec8b3e46f484403640d6f30afcc7d8be97f302bc4690f"
+        }
+      ],
+      "requested": true,
+      "unique_id": "415a1001",
+      "version": "1.2.1"
+    },
+    {
+      "archive": {
+        "bytes": 1454080,
+        "path": "content_download/newgrf/43415000-OpenGFX_Airports-0.5.0.tar",
+        "sha256": "d1844d4cff339de864b490aa7fae58660673219f18b48719bcdb8fb71f47379c"
+      },
+      "capabilities": [
+        "airport"
+      ],
+      "catalog": {
+        "catalog_md5": "fbae0c1acfda5ae8b95b4da230a395fe",
+        "content_id": 16684451,
+        "content_type": "NewGRF",
+        "name": "OpenGFX+ Airports",
+        "server_unique_id": "43415000",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 1418267,
+          "md5": "ea09284854517ef5f9bde20d8d79f55c",
+          "path": "OpenGFX_Airports-0.5.0/ogfx-airports.grf",
+          "sha256": "eee51e40b08bb4a91f44b53650fd9375e7b653d61428d4d64bb4bf4865453902"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "OpenGFX_Airports-0.5.0/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 3389,
+          "path": "OpenGFX_Airports-0.5.0/changelog.txt",
+          "sha256": "b0fbbed71e4b55e64442e8d82c91b6917e7b9c45bdee1799a8e701fb6894d199"
+        },
+        {
+          "bytes": 17987,
+          "path": "OpenGFX_Airports-0.5.0/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        },
+        {
+          "bytes": 1418267,
+          "path": "OpenGFX_Airports-0.5.0/ogfx-airports.grf",
+          "sha256": "eee51e40b08bb4a91f44b53650fd9375e7b653d61428d4d64bb4bf4865453902"
+        },
+        {
+          "bytes": 7481,
+          "path": "OpenGFX_Airports-0.5.0/readme.txt",
+          "sha256": "11d9ffd931be2f5d20c1747131c48dcf93acf565a0ba49a810777662c2d04fd2"
+        }
+      ],
+      "requested": true,
+      "unique_id": "43415000",
+      "version": "0.5.0"
+    },
+    {
+      "archive": {
+        "bytes": 133120,
+        "path": "content_download/newgrf/454e1401-OpenGFX_Stations-1.0.tar",
+        "sha256": "c2171c54c2149948e22503647b09bb35c77ea3f859ae1419c287d7e9bf86e415"
+      },
+      "capabilities": [
+        "rail_station"
+      ],
+      "catalog": {
+        "catalog_md5": "211fdb32134c562a11e6545e9c7108fc",
+        "content_id": 16517233,
+        "content_type": "NewGRF",
+        "name": "OpenGFX+ Stations",
+        "server_unique_id": "454E1401",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 111163,
+          "md5": "211fdb32134c562a11e6545e9c7108fc",
+          "path": "OpenGFX_Stations-1.0/OpenGFXplusStations - 1.0.grf",
+          "sha256": "dbc9501ba0146aa7329a168d8933eb799979c7dd7ac197150d2adacfaaee4baf"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "OpenGFX_Stations-1.0/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 111163,
+          "path": "OpenGFX_Stations-1.0/OpenGFXplusStations - 1.0.grf",
+          "sha256": "dbc9501ba0146aa7329a168d8933eb799979c7dd7ac197150d2adacfaaee4baf"
+        },
+        {
+          "bytes": 17987,
+          "path": "OpenGFX_Stations-1.0/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "requested": true,
+      "unique_id": "454e1401",
+      "version": "1.0"
+    },
+    {
+      "archive": {
+        "bytes": 4065280,
+        "path": "content_download/newgrf/4e445903-Age_of_Industry_Replacement_Set-1.3.2.tar",
+        "sha256": "2eada82f0d99505e76d4aefb523e49c076f29b0938508080fb28a6a6a52c689d"
+      },
+      "capabilities": [
+        "cargo",
+        "industry"
+      ],
+      "catalog": {
+        "catalog_md5": "ea3772bb12318c0cb851ab92769bd913",
+        "content_id": 1300891,
+        "content_type": "NewGRF",
+        "name": "Age of Industry Replacement Set",
+        "server_unique_id": "4E445903",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 4042547,
+          "md5": "155f2fedf74baeb5cf1d050bf4ce9813",
+          "path": "Age_of_Industry_Replacement_Set-1.3.2/airs.grf",
+          "sha256": "e96988a20a623e089dc17d3e6c98b9f3c80405e9a548565febb4d8d11d1533db"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "Age_of_Industry_Replacement_Set-1.3.2/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 4042547,
+          "path": "Age_of_Industry_Replacement_Set-1.3.2/airs.grf",
+          "sha256": "e96988a20a623e089dc17d3e6c98b9f3c80405e9a548565febb4d8d11d1533db"
+        },
+        {
+          "bytes": 17987,
+          "path": "Age_of_Industry_Replacement_Set-1.3.2/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "requested": true,
+      "unique_id": "4e445903",
+      "version": "1.3.2"
+    },
+    {
+      "archive": {
+        "bytes": 327680,
+        "path": "content_download/newgrf/4f472b31-OpenGFX_Trains-0.3.0.tar",
+        "sha256": "7ca9a4743d87c3470a201a001aa3ede2129b637d54393ae9cb3dd7bc28245f49"
+      },
+      "capabilities": [
+        "train_vehicle"
+      ],
+      "catalog": {
+        "catalog_md5": "4e0b2d42462f295f36afba90d239a323",
+        "content_id": 2335545,
+        "content_type": "NewGRF",
+        "name": "OpenGFX+ Trains",
+        "server_unique_id": "4F472B31",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 280435,
+          "md5": "4e0b2d42462f295f36afba90d239a323",
+          "path": "OpenGFX_Trains-0.3.0/ogfx-trains.grf",
+          "sha256": "70c8096a8b0aac6ea59fa0a3d78330fe6e67b86db5a7983de161ccf7c23e95c1"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "OpenGFX_Trains-0.3.0/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 7054,
+          "path": "OpenGFX_Trains-0.3.0/changelog.txt",
+          "sha256": "c6b8a938520251172deb37c297aae4286ef75680520eef68735e9567152fa1b9"
+        },
+        {
+          "bytes": 17987,
+          "path": "OpenGFX_Trains-0.3.0/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        },
+        {
+          "bytes": 280435,
+          "path": "OpenGFX_Trains-0.3.0/ogfx-trains.grf",
+          "sha256": "70c8096a8b0aac6ea59fa0a3d78330fe6e67b86db5a7983de161ccf7c23e95c1"
+        },
+        {
+          "bytes": 10707,
+          "path": "OpenGFX_Trains-0.3.0/readme.txt",
+          "sha256": "09c980870e9ff77173568cd537ae8a3e64edc848947150f7766ca107e80bd8d3"
+        }
+      ],
+      "requested": true,
+      "unique_id": "4f472b31",
+      "version": "0.3.0"
+    },
+    {
+      "archive": {
+        "bytes": 2519040,
+        "path": "content_download/newgrf/52415608-RAV8_Rangless_Av8-1.00.tar",
+        "sha256": "9168b7a6be81c8c610d5b0fadb7dcc0768c8d68d960a847eb0f20965456bee30"
+      },
+      "capabilities": [
+        "aircraft_vehicle"
+      ],
+      "catalog": {
+        "catalog_md5": "c808c4b56d0589a5605ddedba6732094",
+        "content_id": 9707635,
+        "content_type": "NewGRF",
+        "name": "RAV8 (Rangless Av8)",
+        "server_unique_id": "52415608",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 2490213,
+          "md5": "c808c4b56d0589a5605ddedba6732094",
+          "path": "RAV8_Rangless_Av8-1.00/RAV8.grf",
+          "sha256": "397ea103164fe2ed14431bcc80e13e9d78c42a7a894201fb02dcf254f418a941"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "RAV8_Rangless_Av8-1.00/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 2490213,
+          "path": "RAV8_Rangless_Av8-1.00/RAV8.grf",
+          "sha256": "397ea103164fe2ed14431bcc80e13e9d78c42a7a894201fb02dcf254f418a941"
+        },
+        {
+          "bytes": 17987,
+          "path": "RAV8_Rangless_Av8-1.00/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "requested": true,
+      "unique_id": "52415608",
+      "version": "1.00"
+    },
+    {
+      "archive": {
+        "bytes": 4659200,
+        "path": "content_download/newgrf/52580101-FIRS_and_CHIPS_style_objects-0.1.10.tar",
+        "sha256": "7f1c85ea07f9792364a246b745cea28dd972440bd83f9701329e3eabd9083543"
+      },
+      "capabilities": [
+        "object"
+      ],
+      "catalog": {
+        "catalog_md5": "d7400dacf064356088e0a13b836a52b9",
+        "content_id": 12145258,
+        "content_type": "NewGRF",
+        "name": "FIRS and CHIPS style objects",
+        "server_unique_id": "52580101",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 4624843,
+          "md5": "405d8e57d8e2618ce203f68c604a7393",
+          "path": "FIRS_and_CHIPS_style_objects-0.1.10/facso_0.1.10.grf",
+          "sha256": "3025a9dde5b24057dc9c64f48cb8ef2f3bb355565d692cc47fd95720e0c39484"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "FIRS_and_CHIPS_style_objects-0.1.10/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 6732,
+          "path": "FIRS_and_CHIPS_style_objects-0.1.10/changelog.txt",
+          "sha256": "68f382341f1110d784cc882fca5a892f2d3c4fea266f12c87f3cb021d76ec7dd"
+        },
+        {
+          "bytes": 4624843,
+          "path": "FIRS_and_CHIPS_style_objects-0.1.10/facso_0.1.10.grf",
+          "sha256": "3025a9dde5b24057dc9c64f48cb8ef2f3bb355565d692cc47fd95720e0c39484"
+        },
+        {
+          "bytes": 17987,
+          "path": "FIRS_and_CHIPS_style_objects-0.1.10/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        },
+        {
+          "bytes": 2548,
+          "path": "FIRS_and_CHIPS_style_objects-0.1.10/readme.txt",
+          "sha256": "16b81b8b9489dc9857007bfe6709ef804045b7717c9ab2a8719274cce31549ee"
+        }
+      ],
+      "requested": true,
+      "unique_id": "52580101",
+      "version": "0.1.10"
+    },
+    {
+      "archive": {
+        "bytes": 3768320,
+        "path": "content_download/newgrf/54574606-Timberwolf_s_Tracks-1.3.0.tar",
+        "sha256": "28c4a8edd9c4c789e63f96e8c846b8ec4cae79d9c31575ae98c713b870952d4b"
+      },
+      "capabilities": [
+        "rail_type"
+      ],
+      "catalog": {
+        "catalog_md5": "08ec4b3153f574a84b8aff3eccf0a7ef",
+        "content_id": 15706096,
+        "content_type": "NewGRF",
+        "name": "Timberwolf's Tracks",
+        "server_unique_id": "54574606",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 3736577,
+          "md5": "691c181def9909645a238702ad74a1b8",
+          "path": "Timberwolf_s_Tracks-1.3.0/timberwolfs_tracks.grf",
+          "sha256": "3a9fcc4200cb2d2e4face94981142fcccb1cf01267a08db652db65d069d662dc"
+        }
+      ],
+      "license": "CC-BY-SA v3.0",
+      "license_files": [
+        {
+          "bytes": 22820,
+          "path": "Timberwolf_s_Tracks-1.3.0/license.txt",
+          "sha256": "7fe07df94cb317bc4f9fb3d7f5d6aa8c08daf5b889555d3696298a45100d5b2d"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 1235,
+          "path": "Timberwolf_s_Tracks-1.3.0/changelog.txt",
+          "sha256": "6fc7401d7bf760afe7d993c40476ab89cae651da3cb701739381480eda47c7e6"
+        },
+        {
+          "bytes": 22820,
+          "path": "Timberwolf_s_Tracks-1.3.0/license.txt",
+          "sha256": "7fe07df94cb317bc4f9fb3d7f5d6aa8c08daf5b889555d3696298a45100d5b2d"
+        },
+        {
+          "bytes": 2124,
+          "path": "Timberwolf_s_Tracks-1.3.0/readme.txt",
+          "sha256": "ee6926cc62937ab7977afe816c4fe9ba9ca0d9dc154438c60f43e5e5bc65adba"
+        },
+        {
+          "bytes": 3736577,
+          "path": "Timberwolf_s_Tracks-1.3.0/timberwolfs_tracks.grf",
+          "sha256": "3a9fcc4200cb2d2e4face94981142fcccb1cf01267a08db652db65d069d662dc"
+        }
+      ],
+      "requested": true,
+      "unique_id": "54574606",
+      "version": "1.3.0"
+    },
+    {
+      "archive": {
+        "bytes": 2416640,
+        "path": "content_download/newgrf/9787eafe-Road_Hog_Buses_Trucks_Trams-1.4.1.tar",
+        "sha256": "b83b0fb43815e2eec5722ddbbe80a4f01ea0c9c95f7d6965198138e49a4d4663"
+      },
+      "capabilities": [
+        "road_vehicle",
+        "tram_vehicle",
+        "cargo_refit"
+      ],
+      "catalog": {
+        "catalog_md5": "04acd20a006e345283d6464678affa8b",
+        "content_id": 9173679,
+        "content_type": "NewGRF",
+        "name": "Road Hog (Buses, Trucks, Trams)",
+        "server_unique_id": "9787EAFE",
+        "state": "Selected"
+      },
+      "grf_files": [
+        {
+          "bytes": 2380212,
+          "md5": "2897af5d19c487d4eaca72ecc39a94b0",
+          "path": "Road_Hog-1.4.1/road-hog.grf",
+          "sha256": "aa9d9d99a99ece9810e4232161de9641d5444158d889237cadf2b7e68936b572"
+        }
+      ],
+      "license": "GPL v2",
+      "license_files": [
+        {
+          "bytes": 17987,
+          "path": "Road_Hog-1.4.1/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        }
+      ],
+      "members": [
+        {
+          "bytes": 12115,
+          "path": "Road_Hog-1.4.1/changelog.txt",
+          "sha256": "5fdb2eb4c7902be4f96c57e70c318a6f6710363d1cb89081914004e74d843942"
+        },
+        {
+          "bytes": 17987,
+          "path": "Road_Hog-1.4.1/license.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        },
+        {
+          "bytes": 1522,
+          "path": "Road_Hog-1.4.1/readme.txt",
+          "sha256": "381e3767404c329e5202a1c539a06796b62ed1a6973c10450ea1c61c37bb53d4"
+        },
+        {
+          "bytes": 2380212,
+          "path": "Road_Hog-1.4.1/road-hog.grf",
+          "sha256": "aa9d9d99a99ece9810e4232161de9641d5444158d889237cadf2b7e68936b572"
+        }
+      ],
+      "requested": true,
+      "unique_id": "9787eafe",
+      "version": "1.4.1"
+    }
+  ],
+  "request_sha256": "ddf54bc195010bb01b3991035a46ff772c574a3af89e5d197c1b10ee1b2de7d5",
+  "schema_version": "openttd-rl-v2-m21-content-lock-1",
+  "status": "LOCKED"
+}

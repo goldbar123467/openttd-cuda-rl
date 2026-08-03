@@ -1,0 +1,818 @@
+From 073d33b5906c0d7907bc9a4c6bad7680376ef939 Mon Sep 17 00:00:00 2001
+From: Clark Kitchen <clarkkitchen22@gmail.com>
+Date: Sun, 2 Aug 2026 22:28:14 -0400
+Subject: [PATCH] Add native V2 broad-feature qualification
+
+---
+ src/CMakeLists.txt  |   2 +
+ src/openttd.cpp     |  29 +-
+ src/rl_v2_broad.cpp | 685 ++++++++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_broad.h   |  15 +
+ 4 files changed, 729 insertions(+), 2 deletions(-)
+ create mode 100644 src/rl_v2_broad.cpp
+ create mode 100644 src/rl_v2_broad.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index ed09c2b..067153d 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -70,6 +70,8 @@ add_files(
+     rl_v2_air.h
+     rl_v2_competition.cpp
+     rl_v2_competition.h
++    rl_v2_broad.cpp
++    rl_v2_broad.h
+     rl_v2_observation.cpp
+     rl_v2_observation.h
+     CONDITION OPTION_RL_ENVIRONMENT
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index f69480a..b65a1a5 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -91,6 +91,7 @@
+ #	include "rl_v2_ship.h"
+ #	include "rl_v2_air.h"
+ #	include "rl_v2_competition.h"
++#	include "rl_v2_broad.h"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ #	include "rl_neural_agent.h"
+@@ -445,6 +446,8 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_v2_air_report;                  ///< Destination for the M19 aircraft qualification report.
+ 	std::string rl_v2_competition_manifest;        ///< Canonical M20 competition qualification manifest.
+ 	std::string rl_v2_competition_report;          ///< Destination for the M20 competition qualification report.
++	std::string rl_v2_broad_manifest;              ///< Canonical M21 broad-feature qualification manifest.
++	std::string rl_v2_broad_report;                ///< Destination for the M21 broad-feature qualification report.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -505,7 +508,16 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
+ #ifdef WITH_RL_ENVIRONMENT
+-		if (!rl_v2_competition_manifest.empty()) {
++		if (!rl_v2_broad_manifest.empty()) {
++			try {
++				RunRlV2BroadQualification(rl_v2_broad_manifest, rl_v2_broad_report);
++			} catch (const std::exception &e) {
++				fmt::print(stderr, "{}\n", e.what());
++				UserError("{}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		} else if (!rl_v2_competition_manifest.empty()) {
+ 			try {
+ 				RunRlV2CompetitionQualification(rl_v2_competition_manifest, rl_v2_competition_report);
+ 			} catch (const std::exception &e) {
+@@ -636,7 +648,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BCEFHJKLNOPRTUWYZViuwazy"
++			"BCEFHJKLNOPRTUWYZViuwazyjk"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -837,6 +849,8 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'z': scanner->rl_v2_air_report = mgo.opt; break;
+ 		case 'i': scanner->rl_v2_competition_manifest = mgo.opt; break;
+ 		case 'y': scanner->rl_v2_competition_report = mgo.opt; break;
++		case 'j': scanner->rl_v2_broad_manifest = mgo.opt; break;
++		case 'k': scanner->rl_v2_broad_report = mgo.opt; break;
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 		case 'A': scanner->rl_neural_agent_config = mgo.opt; break;
+@@ -867,6 +881,17 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ 
+ #ifdef WITH_RL_ENVIRONMENT
++	if (scanner->rl_v2_broad_manifest.empty() != scanner->rl_v2_broad_report.empty()) {
++		fmt::print(stderr, "M21 broad-feature qualification requires both -j <manifest> and -k <report>\n");
++		return 1;
++	}
++	if (!scanner->rl_v2_broad_manifest.empty() && (!scanner->rl_v2_competition_manifest.empty() || !scanner->rl_v2_air_manifest.empty() ||
++			!scanner->rl_v2_ship_manifest.empty() || !scanner->rl_v2_rail_manifest.empty() || !scanner->rl_v2_cargo_manifest.empty() ||
++			!scanner->rl_v2_reset_manifest.empty() || !scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() ||
++			dedicated || !scanner->connection_string.empty())) {
++		fmt::print(stderr, "M21 broad-feature qualification forbids earlier qualification, bridge/scenario, dedicated, and networking modes\n");
++		return 1;
++	}
+ 	if (scanner->rl_v2_competition_manifest.empty() != scanner->rl_v2_competition_report.empty()) {
+ 		fmt::print(stderr, "M20 competition qualification requires both -i <manifest> and -y <report>\n");
+ 		return 1;
+diff --git a/src/rl_v2_broad.cpp b/src/rl_v2_broad.cpp
+new file mode 100644
+index 0000000..ac44d2b
+--- /dev/null
++++ b/src/rl_v2_broad.cpp
+@@ -0,0 +1,685 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_broad.cpp Native V2 M21 broad-feature qualification. */
++
++#include "stdafx.h"
++
++#include "rl_v2_broad.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "ai/ai_config.hpp"
++#include "airport.h"
++#include "cargotype.h"
++#include "command_func.h"
++#include "company_base.h"
++#include "company_cmd.h"
++#include "core/backup_type.hpp"
++#include "core/random_func.hpp"
++#include "disaster_vehicle.h"
++#include "economy_func.h"
++#include "engine_base.h"
++#include "engine_func.h"
++#include "game/game.hpp"
++#include "game/game_info.hpp"
++#include "genworld.h"
++#include "goal_base.h"
++#include "goal_cmd.h"
++#include "industrytype.h"
++#include "league_base.h"
++#include "league_cmd.h"
++#include "misc_cmd.h"
++#include "newgrf_airport.h"
++#include "newgrf_config.h"
++#include "newgrf_object.h"
++#include "openttd.h"
++#include "progress.h"
++#include "rail.h"
++#include "road_func.h"
++#include "road_cmd.h"
++#include "road_map.h"
++#include "roadveh.h"
++#include "saveload/saveload.h"
++#include "settings_type.h"
++#include "story_base.h"
++#include "story_cmd.h"
++#include "string_func.h"
++#include "subsidy_base.h"
++#include "subsidy_cmd.h"
++#include "table/strings.h"
++#include "timer/timer_game_calendar.h"
++#include "timer/timer_game_economy.h"
++#include "town.h"
++#include "town_cmd.h"
++#include "vehicle_base.h"
++#include "vehicle_cmd.h"
++#include "vehicle_func.h"
++#include "water_map.h"
++
++#include <algorithm>
++#include <array>
++#include <bit>
++#include <filesystem>
++#include <fstream>
++#include <set>
++#include <stdexcept>
++#include <string_view>
++#include <vector>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = CompanyID::Invalid());
++extern void MakeNewgameSettingsLive();
++extern void StartupEconomy();
++
++namespace {
++
++static constexpr std::string_view MANIFEST_SCHEMA = "openttd-rl-v2-m21-broad-run-1";
++static constexpr std::string_view REPORT_SCHEMA = "openttd-rl-v2-m21-broad-report-1";
++static constexpr uint MAP_SIDE = 64;
++
++struct ExpectedGRF {
++	std::string id;
++	std::string md5;
++};
++
++struct Request {
++	std::string run_id;
++	std::string probe;
++	uint32_t seed;
++	LandscapeType landscape;
++	std::string engine_source_tree;
++	std::string executable_sha256;
++	std::string contract_sha256;
++	std::string content_lock_sha256;
++	std::vector<ExpectedGRF> expected_newgrfs;
++	std::vector<std::string> expected_capabilities;
++	bool require_gamescript;
++};
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M21 broad-feature qualification: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++static bool IsSha256(std::string_view value)
++{
++	return value.size() == 64 && std::ranges::all_of(value, [](char c) {
++		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++	});
++}
++
++static bool IsHex(std::string_view value, size_t size)
++{
++	return value.size() == size && std::ranges::all_of(value, [](char c) {
++		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++	});
++}
++
++static bool SafeName(std::string_view value)
++{
++	return !value.empty() && value.size() <= 96 && std::ranges::all_of(value, [](char c) {
++		return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
++	});
++}
++
++static std::string Lower(std::string value)
++{
++	std::ranges::transform(value, value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
++	return value;
++}
++
++static EncodedString RawText(std::string_view value)
++{
++	return GetEncodedString(STR_JUST_RAW_STRING, std::string(value));
++}
++
++static json ReadCanonicalJson(const std::string &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	if (!input) Fail(fmt::format("cannot open manifest '{}'", path));
++	std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
++	Require(!bytes.empty() && bytes.back() == '\n', "manifest must end with one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n' && bytes.back() != '\r', "manifest has trailing whitespace");
++	json value;
++	try {
++		value = json::parse(bytes);
++	} catch (const json::exception &e) {
++		Fail(fmt::format("invalid manifest JSON: {}", e.what()));
++	}
++	Require(value.dump() == bytes, "manifest must be canonical compact JSON followed by LF");
++	return value;
++}
++
++static void WriteCanonicalNew(const std::string &path, const json &value)
++{
++	std::filesystem::path output(path);
++	Require(output.is_absolute() && !std::filesystem::exists(output), "report must be a new absolute path");
++	std::ofstream stream(output, std::ios::binary | std::ios::out | std::ios::trunc);
++	Require(stream.good(), fmt::format("cannot create report '{}'", path));
++	stream << value.dump() << '\n';
++	stream.flush();
++	Require(stream.good(), fmt::format("cannot write report '{}'", path));
++}
++
++static LandscapeType ParseLandscape(const std::string &value)
++{
++	if (value == "temperate") return LandscapeType::Temperate;
++	if (value == "arctic") return LandscapeType::Arctic;
++	if (value == "tropic") return LandscapeType::Tropic;
++	if (value == "toyland") return LandscapeType::Toyland;
++	Fail("unknown landscape");
++}
++
++static std::string LandscapeName(LandscapeType landscape)
++{
++	switch (landscape) {
++		case LandscapeType::Temperate: return "temperate";
++		case LandscapeType::Arctic: return "arctic";
++		case LandscapeType::Tropic: return "tropic";
++		case LandscapeType::Toyland: return "toyland";
++		default: Fail("invalid landscape enum");
++	}
++}
++
++static Request Validate(const json &manifest)
++{
++	Require(manifest.is_object() && manifest.size() == 12, "manifest must contain exactly twelve fields");
++	Require(manifest.at("schema_version") == MANIFEST_SCHEMA, "unsupported manifest schema_version");
++	Request request{
++		manifest.at("run_id").get<std::string>(), manifest.at("probe").get<std::string>(),
++		manifest.at("seed").get<uint32_t>(), ParseLandscape(manifest.at("landscape").get<std::string>()),
++		manifest.at("engine_source_tree").get<std::string>(), manifest.at("executable_sha256").get<std::string>(),
++		manifest.at("contract_sha256").get<std::string>(), manifest.at("content_lock_sha256").get<std::string>(),
++		{}, {}, manifest.at("require_gamescript").get<bool>(),
++	};
++	Require(SafeName(request.run_id), "invalid run_id");
++	Require(request.probe == "calendar" || request.probe == "authority_economy" || request.probe == "events" ||
++		request.probe == "gamescript" || request.probe == "content", "unknown broad-feature probe");
++	Require(IsHex(request.engine_source_tree, 40), "engine_source_tree must be a lowercase Git tree identity");
++	Require(IsSha256(request.executable_sha256) && IsSha256(request.contract_sha256) && IsSha256(request.content_lock_sha256),
++		"executable, contract, and content-lock identities must be SHA-256");
++	Require(manifest.at("expected_newgrfs").is_array() && manifest.at("expected_newgrfs").size() <= 16,
++		"expected_newgrfs must be a bounded array");
++	std::set<std::string> grf_ids;
++	for (const json &item : manifest.at("expected_newgrfs")) {
++		Require(item.is_object() && item.size() == 2, "expected NewGRF entry must contain id and md5");
++		ExpectedGRF expected{Lower(item.at("id").get<std::string>()), Lower(item.at("md5").get<std::string>())};
++		Require(IsHex(expected.id, 8) && IsHex(expected.md5, 32) && grf_ids.insert(expected.id).second,
++			"expected NewGRF identity is malformed or duplicated");
++		request.expected_newgrfs.push_back(std::move(expected));
++	}
++	static const std::set<std::string> known_capabilities{
++		"aircraft_vehicle", "airport", "cargo", "cargo_refit", "industry", "object", "rail_station", "rail_type",
++		"road_type", "road_vehicle", "ship_vehicle", "train_vehicle", "tram_type", "tram_vehicle",
++	};
++	Require(manifest.at("expected_capabilities").is_array(), "expected_capabilities must be an array");
++	std::set<std::string> capabilities;
++	for (const json &value : manifest.at("expected_capabilities")) {
++		std::string capability = value.get<std::string>();
++		Require(known_capabilities.contains(capability), fmt::format("unknown capability '{}'", capability));
++		Require(capabilities.insert(capability).second, "expected capability is duplicated");
++		request.expected_capabilities.push_back(std::move(capability));
++	}
++	Require(request.probe == "content" || request.expected_capabilities.empty(), "capabilities are only accepted by the content probe");
++	Require(request.require_gamescript == (request.probe == "gamescript"), "Game Script requirement must match the gamescript probe");
++	return request;
++}
++
++static json ActiveContent(const Request &request)
++{
++	json active = json::array();
++	std::set<std::pair<std::string, std::string>> identities;
++	const GRFConfigList &configured = _grfconfig.empty() ? _grfconfig_newgame : _grfconfig;
++	for (const auto &config : configured) {
++		std::string id = fmt::format("{:08x}", std::byteswap(config->ident.grfid));
++		std::string md5 = Lower(FormatArrayAsHex(config->ident.md5sum));
++		active.push_back({{"id", id}, {"md5", md5}, {"filename", config->filename}, {"version", config->version}});
++		identities.emplace(id, md5);
++	}
++	std::set<std::pair<std::string, std::string>> expected;
++	for (const ExpectedGRF &item : request.expected_newgrfs) expected.emplace(item.id, item.md5);
++	Require(identities == expected, fmt::format("active NewGRF identity set differs: expected={} active={}", expected.size(), identities.size()));
++	return active;
++}
++
++static void Configure(const Request &request)
++{
++	_settings_newgame.game_creation.generation_seed = request.seed;
++	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{1950};
++	_settings_newgame.game_creation.map_x = 6;
++	_settings_newgame.game_creation.map_y = 6;
++	_settings_newgame.game_creation.landscape = request.landscape;
++	_settings_newgame.game_creation.se_flat_world_height = 1;
++	_settings_newgame.game_creation.water_borders = {};
++	_settings_newgame.construction.freeform_edges = true;
++	_settings_newgame.difficulty.max_no_competitors = 0;
++	_settings_newgame.difficulty.industry_density = 0;
++	_settings_newgame.difficulty.max_loan = 2000000;
++	_settings_newgame.difficulty.vehicle_costs = 0;
++	_settings_newgame.difficulty.construction_cost = 0;
++	_settings_newgame.difficulty.town_council_tolerance = TOWN_COUNCIL_PERMISSIVE;
++	_settings_newgame.difficulty.economy = true;
++	_settings_newgame.difficulty.disasters = false;
++	_settings_newgame.difficulty.vehicle_breakdowns = 2;
++	_settings_newgame.economy.exclusive_rights = true;
++	_settings_newgame.economy.inflation = true;
++	_settings_newgame.economy.town_growth_rate = 0;
++	_settings_newgame.economy.allow_town_roads = false;
++	_settings_newgame.economy.timekeeping_units = TKU_CALENDAR;
++	_settings_newgame.vehicle.never_expire_vehicles = false;
++	_settings_newgame.vehicle.max_roadveh = 32;
++	for (CompanyID id = CompanyID::Begin(); id < MAX_COMPANIES; ++id) _settings_newgame.script_config.ai[id].reset();
++	MakeNewgameSettingsLive();
++}
++
++static std::array<TownID, 2> ResetWorld(const Request &request, uint companies = 1)
++{
++	Configure(request);
++	ResetGRFConfig(true);
++	_random.SetSeed(request.seed ^ 0x4d323142U);
++	_interactive_random.SetSeed(request.seed ^ 0x42524f44U);
++	_game_mode = GM_NORMAL;
++	_switch_mode = SM_NONE;
++	SetModalProgress(false);
++	GenerateWorld(GWM_EMPTY, MAP_SIDE, MAP_SIDE, false);
++	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "empty qualification map has wrong dimensions");
++	std::array<TownID, 2> towns{};
++	{
++		AutoRestoreBackup company(_current_company, OWNER_DEITY);
++		for (uint i = 0; i < towns.size(); ++i) {
++			auto [cost, required_money, town] = Command<CMD_FOUND_TOWN>::Do(DoCommandFlag::Execute, TileXY(12 + i * 32, 12),
++				TSZ_SMALL, false, TL_ORIGINAL, false, 0, fmt::format("M21 Oracle Town {}", i));
++			(void)required_money;
++			Require(cost.Succeeded() && Town::IsValidID(town), "failed to create qualification town");
++			towns[i] = town;
++		}
++	}
++	for (uint i = 0; i < companies; ++i) {
++		Company *company = DoStartupNewCompany(false, CompanyID{static_cast<uint8_t>(i)});
++		Require(company != nullptr, "failed to create qualification company");
++		company->money = Money{100000000};
++	}
++	SetLocalCompany(CompanyID::Begin());
++	_current_company = CompanyID::Begin();
++	return towns;
++}
++
++static void SetCalendarYear(int year)
++{
++	TimerGameCalendar::SetDate(TimerGameCalendar::ConvertYMDToDate(TimerGameCalendar::Year{year}, 0, 1), 0);
++}
++
++static json EngineSnapshot(int year)
++{
++	SetCalendarYear(year);
++	StartupEngines();
++	json by_type = json::object();
++	for (VehicleType type : {VEH_TRAIN, VEH_ROAD, VEH_SHIP, VEH_AIRCRAFT}) {
++		uint total = 0;
++		uint available = 0;
++		uint expired = 0;
++		for (const Engine *engine : Engine::IterateType(type)) {
++			++total;
++			available += engine->company_avail.Test(CompanyID::Begin());
++			expired += engine->age != INT32_MAX && engine->company_avail.None() && TimerGameCalendar::date > engine->intro_date;
++		}
++		by_type[fmt::format("{}", static_cast<uint>(type))] = {{"available", available}, {"expired", expired}, {"total", total}};
++	}
++	uint airports_available = 0;
++	uint airports_total = 0;
++	for (uint8_t type = 0; type < NUM_AIRPORTS; ++type) {
++		const AirportSpec *spec = AirportSpec::Get(type);
++		if (!spec->enabled) continue;
++		++airports_total;
++		if (spec->min_year <= TimerGameCalendar::year && spec->max_year >= TimerGameCalendar::year) ++airports_available;
++	}
++	return {{"airport_available", airports_available}, {"airport_total", airports_total}, {"engines", std::move(by_type)}, {"year", year}};
++}
++
++static json RunCalendar(const Request &request, const std::string &save_path)
++{
++	ResetWorld(request);
++	json snapshots = json::array();
++	for (int year : {1900, 1930, 1950, 1980, 2000, 2050, 2100}) snapshots.push_back(EngineSnapshot(year));
++	SetCalendarYear(2050);
++	StartupEngines();
++	json before = EngineSnapshot(2050);
++	Require(SaveOrLoad(save_path, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "calendar SAVE failed");
++	SetCalendarYear(2100);
++	Require(SaveOrLoad(save_path, SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "calendar LOAD failed");
++	json after = EngineSnapshot(2050);
++	Require(before == after && TimerGameCalendar::year == TimerGameCalendar::Year{2050}, "calendar projection did not restore exactly");
++	uint cargo_count = 0;
++	for ([[maybe_unused]] const CargoSpec *cargo : CargoSpec::Iterate()) ++cargo_count;
++	Require(cargo_count > 0 && snapshots.size() == 7, "calendar/climate catalogs are vacuous");
++	return {{"calendar_fixture", "explicit-native-date-boundary-shifts"}, {"cargo_count", cargo_count},
++		{"landscape", LandscapeName(request.landscape)}, {"save_load_exact", true}, {"snapshots", std::move(snapshots)},
++		{"span_years", 200}};
++}
++
++static void RunUntilEconomyMonthChanges(uint8_t month)
++{
++	for (uint ticks = 0; ticks < 10000 && TimerGameEconomy::month == month; ++ticks) StateGameLoop();
++	Require(TimerGameEconomy::month != month, "economy month did not advance within bound");
++}
++
++static json RunAuthorityEconomy(const Request &request, const std::string &save_path)
++{
++	auto towns = ResetWorld(request, 2);
++	Town *town = Town::Get(towns[0]);
++	json commands = json::array();
++	{
++		AutoRestoreBackup deity(_current_company, OWNER_DEITY);
++		CommandCost invalid = Command<CMD_TOWN_RATING>::Do({}, TownID::Invalid(), CompanyID::Begin(), 500);
++		commands.push_back({{"command", "CMD_TOWN_RATING_INVALID"}, {"status", invalid.Failed() ? "REJECTED" : "SUCCESS"}});
++		Require(invalid.Failed(), "invalid authority rating was accepted");
++		CommandCost rating = Command<CMD_TOWN_RATING>::Do(DoCommandFlag::Execute, towns[0], CompanyID::Begin(), 500);
++		commands.push_back({{"command", "CMD_TOWN_RATING"}, {"status", rating.Succeeded() ? "SUCCESS" : "REJECTED"}});
++		Require(rating.Succeeded() && town->ratings[CompanyID::Begin()] == 500, "authority rating did not execute exactly");
++	}
++	_current_company = CompanyID::Begin();
++	CommandCost rights_test = Command<CMD_DO_TOWN_ACTION>::Do({}, towns[0], TownAction::BuyRights);
++	CommandCost rights = Command<CMD_DO_TOWN_ACTION>::Do(DoCommandFlag::Execute, towns[0], TownAction::BuyRights);
++	commands.push_back({{"command", "CMD_DO_TOWN_ACTION_BUY_RIGHTS_TEST"}, {"cost", rights_test.GetCost().base()}, {"status", rights_test.Succeeded() ? "SUCCESS" : "REJECTED"}});
++	commands.push_back({{"command", "CMD_DO_TOWN_ACTION_BUY_RIGHTS"}, {"cost", rights.GetCost().base()}, {"status", rights.Succeeded() ? "SUCCESS" : "REJECTED"}});
++	Require(rights_test.Succeeded() && rights.Succeeded() && rights.GetCost() == rights_test.GetCost() && town->exclusivity == CompanyID::Begin(),
++		"exclusive-rights test/execute parity failed");
++	_current_company = CompanyID{1};
++	CommandCost competitor = Command<CMD_DO_TOWN_ACTION>::Do({}, towns[0], TownAction::BuyRights);
++	commands.push_back({{"command", "CMD_DO_TOWN_ACTION_COMPETITOR"}, {"status", competitor.Failed() ? "REJECTED" : "SUCCESS"}});
++	Require(competitor.Failed(), "competitor bypassed active exclusive rights");
++	town->exclusive_counter = 1;
++	uint8_t rights_month = TimerGameEconomy::month;
++	RunUntilEconomyMonthChanges(rights_month);
++	Require(town->exclusive_counter == 0 && town->exclusivity == CompanyID::Invalid(), "exclusive rights did not expire natively");
++
++	CargoType passengers = GetCargoTypeByLabel(CT_PASSENGERS);
++	Require(IsValidCargoType(passengers), "passenger cargo is unavailable");
++	{
++		AutoRestoreBackup deity(_current_company, OWNER_DEITY);
++		CommandCost subsidy = Command<CMD_CREATE_SUBSIDY>::Do(DoCommandFlag::Execute, passengers,
++			Source{towns[0], SourceType::Town}, Source{towns[1], SourceType::Town});
++		commands.push_back({{"command", "CMD_CREATE_SUBSIDY"}, {"status", subsidy.Succeeded() ? "SUCCESS" : "REJECTED"}});
++		Require(subsidy.Succeeded() && Subsidy::GetNumItems() == 1, "subsidy was not created");
++	}
++	Subsidy *subsidy = *Subsidy::Iterate().begin();
++	subsidy->AwardTo(CompanyID::Begin());
++	Require(subsidy->awarded == CompanyID::Begin(), "subsidy award did not persist");
++	uint16_t awarded_months = subsidy->remaining;
++
++	InitializeEconomy();
++	StartupEconomy();
++	Money price_before = _price[PR_BUILD_ROAD];
++	Money payment_before = GetTransportedGoodsIncome(100, 20, 10, passengers);
++	uint64_t inflation_before = _economy.inflation_prices;
++	Require(!AddInflation(false), "inflation unexpectedly saturated");
++	RecomputePrices();
++	Money price_after = _price[PR_BUILD_ROAD];
++	Money payment_after = GetTransportedGoodsIncome(100, 20, 10, passengers);
++	Require(_economy.inflation_prices > inflation_before && price_after >= price_before && payment_after >= payment_before,
++		"inflation did not propagate through native prices and payments");
++	_economy.fluct = 1;
++	uint8_t recession_month = TimerGameEconomy::month;
++	RunUntilEconomyMonthChanges(recession_month);
++	Require(EconomyIsInRecession(), "native economy did not enter recession");
++	int16_t recession_fluct = _economy.fluct;
++	_economy.fluct = -11;
++	uint8_t recovery_month = TimerGameEconomy::month;
++	RunUntilEconomyMonthChanges(recovery_month);
++	Require(!EconomyIsInRecession(), "native economy did not leave recession");
++	int16_t recovered_fluct = _economy.fluct;
++
++	json before_save = {{"awarded", subsidy->awarded.base()}, {"remaining", subsidy->remaining}, {"town_rating", town->ratings[CompanyID::Begin()]}};
++	Require(SaveOrLoad(save_path, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "authority/economy SAVE failed");
++	town->ratings[CompanyID::Begin()] = -1000;
++	Require(SaveOrLoad(save_path, SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "authority/economy LOAD failed");
++	Subsidy *loaded_subsidy = *Subsidy::Iterate().begin();
++	json after_load = {{"awarded", loaded_subsidy->awarded.base()}, {"remaining", loaded_subsidy->remaining},
++		{"town_rating", Town::Get(towns[0])->ratings[CompanyID::Begin()]}};
++	Require(before_save == after_load, "authority/economy public state did not restore exactly");
++	return {{"commands", std::move(commands)}, {"economy", {{"inflation_after", _economy.inflation_prices},
++		{"inflation_before", inflation_before}, {"payment_after", payment_after.base()}, {"payment_before", payment_before.base()},
++		{"price_after", price_after.base()}, {"price_before", price_before.base()}, {"recession_fluct", recession_fluct},
++		{"recovered_fluct", recovered_fluct}}}, {"exclusive_rights_expired", true}, {"save_load_exact", true},
++		{"subsidy", {{"awarded_months", awarded_months}, {"company", CompanyID::Begin().base()}}}};
++}
++
++static uint DisasterCount()
++{
++	uint count = 0;
++	for ([[maybe_unused]] const DisasterVehicle *vehicle : DisasterVehicle::Iterate()) ++count;
++	return count;
++}
++
++static json RunEvents(const Request &request, const std::string &save_path)
++{
++	ResetWorld(request);
++	TileIndex depot = TileXY(20, 20);
++	CommandCost depot_cost = Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute, depot, ROADTYPE_ROAD, DIAGDIR_NW);
++	Require(depot_cost.Succeeded(), "failed to build event road depot");
++	const Engine *road_engine = nullptr;
++	for (const Engine *engine : Engine::IterateType(VEH_ROAD)) {
++		if (engine->company_avail.Test(CompanyID::Begin())) { road_engine = engine; break; }
++	}
++	Require(road_engine != nullptr, "no road engine available for breakdown probe");
++	auto built = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, depot, road_engine->index, true,
++		road_engine->GetDefaultCargoType(), INVALID_CLIENT_ID);
++	Require(std::get<0>(built).Succeeded(), "failed to build breakdown vehicle");
++	RoadVehicle *vehicle = RoadVehicle::Get(std::get<1>(built));
++	vehicle->vehstatus.Reset(VehState::Stopped);
++	vehicle->cur_speed = 10;
++	vehicle->reliability = 0;
++	vehicle->breakdown_chance = 255;
++	_settings_game.difficulty.vehicle_breakdowns = 0;
++	for (uint i = 0; i < 32; ++i) CheckVehicleBreakdown(vehicle);
++	Require(vehicle->breakdown_ctr == 0, "disabled breakdowns mutated vehicle state");
++	_settings_game.difficulty.vehicle_breakdowns = 2;
++	vehicle->breakdown_ctr = 2;
++	vehicle->breakdown_delay = 4;
++	bool observed_breakdown = false;
++	uint recovery_ticks = 0;
++	while (recovery_ticks < 32 && vehicle->breakdown_ctr != 0) {
++		observed_breakdown |= vehicle->HandleBreakdown();
++		vehicle->tick_counter++;
++		++recovery_ticks;
++	}
++	Require(observed_breakdown && vehicle->breakdown_ctr == 0 && vehicle->breakdowns_since_last_service == 1,
++		"forced native breakdown did not recover within bound");
++
++	_settings_game.difficulty.disasters = false;
++	Require(DisasterCount() == 0, "disabled disaster baseline is not empty");
++	_settings_game.difficulty.disasters = true;
++	for (uint y = 28; y < 36; ++y) for (uint x = 4; x < 20; ++x) MakeSea(TileXY(x, y));
++	DisasterVehicle *disaster = new DisasterVehicle(8 * TILE_SIZE + TILE_SIZE / 2, 30 * TILE_SIZE + TILE_SIZE / 2,
++		DIR_SE, ST_SMALL_SUBMARINE);
++	VehicleID disaster_id = disaster->index;
++	disaster->age = TimerGameCalendar::Date{8878};
++	uint disaster_ticks = 0;
++	while (Vehicle::IsValidID(disaster_id) && disaster_ticks < 8) {
++		DisasterVehicle::Get(disaster_id)->Tick();
++		++disaster_ticks;
++	}
++	Require(!Vehicle::IsValidID(disaster_id), "native disaster lifecycle did not terminate within bound");
++	json before = {{"breakdown_counter", vehicle->breakdown_ctr}, {"disasters", DisasterCount()},
++		{"vehicle_valid", Vehicle::IsValidID(vehicle->index)}};
++	Require(SaveOrLoad(save_path, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "event SAVE failed");
++	vehicle->breakdown_ctr = 2;
++	Require(SaveOrLoad(save_path, SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "event LOAD failed");
++	RoadVehicle *loaded = RoadVehicle::Get(std::get<1>(built));
++	json after = {{"breakdown_counter", loaded->breakdown_ctr}, {"disasters", DisasterCount()},
++		{"vehicle_valid", Vehicle::IsValidID(loaded->index)}};
++	Require(before == after, "event recovery state did not restore exactly");
++	return {{"breakdown", {{"disabled_no_event", true}, {"event_penalty", -1}, {"observed", observed_breakdown},
++		{"recovery_bonus", 1}, {"recovery_ticks", recovery_ticks}}}, {"disaster", {{"disabled_no_event", true},
++		{"enabled_fixture", "native-small-submarine"}, {"lifecycle_ticks", disaster_ticks}, {"terminated", true}}},
++		{"save_load_exact", true}};
++}
++
++static json CommandStatus(std::string_view name, const CommandCost &cost)
++{
++	return {{"command", name}, {"status", cost.Succeeded() ? "SUCCESS" : "REJECTED"}};
++}
++
++static json RunGameScript(const Request &request, const std::string &save_path)
++{
++	auto towns = ResetWorld(request);
++	Require(Game::GetInstance() != nullptr && Game::GetInfo() != nullptr, "pinned Game Script fixture is not running");
++	json commands = json::array();
++	GoalID goal;
++	StoryPageID page;
++	StoryPageElementID element;
++	LeagueTableID table;
++	LeagueTableElementID league_element;
++	{
++		AutoRestoreBackup deity(_current_company, OWNER_DEITY);
++		auto [goal_cost, goal_id] = Command<CMD_CREATE_GOAL>::Do(DoCommandFlag::Execute, CompanyID::Begin(), GT_TOWN,
++			towns[0].base(), RawText("M21 service goal"));
++		commands.push_back(CommandStatus("CMD_CREATE_GOAL", goal_cost));
++		Require(goal_cost.Succeeded(), "Game Script goal creation failed");
++		goal = goal_id;
++		CommandCost progress = Command<CMD_SET_GOAL_PROGRESS>::Do(DoCommandFlag::Execute, goal, RawText("1/2"));
++		CommandCost completed = Command<CMD_SET_GOAL_COMPLETED>::Do(DoCommandFlag::Execute, goal, true);
++		commands.push_back(CommandStatus("CMD_SET_GOAL_PROGRESS", progress));
++		commands.push_back(CommandStatus("CMD_SET_GOAL_COMPLETED", completed));
++		Require(progress.Succeeded() && completed.Succeeded(), "Game Script goal update failed");
++		CommandCost question = Command<CMD_GOAL_QUESTION>::Do(DoCommandFlag::Execute, 2101, CompanyID::Begin().base(), false,
++			1U << 0, GQT_QUESTION, RawText("Continue?"));
++		commands.push_back(CommandStatus("CMD_GOAL_QUESTION", question));
++		Require(question.Succeeded(), "Game Script question failed");
++
++		auto [page_cost, page_id] = Command<CMD_CREATE_STORY_PAGE>::Do(DoCommandFlag::Execute, CompanyID::Begin(),
++			RawText("M21 story"));
++		commands.push_back(CommandStatus("CMD_CREATE_STORY_PAGE", page_cost));
++		Require(page_cost.Succeeded(), "Game Script story page creation failed");
++		page = page_id;
++		StoryPageButtonData button_data{};
++		button_data.SetColour(COLOUR_BLUE);
++		button_data.SetFlags(SPBF_NONE);
++		auto [element_cost, element_id] = Command<CMD_CREATE_STORY_PAGE_ELEMENT>::Do(DoCommandFlag::Execute, TileIndex{0}, page,
++			SPET_BUTTON_PUSH, button_data.referenced_id, RawText("Acknowledge"));
++		commands.push_back(CommandStatus("CMD_CREATE_STORY_PAGE_ELEMENT", element_cost));
++		Require(element_cost.Succeeded(), fmt::format("Game Script story element creation failed: page={} valid={} error={}",
++			page.base(), StoryPage::IsValidID(page), static_cast<uint64_t>(element_cost.GetErrorMessage())));
++		element = element_id;
++		CommandCost title = Command<CMD_SET_STORY_PAGE_TITLE>::Do(DoCommandFlag::Execute, page, RawText("M21 story updated"));
++		CommandCost show = Command<CMD_SHOW_STORY_PAGE>::Do(DoCommandFlag::Execute, page);
++		commands.push_back(CommandStatus("CMD_SET_STORY_PAGE_TITLE", title));
++		commands.push_back(CommandStatus("CMD_SHOW_STORY_PAGE", show));
++		Require(title.Succeeded() && show.Succeeded(), "Game Script story update/show failed");
++
++		auto [table_cost, table_id] = Command<CMD_CREATE_LEAGUE_TABLE>::Do(DoCommandFlag::Execute,
++			RawText("M21 league"), RawText("header"), RawText("footer"));
++		commands.push_back(CommandStatus("CMD_CREATE_LEAGUE_TABLE", table_cost));
++		Require(table_cost.Succeeded(), "Game Script league creation failed");
++		table = table_id;
++		auto [league_cost, league_id] = Command<CMD_CREATE_LEAGUE_TABLE_ELEMENT>::Do(DoCommandFlag::Execute, table, 10,
++			CompanyID::Begin(), RawText("Company 0"), RawText("10"), LT_COMPANY,
++			CompanyID::Begin().base());
++		commands.push_back(CommandStatus("CMD_CREATE_LEAGUE_TABLE_ELEMENT", league_cost));
++		Require(league_cost.Succeeded(), "Game Script league element creation failed");
++		league_element = league_id;
++		CommandCost update = Command<CMD_UPDATE_LEAGUE_TABLE_ELEMENT_SCORE>::Do(DoCommandFlag::Execute, league_element, 20,
++			RawText("20"));
++		commands.push_back(CommandStatus("CMD_UPDATE_LEAGUE_TABLE_ELEMENT_SCORE", update));
++		Require(update.Succeeded(), "Game Script league update failed");
++	}
++	_current_company = CompanyID::Begin();
++	CommandCost answer = Command<CMD_GOAL_QUESTION_ANSWER>::Do(DoCommandFlag::Execute, 2101, 0);
++	CommandCost button = Command<CMD_STORY_PAGE_BUTTON>::Do(DoCommandFlag::Execute, TileIndex{0}, element, VehicleID::Invalid());
++	commands.push_back(CommandStatus("CMD_GOAL_QUESTION_ANSWER", answer));
++	commands.push_back(CommandStatus("CMD_STORY_PAGE_BUTTON", button));
++	Require(answer.Succeeded() && button.Succeeded(), fmt::format("company Game Script response failed: answer_error={} button_error={} element={} valid={}",
++		static_cast<uint64_t>(answer.GetErrorMessage()), static_cast<uint64_t>(button.GetErrorMessage()), element.base(),
++		StoryPageElement::IsValidID(element)));
++	for (uint i = 0; i < 4; ++i) Game::GameLoop();
++
++	json counts = {{"goals", Goal::GetNumItems()}, {"league_elements", LeagueTableElement::GetNumItems()},
++		{"league_tables", LeagueTable::GetNumItems()}, {"story_elements", StoryPageElement::GetNumItems()},
++		{"story_pages", StoryPage::GetNumItems()}};
++	Require(SaveOrLoad(save_path, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "Game Script SAVE failed");
++	{
++		AutoRestoreBackup deity(_current_company, OWNER_DEITY);
++		Require(Command<CMD_REMOVE_GOAL>::Do(DoCommandFlag::Execute, goal).Succeeded(), "goal removal mutation failed");
++		Require(Command<CMD_REMOVE_STORY_PAGE>::Do(DoCommandFlag::Execute, page).Succeeded(), "story removal mutation failed");
++		Require(Command<CMD_REMOVE_LEAGUE_TABLE_ELEMENT>::Do(DoCommandFlag::Execute, league_element).Succeeded(), "league removal mutation failed");
++	}
++	Require(SaveOrLoad(save_path, SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "Game Script LOAD failed");
++	json restored = {{"goals", Goal::GetNumItems()}, {"league_elements", LeagueTableElement::GetNumItems()},
++		{"league_tables", LeagueTable::GetNumItems()}, {"story_elements", StoryPageElement::GetNumItems()},
++		{"story_pages", StoryPage::GetNumItems()}};
++	Require(counts == restored && Game::GetInstance() != nullptr, "Game Script state did not restore exactly");
++	return {{"commands", std::move(commands)}, {"fixture_name", Game::GetInfo()->GetName()}, {"observed", counts},
++		{"responses", {{"goal_question", true}, {"story_button", true}}}, {"save_load_exact", true}};
++}
++
++static json RunContent(const Request &request)
++{
++	ResetWorld(request);
++	uint engines[4]{};
++	for (VehicleType type : {VEH_TRAIN, VEH_ROAD, VEH_SHIP, VEH_AIRCRAFT}) {
++		for (const Engine *engine : Engine::IterateType(type)) if (engine->GetGRFID() != 0) ++engines[type];
++	}
++	uint industries = 0;
++	for (IndustryType type = 0; type < NUM_INDUSTRYTYPES; ++type) industries += GetIndustrySpec(type)->enabled;
++	uint objects = 0;
++	for (const ObjectSpec &object : ObjectSpec::Specs()) objects += object.IsEnabled();
++	RoadTypes roads = GetRoadTypes(false);
++	uint rail_types = _sorted_railtypes.size();
++	uint cargos = 0;
++	for ([[maybe_unused]] const CargoSpec *cargo : CargoSpec::Iterate()) ++cargos;
++	Require(request.expected_newgrfs.size() == 10 && request.expected_capabilities.size() == 14,
++		"content probe does not carry the complete finite compatibility pack");
++	Require(engines[VEH_TRAIN] > 0 && engines[VEH_ROAD] > 0 && engines[VEH_SHIP] > 0 && engines[VEH_AIRCRAFT] > 0 &&
++		industries > 0 && objects > 0 && roads.Count() >= 2 && rail_types >= 1 && cargos > 0,
++		fmt::format("loaded content capability projection is vacuous: trains={} roads={} ships={} aircraft={} industries={} objects={} road_types={} rail_types={} cargos={}",
++			engines[VEH_TRAIN], engines[VEH_ROAD], engines[VEH_SHIP], engines[VEH_AIRCRAFT], industries, objects,
++			roads.Count(), rail_types, cargos));
++	return {{"arbitrary_newgrf_universality", false}, {"assets", {{"aircraft_engines", engines[VEH_AIRCRAFT]},
++		{"cargos", cargos}, {"industries", industries}, {"objects", objects}, {"rail_types", rail_types},
++		{"road_engines", engines[VEH_ROAD]}, {"road_types", roads.Count()}, {"ship_engines", engines[VEH_SHIP]},
++		{"train_engines", engines[VEH_TRAIN]}}}, {"capabilities", request.expected_capabilities},
++		{"capability_schema_closed", true}, {"package_count", request.expected_newgrfs.size()}};
++}
++
++static json Run(const Request &request, const std::string &save_path)
++{
++	if (request.probe == "calendar") return RunCalendar(request, save_path);
++	if (request.probe == "authority_economy") return RunAuthorityEconomy(request, save_path);
++	if (request.probe == "events") return RunEvents(request, save_path);
++	if (request.probe == "gamescript") return RunGameScript(request, save_path);
++	if (request.probe == "content") return RunContent(request);
++	Fail("unreachable probe dispatch");
++}
++
++} // namespace
++
++void RunRlV2BroadQualification(const std::string &manifest_path, const std::string &report_path)
++{
++	Request request = Validate(ReadCanonicalJson(manifest_path));
++	json active_content = ActiveContent(request);
++	try {
++		json result = Run(request, report_path + ".sav");
++		json report = {
++			{"active_content", std::move(active_content)}, {"engine_source_tree", request.engine_source_tree},
++			{"executable_sha256", request.executable_sha256}, {"identity", {{"content_lock_sha256", request.content_lock_sha256},
++				{"contract_sha256", request.contract_sha256}}}, {"request", {{"landscape", LandscapeName(request.landscape)},
++				{"probe", request.probe}, {"run_id", request.run_id}, {"seed", request.seed}}}, {"result", std::move(result)},
++			{"run_id", request.run_id}, {"schema_version", REPORT_SCHEMA}, {"status", "PASS"},
++		};
++		WriteCanonicalNew(report_path, report);
++	} catch (const std::exception &e) {
++		WriteCanonicalNew(report_path, {{"error", e.what()}, {"status", "FAIL"}});
++		throw;
++	}
++}
+diff --git a/src/rl_v2_broad.h b/src/rl_v2_broad.h
+new file mode 100644
+index 0000000..534ba12
+--- /dev/null
++++ b/src/rl_v2_broad.h
+@@ -0,0 +1,15 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_broad.h Native V2 M21 broad-feature qualification. */
++
++#ifndef RL_V2_BROAD_H
++#define RL_V2_BROAD_H
++
++#include <string>
++
++void RunRlV2BroadQualification(const std::string &manifest_path, const std::string &report_path);
++
++#endif /* RL_V2_BROAD_H */
+-- 
+2.43.0
+
+
