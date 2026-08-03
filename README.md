@@ -127,7 +127,16 @@ before inference. The same loader and shared equivalence implementation now
 compile into the cumulative OpenTTD source. A network-isolated `openttd -B`
 prototype produced all 48 source-integrated results, making 144 runtime-case
 results total; it matched the standalone report in every field except the
-declared runtime identity.
+declared runtime identity. A second cumulative source patch now adds the
+nonaccepting normal-game playback/controller foundation: strict preregistered
+campaign parsing, pre-world package and opponent validation, live recurrent
+inference, native inspection and controls, bounded JSONL, atomic reports,
+wait-only fault containment, and normal save/screenshot requests. The joint
+V1/V2 executable builds and the source-integrated equivalence report remains
+byte-identical. One offscreen SDL normal-game smoke completed four policy
+boundaries and wrote its report, log, and save. Its executor intentionally issued
+zero construction, vehicle, or order commands, so no visible-service campaign,
+save/load restoration, G23 result, or V2 release is claimed.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -228,6 +237,7 @@ declared runtime identity.
 · [`M23 independent package validator`](scripts/v2/validate_m23_packages.py)
 · [`M23 complete rejection-matrix runner`](scripts/v2/run_m23_package_mutations.py)
 · [`M23 OpenTTD source-integrated patch`](integration/openttd/patches/15.3/m23/0001-Add-M23-source-integrated-ONNX-runtime.patch)
+· [`M23 visible-controller foundation patch`](integration/openttd/patches/15.3/m23/0002-Add-M23-visible-normal-game-controller-foundation.patch)
 · [`M23 shared in-game evidence validator`](scripts/v2/m23_ingame.py)
 · [`M23 source-integrated equivalence runner`](scripts/v2/run_m23_ingame_equivalence.py)
 · [`M23 independent in-game artifact validator`](scripts/v2/validate_m23_ingame_equivalence.py)
@@ -235,6 +245,7 @@ declared runtime identity.
 · [`M23 deployment source and mutation tests`](tests/project/v2/test_v2_m23_deployment_source.py)
 · [`M23 package and mutation tests`](tests/project/v2/test_v2_m23_packages.py)
 · [`M23 source-integrated runtime tests`](tests/project/v2/test_v2_m23_ingame_source.py)
+· [`M23 visible-controller source tests`](tests/project/v2/test_v2_m23_visible_source.py)
 · [`M22 final one-shot runner`](scripts/v2/run_m22_final_evaluation.py)
 · [`M22 final evidence validator`](scripts/v2/validate_m22_final_evaluation.py)
 · [`M22 final evidence schema`](docs/project/schema/v2-m22-final-evaluation-evidence.schema.json)
@@ -262,7 +273,7 @@ declared runtime identity.
 · [`G22 gate report`](docs/project/G22_GATE_REPORT.md)
 · [`M23 release contract`](docs/project/M23_RELEASE_CONTRACT.md)
 
-## M23 package and three-runtime-equivalence foundation boundary
+## M23 package, three-runtime-equivalence, and visible-controller foundation boundary
 
 Development has reached and tested the three-runtime M23 implementation
 foundation over accepted G22 commit `e027ab6`. The repository
@@ -342,16 +353,61 @@ Fourteen new tests cover patch scope/application, V1/M03 compatibility, the
 inference-only dependency boundary, shared recurrence/output comparison,
 canonical configuration, exact package pinning, and report mutations.
 
+The next cumulative source patch has SHA-256
+`6d7eb16984bf604b2146fa9695f506ed7ffdfc31a0ab2415f8ad3e55edb14918`
+and produces source tree `e02d4c56db5d7693870a36d929d8973e50fc7ae7` after the equivalence
+foundation. It preserves `operation=equivalence` and adds
+`operation=playback` to the same absolute `openttd -B` boundary. Before company
+control it validates the frozen contract, exact campaign tuple, monolithic
+package, output paths, inference/log bounds, and exact retained AI name/version;
+it then requests an ordinary single-player new game and starts the opponent via
+the normal AI-company startup path. The controller activates only after the
+human company exists, reconstructs the live public 32-feature projection, masks
+to wait plus the campaign program, carries the 256-float recurrent state, and
+runs greedy inference every configured 128–1024 ticks. The native window exposes
+start, stop, controller pause/resume, one-boundary step, validate-before-swap
+package reload, and native game pause; inspection covers state/health,
+architecture, package/checkpoint identity, program/confidence/value/legal count,
+hidden norm, executor phase/last command, and last error. Runtime exceptions
+enter a preserved wait-only fault state. Controller events use bounded canonical
+JSONL, the latest report is replaced atomically, and completion uses normal
+OpenTTD save and viewport-screenshot paths. Eight static tests bind this patch's
+scope, application order, lifecycle, recurrence, controls, outputs, explicit
+17-program dispatch, and absence of qualification-runner calls.
+
+The joint V1/V2 prototype executable built all 908 targets without new warnings,
+and all 98 OpenTTD CTests pass; its SHA-256 is
+`9c546f7713d3d1696ce470531cb208bf0eefdd46cd317f4e366497f51887174a`.
+Re-running the exact 48-case in-game equivalence path kept report SHA-256
+`23f784c7c29580f4faeceda34ba75bef539bb7c46b1664d87e709ba3949b9532`
+and maximum absolute error `1.33514e-05`. An isolated SDL-dummy normal-game smoke
+used frozen campaign `visible-road-passenger-kraken`, seed `131136999`,
+temperate 128-by-128, KrakenAI2 v3, the accepted monolithic package, a 128-tick
+interval, and four boundaries. All four learned selections were
+`road-passenger`; confidence rose from `0.9973208139953601` to
+`0.9984783697476235`, and the controller reached `COMPLETE`. It wrote a 1,583-byte
+report (`6e3c8affab45bd2304312645e041a8bbfb56f06ecb29fd67c424cbabba30bafc`),
+a 3,950-byte seven-record log
+(`6b66cf1dd033ef453dca3062cd9c708c172d2f74339b129150f750487c04aa51`),
+and a 26,312-byte normal save
+(`e043a46ebf65c5f9377c62f003ed570a9bf5bc246303aea18433cd2cbd2ff76c`).
+These are disposable development artifacts below
+`/home/thecl/.codex/artifacts/openttd-rl/v2-m23-visible-runtime-prototype-a`, not
+committed acceptance evidence.
+
 Those measurements are development prototypes, not accepted G23 evidence. The
 remaining work is to prove the exact copied checkpoints load and resume at the
-G23 boundary; add visible
-normal-game operation across the retained transport modes and admitted opponents
-with start/stop/reload, health, logs, safe fallback, and actionable rejection
-behavior; complete the operator guide, benchmark, notices, and immutable release
-index; perform two independent clean-root reproductions; rerun the complete
-V2/V1 gate with zero nonclosed defects; and only then tag and publish the reviewed
-bytes. Existing V1 release packages and behavior remain unchanged throughout
-M23.
+G23 boundary; replace all discovery-only executor cases with reviewed normal
+construction, vehicle, order, movement, delivery, and income commands; persist
+and restore controller/executor/recurrent state through save/load; exercise the
+controls and faults; retain all eight real visible campaigns and screenshots;
+complete the operator guide, benchmark, notices, and immutable release index;
+perform two independent clean-root reproductions; rerun the complete V2/V1 gate
+with zero nonclosed defects; and only then tag and publish the reviewed bytes.
+The current executor reports `NO_OP_DISCOVERY` and `command_count=0` for every
+non-wait program, the offscreen smoke retained no screenshot, and seven campaigns
+have not run. All nine `V2-RELEASE-*` requirements therefore remain `PLANNED`.
+Existing V1 release packages and behavior remain unchanged throughout M23.
 
 ## Version 2 implementation through G22 and the M23 foundation
 
@@ -730,9 +786,15 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   the complete 28-label rejection matrix fails before inference. The shared
   inference code then compiles into OpenTTD without training dependencies and
   matches all 48 cases, bringing the prototype runtime-result total to 144 while
-  preserving V1 `-A` and M03 `-B`. These remain development identities until
-  copied-checkpoint resume, visible campaigns and controls, clean-root
-  reproduction, release documentation, manifest, and publication all pass.
+  preserving V1 `-A` and M03 `-B`. A second cumulative patch now compiles the
+  normal-game recurrent lifecycle, strict campaign/opponent preflight, native
+  controls and inspection, bounded log/atomic report, wait-only fault state, and
+  complete discovery dispatch. A four-boundary offscreen normal-game source smoke
+  proves that lifecycle and normal save path, but deliberately issues no gameplay
+  commands. These remain development identities until real mode executors,
+  controller save/load restoration, eight visible campaigns, copied-checkpoint
+  resume, clean-root reproduction, release documentation, manifest, and
+  publication all pass.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -757,8 +819,9 @@ failure report are preserved. Diagnosis and a reviewable source correction are
 now complete, the corrected runtime is identity-bound, and the first independent
 follow-up is retained as a zero-classified-failure aggregate `FAIL`. The second
 independent suite passes and preserves all three results. M23 package
-construction, in-game equivalence, visible operation, clean-root reproduction,
-and publication are next.
+construction and in-game equivalence now have a compiled controller/lifecycle
+successor; command-bearing visible operation, save/load restoration, clean-root
+reproduction, and publication are next.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -810,9 +873,10 @@ is also recomputed and required to exit with its distinct evidence-failure statu
 an accidental pass or validation error fails the repository check. The accepted
 follow-up-v2 report is independently recomputed and required to pass, including
 its exact required-program service admission and immutable earlier-suite
-boundaries. At the current M23 foundation boundary the suite passes 615 V2
+boundaries. At the current M23 foundation boundary the suite passes 623 V2
 tests, including the 26 pre-result contract mutations, 17 deployment-source
-mutations, 15 package/loader tests, and 14 source-integrated runtime tests, plus the unchanged 235-test V1
+mutations, 15 package/loader tests, 14 source-integrated runtime tests, and eight
+visible-controller source tests, plus the unchanged 235-test V1
 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
@@ -942,7 +1006,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary |
 | V2 generalist learning | Semantic-v2 17-program/seven-stage PPO curriculum, three seeds, matched 1,457,520-parameter learned architectures and non-neural/random/wait baselines, exact recurrent-attention-graph state and update-16 recovery, six accepted 48-update CUDA campaigns, all 36 development candidates eligible, selected-checkpoint retention across all 16 active programs, measured CPU/CUDA batches 1/8/32, and a source-frozen independent 42-case suite with one manifest read, 42 evaluator/native processes, zero retries/replacements/failures, positive paired lower confidence bounds, and profitable road/rail/water/air/multimodal service; immutable final-v1 and follow-up-v1 remain `FAIL` | `M22/G22 PASS`; frozen finite curriculum and independent-suite boundary; zero nonclosed defects; M23 next |
-| V2 packaging, playback, and publication | Pre-result M23 contract and 26 mutation tests freeze both exact checkpoints, two opset-18 packages, 144 three-runtime results, eight visible campaigns, controls/fallback/errors, one complete operator guide, two independent clean-root reproductions, immutable release documentation, full regression, and reviewed tag/assets. The deterministic exporter, native/ORT adapters, independent 48-case corpus, two byte-identical checkpoint/deployment package roots, inference-only C++ package loader, complete 28-label rejection matrix, source-integrated OpenTTD runtime, exact 144-result comparison, and 46 implementation tests now pass as nonaccepting foundations | `M23 IN PROGRESS`; package and three-runtime equivalence prototypes pass; visible normal-game controller/campaign evidence next; `G23 PLANNED`; 9 requirements remain; no V2 release claim |
+| V2 packaging, playback, and publication | Pre-result M23 contract and 26 mutation tests freeze both exact checkpoints, two opset-18 packages, 144 three-runtime results, eight visible campaigns, controls/fallback/errors, one complete operator guide, two independent clean-root reproductions, immutable release documentation, full regression, and reviewed tag/assets. The deterministic exporter, native/ORT adapters, independent 48-case corpus, two byte-identical checkpoint/deployment package roots, inference-only C++ package loader, complete 28-label rejection matrix, source-integrated OpenTTD runtime, exact 144-result comparison, compiled normal-game recurrent controller lifecycle, and 54 implementation tests now pass as nonaccepting foundations | `M23 IN PROGRESS`; package, three-runtime equivalence, and controller-lifecycle prototypes pass; normal-command executors, save/load restoration, and eight visible campaign results next; `G23 PLANNED`; 9 requirements remain; no V2 release claim |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

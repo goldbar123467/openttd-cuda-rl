@@ -1,0 +1,1230 @@
+From bbfcd4ca3133a60f2e1b293bad68918a3c4c26c5 Mon Sep 17 00:00:00 2001
+From: OpenTTD RL Evidence <evidence@openttd-rl.invalid>
+Date: Sat, 1 Jan 2000 00:00:00 +0000
+Subject: [PATCH] Add M23 visible normal-game controller foundation
+
+---
+ src/CMakeLists.txt             |   3 +
+ src/openttd.cpp                |   6 +-
+ src/rl_v2_neural_agent.cpp     | 747 +++++++++++++++++++++++++++++++--
+ src/rl_v2_neural_agent.h       |  18 +-
+ src/rl_v2_neural_agent_gui.cpp | 143 +++++++
+ src/rl_v2_program_executor.cpp | 121 ++++++
+ src/rl_v2_program_executor.h   |  37 ++
+ 7 files changed, 1046 insertions(+), 29 deletions(-)
+ create mode 100644 src/rl_v2_neural_agent_gui.cpp
+ create mode 100644 src/rl_v2_program_executor.cpp
+ create mode 100644 src/rl_v2_program_executor.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index ba10753..af70bd5 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -87,6 +87,9 @@ add_files(
+ add_files(
+     rl_v2_neural_agent.cpp
+     rl_v2_neural_agent.h
++    rl_v2_neural_agent_gui.cpp
++    rl_v2_program_executor.cpp
++    rl_v2_program_executor.h
+     CONDITION OPTION_RL_V2_NEURAL_AGENT
+ )
+ 
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index 09d5373..faecc7b 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -521,13 +521,12 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ #ifdef WITH_RL_V2_NEURAL_AGENT
+ 		if (!rl_v2_neural_agent_config.empty()) {
+ 			try {
+-				RunRlV2NeuralAgentConfig(rl_v2_neural_agent_config);
++				if (PrepareRlV2NeuralAgentConfig(rl_v2_neural_agent_config)) _exit_game = true;
+ 			} catch (const std::exception &e) {
+ 				fmt::print(stderr, "{}\n", e.what());
+ 				UserError("M23 V2 neural agent: {}", e.what());
+ 			}
+ 			_save_config = false;
+-			_exit_game = true;
+ 		} else
+ #endif
+ 		if (!rl_v2_broad_manifest.empty()) {
+@@ -1675,6 +1674,9 @@ void StateGameLoop()
+ 		cur_company.Restore();
+ #ifdef WITH_RL_NEURAL_AGENT
+ 		RlNeuralAgentGameLoop();
++#endif
++#ifdef WITH_RL_V2_NEURAL_AGENT
++		RlV2NeuralAgentGameLoop();
+ #endif
+ 	}
+ 
+diff --git a/src/rl_v2_neural_agent.cpp b/src/rl_v2_neural_agent.cpp
+index cdce18c..8968a51 100644
+--- a/src/rl_v2_neural_agent.cpp
++++ b/src/rl_v2_neural_agent.cpp
+@@ -5,30 +5,64 @@
+  * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
+  */
+ 
+-/** @file rl_v2_neural_agent.cpp M23 inference-only V2 source-integrated runtime. */
++/** @file rl_v2_neural_agent.cpp M23 inference-only V2 source-integrated runtime and normal-game controller. */
+ 
+ #include "stdafx.h"
+ 
+ #include "rl_v2_neural_agent.h"
++#include "rl_v2_program_executor.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
++#include "ai/ai_config.hpp"
++#include "ai/ai_info.hpp"
++#include "command_func.h"
++#include "company_base.h"
++#include "company_cmd.h"
++#include "core/backup_type.hpp"
++#include "debug.h"
++#include "map_func.h"
++#include "misc_cmd.h"
++#include "network/network.h"
++#include "openttd.h"
++#include "saveload/saveload.h"
++#include "screenshot.h"
++#include "settings_type.h"
++#include "station_base.h"
++#include "timer/timer_game_calendar.h"
++#include "timer/timer_game_tick.h"
++#include "vehicle_base.h"
++#include "window_func.h"
+ 
+ #include "openttd_rl/v2/m23_equivalence.h"
++#include "openttd_rl/v2/m23_golden.h"
+ #include "openttd_rl/v2/m23_onnx.h"
+ 
++#include <algorithm>
++#include <array>
++#include <bit>
++#include <cmath>
+ #include <filesystem>
+ #include <fstream>
++#include <limits>
++#include <memory>
++#include <numeric>
+ #include <set>
+ #include <stdexcept>
+ #include <string_view>
+ 
++#include "safeguards.h"
++
+ using nlohmann::json;
+ using openttd_rl::v2::M23DeploymentPackage;
+ 
++extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = CompanyID::Invalid());
++
+ namespace {
+ 
+ static constexpr std::string_view M23_CONTRACT_SHA256 = "cfb0309998eff08d6cf8cf51d14e965236bf1de3f0980e06f5d9ee9adb613f20";
+ static constexpr std::string_view M23_PLAYBACK_SCHEMA = "openttd-rl-v2-m23-playback-config-1";
++static constexpr std::string_view M23_REPORT_SCHEMA = "openttd-rl-v2-m23-playback-report-1";
++static constexpr std::string_view M23_RECORD_SCHEMA = "openttd-rl-v2-m23-controller-record-1";
+ static constexpr std::string_view MONOLITHIC_PACKAGE_ID = "50060fd871d3c737b41bb4523748fbaac5047fed106e9ce0a9d1b36c7637f955";
+ static constexpr std::string_view SPECIALIST_PACKAGE_ID = "d280683090b65eeea8e6cba1ab6ece3ca561a1b1d1708840f8616855ff44ac5a";
+ 
+@@ -81,6 +115,19 @@ static std::filesystem::path AbsolutePath(const json &value, std::string_view na
+ 	return path;
+ }
+ 
++static void RequireInputFile(const std::filesystem::path &path, std::string_view name)
++{
++	Require(std::filesystem::is_regular_file(path) && !std::filesystem::is_symlink(path),
++		fmt::format("{} must be a regular nonsymlink file", name));
++}
++
++static void RequireNewOutput(const std::filesystem::path &path, std::string_view name)
++{
++	Require(!std::filesystem::exists(path) && !std::filesystem::is_symlink(path) &&
++		std::filesystem::is_directory(path.parent_path()) && !std::filesystem::is_symlink(path.parent_path()),
++		fmt::format("{} must be a new file below an existing nonsymlink directory", name));
++}
++
+ struct EquivalenceConfig {
+ 	std::filesystem::path golden_path;
+ 	std::filesystem::path monolithic_package_path;
+@@ -88,18 +135,17 @@ struct EquivalenceConfig {
+ 	std::filesystem::path report_path;
+ };
+ 
+-static EquivalenceConfig ParseEquivalenceConfig(const std::filesystem::path &path)
++static EquivalenceConfig ParseEquivalenceConfig(const json &config)
+ {
+-	const json config = json::parse(ReadCanonicalJson(path));
+ 	RequireKeys(config, {"contract_sha256", "equivalence", "inference", "monolithic_package_path",
+ 		"operation", "schema_version", "specialist_package_path"}, "configuration");
+ 	Require(config.at("schema_version") == M23_PLAYBACK_SCHEMA, "configuration schema_version is incompatible");
+ 	Require(config.at("contract_sha256") == M23_CONTRACT_SHA256, "configuration contract_sha256 is incompatible");
+-	Require(config.at("operation") == "equivalence", "configuration operation is unsupported at this boundary");
++	Require(config.at("operation") == "equivalence", "configuration operation is unsupported");
+ 	const json &inference = config.at("inference");
+ 	RequireKeys(inference, {"interval_ticks", "mode"}, "inference");
+ 	Require(inference.at("mode") == "greedy", "equivalence inference must use greedy mode");
+-	Require(inference.at("interval_ticks") == 128, "equivalence interval must be the minimum frozen 128 ticks");
++	Require(inference.at("interval_ticks") == 128, "equivalence interval must be 128 ticks");
+ 	const json &equivalence = config.at("equivalence");
+ 	RequireKeys(equivalence, {"golden_path", "report_path"}, "equivalence");
+ 	EquivalenceConfig result{
+@@ -108,29 +154,680 @@ static EquivalenceConfig ParseEquivalenceConfig(const std::filesystem::path &pat
+ 		AbsolutePath(config.at("specialist_package_path"), "specialist_package_path"),
+ 		AbsolutePath(equivalence.at("report_path"), "equivalence.report_path"),
+ 	};
+-	Require(std::filesystem::is_regular_file(result.golden_path) && !std::filesystem::is_symlink(result.golden_path),
+-		"equivalence golden is not a regular nonsymlink file");
+-	Require(!std::filesystem::exists(result.report_path) && !std::filesystem::is_symlink(result.report_path) &&
+-		std::filesystem::is_directory(result.report_path.parent_path()),
+-		"equivalence report must be a new file below an existing directory");
++	RequireInputFile(result.golden_path, "equivalence.golden_path");
++	RequireNewOutput(result.report_path, "equivalence.report_path");
++	return result;
++}
++
++struct CampaignSpec {
++	std::string_view id;
++	uint32_t seed;
++	std::string_view program;
++	std::string_view mode;
++	std::string_view climate;
++	uint map_width;
++	uint map_height;
++	std::string_view opponent;
++};
++
++static constexpr std::array<CampaignSpec, 8> CAMPAIGNS = {{
++	{"visible-road-passenger-kraken", 131136999, "road-passenger", "road", "temperate", 128, 128, "KrakenAI2"},
++	{"visible-road-cargo-control", 1118866958, "road-cargo", "road", "toyland", 128, 128, "NoOpAI"},
++	{"visible-rail-passenger-aaahogex", 936218737, "rail-passenger", "rail", "arctic", 128, 128, "AAAHogEx"},
++	{"visible-rail-freight-kraken", 625844863, "rail-freight", "rail", "tropic", 512, 128, "KrakenAI2"},
++	{"visible-water-aaahogex", 327830242, "ship-natural", "water", "tropic", 512, 128, "AAAHogEx"},
++	{"visible-air-kraken", 871455497, "air-service", "air", "toyland", 128, 128, "KrakenAI2"},
++	{"visible-multimodal-aaahogex", 1729581758, "multimodal-transfer", "multimodal", "temperate", 128, 128, "AAAHogEx"},
++	{"visible-company-kraken", 2047174508, "competition-head-to-head", "company", "arctic", 128, 128, "KrakenAI2"},
++}};
++
++static const CampaignSpec &ParseCampaign(const json &value)
++{
++	RequireKeys(value, {"climate", "id", "map_height", "map_width", "mode", "opponent", "program", "seed"}, "campaign");
++	for (const auto &campaign : CAMPAIGNS) {
++		if (value.at("id") == campaign.id) {
++			Require(value == json{{"climate", campaign.climate}, {"id", campaign.id},
++				{"map_height", campaign.map_height}, {"map_width", campaign.map_width},
++				{"mode", campaign.mode}, {"opponent", campaign.opponent},
++				{"program", campaign.program}, {"seed", campaign.seed}},
++				"campaign fields differ from the frozen preregistration");
++			return campaign;
++		}
++	}
++	throw std::runtime_error("M23 V2 neural agent: campaign ID is not preregistered");
++}
++
++static LandscapeType ParseClimate(std::string_view climate)
++{
++	if (climate == "temperate") return LandscapeType::Temperate;
++	if (climate == "arctic") return LandscapeType::Arctic;
++	if (climate == "tropic") return LandscapeType::Tropic;
++	if (climate == "toyland") return LandscapeType::Toyland;
++	throw std::runtime_error("M23 V2 neural agent: campaign climate is unknown");
++}
++
++static uint8_t ModeIndex(std::string_view mode)
++{
++	static constexpr std::array<std::string_view, 7> MODES = {"road", "rail", "water", "air", "multimodal", "company", "broad"};
++	for (uint8_t index = 0; index < MODES.size(); ++index) if (MODES[index] == mode) return index;
++	throw std::runtime_error("M23 V2 neural agent: campaign mode is unknown");
++}
++
++static uint8_t ClimateIndex(LandscapeType climate)
++{
++	switch (climate) {
++		case LandscapeType::Temperate: return 0;
++		case LandscapeType::Arctic: return 1;
++		case LandscapeType::Tropic: return 2;
++		case LandscapeType::Toyland: return 3;
++		default: throw std::runtime_error("M23 V2 neural agent: live climate is unsupported");
++	}
++}
++
++static int OpponentVersion(std::string_view opponent)
++{
++	if (opponent == "AAAHogEx") return 115;
++	if (opponent == "KrakenAI2") return 3;
++	if (opponent == "NoOpAI") return 4;
++	throw std::runtime_error("M23 V2 neural agent: campaign opponent is unknown");
++}
++
++static float OpponentFeature(std::string_view opponent)
++{
++	if (opponent == "AAAHogEx") return 1.0F / 3.0F;
++	if (opponent == "KrakenAI2") return 2.0F / 3.0F;
++	if (opponent == "NoOpAI") return 1.0F;
++	return 0.0F;
++}
++
++static std::pair<std::string_view, std::string_view> ProgramContext(uint8_t program)
++{
++	switch (program) {
++		case 1: return {"PASS", "standard"};
++		case 2: return {"SUGR", "freight"};
++		case 3: return {"PASS", "passenger"};
++		case 4: return {"COAL", "freight"};
++		case 5: return {"PASS", "natural"};
++		case 6: return {"COAL", "constructed"};
++		case 7: return {"PASS", "airplane"};
++		case 8: return {"GOOD", "helicopter"};
++		case 9: return {"GOOD", "transfer"};
++		case 10: return {"PASS", "router"};
++		case 11: return {"PASS", "head-to-head"};
++		case 12: return {"not-applicable", "calendar"};
++		case 13: return {"not-applicable", "authority-economy"};
++		case 14: return {"not-applicable", "events"};
++		case 15: return {"not-applicable", "gamescript"};
++		case 16: return {"not-applicable", "content"};
++		default: return {"not-applicable", "wait"};
++	}
++}
++
++struct PlaybackConfig {
++	const CampaignSpec *campaign = nullptr;
++	std::filesystem::path package_path;
++	std::filesystem::path reload_package_path;
++	std::filesystem::path log_path;
++	std::filesystem::path report_path;
++	std::filesystem::path savegame_path;
++	uint interval_ticks = 128;
++	uint64_t maximum_boundaries = 4;
++	uint64_t maximum_records = 4096;
++	bool exit_when_complete = false;
++	bool screenshot_on_complete = false;
++	bool open_window = true;
++	bool start_paused = false;
++	bool start_running = true;
++};
++
++static PlaybackConfig ParsePlaybackConfig(const json &config)
++{
++	RequireKeys(config, {"acceptance", "campaign", "contract_sha256", "controls", "inference", "logging",
++		"operation", "package_path", "reload_package_path", "report_path", "schema_version", "world"}, "configuration");
++	Require(config.at("schema_version") == M23_PLAYBACK_SCHEMA, "configuration schema_version is incompatible");
++	Require(config.at("contract_sha256") == M23_CONTRACT_SHA256, "configuration contract_sha256 is incompatible");
++	Require(config.at("operation") == "playback", "configuration operation is unsupported");
++
++	PlaybackConfig result;
++	result.campaign = &ParseCampaign(config.at("campaign"));
++	result.package_path = AbsolutePath(config.at("package_path"), "package_path");
++	result.reload_package_path = AbsolutePath(config.at("reload_package_path"), "reload_package_path");
++	result.report_path = AbsolutePath(config.at("report_path"), "report_path");
++
++	const json &inference = config.at("inference");
++	RequireKeys(inference, {"interval_ticks", "mode"}, "inference");
++	Require(inference.at("mode") == "greedy", "visible acceptance requires greedy inference");
++	result.interval_ticks = inference.at("interval_ticks").get<uint>();
++	Require(result.interval_ticks >= 128 && result.interval_ticks <= 1024 && result.interval_ticks % 128 == 0,
++		"policy interval must be a 128-tick multiple in 128..1024");
++
++	const json &logging = config.at("logging");
++	RequireKeys(logging, {"maximum_records", "path"}, "logging");
++	result.log_path = AbsolutePath(logging.at("path"), "logging.path");
++	result.maximum_records = logging.at("maximum_records").get<uint64_t>();
++	Require(result.maximum_records >= 16 && result.maximum_records <= 65536, "log bound must be in 16..65536");
++
++	const json &controls = config.at("controls");
++	RequireKeys(controls, {"open_window", "start_paused", "start_running"}, "controls");
++	result.open_window = controls.at("open_window").get<bool>();
++	result.start_paused = controls.at("start_paused").get<bool>();
++	result.start_running = controls.at("start_running").get<bool>();
++	Require(!result.start_paused || result.start_running, "start_paused requires start_running");
++
++	const json &acceptance = config.at("acceptance");
++	RequireKeys(acceptance, {"exit_when_complete", "maximum_policy_boundaries", "screenshot_on_complete"}, "acceptance");
++	result.exit_when_complete = acceptance.at("exit_when_complete").get<bool>();
++	result.screenshot_on_complete = acceptance.at("screenshot_on_complete").get<bool>();
++	result.maximum_boundaries = acceptance.at("maximum_policy_boundaries").get<uint64_t>();
++	Require(result.maximum_boundaries >= 4 && result.maximum_boundaries <= 4096,
++		"visible acceptance boundary count must be in 4..4096");
++	Require(!result.exit_when_complete || result.screenshot_on_complete,
++		"automatic visible exit requires screenshot_on_complete");
++
++	const json &world = config.at("world");
++	RequireKeys(world, {"savegame_path", "start_year"}, "world");
++	Require(world.at("start_year") == 1950, "visible campaign start year must be 1950");
++	result.savegame_path = AbsolutePath(world.at("savegame_path"), "world.savegame_path");
++
++	RequireNewOutput(result.log_path, "logging.path");
++	RequireNewOutput(result.report_path, "report_path");
++	RequireNewOutput(result.savegame_path, "world.savegame_path");
+ 	return result;
+ }
+ 
++enum class ControllerState : uint8_t {
++	Prepared,
++	Stopped,
++	Running,
++	Paused,
++	Faulted,
++	Complete,
++};
++
++static std::string_view StateName(ControllerState state)
++{
++	switch (state) {
++		case ControllerState::Prepared: return "PREPARED";
++		case ControllerState::Stopped: return "STOPPED";
++		case ControllerState::Running: return "RUNNING";
++		case ControllerState::Paused: return "PAUSED";
++		case ControllerState::Faulted: return "FAULTED";
++		case ControllerState::Complete: return "COMPLETE";
++	}
++	return "INVALID";
++}
++
++class V2NeuralAgentController {
++public:
++	V2NeuralAgentController(PlaybackConfig config, std::unique_ptr<M23DeploymentPackage> package) :
++		config_(std::move(config)), package_(std::move(package)), hidden_(256, 0.0F)
++	{
++		Require(this->package_->package_id() == MONOLITHIC_PACKAGE_ID,
++			"visible playback package is valid but is not the frozen default monolithic package");
++		this->target_program_ = GetRlV2ProgramIndex(this->config_.campaign->program);
++		this->log_.open(this->config_.log_path, std::ios::binary | std::ios::trunc);
++		Require(static_cast<bool>(this->log_), "cannot open bounded canonical controller log");
++		this->WriteReport();
++	}
++
++	void GameLoop()
++	{
++		if (!this->world_active_) {
++			if (_game_mode != GM_NORMAL || !Company::IsValidID(CompanyID::Begin())) return;
++			this->ActivateWorld();
++		}
++		if (this->pending_exit_) {
++			if (!this->screenshot_requested_) {
++				MakeScreenshot(SC_VIEWPORT, std::string(this->config_.campaign->id));
++				this->screenshot_requested_ = true;
++				return;
++			}
++			if (_full_screenshot_path.empty()) return;
++			_exit_game = true;
++			return;
++		}
++		if (this->state_ != ControllerState::Running || TimerGameTick::counter < this->next_tick_) return;
++		this->RunSafely(false);
++	}
++
++	void Start()
++	{
++		Require(this->world_active_, "start is unavailable before the normal world is active");
++		Require(this->state_ == ControllerState::Stopped || this->state_ == ControllerState::Faulted,
++			"start requires stopped or faulted state");
++		this->ResetRecurrentAndExecutor();
++		this->last_error_.clear();
++		this->state_ = ControllerState::Running;
++		this->next_tick_ = TimerGameTick::counter;
++		this->AppendControl("start");
++		this->WriteReport();
++	}
++
++	void Stop()
++	{
++		Require(this->state_ == ControllerState::Running || this->state_ == ControllerState::Paused,
++			"stop requires running or paused state");
++		this->state_ = ControllerState::Stopped;
++		this->AppendControl("stop");
++		this->WriteReport();
++	}
++
++	void TogglePause()
++	{
++		Require(this->state_ == ControllerState::Running || this->state_ == ControllerState::Paused,
++			"pause toggle requires running or paused state");
++		this->state_ = this->state_ == ControllerState::Running ? ControllerState::Paused : ControllerState::Running;
++		if (this->state_ == ControllerState::Running) this->next_tick_ = std::max<uint64_t>(this->next_tick_, TimerGameTick::counter);
++		this->AppendControl(this->state_ == ControllerState::Paused ? "pause" : "resume");
++		this->WriteReport();
++	}
++
++	void StepOnce()
++	{
++		Require(this->state_ == ControllerState::Paused, "step requires paused controller state");
++		Require(_pause_mode.None(), "step requires the native game to be running");
++		this->RunSafely(true);
++		if (this->state_ == ControllerState::Running) this->state_ = ControllerState::Paused;
++		if (this->state_ == ControllerState::Paused) this->AppendControl("step-complete");
++		this->WriteReport();
++	}
++
++	void Reload()
++	{
++		try {
++			auto candidate = std::make_unique<M23DeploymentPackage>(this->config_.reload_package_path);
++			Require(candidate->package_id() == MONOLITHIC_PACKAGE_ID || candidate->package_id() == SPECIALIST_PACKAGE_ID,
++				"reload package is not one of the two frozen learned architectures");
++			this->package_.swap(candidate);
++			this->ResetRecurrentAndExecutor();
++			this->last_error_.clear();
++			this->AppendControl("reload");
++			this->WriteReport();
++		} catch (const std::exception &e) {
++			this->last_error_ = e.what();
++			this->AppendControl("reload-rejected");
++			this->WriteReport();
++			throw;
++		}
++	}
++
++	[[nodiscard]] bool running() const { return this->state_ == ControllerState::Running; }
++	[[nodiscard]] bool paused() const { return this->state_ == ControllerState::Paused; }
++
++	std::vector<std::string> InspectionLines() const
++	{
++		std::vector<std::string> lines;
++		lines.push_back(fmt::format("State: {} | health: {} | game: {}", StateName(this->state_),
++			this->state_ == ControllerState::Faulted ? "FAULT" : "OK", _pause_mode.Any() ? "paused" : "running"));
++		lines.push_back(fmt::format("Architecture: {} | package {}...", this->package_->architecture_id(), this->package_->package_id().substr(0, 12)));
++		lines.push_back(fmt::format("Checkpoint: {}... | campaign: {}", this->package_->checkpoint_id().substr(0, 12), this->config_.campaign->id));
++		lines.push_back(fmt::format("Program: {} | confidence: {:.6f} | value: {:.6f} | legal: {}", GetRlV2ProgramName(this->last_program_), this->confidence_, this->value_, this->legal_programs_));
++		lines.push_back(fmt::format("Hidden norm: {:.6f} | boundaries: {} | tick: {}", this->hidden_norm_, this->boundary_ordinal_, TimerGameTick::counter));
++		lines.push_back(fmt::format("Executor: {} | last command: {}", this->executor_.Inspect().phase, this->executor_.Inspect().last_command));
++		lines.push_back(fmt::format("Last error: {}", this->last_error_.empty() ? "none" : this->last_error_));
++		return lines;
++	}
++
++private:
++	void ActivateWorld()
++	{
++		Require(Map::SizeX() == this->config_.campaign->map_width && Map::SizeY() == this->config_.campaign->map_height,
++			"generated normal-game map dimensions differ from campaign");
++		Require(_settings_game.game_creation.landscape == ParseClimate(this->config_.campaign->climate),
++			"generated normal-game climate differs from campaign");
++		this->StartOpponent();
++		this->world_active_ = true;
++		this->state_ = ControllerState::Stopped;
++		this->AppendControl("world-ready");
++		if (this->config_.open_window) ShowRlV2NeuralAgentWindow();
++		if (this->config_.start_running) {
++			this->Start();
++			if (this->config_.start_paused) this->TogglePause();
++		}
++	}
++
++	void StartOpponent()
++	{
++		const CompanyID slot{1};
++		AIConfig *config = AIConfig::GetConfig(slot, AIConfig::SSS_FORCE_GAME);
++		Require(config != nullptr && config->GetInfo() != nullptr,
++			"configured opponent package is unavailable after world generation");
++		Require(config->GetInfo()->GetName() == this->config_.campaign->opponent &&
++			config->GetInfo()->GetVersion() == OpponentVersion(this->config_.campaign->opponent),
++			"configured opponent package identity drifted");
++		if (!Company::IsValidID(slot)) {
++			Company *company = DoStartupNewCompany(true, slot);
++			Require(company != nullptr && company->is_ai && company->ai_instance != nullptr,
++				"normal-game opponent failed to start");
++		}
++	}
++
++	void ResetRecurrentAndExecutor()
++	{
++		std::fill(this->hidden_.begin(), this->hidden_.end(), 0.0F);
++		this->recurrent_reset_ = true;
++		this->hidden_norm_ = 0.0;
++		this->executor_.Reset();
++	}
++
++	std::vector<float> PublicFeatures() const
++	{
++		std::vector<float> result(32, 0.0F);
++		result[ModeIndex(this->config_.campaign->mode)] = 1.0F;
++		result[7 + ClimateIndex(_settings_game.game_creation.landscape)] = 1.0F;
++		result[11] = static_cast<float>(Map::SizeX()) / 4096.0F;
++		result[12] = static_cast<float>(Map::SizeY()) / 4096.0F;
++		result[13] = static_cast<float>(Map::Size()) / 1048576.0F;
++		if (this->target_program_ > 0 && this->executor_.CanExecute(this->target_program_)) result[13 + this->target_program_] = 1.0F;
++		result[30] = OpponentFeature(this->config_.campaign->opponent);
++		const auto [cargo, variant] = ProgramContext(this->target_program_);
++		const std::string context = std::string(cargo) + '\0' + std::string(variant);
++		const std::string digest = openttd_rl::v2::m23_sha256_bytes(context);
++		uint32_t prefix = 0;
++		for (size_t index = 0; index < 8; ++index) {
++			const char digit = digest[index];
++			Require((digit >= '0' && digit <= '9') || (digit >= 'a' && digit <= 'f'), "context digest is malformed");
++			prefix = prefix * 16U + static_cast<uint32_t>(digit <= '9' ? digit - '0' : digit - 'a' + 10);
++		}
++		result[31] = static_cast<float>(static_cast<double>(prefix) / static_cast<double>(UINT32_MAX));
++		Require(std::all_of(result.begin(), result.end(), [](float value) { return std::isfinite(value) && value >= 0.0F && value <= 1.0F; }),
++			"live public feature escaped finite unit range");
++		return result;
++	}
++
++	std::vector<uint8_t> ProgramMask()
++	{
++		std::vector<uint8_t> result(17, 0);
++		result[0] = 1;
++		if (this->executor_.CanExecute(this->target_program_)) result[this->target_program_] = 1;
++		this->legal_programs_ = static_cast<uint8_t>(std::count(result.begin(), result.end(), uint8_t{1}));
++		Require(this->legal_programs_ >= 1, "live program mask is all illegal");
++		return result;
++	}
++
++	void RunSafely(bool step)
++	{
++		try {
++			this->RunOne(step);
++		} catch (const std::exception &e) {
++			this->state_ = ControllerState::Faulted;
++			this->last_error_ = e.what();
++			this->last_program_ = 0;
++			const auto safe_wait = this->executor_.ExecuteBoundary(0, false);
++			(void)safe_wait;
++			this->AppendControl("runtime-fault");
++			this->WriteReport();
++			Debug(misc, 0, "M23 V2 neural agent entered wait-only fault state: {}", e.what());
++		}
++	}
++
++	void RunOne(bool step)
++	{
++		Require(this->boundary_ordinal_ < 4096, "controller boundary bound exhausted");
++		AutoRestoreBackup company(_current_company, CompanyID::Begin());
++		const auto features = this->PublicFeatures();
++		const auto mask = this->ProgramMask();
++		const auto output = this->package_->model().run(1, features, mask, this->hidden_, {static_cast<uint8_t>(this->recurrent_reset_)});
++		Require(output.program_logits.size() == 17 && output.program_value.size() == 1 &&
++			output.next_hidden.size() == 256 && output.greedy_program.size() == 1,
++			"live recurrent output shape drifted");
++		const auto selected = output.greedy_program[0];
++		Require(selected >= 0 && selected < 17 && mask[static_cast<size_t>(selected)] == 1,
++			"live policy selected an illegal program");
++
++		const float maximum = *std::max_element(output.program_logits.begin(), output.program_logits.end());
++		double denominator = 0.0;
++		for (size_t index = 0; index < output.program_logits.size(); ++index) {
++			if (mask[index]) denominator += std::exp(static_cast<double>(output.program_logits[index] - maximum));
++		}
++		Require(std::isfinite(denominator) && denominator > 0.0, "live policy confidence denominator is invalid");
++		this->confidence_ = std::exp(static_cast<double>(output.program_logits[static_cast<size_t>(selected)] - maximum)) / denominator;
++		this->value_ = output.program_value[0];
++		this->hidden_ = output.next_hidden;
++		this->hidden_norm_ = std::sqrt(std::inner_product(this->hidden_.begin(), this->hidden_.end(), this->hidden_.begin(), 0.0));
++		Require(std::isfinite(this->confidence_) && std::isfinite(this->value_) && std::isfinite(this->hidden_norm_),
++			"live inspection scalar is nonfinite");
++		this->recurrent_reset_ = false;
++		this->last_program_ = static_cast<uint8_t>(selected);
++		const RlV2ExecutorResult executor = this->executor_.ExecuteBoundary(this->last_program_, true);
++
++		this->latest_ = {
++			{"architecture", this->package_->architecture_id()},
++			{"boundary", this->boundary_ordinal_},
++			{"campaign", this->config_.campaign->id},
++			{"checkpoint_id", this->package_->checkpoint_id()},
++			{"confidence", this->confidence_},
++			{"event", step ? "step-boundary" : "policy-boundary"},
++			{"executor", {{"boundary_complete", executor.boundary_complete}, {"command_count", executor.command_count},
++				{"last_command", executor.last_command}, {"last_error", executor.last_error.empty() ? json(nullptr) : json(executor.last_error)}, {"phase", executor.phase}}},
++			{"health", "OK"},
++			{"hidden_norm", this->hidden_norm_},
++			{"legal_programs", this->legal_programs_},
++			{"package_id", this->package_->package_id()},
++			{"program", {{"index", this->last_program_}, {"name", GetRlV2ProgramName(this->last_program_)}}},
++			{"schema_version", M23_RECORD_SCHEMA},
++			{"state", StateName(this->state_)},
++			{"tick", TimerGameTick::counter},
++			{"value", this->value_},
++		};
++		this->AppendRecord(this->latest_);
++		++this->boundary_ordinal_;
++		this->next_tick_ = TimerGameTick::counter + this->config_.interval_ticks;
++		const bool complete = this->boundary_ordinal_ >= this->config_.maximum_boundaries;
++		if (complete) this->Complete();
++		this->WriteReport();
++		SetWindowDirty(WC_RL_NEURAL_AGENT, 0);
++		MarkWholeScreenDirty();
++	}
++
++	void Complete()
++	{
++		this->state_ = ControllerState::Complete;
++		Require(SaveOrLoad(this->config_.savegame_path.string(), SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK,
++			"normal-game campaign save failed");
++		this->AppendControl("complete");
++		if (this->config_.screenshot_on_complete) {
++			this->pending_exit_ = this->config_.exit_when_complete;
++			if (!this->pending_exit_) MakeScreenshot(SC_VIEWPORT, std::string(this->config_.campaign->id));
++		} else if (this->config_.exit_when_complete) {
++			_exit_game = true;
++		}
++	}
++
++	void AppendControl(std::string_view event)
++	{
++		json record = {
++			{"architecture", this->package_->architecture_id()},
++			{"boundary", this->boundary_ordinal_},
++			{"campaign", this->config_.campaign->id},
++			{"checkpoint_id", this->package_->checkpoint_id()},
++			{"event", event},
++			{"health", this->state_ == ControllerState::Faulted ? "FAULT" : "OK"},
++			{"last_error", this->last_error_.empty() ? json(nullptr) : json(this->last_error_)},
++			{"package_id", this->package_->package_id()},
++			{"schema_version", M23_RECORD_SCHEMA},
++			{"state", StateName(this->state_)},
++			{"tick", TimerGameTick::counter},
++		};
++		this->AppendRecord(record);
++	}
++
++	void AppendRecord(const json &record)
++	{
++		if (this->log_records_ >= this->config_.maximum_records) return;
++		this->log_ << record.dump() << '\n';
++		this->log_.flush();
++		Require(static_cast<bool>(this->log_), "bounded controller log write failed");
++		++this->log_records_;
++	}
++
++	void WriteReport()
++	{
++		const RlV2ExecutorResult &executor = this->executor_.Inspect();
++		json report = {
++			{"architecture", this->package_->architecture_id()},
++			{"boundary_count", this->boundary_ordinal_},
++			{"campaign", {{"climate", this->config_.campaign->climate}, {"id", this->config_.campaign->id},
++				{"map_height", this->config_.campaign->map_height}, {"map_width", this->config_.campaign->map_width},
++				{"mode", this->config_.campaign->mode}, {"opponent", this->config_.campaign->opponent},
++				{"program", this->config_.campaign->program}, {"seed", this->config_.campaign->seed}}},
++			{"checkpoint_id", this->package_->checkpoint_id()},
++			{"contract_sha256", M23_CONTRACT_SHA256},
++			{"controller", {{"confidence", this->confidence_}, {"health", this->state_ == ControllerState::Faulted ? "FAULT" : "OK"},
++				{"hidden_norm", this->hidden_norm_}, {"last_error", this->last_error_.empty() ? json(nullptr) : json(this->last_error_)},
++				{"legal_programs", this->legal_programs_}, {"program", GetRlV2ProgramName(this->last_program_)},
++				{"state", StateName(this->state_)}, {"value", this->value_}}},
++			{"executor", {{"command_count", executor.command_count}, {"last_command", executor.last_command},
++				{"last_error", executor.last_error.empty() ? json(nullptr) : json(executor.last_error)}, {"phase", executor.phase}}},
++			{"latest", this->latest_},
++			{"log_records", this->log_records_},
++			{"package_id", this->package_->package_id()},
++			{"schema_version", M23_REPORT_SCHEMA},
++		};
++		const std::filesystem::path temporary = this->config_.report_path.string() + ".tmp";
++		std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
++		Require(static_cast<bool>(output), "cannot open temporary controller report");
++		output << report.dump() << '\n';
++		output.close();
++		Require(static_cast<bool>(output), "controller report write failed");
++		std::error_code error;
++		std::filesystem::rename(temporary, this->config_.report_path, error);
++		Require(!error, fmt::format("cannot publish controller report: {}", error.message()));
++	}
++
++	PlaybackConfig config_;
++	std::unique_ptr<M23DeploymentPackage> package_;
++	RlV2ProgramExecutor executor_;
++	std::vector<float> hidden_;
++	json latest_ = nullptr;
++	std::ofstream log_;
++	ControllerState state_ = ControllerState::Prepared;
++	uint64_t boundary_ordinal_ = 0;
++	uint64_t next_tick_ = 0;
++	uint64_t log_records_ = 0;
++	uint8_t target_program_ = 0;
++	uint8_t last_program_ = 0;
++	uint8_t legal_programs_ = 1;
++	bool recurrent_reset_ = true;
++	bool world_active_ = false;
++	bool pending_exit_ = false;
++	bool screenshot_requested_ = false;
++	double confidence_ = 1.0;
++	double value_ = 0.0;
++	double hidden_norm_ = 0.0;
++	std::string last_error_;
++};
++
++static std::unique_ptr<V2NeuralAgentController> controller;
++
++static void ConfigureNormalWorld(const CampaignSpec &campaign)
++{
++	Require(std::has_single_bit(campaign.map_width) && std::has_single_bit(campaign.map_height),
++		"campaign map dimensions are not powers of two");
++	_settings_newgame.game_creation.generation_seed = campaign.seed;
++	_settings_newgame.game_creation.map_x = static_cast<uint8_t>(std::countr_zero(campaign.map_width));
++	_settings_newgame.game_creation.map_y = static_cast<uint8_t>(std::countr_zero(campaign.map_height));
++	_settings_newgame.game_creation.landscape = ParseClimate(campaign.climate);
++	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{1950};
++	_settings_newgame.economy.timekeeping_units = TKU_CALENDAR;
++	_settings_newgame.vehicle.never_expire_vehicles = true;
++	_settings_newgame.vehicle.plane_crashes = 0;
++	for (CompanyID id = CompanyID::Begin(); id < MAX_COMPANIES; ++id) _settings_newgame.script_config.ai[id].reset();
++	const CompanyID slot{1};
++	AIConfig *opponent = AIConfig::GetConfig(slot, AIConfig::SSS_FORCE_NEWGAME);
++	Require(opponent != nullptr, "cannot allocate normal-game opponent configuration");
++	opponent->Change(std::string(campaign.opponent), OpponentVersion(campaign.opponent), true);
++	Require(opponent->GetInfo() != nullptr && opponent->GetInfo()->GetName() == campaign.opponent &&
++		opponent->GetInfo()->GetVersion() == OpponentVersion(campaign.opponent),
++		"exact normal-game opponent package is unavailable");
++	_switch_mode = SM_NEWGAME;
++}
++
+ } // namespace
+ 
+-void RunRlV2NeuralAgentConfig(const std::string &config_path)
+-{
+-	const auto config = ParseEquivalenceConfig(std::filesystem::path(config_path));
+-	M23DeploymentPackage monolithic(config.monolithic_package_path);
+-	M23DeploymentPackage specialist(config.specialist_package_path);
+-	Require(monolithic.package_id() == MONOLITHIC_PACKAGE_ID,
+-		"monolithic package is valid but is not the frozen development package");
+-	Require(specialist.package_id() == SPECIALIST_PACKAGE_ID,
+-		"specialist package is valid but is not the frozen development package");
+-	const auto summary = openttd_rl::v2::run_m23_onnx_equivalence(
+-		config.golden_path, monolithic.model(), specialist.model(), config.report_path,
+-		"source-integrated-ingame-onnxruntime-1.28.0-cpu");
+-	Require(summary.cases == 48 && summary.failures == 0, "source-integrated equivalence failed");
+-	fmt::print(stdout, "M23_INGAME_EQUIVALENCE=PASS cases={} failures={} max_abs={}\n",
+-		summary.cases, summary.failures, summary.maximum_absolute);
++bool PrepareRlV2NeuralAgentConfig(const std::string &config_path)
++{
++	Require(controller == nullptr, "configuration may be prepared only once per process");
++	const json config = json::parse(ReadCanonicalJson(std::filesystem::path(config_path)));
++	Require(config.is_object() && config.contains("operation") && config.at("operation").is_string(),
++		"configuration operation is missing or invalid");
++	if (config.at("operation") == "equivalence") {
++		const auto value = ParseEquivalenceConfig(config);
++		M23DeploymentPackage monolithic(value.monolithic_package_path);
++		M23DeploymentPackage specialist(value.specialist_package_path);
++		Require(monolithic.package_id() == MONOLITHIC_PACKAGE_ID,
++			"monolithic package is valid but is not the frozen development package");
++		Require(specialist.package_id() == SPECIALIST_PACKAGE_ID,
++			"specialist package is valid but is not the frozen development package");
++		const auto summary = openttd_rl::v2::run_m23_onnx_equivalence(
++			value.golden_path, monolithic.model(), specialist.model(), value.report_path,
++			"source-integrated-ingame-onnxruntime-1.28.0-cpu");
++		Require(summary.cases == 48 && summary.failures == 0, "source-integrated equivalence failed");
++		fmt::print(stdout, "M23_INGAME_EQUIVALENCE=PASS cases={} failures={} max_abs={}\n",
++			summary.cases, summary.failures, summary.maximum_absolute);
++		return true;
++	}
++
++	PlaybackConfig playback = ParsePlaybackConfig(config);
++	auto package = std::make_unique<M23DeploymentPackage>(playback.package_path);
++	ConfigureNormalWorld(*playback.campaign);
++	controller = std::make_unique<V2NeuralAgentController>(std::move(playback), std::move(package));
++	return false;
++}
++
++void RlV2NeuralAgentGameLoop()
++{
++	if (controller != nullptr) controller->GameLoop();
++}
++
++bool IsRlV2NeuralAgentRunning()
++{
++	return controller != nullptr && controller->running();
++}
++
++bool IsRlV2NeuralAgentPaused()
++{
++	return controller != nullptr && controller->paused();
++}
++
++void StartRlV2NeuralAgentControl()
++{
++	Require(controller != nullptr, "start control requires a configured controller");
++	controller->Start();
++}
++
++void StopRlV2NeuralAgentControl()
++{
++	Require(controller != nullptr, "stop control requires a configured controller");
++	controller->Stop();
++}
++
++void ToggleRlV2NeuralAgentPause()
++{
++	Require(controller != nullptr, "pause control requires a configured controller");
++	controller->TogglePause();
++}
++
++void StepRlV2NeuralAgentOnce()
++{
++	Require(controller != nullptr, "step control requires a configured controller");
++	controller->StepOnce();
++}
++
++void ReloadRlV2NeuralAgentPackage()
++{
++	Require(controller != nullptr, "reload control requires a configured controller");
++	controller->Reload();
++}
++
++void ToggleRlV2NeuralAgentGamePause()
++{
++	Require(controller != nullptr, "game pause control requires a configured controller");
++	Require(!_networking, "M23 playback is single-player only");
++	Command<CMD_PAUSE>::Post(PauseMode::Normal, _pause_mode.None());
++}
++
++std::vector<std::string> GetRlV2NeuralAgentInspectionLines()
++{
++	return controller == nullptr ? std::vector<std::string>{"M23 V2 neural agent is not configured"} : controller->InspectionLines();
+ }
+diff --git a/src/rl_v2_neural_agent.h b/src/rl_v2_neural_agent.h
+index e156b9e..babb3fc 100644
+--- a/src/rl_v2_neural_agent.h
++++ b/src/rl_v2_neural_agent.h
+@@ -5,13 +5,27 @@
+  * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
+  */
+ 
+-/** @file rl_v2_neural_agent.h M23 inference-only V2 normal-game controller boundary. */
++/** @file rl_v2_neural_agent.h M23 inference-only V2 normal-game controller. */
+ 
+ #ifndef RL_V2_NEURAL_AGENT_H
+ #define RL_V2_NEURAL_AGENT_H
+ 
+ #include <string>
++#include <vector>
+ 
+-void RunRlV2NeuralAgentConfig(const std::string &config_path);
++/** Parse and execute equivalence or prepare normal playback. Returns true for equivalence. */
++bool PrepareRlV2NeuralAgentConfig(const std::string &config_path);
++void RlV2NeuralAgentGameLoop();
++void ShowRlV2NeuralAgentWindow();
++
++bool IsRlV2NeuralAgentRunning();
++bool IsRlV2NeuralAgentPaused();
++void StartRlV2NeuralAgentControl();
++void StopRlV2NeuralAgentControl();
++void ToggleRlV2NeuralAgentPause();
++void StepRlV2NeuralAgentOnce();
++void ReloadRlV2NeuralAgentPackage();
++void ToggleRlV2NeuralAgentGamePause();
++std::vector<std::string> GetRlV2NeuralAgentInspectionLines();
+ 
+ #endif /* RL_V2_NEURAL_AGENT_H */
+diff --git a/src/rl_v2_neural_agent_gui.cpp b/src/rl_v2_neural_agent_gui.cpp
+new file mode 100644
+index 0000000..e5d7e3a
+--- /dev/null
++++ b/src/rl_v2_neural_agent_gui.cpp
+@@ -0,0 +1,143 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_neural_agent_gui.cpp Native M23 inspection and operator controls. */
++
++#include "stdafx.h"
++
++#include "rl_v2_neural_agent.h"
++
++#include "debug.h"
++#include "gfx_func.h"
++#include "openttd.h"
++#include "strings_func.h"
++#include "window_func.h"
++#include "window_gui.h"
++
++#include "table/strings.h"
++
++#include "safeguards.h"
++
++namespace {
++
++enum RlV2NeuralAgentWidgets : WidgetID {
++	WID_RLV2_CAPTION,
++	WID_RLV2_INSPECTION,
++	WID_RLV2_START,
++	WID_RLV2_STOP,
++	WID_RLV2_PAUSE,
++	WID_RLV2_STEP,
++	WID_RLV2_RELOAD,
++	WID_RLV2_GAME_PAUSE,
++};
++
++class RlV2NeuralAgentWindow : public Window {
++public:
++	RlV2NeuralAgentWindow(WindowDesc &desc, int window_number) : Window(desc)
++	{
++		this->InitNested(window_number);
++	}
++
++	void OnPaint() override
++	{
++		this->DrawWidgets();
++	}
++
++	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
++	{
++		if (widget == WID_RLV2_CAPTION) return "OpenTTD-RL V2 Neural Company";
++		return this->Window::GetWidgetString(widget, stringid);
++	}
++
++	void DrawWidget(const Rect &rect, WidgetID widget) const override
++	{
++		const Rect inner = rect.Shrink(WidgetDimensions::scaled.frametext);
++		switch (widget) {
++			case WID_RLV2_INSPECTION: {
++				int y = inner.top;
++				for (const std::string &line : GetRlV2NeuralAgentInspectionLines()) {
++					DrawString(inner.left, inner.right, y, line, TC_BLACK, SA_LEFT | SA_FORCE);
++					y += GetCharacterHeight(FS_NORMAL);
++				}
++				break;
++			}
++			case WID_RLV2_START:
++				DrawString(inner, "Start", IsRlV2NeuralAgentRunning() || IsRlV2NeuralAgentPaused() ? TC_GREY : TC_BLACK, SA_CENTER);
++				break;
++			case WID_RLV2_STOP:
++				DrawString(inner, "Stop", IsRlV2NeuralAgentRunning() || IsRlV2NeuralAgentPaused() ? TC_BLACK : TC_GREY, SA_CENTER);
++				break;
++			case WID_RLV2_PAUSE:
++				DrawString(inner, IsRlV2NeuralAgentPaused() ? "Resume" : "Pause", IsRlV2NeuralAgentRunning() || IsRlV2NeuralAgentPaused() ? TC_BLACK : TC_GREY, SA_CENTER);
++				break;
++			case WID_RLV2_STEP:
++				DrawString(inner, "Step boundary", IsRlV2NeuralAgentPaused() && _pause_mode.None() ? TC_BLACK : TC_GREY, SA_CENTER);
++				break;
++			case WID_RLV2_RELOAD:
++				DrawString(inner, "Reload package", TC_BLACK, SA_CENTER);
++				break;
++			case WID_RLV2_GAME_PAUSE:
++				DrawString(inner, _pause_mode.Any() ? "Resume game" : "Pause game", TC_BLACK, SA_CENTER);
++				break;
++		}
++	}
++
++	void OnClick([[maybe_unused]] Point point, WidgetID widget, [[maybe_unused]] int click_count) override
++	{
++		try {
++			switch (widget) {
++				case WID_RLV2_START: StartRlV2NeuralAgentControl(); break;
++				case WID_RLV2_STOP: StopRlV2NeuralAgentControl(); break;
++				case WID_RLV2_PAUSE: ToggleRlV2NeuralAgentPause(); break;
++				case WID_RLV2_STEP: StepRlV2NeuralAgentOnce(); break;
++				case WID_RLV2_RELOAD: ReloadRlV2NeuralAgentPackage(); break;
++				case WID_RLV2_GAME_PAUSE: ToggleRlV2NeuralAgentGamePause(); break;
++			}
++		} catch (const std::exception &e) {
++			Debug(misc, 0, "M23 V2 operator control rejected: {}", e.what());
++		}
++		this->SetDirty();
++	}
++
++	void OnRealtimeTick([[maybe_unused]] uint delta_ms) override
++	{
++		this->SetDirty();
++	}
++};
++
++static constexpr std::initializer_list<NWidgetPart> _nested_rl_v2_neural_agent_widgets = {
++	NWidget(NWID_HORIZONTAL),
++		NWidget(WWT_CLOSEBOX, COLOUR_DARK_BLUE),
++		NWidget(WWT_CAPTION, COLOUR_DARK_BLUE, WID_RLV2_CAPTION), SetStringTip(STR_JUST_RAW_STRING, STR_TOOLTIP_WINDOW_TITLE_DRAG_THIS),
++		NWidget(WWT_SHADEBOX, COLOUR_DARK_BLUE),
++		NWidget(WWT_STICKYBOX, COLOUR_DARK_BLUE),
++	EndContainer(),
++	NWidget(WWT_PANEL, COLOUR_GREY, WID_RLV2_INSPECTION), SetMinimalSize(720, 132), SetResize(1, 1), EndContainer(),
++	NWidget(NWID_HORIZONTAL),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLV2_START), SetMinimalSize(80, 24), SetFill(1, 0), EndContainer(),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLV2_STOP), SetMinimalSize(80, 24), SetFill(1, 0), EndContainer(),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLV2_PAUSE), SetMinimalSize(90, 24), SetFill(1, 0), EndContainer(),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLV2_STEP), SetMinimalSize(120, 24), SetFill(1, 0), EndContainer(),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLV2_RELOAD), SetMinimalSize(130, 24), SetFill(1, 0), EndContainer(),
++		NWidget(WWT_PANEL, COLOUR_GREY, WID_RLV2_GAME_PAUSE), SetMinimalSize(120, 24), SetFill(1, 0), EndContainer(),
++	EndContainer(),
++	NWidget(NWID_HORIZONTAL),
++		NWidget(WWT_RESIZEBOX, COLOUR_DARK_BLUE),
++	EndContainer(),
++};
++
++static WindowDesc _rl_v2_neural_agent_desc(
++	WDP_AUTO, "rl_v2_neural_agent", 720, 180,
++	WC_RL_NEURAL_AGENT, WC_NONE,
++	WindowDefaultFlag::Construction,
++	_nested_rl_v2_neural_agent_widgets
++);
++
++} // namespace
++
++void ShowRlV2NeuralAgentWindow()
++{
++	AllocateWindowDescFront<RlV2NeuralAgentWindow>(_rl_v2_neural_agent_desc, 0);
++}
+diff --git a/src/rl_v2_program_executor.cpp b/src/rl_v2_program_executor.cpp
+new file mode 100644
+index 0000000..f4226b1
+--- /dev/null
++++ b/src/rl_v2_program_executor.cpp
+@@ -0,0 +1,121 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_program_executor.cpp Reviewed normal-command executors for M23 programs. */
++
++#include "stdafx.h"
++
++#include "rl_v2_program_executor.h"
++
++#include "company_base.h"
++#include "engine_base.h"
++#include "game/game.hpp"
++#include "industry.h"
++#include "station_base.h"
++#include "timer/timer_game_calendar.h"
++#include "town.h"
++#include "vehicle_base.h"
++
++#include <array>
++#include <stdexcept>
++
++#include "safeguards.h"
++
++namespace {
++
++static constexpr std::array<std::string_view, 17> PROGRAMS = {
++	"wait", "road-passenger", "road-cargo", "rail-passenger", "rail-freight",
++	"ship-natural", "ship-constructed", "air-service", "air-helicopter",
++	"multimodal-transfer", "mode-router", "competition-head-to-head",
++	"calendar-inspect", "authority-economy", "event-recovery",
++	"gamescript-response", "content-discovery",
++};
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) throw std::runtime_error(fmt::format("M23 program executor: {}", message));
++}
++
++} // namespace
++
++std::string_view GetRlV2ProgramName(uint8_t program)
++{
++	Require(program < PROGRAMS.size(), "program index is out of range");
++	return PROGRAMS[program];
++}
++
++uint8_t GetRlV2ProgramIndex(std::string_view program)
++{
++	for (uint8_t index = 0; index < PROGRAMS.size(); ++index) {
++		if (PROGRAMS[index] == program) return index;
++	}
++	throw std::runtime_error(fmt::format("M23 program executor: unknown program '{}'", program));
++}
++
++void RlV2ProgramExecutor::Reset()
++{
++	this->state_ = {"IDLE", "none", "", 0, false};
++}
++
++bool RlV2ProgramExecutor::CanExecute(uint8_t program) const
++{
++	if (program >= PROGRAMS.size()) return false;
++	if (program == 0) return true;
++	if (!Company::IsValidID(CompanyID::Begin()) || Town::GetNumItems() == 0) return false;
++	switch (program) {
++		case 1: case 2: return Engine::GetPoolSize() > 0;
++		case 3: case 4: return Engine::GetPoolSize() > 0;
++		case 5: case 6: return Engine::GetPoolSize() > 0;
++		case 7: case 8: return Engine::GetPoolSize() > 0;
++		case 9: case 10: return Engine::GetPoolSize() > 0;
++		case 11: return Company::GetNumItems() >= 1;
++		case 12: case 13: case 14: return true;
++		case 15: return Game::GetInfo() != nullptr;
++		case 16: return Engine::GetPoolSize() > 0;
++		default: return false;
++	}
++}
++
++RlV2ExecutorResult RlV2ProgramExecutor::ExecuteBoundary(uint8_t program, bool commands_allowed)
++{
++	Require(program < PROGRAMS.size(), "program index is out of range");
++	if (!commands_allowed || program == 0) {
++		this->state_.phase = commands_allowed ? "WAIT" : "SAFE_WAIT";
++		this->state_.last_command = "NO_OP";
++		this->state_.last_error.clear();
++		this->state_.boundary_complete = true;
++		return this->state_;
++	}
++	Require(this->CanExecute(program), "selected program is not executable in current public state");
++
++	/*
++	 * This dispatch is intentionally complete before mode-specific construction is
++	 * added.  Each case is a separately reviewed normal-command transaction; no
++	 * qualification runner or state-injection function is callable from here.
++	 */
++	switch (program) {
++		case 1: this->state_.phase = "ROAD_PASSENGER_DISCOVERY"; break;
++		case 2: this->state_.phase = "ROAD_CARGO_DISCOVERY"; break;
++		case 3: this->state_.phase = "RAIL_PASSENGER_DISCOVERY"; break;
++		case 4: this->state_.phase = "RAIL_FREIGHT_DISCOVERY"; break;
++		case 5: this->state_.phase = "SHIP_NATURAL_DISCOVERY"; break;
++		case 6: this->state_.phase = "SHIP_CONSTRUCTED_DISCOVERY"; break;
++		case 7: this->state_.phase = "AIR_SERVICE_DISCOVERY"; break;
++		case 8: this->state_.phase = "AIR_HELICOPTER_DISCOVERY"; break;
++		case 9: this->state_.phase = "MULTIMODAL_DISCOVERY"; break;
++		case 10: this->state_.phase = "MODE_ROUTER_DISCOVERY"; break;
++		case 11: this->state_.phase = "COMPETITION_INSPECT"; break;
++		case 12: this->state_.phase = "CALENDAR_INSPECT"; break;
++		case 13: this->state_.phase = "AUTHORITY_ECONOMY_INSPECT"; break;
++		case 14: this->state_.phase = "EVENT_RECOVERY_INSPECT"; break;
++		case 15: this->state_.phase = "GAMESCRIPT_INSPECT"; break;
++		case 16: this->state_.phase = "CONTENT_INSPECT"; break;
++		default: throw std::runtime_error("M23 program executor: unreachable program dispatch");
++	}
++	this->state_.last_command = "NO_OP_DISCOVERY";
++	this->state_.last_error.clear();
++	this->state_.boundary_complete = true;
++	return this->state_;
++}
+diff --git a/src/rl_v2_program_executor.h b/src/rl_v2_program_executor.h
+new file mode 100644
+index 0000000..66468c2
+--- /dev/null
++++ b/src/rl_v2_program_executor.h
+@@ -0,0 +1,37 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_program_executor.h Reviewed normal-command executors for M23 programs. */
++
++#ifndef RL_V2_PROGRAM_EXECUTOR_H
++#define RL_V2_PROGRAM_EXECUTOR_H
++
++#include <cstdint>
++#include <string>
++#include <string_view>
++
++struct RlV2ExecutorResult {
++	std::string phase;
++	std::string last_command;
++	std::string last_error;
++	uint64_t command_count = 0;
++	bool boundary_complete = false;
++};
++
++class RlV2ProgramExecutor {
++public:
++	void Reset();
++	[[nodiscard]] bool CanExecute(uint8_t program) const;
++	[[nodiscard]] RlV2ExecutorResult ExecuteBoundary(uint8_t program, bool commands_allowed);
++	[[nodiscard]] const RlV2ExecutorResult &Inspect() const { return this->state_; }
++
++private:
++	RlV2ExecutorResult state_{"IDLE", "none", "", 0, false};
++};
++
++[[nodiscard]] std::string_view GetRlV2ProgramName(uint8_t program);
++[[nodiscard]] uint8_t GetRlV2ProgramIndex(std::string_view program);
++
++#endif /* RL_V2_PROGRAM_EXECUTOR_H */
+-- 
+2.43.0
+
