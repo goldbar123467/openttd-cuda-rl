@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import copy
+import hashlib
 import pathlib
 import unittest
 
@@ -10,12 +12,24 @@ import jsonschema
 
 import run_m22_training as runner
 import run_m22_recovery as recovery
+import validate_m22_training_evidence as validator
 
 
 class M22TrainingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.root = pathlib.Path(__file__).resolve().parents[3]
+        cls.report = recovery.load(cls.root / "config/v2/m22-training-evidence.json")
+
+    @staticmethod
+    def rehash(value: dict[str, object]) -> None:
+        value.pop("report_sha256", None)
+        value["report_sha256"] = hashlib.sha256(recovery.canonical_bytes(value)).hexdigest()
+
+    def mutation_fails(self, value: dict[str, object], pattern: str) -> None:
+        self.rehash(value)
+        with self.assertRaisesRegex(validator.M22TrainingValidationError, pattern):
+            validator.validate_value(value, self.root)
 
     def test_training_schema_is_strict_and_valid(self) -> None:
         schema = recovery.load(self.root / runner.SCHEMA)
@@ -53,6 +67,29 @@ class M22TrainingTests(unittest.TestCase):
         self.assertNotIn(recovery.FINAL_MANIFEST.as_posix(), runner.SOURCE_PATHS)
         self.assertEqual(runner.ARCHITECTURES, recovery.ARCHITECTURES)
         self.assertEqual(len(runner.ARCHITECTURES) * len(runner.SEEDS), 6)
+
+    def test_repository_training_evidence_passes(self) -> None:
+        validator.validate_value(self.report, self.root)
+
+    def test_update_trace_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["runs"][0]["process"]["updates"][0]["trace"]["actions_sha256"] = "0" * 64
+        self.mutation_fails(value, "update digest")
+
+    def test_process_identity_reuse_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["runs"][1]["process"]["pid"] = value["runs"][0]["process"]["pid"]
+        self.mutation_fails(value, "six fresh processes")
+
+    def test_candidate_metric_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["runs"][2]["candidates"][3]["mean_development_return"] += 0.01
+        self.mutation_fails(value, "candidate metrics")
+
+    def test_overall_selection_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["provisional_development_selection"]["checkpoint_id"] = "0" * 64
+        self.mutation_fails(value, "overall development selection")
 
 
 if __name__ == "__main__":

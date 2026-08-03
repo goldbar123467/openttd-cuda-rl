@@ -32,9 +32,11 @@ training episode for every introduced program in every update before drawing
 weighted extras, and defines forgetting only as loss of a previously passing
 program. The rejected seed passes all 16 programs through update 48 in a
 development smoke. The revised source now reproduces exactly for both
-architectures in six new isolated fresh processes, so only the new six-campaign
-evidence remains at this stage. No campaign evidence was accepted, and no G22
-pass or V2 release claim has been made.
+architectures in six new isolated fresh processes, and the complete clean
+six-campaign rerun now passes all 288 updates and all 36 development candidates.
+Development-only ordering provisionally selects monolithic seed `1636894266` at
+update 32; selection remains unfinalized pending native-retention and device
+gates. No G22 pass or V2 release claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -97,6 +99,7 @@ pass or V2 release claim has been made.
 · [`M22 native-qualified corpus`](config/v2/m22-native-corpus.json)
 · [`M22 semantic-v2 fresh-process recovery evidence`](config/v2/m22-recovery-evidence-v2.json)
 · [`M22 historical fresh-process recovery evidence`](config/v2/m22-recovery-evidence.json)
+· [`M22 matched training evidence`](config/v2/m22-training-evidence.json)
 · [`M22 final-only evaluation manifest`](config/v2/m22-evaluation-manifest.json)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
@@ -220,8 +223,16 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   subsequently passed exact update-16 recovery for both architectures in six
   new fresh CUDA processes, including byte-identical case/action projections,
   trajectories, optimizer state, recurrent state, metrics, and checkpoint
-  packages. This is a tested training-execution and exact-recovery boundary, not
-  a completed campaign or G22 pass.
+  packages. The subsequent clean matched rerun completes all six architecture-
+  by-seed campaigns, 288 finite updates, 36,864 transitions, 36 scheduled
+  checkpoints, and 18 exact-budget baseline campaigns. Every development
+  candidate passes its introduced suite, every learned run beats its matched
+  seeded-random and wait-only returns, no architecture-superiority claim is
+  made, and frozen ordering provisionally selects monolithic seed `1636894266`
+  at update 32 with checkpoint
+  `03894fd1238b69b6724d82eb441380312be4e8226efa602fa5e43972f7fa9f5f`.
+  Selection is not final until native retention and device gates pass. This is a
+  completed matched training/recovery boundary, not a G22 pass.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -239,12 +250,11 @@ disabled in the qualification settings, while crash counts remain scored and
 the interaction cases prove native ownership isolation. The M20 controller is a
 deterministic competence oracle, the M14 3,650-day final protocol was not run,
 and M22 must still train and independently evaluate the broad learned generalist.
-The immediate M22 continuation is to rerun all six architecture-by-seed
-campaigns from scratch against the corrected source. The remaining gate then
-includes development-only
-checkpoint selection, retained native G15-G21 regression, matched-baseline
-campaign evidence, CPU/CUDA performance evidence, and the one-shot
-preregistered final evaluation.
+The immediate M22 continuation is to qualify the provisional checkpoint through
+retained native G15-G21 regression and CPU/CUDA parity/performance evidence,
+then finalize selection before opening the final-only manifest. The remaining
+gate includes the optimizer-free one-shot preregistered final evaluation and its
+complete uncertainty/failure report.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -290,9 +300,8 @@ full frozen V1 traceability regression with:
 The M22 validators are part of that command and rebuild both the JSON and bounded
 native corpus representations exactly from accepted G15-G21 evidence before
 accepting them, validate the historical and active exact-recovery reports, and
-exercise the
-matched-campaign report's strict schema and fail-closed mutations. There is no
-accepted matched-campaign report yet. At this checkpoint the suite passes 382 V2
+validate the accepted matched-campaign report plus its fail-closed mutations.
+At this checkpoint the suite passes 387 V2
 tests and the unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
@@ -421,7 +430,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary; M22 next |
-| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, CPU/CUDA policy/PPO tests, current and historical exact update-16 recovery for both learned architectures across six isolated fresh processes each, and fail-closed six-campaign evidence tooling; the first full execution was rejected, and the corrected specialist seed now passes all programs in a diagnostic CUDA rerun | `M22 execution checkpoint`; all six accepted campaigns must be rerun; native retention, independent final suite, and G22 remain open |
+| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, CPU/CUDA policy/PPO tests, current and historical exact update-16 recovery, and six accepted 48-update CUDA campaigns with all 36 candidates development-eligible; monolithic seed `1636894266` update 32 is provisionally selected | `M22 matched training PASS`; selection remains unfinalized; native retention, device qualification, independent final suite, and G22 remain open |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
