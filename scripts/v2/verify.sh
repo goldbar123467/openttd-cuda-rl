@@ -198,6 +198,10 @@ PYTHONPATH="$repository_root/scripts/v2" \
     "$tools_python" "$repository_root/scripts/v2/validate_m22_final_runtime_source.py" \
     --root "$repository_root"
 
+PYTHONPATH="$repository_root/scripts/v2" \
+    "$tools_python" "$repository_root/scripts/v2/validate_m22_followup_runtime_source.py" \
+    --root "$repository_root"
+
 "$tools_python" "$repository_root/scripts/v2/validate_traceability.py" \
     --root "$repository_root"
 
