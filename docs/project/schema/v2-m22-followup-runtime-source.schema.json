@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-followup-runtime-source.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["base", "boundaries", "build", "executable", "patches", "prerequisites", "repository", "retained_artifact", "runtime", "schema_version", "smokes", "source", "status"],
+  "properties": {
+    "base": {"type": "object", "additionalProperties": false, "required": ["commit", "source_record_sha256", "tree"], "properties": {"commit": {"$ref": "#/$defs/git40"}, "source_record_sha256": {"$ref": "#/$defs/sha256"}, "tree": {"$ref": "#/$defs/git40"}}},
+    "boundaries": {
+      "type": "object", "additionalProperties": false, "required": ["followup", "immutable_final_v1"],
+      "properties": {
+        "followup": {"type": "object", "additionalProperties": false, "required": ["evaluator_processes", "manifest_opened", "native_dispatches", "protocol_state"], "properties": {"evaluator_processes": {"const": 0}, "manifest_opened": {"const": false}, "native_dispatches": {"const": 0}, "protocol_state": {"const": "not-yet-frozen"}}},
+        "immutable_final_v1": {"type": "object", "additionalProperties": false, "required": ["evidence_path", "evidence_sha256", "evaluator_processes", "manifest_opened", "native_dispatches", "status"], "properties": {"evidence_path": {"const": "config/v2/m22-final-evaluation-evidence.json"}, "evidence_sha256": {"$ref": "#/$defs/sha256"}, "evaluator_processes": {"const": 0}, "manifest_opened": {"const": false}, "native_dispatches": {"const": 0}, "status": {"const": "FAIL"}}}
+      }
+    },
+    "build": {"type": "object", "additionalProperties": false, "required": ["cmake_arguments", "generator", "jobs", "logs", "test_inventory", "upstream_ctest"], "properties": {"cmake_arguments": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string"}}, "generator": {"const": "Ninja"}, "jobs": {"type": "integer", "minimum": 1}, "logs": {"type": "object", "additionalProperties": false, "required": ["build", "configure", "ctest", "junit"], "properties": {"build": {"$ref": "#/$defs/file"}, "configure": {"$ref": "#/$defs/file"}, "ctest": {"$ref": "#/$defs/file"}, "junit": {"$ref": "#/$defs/file"}}}, "test_inventory": {"$ref": "#/$defs/file"}, "upstream_ctest": {"const": {"passed": 98, "total": 98}}}},
+    "executable": {"$ref": "#/$defs/file"},
+    "patches": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/patch"}, {"properties": {"path": {"const": "integration/openttd/patches/15.3/m22/final/0001-Add-M22-final-world-overrides.patch"}, "touched_files": {"const": ["src/rl_v2_action.cpp", "src/rl_v2_air.cpp", "src/rl_v2_broad.cpp", "src/rl_v2_cargo.cpp", "src/rl_v2_competition.cpp", "src/rl_v2_environment.cpp", "src/rl_v2_final_world.h", "src/rl_v2_rail.cpp", "src/rl_v2_ship.cpp"]}}}]},
+        {"allOf": [{"$ref": "#/$defs/patch"}, {"properties": {"path": {"const": "integration/openttd/patches/15.3/m22/followup/0001-Correct-M22-native-harness-boundaries.patch"}, "touched_files": {"const": ["src/rl_v2_air.cpp", "src/rl_v2_broad.cpp"]}}}]}
+      ],
+      "items": false
+    },
+    "prerequisites": {"type": "object", "additionalProperties": false, "required": ["final_runtime_source_record_sha256", "m20_source_record_sha256", "m21_source_record_sha256"], "properties": {"final_runtime_source_record_sha256": {"$ref": "#/$defs/sha256"}, "m20_source_record_sha256": {"$ref": "#/$defs/sha256"}, "m21_source_record_sha256": {"$ref": "#/$defs/sha256"}}},
+    "repository": {"$ref": "#/$defs/git"},
+    "retained_artifact": {"type": "string", "pattern": "^/"},
+    "runtime": {"type": "object", "additionalProperties": false, "required": ["ai_archives", "ai_libraries", "configs", "gamescript_files", "network_calls_during_preparation", "newgrf_archives", "newgrf_files", "open_gfx"], "properties": {"ai_archives": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/named_file"}}, "ai_libraries": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/file"}}, "configs": {"type": "object", "additionalProperties": false, "required": ["base", "content", "gamescript"], "properties": {"base": {"$ref": "#/$defs/file"}, "content": {"$ref": "#/$defs/file"}, "gamescript": {"$ref": "#/$defs/file"}}}, "gamescript_files": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/file"}}, "network_calls_during_preparation": {"const": "none"}, "newgrf_archives": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"$ref": "#/$defs/file"}}, "newgrf_files": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"$ref": "#/$defs/file"}}, "open_gfx": {"$ref": "#/$defs/file"}}},
+    "schema_version": {"const": "openttd-rl-v2-m22-followup-runtime-source-1"},
+    "smokes": {"type": "array", "minItems": 14, "maxItems": 14, "items": {"$ref": "#/$defs/smoke"}},
+    "source": {"type": "object", "additionalProperties": false, "required": ["commit", "path", "tree"], "properties": {"commit": {"$ref": "#/$defs/git40"}, "path": {"type": "string", "pattern": "^/"}, "tree": {"$ref": "#/$defs/git40"}}},
+    "status": {"const": "PASS"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git40": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "git": {"type": "object", "additionalProperties": false, "required": ["commit", "tree"], "properties": {"commit": {"$ref": "#/$defs/git40"}, "tree": {"$ref": "#/$defs/git40"}}},
+    "file": {"type": "object", "additionalProperties": false, "required": ["bytes", "path", "sha256"], "properties": {"bytes": {"type": "integer", "minimum": 1}, "path": {"type": "string", "pattern": "^/"}, "sha256": {"$ref": "#/$defs/sha256"}}},
+    "named_file": {"type": "object", "additionalProperties": false, "required": ["bytes", "name", "path", "sha256"], "properties": {"bytes": {"type": "integer", "minimum": 1}, "name": {"enum": ["AAAHogEx", "KrakenAI2", "NoOpAI"]}, "path": {"type": "string", "pattern": "^/"}, "sha256": {"$ref": "#/$defs/sha256"}}},
+    "patch": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "touched_files"], "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/$defs/sha256"}, "touched_files": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^src/"}}}},
+    "public_case": {"type": "object", "additionalProperties": false, "required": ["case_id", "cargo", "climate", "map_height", "map_width", "native_probe", "opponent", "source_gate", "task", "transport_mode"], "properties": {"case_id": {"type": "string", "pattern": "^[a-z0-9-]+$"}, "cargo": {"type": "string"}, "climate": {"enum": ["temperate", "arctic", "tropic", "toyland"]}, "map_height": {"enum": [64, 128, 1024]}, "map_width": {"enum": [64, 128, 512, 1024]}, "native_probe": {"type": "string"}, "opponent": {"enum": ["AAAHogEx", "KrakenAI2", "NoOpAI", "not-applicable"]}, "source_gate": {"enum": ["G15", "G16", "G17", "G18", "G19", "G20", "G21"]}, "task": {"enum": ["service", "routing", "competition", "retention"]}, "transport_mode": {"enum": ["road", "rail", "water", "air", "multimodal", "company", "broad"]}}},
+    "smoke": {"type": "object", "additionalProperties": false, "required": ["artifact_root", "case", "executable_sha256", "fresh_processes", "manifest_path", "manifest_sha256", "metrics", "native_probe", "network_unshared", "openttd_log_path", "openttd_log_sha256", "private_seed", "report_path", "report_sha256", "source_tree", "status", "wall_seconds"], "properties": {"artifact_root": {"type": "string", "pattern": "^/"}, "case": {"$ref": "#/$defs/public_case"}, "executable_sha256": {"$ref": "#/$defs/sha256"}, "fresh_processes": {"const": 1}, "manifest_path": {"const": "manifest.json"}, "manifest_sha256": {"$ref": "#/$defs/sha256"}, "metrics": {"type": "object", "minProperties": 1}, "native_probe": {"type": "string"}, "network_unshared": {"const": true}, "openttd_log_path": {"const": "openttd.log"}, "openttd_log_sha256": {"$ref": "#/$defs/sha256"}, "private_seed": {"type": "integer", "minimum": 1, "maximum": 2147483647}, "report_path": {"const": "report.json"}, "report_sha256": {"$ref": "#/$defs/sha256"}, "source_tree": {"$ref": "#/$defs/git40"}, "status": {"const": "PASS"}, "wall_seconds": {"type": "number", "minimum": 0}}}
+  }
+}
