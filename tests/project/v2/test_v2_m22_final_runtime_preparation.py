@@ -8,6 +8,7 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 import jsonschema
 
@@ -99,6 +100,20 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
         source = (self.root / "scripts/v2/prepare_m22_final_runtime.py").read_text(encoding="utf-8")
         function = source[source.index("def configure_and_build"):source.index("def stage_runtime")]
         self.assertLess(function.index("open_gfx = copy_exact"), function.index("inventory_raw = checked"))
+
+    def test_smoke_parent_exists_before_first_native_dispatch(self) -> None:
+        runtime = native.RuntimePaths(*(pathlib.Path("/not-used") for _ in range(5)), source_tree="0" * 40)
+        with tempfile.TemporaryDirectory() as raw:
+            artifact = pathlib.Path(raw)
+
+            def dispatch(_root: pathlib.Path, _runtime: native.RuntimePaths, case_root: pathlib.Path,
+                         case: dict[str, object]) -> dict[str, object]:
+                self.assertTrue(case_root.parent.is_dir())
+                return {"case": native.public_case(case)}
+
+            with mock.patch.object(native, "run_native_case", side_effect=dispatch) as patched:
+                records = preparation.run_smokes(self.root, artifact, runtime)
+            self.assertEqual((len(records), patched.call_count), (8, 8))
 
     def test_output_writer_never_overwrites(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

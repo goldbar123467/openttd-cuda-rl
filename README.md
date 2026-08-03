@@ -326,8 +326,12 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   rejected at 96/98 CTests because the two graphics-dependent regression tests
   ran before OpenGFX staging. The failed artifact and its logs are preserved; the
   corrected source stages the pinned OpenGFX archive before CTest, bounds failure
-  diagnostics, and adds a regression test that freezes this ordering. A clean
-  create-only retry remains required.
+  diagnostics, and adds a regression test that freezes this ordering. The second
+  clean attempt then passed all 98 CTests and staged every runtime asset, but was
+  rejected before its first smoke because the shared smoke parent did not exist;
+  it likewise wrote no accepted record. The runner now creates that parent
+  explicitly and tests its existence before every mocked native dispatch. A
+  clean create-only retry remains required.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -398,7 +402,7 @@ The M22 validators are part of that command and rebuild both the JSON and bounde
 native corpus representations exactly from accepted G15-G21 evidence before
 accepting them, validate the historical and active exact-recovery reports, and
 validate the accepted matched-campaign and selected-checkpoint qualification
-reports plus their fail-closed mutations. At this checkpoint the suite passes 410 V2
+reports plus their fail-closed mutations. At this checkpoint the suite passes 411 V2
 tests and the unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15

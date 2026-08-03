@@ -246,8 +246,10 @@ def stage_runtime(root: pathlib.Path, artifact_root: pathlib.Path, build_path: p
 
 def run_smokes(root: pathlib.Path, artifact_root: pathlib.Path, runtime: native.RuntimePaths) -> list[dict[str, Any]]:
     records = []
+    smoke_root = artifact_root / "smokes"
+    smoke_root.mkdir(mode=0o700)
     for ordinal, case in enumerate(SMOKE_CASES, 1):
-        case_root = artifact_root / "smokes" / case["case_id"]
+        case_root = smoke_root / case["case_id"]
         record = native.run_native_case(root, runtime, case_root, dict(case))
         records.append({"artifact_root": str(case_root), "private_seed": case["seed"], **record})
         print(f"M22 runtime smoke {ordinal:02d}/{len(SMOKE_CASES)} PASS {case['case_id']}", flush=True)
