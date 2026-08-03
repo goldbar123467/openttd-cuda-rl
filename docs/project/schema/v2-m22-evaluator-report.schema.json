@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-evaluator-report.schema.json",
+  "title": "OpenTTD-RL V2 M22 optimizer-free single-case evaluator report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["checkpoint", "execution", "policy", "public_state", "schema_version", "status", "tensor_input"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m22-evaluator-report-1"},
+    "status": {"const": "PASS"},
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "id", "run_seed"],
+      "properties": {
+        "architecture": {"enum": ["monolithic-generalist-v1", "specialist-router-v1"]},
+        "id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "run_seed": {"type": "integer", "minimum": 1}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device", "greedy_masked", "optimizer_constructed", "optimizer_deserialized", "optimizer_path_opened", "recurrent_reset"],
+      "properties": {
+        "device": {"enum": ["cpu", "cuda:0"]},
+        "greedy_masked": {"const": true},
+        "optimizer_constructed": {"const": false},
+        "optimizer_deserialized": {"const": false},
+        "optimizer_path_opened": {"const": false},
+        "recurrent_reset": {"const": true}
+      }
+    },
+    "public_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cargo", "climate", "map_height", "map_width", "native_probe", "opponent", "source_gate", "task", "transport_mode"],
+      "properties": {
+        "cargo": {"type": "string", "pattern": "^(?:[A-Z0-9_]{4}|not-applicable)$"},
+        "climate": {"enum": ["temperate", "arctic", "tropic", "toyland"]},
+        "map_height": {"enum": [64, 128, 1024]},
+        "map_width": {"enum": [64, 128, 512, 1024]},
+        "native_probe": {"type": "string", "pattern": "^[a-z0-9_-]+$"},
+        "opponent": {"enum": ["AAAHogEx", "KrakenAI2", "NoOpAI", "not-applicable"]},
+        "source_gate": {"enum": ["G15", "G16", "G17", "G18", "G19", "G20", "G21"]},
+        "task": {"enum": ["service", "routing", "competition", "retention"]},
+        "transport_mode": {"enum": ["road", "rail", "water", "air", "multimodal", "company", "broad"]}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "action_index", "legal_active_index", "legal_active_program", "logits", "next_hidden", "value"],
+      "properties": {
+        "action": {"$ref": "#/$defs/program"},
+        "action_index": {"type": "integer", "minimum": 0, "maximum": 16},
+        "legal_active_index": {"type": "integer", "minimum": 1, "maximum": 16},
+        "legal_active_program": {"$ref": "#/$defs/active_program"},
+        "logits": {"type": "array", "minItems": 17, "maxItems": 17, "items": {"type": "number"}},
+        "next_hidden": {"type": "array", "minItems": 256, "maxItems": 256, "items": {"type": "number"}},
+        "value": {"type": "number"}
+      }
+    },
+    "tensor_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["program_mask", "public_features"],
+      "properties": {
+        "program_mask": {"type": "array", "minItems": 17, "maxItems": 17, "items": {"type": "boolean"}},
+        "public_features": {"type": "array", "minItems": 32, "maxItems": 32, "items": {"type": "number", "minimum": 0, "maximum": 1}}
+      }
+    }
+  },
+  "$defs": {
+    "program": {
+      "enum": ["wait", "road-passenger", "road-cargo", "rail-passenger", "rail-freight", "ship-natural", "ship-constructed", "air-service", "air-helicopter", "multimodal-transfer", "mode-router", "competition-head-to-head", "calendar-inspect", "authority-economy", "event-recovery", "gamescript-response", "content-discovery"]
+    },
+    "active_program": {
+      "enum": ["road-passenger", "road-cargo", "rail-passenger", "rail-freight", "ship-natural", "ship-constructed", "air-service", "air-helicopter", "multimodal-transfer", "mode-router", "competition-head-to-head", "calendar-inspect", "authority-economy", "event-recovery", "gamescript-response", "content-discovery"]
+    }
+  }
+}

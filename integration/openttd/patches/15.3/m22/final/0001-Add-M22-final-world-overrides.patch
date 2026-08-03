@@ -1,0 +1,508 @@
+diff --git a/src/rl_v2_action.cpp b/src/rl_v2_action.cpp
+index a1074e6..00ad6a4 100644
+--- a/src/rl_v2_action.cpp
++++ b/src/rl_v2_action.cpp
+@@ -10,6 +10,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_action.h"
++#include "rl_v2_final_world.h"
+ #include "rl_v2_observation.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+@@ -17,6 +18,7 @@
+ #include "command_func.h"
+ #include "company_base.h"
+ #include "depot_base.h"
++#include "engine_base.h"
+ #include "map_func.h"
+ #include "misc_cmd.h"
+ #include "newgrf_roadstop.h"
+@@ -596,7 +598,20 @@ static json RunPassengerService()
+ 		ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false); });
+ 	execute("CMD_BUILD_ROAD_DEPOT", [&] { return Command<CMD_BUILD_ROAD_DEPOT>::Do(DoCommandFlag::Execute,
+ 		site.depot, ROADTYPE_ROAD, site.depot_direction); });
+-	auto built = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, site.depot, BUS_ENGINE, true, passengers, INVALID_CLIENT_ID);
++	EngineID service_engine = BUS_ENGINE;
++	const auto final_world = GetRlV2FinalWorld(Map::SizeX(), Map::SizeY(), _settings_game.game_creation.landscape);
++	if (final_world.active) {
++		service_engine = EngineID::Invalid();
++		for (const Engine *engine : Engine::IterateType(VEH_ROAD)) {
++			auto test = Command<CMD_BUILD_VEHICLE>::Do({}, site.depot, engine->index, true, passengers, INVALID_CLIENT_ID);
++			if (std::get<0>(test).Succeeded() && std::get<2>(test) > 0) {
++				service_engine = engine->index;
++				break;
++			}
++		}
++		Require(service_engine != EngineID::Invalid(), "final service found no buildable passenger road vehicle");
++	}
++	auto built = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, site.depot, service_engine, true, passengers, INVALID_CLIENT_ID);
+ 	commands.push_back(CommandLog("CMD_BUILD_VEHICLE", "SERVICE", std::get<0>(built)));
+ 	Require(std::get<0>(built).Succeeded(), "service bus purchase failed");
+ 	VehicleID vehicle_id = std::get<1>(built);
+@@ -621,7 +636,7 @@ static json RunPassengerService()
+ 		if (cargo != passengers) Require(company->cur_economy.delivered_cargo[cargo] == 0, "service baseline delivered non-passenger cargo");
+ 	}
+ 	const Vehicle *vehicle = Vehicle::Get(vehicle_id);
+-	Require(vehicle->type == VEH_ROAD && vehicle->engine_type == BUS_ENGINE && vehicle->cargo_type == passengers,
++	Require(vehicle->type == VEH_ROAD && vehicle->engine_type == service_engine && vehicle->cargo_type == passengers,
+ 		"service vehicle identity or cargo scope drifted");
+ 	Require(!vehicle->vehstatus.Test(VehState::Stopped) && !vehicle->vehstatus.Test(VehState::Crashed),
+ 		"service bus is stopped or crashed");
+diff --git a/src/rl_v2_air.cpp b/src/rl_v2_air.cpp
+index 3d6a424..5d34651 100644
+--- a/src/rl_v2_air.cpp
++++ b/src/rl_v2_air.cpp
+@@ -8,6 +8,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_air.h"
++#include "rl_v2_final_world.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "ai/ai_config.hpp"
+@@ -192,11 +193,12 @@ static json CostRecord(std::string_view command, const CommandCost &cost)
+ 
+ static void Configure(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, LandscapeType::Temperate);
+ 	_settings_newgame.game_creation.generation_seed = request.seed;
+ 	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
+-	_settings_newgame.game_creation.map_x = 6;
+-	_settings_newgame.game_creation.map_y = 6;
+-	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.map_x = RlV2FinalLog2(world.width);
++	_settings_newgame.game_creation.map_y = RlV2FinalLog2(world.height);
++	_settings_newgame.game_creation.landscape = world.landscape;
+ 	_settings_newgame.game_creation.se_flat_world_height = 1;
+ 	_settings_newgame.game_creation.water_borders = {};
+ 	_settings_newgame.construction.freeform_edges = true;
+@@ -236,14 +238,15 @@ static void Configure(const Request &request)
+ 
+ static void ResetWorld(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, LandscapeType::Temperate);
+ 	Configure(request);
+ 	_random.SetSeed(request.seed ^ 0x4d313941U);
+ 	_interactive_random.SetSeed(request.seed ^ 0x41495221U);
+ 	_game_mode = GM_NORMAL;
+ 	_switch_mode = SM_NONE;
+ 	SetModalProgress(false);
+-	GenerateWorld(GWM_EMPTY, MAP_SIDE, MAP_SIDE, false);
+-	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "empty qualification map has wrong dimensions");
++	GenerateWorld(GWM_EMPTY, world.width, world.height, false);
++	Require(Map::SizeX() == world.width && Map::SizeY() == world.height, "empty qualification map has wrong dimensions");
+ 	{
+ 		AutoRestoreBackup company(_current_company, OWNER_DEITY);
+ 		auto [cost, required_money, town_id] = Command<CMD_FOUND_TOWN>::Do(DoCommandFlag::Execute, TileXY(12, 12), TSZ_SMALL,
+diff --git a/src/rl_v2_broad.cpp b/src/rl_v2_broad.cpp
+index 734b3bc..c6adeae 100644
+--- a/src/rl_v2_broad.cpp
++++ b/src/rl_v2_broad.cpp
+@@ -8,6 +8,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_broad.h"
++#include "rl_v2_final_world.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "ai/ai_config.hpp"
+@@ -255,11 +256,12 @@ static json ActiveContent(const Request &request)
+ 
+ static void Configure(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, request.landscape);
+ 	_settings_newgame.game_creation.generation_seed = request.seed;
+ 	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{1950};
+-	_settings_newgame.game_creation.map_x = 6;
+-	_settings_newgame.game_creation.map_y = 6;
+-	_settings_newgame.game_creation.landscape = request.landscape;
++	_settings_newgame.game_creation.map_x = RlV2FinalLog2(world.width);
++	_settings_newgame.game_creation.map_y = RlV2FinalLog2(world.height);
++	_settings_newgame.game_creation.landscape = world.landscape;
+ 	_settings_newgame.game_creation.se_flat_world_height = 1;
+ 	_settings_newgame.game_creation.water_borders = {};
+ 	_settings_newgame.construction.freeform_edges = true;
+@@ -285,6 +287,7 @@ static void Configure(const Request &request)
+ 
+ static std::array<TownID, 2> ResetWorld(const Request &request, uint companies = 1)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, request.landscape);
+ 	Configure(request);
+ 	ResetGRFConfig(true);
+ 	_random.SetSeed(request.seed ^ 0x4d323142U);
+@@ -292,8 +295,8 @@ static std::array<TownID, 2> ResetWorld(const Request &request, uint companies =
+ 	_game_mode = GM_NORMAL;
+ 	_switch_mode = SM_NONE;
+ 	SetModalProgress(false);
+-	GenerateWorld(GWM_EMPTY, MAP_SIDE, MAP_SIDE, false);
+-	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "empty qualification map has wrong dimensions");
++	GenerateWorld(GWM_EMPTY, world.width, world.height, false);
++	Require(Map::SizeX() == world.width && Map::SizeY() == world.height, "empty qualification map has wrong dimensions");
+ 	std::array<TownID, 2> towns{};
+ 	{
+ 		AutoRestoreBackup company(_current_company, OWNER_DEITY);
+@@ -676,7 +679,8 @@ void RunRlV2BroadQualification(const std::string &manifest_path, const std::stri
+ 		json report = {
+ 			{"active_content", std::move(active_content)}, {"engine_source_tree", request.engine_source_tree},
+ 			{"executable_sha256", request.executable_sha256}, {"identity", {{"content_lock_sha256", request.content_lock_sha256},
+-				{"contract_sha256", request.contract_sha256}}}, {"request", {{"landscape", LandscapeName(request.landscape)},
++				{"contract_sha256", request.contract_sha256}}}, {"map", {{"height", Map::SizeY()}, {"width", Map::SizeX()}}},
++			{"request", {{"landscape", LandscapeName(request.landscape)},
+ 				{"probe", request.probe}, {"run_id", request.run_id}, {"seed", request.seed}}}, {"result", std::move(result)},
+ 			{"run_id", request.run_id}, {"schema_version", REPORT_SCHEMA}, {"status", "PASS"},
+ 		};
+diff --git a/src/rl_v2_cargo.cpp b/src/rl_v2_cargo.cpp
+index fea6dea..3d6882d 100644
+--- a/src/rl_v2_cargo.cpp
++++ b/src/rl_v2_cargo.cpp
+@@ -8,6 +8,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_cargo.h"
++#include "rl_v2_final_world.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "ai/ai_config.hpp"
+@@ -189,11 +190,12 @@ static std::string CargoText(CargoType cargo)
+ 
+ static void Configure(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, request.climate);
+ 	_settings_newgame.game_creation.generation_seed = request.seed;
+ 	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
+-	_settings_newgame.game_creation.map_x = 6;
+-	_settings_newgame.game_creation.map_y = 6;
+-	_settings_newgame.game_creation.landscape = request.climate;
++	_settings_newgame.game_creation.map_x = RlV2FinalLog2(world.width);
++	_settings_newgame.game_creation.map_y = RlV2FinalLog2(world.height);
++	_settings_newgame.game_creation.landscape = world.landscape;
+ 	_settings_newgame.game_creation.se_flat_world_height = 1;
+ 	_settings_newgame.game_creation.water_borders = {};
+ 	_settings_newgame.construction.freeform_edges = true;
+@@ -239,14 +241,15 @@ static void Configure(const Request &request)
+ 
+ static void ResetWorld(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, request.climate);
+ 	Configure(request);
+ 	_random.SetSeed(request.seed ^ 0x4d313643U);
+ 	_interactive_random.SetSeed(request.seed ^ 0x524c5632U);
+ 	_game_mode = GM_NORMAL;
+ 	_switch_mode = SM_NONE;
+ 	SetModalProgress(false);
+-	GenerateWorld(GWM_EMPTY, MAP_SIDE, MAP_SIDE, false);
+-	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "empty qualification map has wrong dimensions");
++	GenerateWorld(GWM_EMPTY, world.width, world.height, false);
++	Require(Map::SizeX() == world.width && Map::SizeY() == world.height, "empty qualification map has wrong dimensions");
+ 	{
+ 		AutoRestoreBackup company(_current_company, OWNER_DEITY);
+ 		bool built = false;
+@@ -758,6 +761,7 @@ void RunRlV2CargoQualification(const std::string &manifest_path, const std::stri
+ 		{"climate", request.climate_name},
+ 		{"executable_sha256", request.executable_sha256},
+ 		{"industry_graph", std::move(industry)},
++		{"map", {{"height", Map::SizeY()}, {"width", Map::SizeX()}}},
+ 		{"lifecycle_and_economy", LifecycleAndEconomyOracle(request.climate)},
+ 		{"probe", std::move(probe)},
+ 		{"request", {{"amount", request.amount}, {"cargo_label", request.cargo_label}, {"probe", request.probe},
+diff --git a/src/rl_v2_competition.cpp b/src/rl_v2_competition.cpp
+index fbe39b4..80f17df 100644
+--- a/src/rl_v2_competition.cpp
++++ b/src/rl_v2_competition.cpp
+@@ -8,6 +8,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_competition.h"
++#include "rl_v2_final_world.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "ai/ai_config.hpp"
+@@ -248,12 +249,13 @@ static Request Validate(const json &manifest)
+ 
+ static void Configure(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, LandscapeType::Temperate);
+ 	_settings_newgame.game_creation.generation_seed = request.map_seed;
+ 	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
+ 	_settings_newgame.game_creation.ending_year = TimerGameCalendar::Year{0};
+-	_settings_newgame.game_creation.map_x = 7;
+-	_settings_newgame.game_creation.map_y = 7;
+-	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.map_x = RlV2FinalLog2(world.width);
++	_settings_newgame.game_creation.map_y = RlV2FinalLog2(world.height);
++	_settings_newgame.game_creation.landscape = world.landscape;
+ 	_settings_newgame.game_creation.se_flat_world_height = 1;
+ 	_settings_newgame.game_creation.custom_town_number = 16;
+ 	_settings_newgame.game_creation.custom_industry_number = 24;
+@@ -295,17 +297,18 @@ static void Configure(const Request &request)
+ 
+ static void ResetWorld(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, LandscapeType::Temperate);
+ 	Configure(request);
+ 	_random.SetSeed(request.map_seed);
+ 	_interactive_random.SetSeed(request.map_seed ^ 0x4d415021U);
+ 	_game_mode = GM_NORMAL;
+ 	_switch_mode = SM_NONE;
+ 	SetModalProgress(false);
+-	GenerateWorld(GWM_NEWGAME, MAP_SIDE, MAP_SIDE, false);
++	GenerateWorld(GWM_NEWGAME, world.width, world.height, false);
+ 	_random.SetSeed(request.simulation_seed ^ 0x4d323043U);
+ 	_interactive_random.SetSeed(request.simulation_seed ^ 0x434f4d50U);
+ 	ScriptObject::InitializeRandomizers();
+-	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "qualification map has wrong dimensions");
++	Require(Map::SizeX() == world.width && Map::SizeY() == world.height, "qualification map has wrong dimensions");
+ 	Require(Town::GetNumItems() >= 8 && Industry::GetNumItems() >= 4, "shared map lacks generated towns or industries");
+ 	Require(Company::GetNumItems() == 0, "shared map unexpectedly created companies");
+ }
+diff --git a/src/rl_v2_environment.cpp b/src/rl_v2_environment.cpp
+index 31cb46c..a7fbd6c 100644
+--- a/src/rl_v2_environment.cpp
++++ b/src/rl_v2_environment.cpp
+@@ -11,6 +11,7 @@
+ 
+ #include "rl_v2_environment.h"
+ #include "rl_v2_action.h"
++#include "rl_v2_final_world.h"
+ #include "rl_v2_observation.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+@@ -61,6 +62,8 @@ static constexpr uint32_t MAXIMUM_GENERATED_TILES = 1U << 20;
+ struct ResetRequest {
+ 	uint16_t width;
+ 	uint16_t height;
++	LandscapeType climate;
++	std::string climate_name;
+ 	uint32_t map_seed;
+ 	uint32_t simulation_seed;
+ 	uint32_t candidate_tiebreak_seed;
+@@ -120,7 +123,6 @@ static ResetRequest ValidateManifest(const json &manifest)
+ 	Require(manifest.at("schema_version") == SCHEMA_VERSION, "unsupported reset manifest schema_version");
+ 	Require(manifest.at("contract_sha256") == CONTRACT_SHA256, "scalable contract identity mismatch");
+ 	Require(manifest.at("engine_source_tree") == "02d8cbbb0d8c030698d37ca76ab2773b6e23c397", "engine source tree mismatch");
+-	Require(manifest.at("climate") == "temperate", "M15 reset climate must be temperate");
+ 	Require(manifest.at("start_year") == 1950, "M15 reset start year must be 1950");
+ 	Require(manifest.at("generation_mode") == "native-seeded", "M15 reset generation mode must be native-seeded");
+ 	Require(manifest.at("company_count") == 1, "M15 reset company_count must be one");
+@@ -130,8 +132,11 @@ static ResetRequest ValidateManifest(const json &manifest)
+ 	Require(manifest.at("content_manifest_sha256").get<std::string>().size() == 64, "content manifest identity must be SHA-256");
+ 	Require(manifest.at("executable_sha256").get<std::string>().size() == 64, "executable identity must be SHA-256");
+ 
++	std::string climate_name = manifest.at("climate").get<std::string>();
++	LandscapeType climate = ParseRlV2FinalLandscape(climate_name);
+ 	ResetRequest request{
+ 		manifest.at("map_width").get<uint16_t>(), manifest.at("map_height").get<uint16_t>(),
++		climate, std::move(climate_name),
+ 		manifest.at("map_seed").get<uint32_t>(), manifest.at("simulation_seed").get<uint32_t>(), manifest.at("candidate_tiebreak_seed").get<uint32_t>(),
+ 		manifest.at("town_target").get<uint16_t>(), manifest.at("industry_target").get<uint16_t>(),
+ 		manifest.at("split").get<std::string>(), manifest.at("resource_tier").get<std::string>(), manifest.at("executable_sha256").get<std::string>(),
+@@ -153,7 +158,7 @@ static void ConfigureSettings(const ResetRequest &request)
+ 	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{1950};
+ 	_settings_newgame.game_creation.map_x = Log2Side(request.width);
+ 	_settings_newgame.game_creation.map_y = Log2Side(request.height);
+-	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.landscape = request.climate;
+ 	_settings_newgame.game_creation.custom_town_number = request.town_target;
+ 	_settings_newgame.difficulty.number_towns = CUSTOM_TOWN_NUMBER_DIFFICULTY;
+ 	_settings_newgame.difficulty.max_no_competitors = 0;
+@@ -209,6 +214,7 @@ static json BuildProjection(const ResetRequest &request)
+ 		{"contract_sha256", CONTRACT_SHA256},
+ 		{"request", {
+ 			{"candidate_tiebreak_seed", request.candidate_tiebreak_seed},
++			{"climate", request.climate_name},
+ 			{"executable_sha256", request.executable_sha256},
+ 			{"height", request.height},
+ 			{"industry_target", request.industry_target},
+diff --git a/src/rl_v2_final_world.h b/src/rl_v2_final_world.h
+new file mode 100644
+index 0000000..685841b
+--- /dev/null
++++ b/src/rl_v2_final_world.h
+@@ -0,0 +1,82 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_final_world.h Fail-closed M22 final-evaluation world projection. */
++
++#ifndef RL_V2_FINAL_WORLD_H
++#define RL_V2_FINAL_WORLD_H
++
++#include "settings_type.h"
++
++#include <algorithm>
++#include <array>
++#include <charconv>
++#include <cstdint>
++#include <cstdlib>
++#include <stdexcept>
++#include <string>
++#include <string_view>
++#include <system_error>
++
++struct RlV2FinalWorld {
++	uint32_t width;
++	uint32_t height;
++	LandscapeType landscape;
++	bool active;
++};
++
++inline LandscapeType ParseRlV2FinalLandscape(std::string_view value)
++{
++	if (value == "temperate") return LandscapeType::Temperate;
++	if (value == "arctic") return LandscapeType::Arctic;
++	if (value == "tropic") return LandscapeType::Tropic;
++	if (value == "toyland") return LandscapeType::Toyland;
++	throw std::runtime_error("M22 final world override: unknown climate");
++}
++
++inline uint8_t RlV2FinalLog2(uint32_t value)
++{
++	uint8_t result = 0;
++	while (value > 1) {
++		value >>= 1;
++		++result;
++	}
++	return result;
++}
++
++inline uint32_t ParseRlV2FinalSide(const char *text, std::string_view name)
++{
++	uint32_t value = 0;
++	const char *end = text;
++	while (*end != '\0') ++end;
++	auto [position, error] = std::from_chars(text, end, value);
++	if (error != std::errc() || position != end) throw std::runtime_error("M22 final world override: malformed " + std::string(name));
++	return value;
++}
++
++inline RlV2FinalWorld GetRlV2FinalWorld(uint32_t default_width, uint32_t default_height, LandscapeType default_landscape)
++{
++	const char *token = std::getenv("OPENTTD_RL_M22_FINAL_TOKEN");
++	const char *width_text = std::getenv("OPENTTD_RL_M22_FINAL_WIDTH");
++	const char *height_text = std::getenv("OPENTTD_RL_M22_FINAL_HEIGHT");
++	const char *climate_text = std::getenv("OPENTTD_RL_M22_FINAL_CLIMATE");
++	const bool any = token != nullptr || width_text != nullptr || height_text != nullptr || climate_text != nullptr;
++	if (!any) return {default_width, default_height, default_landscape, false};
++	if (token == nullptr || width_text == nullptr || height_text == nullptr || climate_text == nullptr ||
++		std::string_view(token) != "m22-independent-final-v1") {
++		throw std::runtime_error("M22 final world override: incomplete or invalid final token");
++	}
++	const uint32_t width = ParseRlV2FinalSide(width_text, "width");
++	const uint32_t height = ParseRlV2FinalSide(height_text, "height");
++	constexpr std::array<uint32_t, 4> widths = {64, 128, 512, 1024};
++	constexpr std::array<uint32_t, 3> heights = {64, 128, 1024};
++	if (std::ranges::find(widths, width) == widths.end() || std::ranges::find(heights, height) == heights.end() ||
++		static_cast<uint64_t>(width) * height > (UINT64_C(1) << 20U)) {
++		throw std::runtime_error("M22 final world override: map rectangle is outside the preregistered domain");
++	}
++	return {width, height, ParseRlV2FinalLandscape(climate_text), true};
++}
++
++#endif /* RL_V2_FINAL_WORLD_H */
+diff --git a/src/rl_v2_rail.cpp b/src/rl_v2_rail.cpp
+index c39adfc..a2c5991 100644
+--- a/src/rl_v2_rail.cpp
++++ b/src/rl_v2_rail.cpp
+@@ -8,6 +8,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_rail.h"
++#include "rl_v2_final_world.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "ai/ai_config.hpp"
+@@ -196,11 +197,12 @@ static json CostRecord(std::string_view command, const CommandCost &cost)
+ 
+ static void Configure(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, LandscapeType::Temperate);
+ 	_settings_newgame.game_creation.generation_seed = request.seed;
+ 	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
+-	_settings_newgame.game_creation.map_x = 6;
+-	_settings_newgame.game_creation.map_y = 6;
+-	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.map_x = RlV2FinalLog2(world.width);
++	_settings_newgame.game_creation.map_y = RlV2FinalLog2(world.height);
++	_settings_newgame.game_creation.landscape = world.landscape;
+ 	_settings_newgame.game_creation.se_flat_world_height = 1;
+ 	_settings_newgame.game_creation.water_borders = {};
+ 	_settings_newgame.construction.freeform_edges = true;
+@@ -237,14 +239,15 @@ static void Configure(const Request &request)
+ 
+ static void ResetWorld(const Request &request)
+ {
++	const auto world = GetRlV2FinalWorld(MAP_SIDE, MAP_SIDE, LandscapeType::Temperate);
+ 	Configure(request);
+ 	_random.SetSeed(request.seed ^ 0x4d313752U);
+ 	_interactive_random.SetSeed(request.seed ^ 0x5241494cU);
+ 	_game_mode = GM_NORMAL;
+ 	_switch_mode = SM_NONE;
+ 	SetModalProgress(false);
+-	GenerateWorld(GWM_EMPTY, MAP_SIDE, MAP_SIDE, false);
+-	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "empty qualification map has wrong dimensions");
++	GenerateWorld(GWM_EMPTY, world.width, world.height, false);
++	Require(Map::SizeX() == world.width && Map::SizeY() == world.height, "empty qualification map has wrong dimensions");
+ 	{
+ 		AutoRestoreBackup company(_current_company, OWNER_DEITY);
+ 		auto [cost, required_money, town_id] = Command<CMD_FOUND_TOWN>::Do(DoCommandFlag::Execute, TileXY(12, 12), TSZ_SMALL,
+@@ -780,7 +783,7 @@ void RunRlV2RailQualification(const std::string &manifest_path, const std::strin
+ 			{"schema_version", REPORT_SCHEMA},
+ 			{"catalog", Catalog()},
+ 			{"executable_sha256", request.executable_sha256},
+-			{"map", { {"height", MAP_SIDE}, {"width", MAP_SIDE} }},
++			{"map", { {"height", Map::SizeY()}, {"width", Map::SizeX()} }},
+ 			{"probe", std::move(probe)},
+ 			{"request", { {"cargo_label", request.cargo_label}, {"probe", request.probe}, {"run_id", request.run_id}, {"seed", request.seed} }},
+ 			{"run_id", request.run_id},
+diff --git a/src/rl_v2_ship.cpp b/src/rl_v2_ship.cpp
+index deed34e..f5a9a0a 100644
+--- a/src/rl_v2_ship.cpp
++++ b/src/rl_v2_ship.cpp
+@@ -8,6 +8,7 @@
+ #include "stdafx.h"
+ 
+ #include "rl_v2_ship.h"
++#include "rl_v2_final_world.h"
+ 
+ #include "3rdparty/nlohmann/json.hpp"
+ #include "ai/ai_config.hpp"
+@@ -194,11 +195,13 @@ static json CostRecord(std::string_view command, const CommandCost &cost)
+ 
+ static void Configure(const Request &request)
+ {
++	const uint32_t default_side = request.probe == "shipai-scenario" ? 128 : MAP_SIDE;
++	const auto world = GetRlV2FinalWorld(default_side, default_side, LandscapeType::Temperate);
+ 	_settings_newgame.game_creation.generation_seed = request.seed;
+ 	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
+-	_settings_newgame.game_creation.map_x = request.probe == "shipai-scenario" ? 7 : 6;
+-	_settings_newgame.game_creation.map_y = request.probe == "shipai-scenario" ? 7 : 6;
+-	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.map_x = RlV2FinalLog2(world.width);
++	_settings_newgame.game_creation.map_y = RlV2FinalLog2(world.height);
++	_settings_newgame.game_creation.landscape = world.landscape;
+ 	_settings_newgame.game_creation.se_flat_world_height = 1;
+ 	_settings_newgame.game_creation.water_borders = {};
+ 	_settings_newgame.construction.freeform_edges = true;
+@@ -237,15 +240,16 @@ static void Configure(const Request &request)
+ 
+ static void ResetWorld(const Request &request)
+ {
++	const uint32_t default_side = request.probe == "shipai-scenario" ? 128 : MAP_SIDE;
++	const auto world = GetRlV2FinalWorld(default_side, default_side, LandscapeType::Temperate);
+ 	Configure(request);
+ 	_random.SetSeed(request.seed ^ 0x4d313853U);
+ 	_interactive_random.SetSeed(request.seed ^ 0x53484950U);
+ 	_game_mode = GM_NORMAL;
+ 	_switch_mode = SM_NONE;
+ 	SetModalProgress(false);
+-	uint map_side = request.probe == "shipai-scenario" ? 128 : MAP_SIDE;
+-	GenerateWorld(GWM_EMPTY, map_side, map_side, false);
+-	Require(Map::SizeX() == map_side && Map::SizeY() == map_side, "empty qualification map has wrong dimensions");
++	GenerateWorld(GWM_EMPTY, world.width, world.height, false);
++	Require(Map::SizeX() == world.width && Map::SizeY() == world.height, "empty qualification map has wrong dimensions");
+ 	{
+ 		AutoRestoreBackup company(_current_company, OWNER_DEITY);
+ 		if (request.probe == "shipai-scenario") {

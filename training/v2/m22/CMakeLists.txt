@@ -67,6 +67,32 @@ v2_enable_strict_warnings(openttd_rl_v2_m22_policy)
 set_property(TARGET openttd_rl_v2_m22_policy PROPERTY POSITION_INDEPENDENT_CODE ON)
 set_target_properties(openttd_rl_v2_m22_policy PROPERTIES BUILD_RPATH "${V2_NVIDIA_LIBRARY_PATHS}")
 
+# The final evaluator is intentionally a separate link boundary. It contains no
+# trainer, PPO, campaign, checkpoint-recovery, or optimizer implementation.
+add_library(
+  openttd_rl_v2_m22_evaluation
+  ../src/generalist_policy.cpp
+  ../src/m22_evaluation.cpp
+  ../src/scalable_policy.cpp
+)
+target_include_directories(openttd_rl_v2_m22_evaluation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_link_libraries(openttd_rl_v2_m22_evaluation PUBLIC "${TORCH_LIBRARIES}" ${V2_NVIDIA_LIBRARIES} OpenSSL::Crypto)
+v2_enable_strict_warnings(openttd_rl_v2_m22_evaluation)
+set_property(TARGET openttd_rl_v2_m22_evaluation PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_target_properties(openttd_rl_v2_m22_evaluation PROPERTIES BUILD_RPATH "${V2_NVIDIA_LIBRARY_PATHS}")
+
+add_executable(m22_evaluator ../src/m22_evaluator_main.cpp)
+target_link_libraries(m22_evaluator PRIVATE openttd_rl_v2_m22_evaluation CUDA::cudart)
+v2_enable_strict_warnings(m22_evaluator)
+set_target_properties(m22_evaluator PROPERTIES BUILD_RPATH "${V2_NVIDIA_LIBRARY_PATHS}")
+target_link_options(m22_evaluator PRIVATE "LINKER:--disable-new-dtags")
+
+add_executable(m22_evaluation_gate ../tests/m22_evaluation_gate.cpp)
+target_link_libraries(m22_evaluation_gate PRIVATE openttd_rl_v2_m22_evaluation)
+v2_enable_strict_warnings(m22_evaluation_gate)
+set_target_properties(m22_evaluation_gate PROPERTIES BUILD_RPATH "${V2_NVIDIA_LIBRARY_PATHS}")
+target_link_options(m22_evaluation_gate PRIVATE "LINKER:--disable-new-dtags")
+
 add_executable(m22_learning_gate ../tests/m22_learning_gate.cpp)
 target_link_libraries(m22_learning_gate PRIVATE openttd_rl_v2_m22_policy CUDA::cudart)
 v2_enable_strict_warnings(m22_learning_gate)
@@ -127,6 +153,8 @@ set_target_properties(m22_qualification_gate PROPERTIES BUILD_RPATH "${V2_NVIDIA
 target_link_options(m22_qualification_gate PRIVATE "LINKER:--disable-new-dtags")
 
 if(BUILD_TESTING)
+  add_test(NAME v2_m22_evaluation COMMAND m22_evaluation_gate)
+  set_tests_properties(v2_m22_evaluation PROPERTIES LABELS "v2;m22;evaluation;cpu;offline" TIMEOUT 300)
   add_test(NAME v2_m22_learning_cpu COMMAND m22_learning_gate --device cpu)
   set_tests_properties(v2_m22_learning_cpu PROPERTIES LABELS "v2;m22;learning;cpu;offline" TIMEOUT 300)
   add_test(NAME v2_m22_learning_cuda COMMAND m22_learning_gate --device cuda:0)

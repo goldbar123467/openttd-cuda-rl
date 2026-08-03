@@ -39,8 +39,17 @@ subsequent clean, final-manifest-blind qualification retains all 16 programs,
 passes every frozen CPU/CUDA tolerance at batches 1, 8, and 32, measures CUDA
 benefit for inference and updates at every batch, and revalidates the exact
 G15-G21 native evidence chain. Selection is now finalized before final access;
-the optimizer-free 42-case one-shot evaluation remains open. No G22 pass or V2
-release claim has been made.
+the independent source boundary is now frozen too. A dedicated optimizer-free
+single-case evaluator loads only the selected model and development-selection
+identity, reconstructs the public 32-feature input, starts from explicit zeroed
+recurrent state, applies a wait-plus-capability legal mask, and exposes no final
+seed or required-program input. A cumulative OpenTTD 15.3 patch adds token-gated,
+all-or-none final width, height, and climate overrides to the accepted G15-G21
+native harnesses without changing their default behavior. The evaluator passes
+its structural/schema gates and a real selected-checkpoint CPU smoke; the patched
+engine builds cleanly and has passed actual-world cargo, rail, and ship smokes.
+The final manifest has not been opened or executed, so the complete 42-case
+one-shot evaluation remains open. No G22 pass or V2 release claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -106,6 +115,8 @@ release claim has been made.
 · [`M22 matched training evidence`](config/v2/m22-training-evidence.json)
 · [`M22 selected-checkpoint qualification evidence`](config/v2/m22-qualification-evidence.json)
 · [`M22 final-only evaluation manifest`](config/v2/m22-evaluation-manifest.json)
+· [`M22 optimizer-free evaluator report schema`](docs/project/schema/v2-m22-evaluator-report.schema.json)
+· [`M22 final-world native harness patch`](integration/openttd/patches/15.3/m22/final/0001-Add-M22-final-world-overrides.patch)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
 · [`M14 competition protocol`](docs/project/M14_INVENTORY_AND_COMPETITION.md)
@@ -251,7 +262,32 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   The 92.722-second process retained 371/371 GPU telemetry samples, peaking at
   92 percent utilization, 5,958 MiB, 117.07 W, and 50 C. This closes native and
   device qualification and finalizes selection, but it is not a G22 pass: the
-  final-only 42-case evaluation has not been opened or executed.
+  final-only 42-case evaluation has not been opened or executed. The pre-final
+  source gate now additionally separates `m22_evaluator` from every trainer,
+  PPO, campaign, recovery-checkpoint, and optimizer translation unit. It validates
+  the complete checkpoint inventory and identities, then opens only identity
+  metadata, `model.pt`, and `selection.json`; optimizer, runtime, and trainer-state
+  payloads are neither opened nor deserialized. Its closed CLI accepts the
+  checkpoint, device, and
+  public task/mode/climate/map/cargo/opponent/probe/gate fields, requires the
+  `final` policy split, and has no case seed or required-program channel. Each
+  fresh process derives exactly one active capability plus wait, zeroes and
+  resets the recurrent state, performs greedy masked inference, and writes a
+  create-only report containing the public tensors, logits, value, next hidden
+  state, chosen action, and explicit optimizer-absence assertions. The report
+  schema is closed and mutation-tested, all 16 active capability mappings pass
+  the strict-warning C++ gate, and the selected monolithic checkpoint completes
+  a real CPU smoke with 32 public features and 256 hidden values. The cumulative
+  M22 OpenTTD patch applies exactly over the accepted M21 source, preserves every
+  old gate when its four final-only environment variables are absent, and accepts
+  only the frozen width/height/climate domain when the private activation token
+  and all three overrides are present. It propagates the actual world shape and
+  climate through G15-G21, reports actual dimensions where earlier harnesses used
+  constants, and selects a buildable base passenger road engine for non-temperate
+  G15 worlds. The patched 899-step OpenTTD build succeeds; one-process native
+  smokes pass for G16 toyland cargo on 128 by 128, G17 arctic passenger rail on
+  128 by 64, and G18 tropic natural shipping on 512 by 128. These are source
+  preparation checks only, not final cases or G22 evidence.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -270,9 +306,11 @@ the interaction cases prove native ownership isolation. The M20 controller is a
 deterministic competence oracle, the M14 3,650-day final protocol was not run,
 and M22 must still independently evaluate the broad learned generalist. The
 selected checkpoint is now frozen and qualified before final access. The
-immediate M22 continuation is the optimizer-free, read-only, one-shot execution
-of all 42 preregistered final cases with no retry, replacement, or post-result
-selection, followed by the complete uncertainty/failure report and G22 audit.
+immediate M22 continuation is to finish the retained final-runtime preparation
+record and remaining native source smokes, commit that clean pre-final source,
+and only then run the optimizer-free, read-only, one-shot execution of all 42
+preregistered final cases with no retry, replacement, or post-result selection,
+followed by the complete uncertainty/failure report and G22 audit.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -319,14 +357,14 @@ The M22 validators are part of that command and rebuild both the JSON and bounde
 native corpus representations exactly from accepted G15-G21 evidence before
 accepting them, validate the historical and active exact-recovery reports, and
 validate the accepted matched-campaign and selected-checkpoint qualification
-reports plus their fail-closed mutations. At this checkpoint the suite passes 394 V2
+reports plus their fail-closed mutations. At this checkpoint the suite passes 399 V2
 tests and the unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
-build definition. Its strict-warning suite passes all nine CTests: the policy,
-trainer, checkpoint, and campaign gates on both CPU and `cuda:0`, plus the
-independent corpus decoder gate. Both learned architectures remain fixed at
-1,457,520 parameters.
+build definition. Its strict-warning suite now defines ten CTests: the
+optimizer-free CPU evaluation gate; the policy, trainer, checkpoint, and campaign
+gates on both CPU and `cuda:0`; and the independent corpus decoder gate. Both
+learned architectures remain fixed at 1,457,520 parameters.
 
 OpenTTD RL is distributed under [`GPL-2.0-only`](LICENSE). OpenTTD, OpenGFX,
 ONNX Runtime, PyTorch/LibTorch, CUDA, and other dependencies retain their own
@@ -448,7 +486,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary; M22 next |
-| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, and clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32; monolithic seed `1636894266` update 32 is finalized before final access | `M22 training/qualification PASS`; optimizer-free independent final suite and G22 remain open |
+| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32, an optimizer-free single-case evaluator with no final-label channel, and a token-gated cumulative final-world patch; monolithic seed `1636894266` update 32 is finalized before final access | `M22 training/qualification PASS`; pre-final evaluator/runtime source frozen; retained runtime record, independent 42-case final suite, and G22 remain open |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
