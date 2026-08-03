@@ -130,7 +130,10 @@ def checked(command: list[str], cwd: pathlib.Path, *, timeout: int, log: pathlib
     if log is not None:
         require(not log.exists() and not log.is_symlink(), f"log already exists: {log}")
         log.write_text(completed.stdout, encoding="utf-8")
-    require(completed.returncode == 0, f"command failed ({completed.returncode}) {' '.join(command)}: {completed.stdout.strip()}")
+    diagnostic = completed.stdout.strip()
+    if len(diagnostic) > 8000:
+        diagnostic = f"[output truncated to final 8000 characters]\n{diagnostic[-8000:]}"
+    require(completed.returncode == 0, f"command failed ({completed.returncode}) {' '.join(command)}: {diagnostic}")
     return completed.stdout.strip()
 
 
@@ -164,13 +167,14 @@ def prepare_source(base_source: pathlib.Path, source_path: pathlib.Path, patch: 
 
 
 def configure_and_build(source_path: pathlib.Path, build_path: pathlib.Path, artifact_root: pathlib.Path,
-                        jobs: int) -> dict[str, Any]:
+                        jobs: int, open_gfx_source: pathlib.Path, open_gfx_sha256: str) -> tuple[dict[str, Any], dict[str, Any]]:
     require(shutil.which("cmake") is not None and shutil.which("ninja") is not None,
             "CMake and Ninja are required for M22 runtime preparation")
     configure_log, build_log = artifact_root / "configure.log", artifact_root / "build.log"
     checked(["cmake", "-S", str(source_path), "-B", str(build_path), "-G", "Ninja", *CMAKE_ARGUMENTS],
             artifact_root, timeout=900, log=configure_log)
     checked(["cmake", "--build", str(build_path), "-j", str(jobs)], artifact_root, timeout=7200, log=build_log)
+    open_gfx = copy_exact(open_gfx_source, build_path / "baseset" / open_gfx_source.name, open_gfx_sha256)
     inventory_raw = checked(["ctest", "--test-dir", str(build_path), "--show-only=json-v1"],
                             artifact_root, timeout=120)
     inventory = json.loads(inventory_raw)
@@ -195,19 +199,17 @@ def configure_and_build(source_path: pathlib.Path, build_path: pathlib.Path, art
         "logs": {"build": file_record(build_log), "configure": file_record(configure_log),
                  "ctest": file_record(ctest_log), "junit": file_record(junit)},
         "test_inventory": file_record(inventory_path), "upstream_ctest": {"passed": 98, "total": 98},
-    }
+    }, open_gfx
 
 
 def stage_runtime(root: pathlib.Path, artifact_root: pathlib.Path, build_path: pathlib.Path,
-                  m20_artifact: pathlib.Path, m21_artifact: pathlib.Path) -> dict[str, Any]:
+                  m20_artifact: pathlib.Path, m21_artifact: pathlib.Path,
+                  open_gfx: dict[str, Any]) -> dict[str, Any]:
     m20_config, m20_content = load(root / M20_SOURCE), load(root / M20_CONTENT)
     m21_config, content_lock = load(root / M21_SOURCE), load(root / M21_CONTENT_LOCK)
     configs: dict[str, dict[str, Any]] = {}
     for name, record in m21_config["runtime"]["configs"].items():
         configs[name] = copy_exact(pathlib.Path(record["path"]), artifact_root / f"{name}.cfg", record["sha256"])
-    gfx_source = pathlib.Path(m21_config["build"]["open_gfx"]["path"])
-    open_gfx = copy_exact(gfx_source, build_path / "baseset" / gfx_source.name,
-                          m21_config["build"]["open_gfx"]["sha256"])
     ai_archives = []
     for record in m20_content["ai_archives"]:
         source = pathlib.Path(record["path"])
@@ -279,9 +281,11 @@ def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.
     print("M22 runtime source preparation", flush=True)
     source = prepare_source(base_source, source_path, patch, m21_config["source"]["commit"])
     print("M22 runtime configure/build/CTest", flush=True)
-    build = configure_and_build(source_path, build_path, artifact_root, jobs)
+    open_gfx_source = pathlib.Path(m21_config["build"]["open_gfx"]["path"])
+    build, open_gfx = configure_and_build(source_path, build_path, artifact_root, jobs, open_gfx_source,
+                                          m21_config["build"]["open_gfx"]["sha256"])
     print("M22 runtime asset staging", flush=True)
-    runtime_assets = stage_runtime(root, artifact_root, build_path, m20_artifact, m21_artifact)
+    runtime_assets = stage_runtime(root, artifact_root, build_path, m20_artifact, m21_artifact, open_gfx)
     executable = file_record(build_path / "openttd")
     runtime = native.RuntimePaths(
         executable=pathlib.Path(executable["path"]), opengfx=pathlib.Path(runtime_assets["open_gfx"]["path"]),

@@ -95,6 +95,11 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
         self.assertNotIn("required_program=", source)
         self.assertNotIn("subprocess.Popen", source)
 
+    def test_opengfx_is_staged_before_upstream_ctest(self) -> None:
+        source = (self.root / "scripts/v2/prepare_m22_final_runtime.py").read_text(encoding="utf-8")
+        function = source[source.index("def configure_and_build"):source.index("def stage_runtime")]
+        self.assertLess(function.index("open_gfx = copy_exact"), function.index("inventory_raw = checked"))
+
     def test_output_writer_never_overwrites(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             path = pathlib.Path(raw) / "record.json"
