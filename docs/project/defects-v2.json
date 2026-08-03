@@ -127,7 +127,7 @@
         "README.md",
         "config/v2/m22-final-attempt-a.json"
       ],
-      "fix_revision": null,
+      "fix_revision": "e7a204d5afc6b4caa49912a363ebe52dc0d1b8fe",
       "regression_test": "tests/project/v2/test_v2_m22_final_evaluation_source.py",
       "closure_evidence": [
         "config/v2/m22-final-attempt-a.json",
