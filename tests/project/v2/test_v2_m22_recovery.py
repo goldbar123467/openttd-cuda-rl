@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import copy
+import hashlib
 import pathlib
 import tempfile
 import unittest
@@ -11,12 +13,24 @@ import unittest
 import jsonschema
 
 import run_m22_recovery as runner
+import validate_m22_recovery_evidence as validator
 
 
 class M22RecoveryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.root = pathlib.Path(__file__).resolve().parents[3]
+        cls.report = runner.load(cls.root / "config/v2/m22-recovery-evidence.json")
+
+    @staticmethod
+    def rehash(value: dict[str, object]) -> None:
+        value.pop("report_sha256", None)
+        value["report_sha256"] = hashlib.sha256(runner.canonical_bytes(value)).hexdigest()
+
+    def mutation_fails(self, value: dict[str, object], pattern: str) -> None:
+        self.rehash(value)
+        with self.assertRaisesRegex((validator.M22RecoveryValidationError, runner.M22RecoveryError), pattern):
+            validator.validate_value(value, self.root)
 
     @staticmethod
     def update() -> dict[str, object]:
@@ -43,6 +57,29 @@ class M22RecoveryTests(unittest.TestCase):
         jsonschema.Draft202012Validator.check_schema(schema)
         self.assertFalse(schema["additionalProperties"])
         self.assertEqual(schema["properties"]["configuration"]["properties"]["fork_update"]["const"], 16)
+
+    def test_repository_recovery_evidence_passes(self) -> None:
+        validator.validate_value(self.report, self.root)
+
+    def test_resumed_trace_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["runs"][0]["resumed"]["updates"][0]["trace"]["actions_sha256"] = "0" * 64
+        self.mutation_fails(value, "update digest")
+
+    def test_process_identity_reuse_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["runs"][0]["resumed"]["pid"] = value["runs"][0]["prefix"]["pid"]
+        self.mutation_fails(value, "process identity")
+
+    def test_checkpoint_semantic_identity_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["runs"][1]["equivalence"]["fork_checkpoint_id"] = "0" * 64
+        self.mutation_fails(value, "checkpoint summary identity")
+
+    def test_source_identity_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["source"]["files"][0]["sha256"] = "0" * 64
+        self.mutation_fails(value, "source tree identity")
 
     def test_update_parser_accepts_complete_exact_trace(self) -> None:
         value = self.update()

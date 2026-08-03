@@ -19,8 +19,10 @@ release remain incomplete. The M22 foundation is now frozen: a 17-program
 learning contract, a 42-case final-only evaluation manifest, and a reproducible
 32-entry native training/development corpus. The current execution checkpoint
 adds a production recurrent PPO trainer, a development-retention campaign, and
-atomic exact-recovery checkpoints, all exercised on CPU and CUDA. No full M22
-campaign, G22 pass, or V2 release claim has been made.
+atomic exact-recovery checkpoints, all exercised on CPU and CUDA. The declared
+update-16 recovery fork now matches exactly for both learned architectures in
+six isolated fresh processes. No full M22 campaign, G22 pass, or V2 release
+claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -81,6 +83,7 @@ campaign, G22 pass, or V2 release claim has been made.
 · [`M21 native harness patch`](integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch)
 · [`M22 generalist learning contract`](config/v2/m22-learning-contract.json)
 · [`M22 native-qualified corpus`](config/v2/m22-native-corpus.json)
+· [`M22 fresh-process recovery evidence`](config/v2/m22-recovery-evidence.json)
 · [`M22 final-only evaluation manifest`](config/v2/m22-evaluation-manifest.json)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
@@ -172,17 +175,24 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   checkpoint package records the model, Adam state, normalization, hidden state,
   counters, curriculum/case state, retention/selection history, and four exact
   RNG streams through an atomic never-overwrite commit; canonical CPU payloads
-  load on CPU or CUDA. Matched wait-only and public-heuristic baselines and
-  uninterrupted-versus-resumed continuation are covered by the offline gates.
-  This is a tested training-execution boundary, not a completed campaign or G22
-  pass.
+  load on CPU or CUDA, and the Adam archive uses stable parameter-order keys
+  rather than process-specific pointer identities. In the accepted recovery
+  campaign, uninterrupted 24-update, independent 16-update prefix, and resumed
+  eight-update CUDA processes reproduce every case order, action, log
+  probability, value, reward, metric, recurrent state, development result, and
+  checkpoint byte identity for both learned architectures. Bubblewrap makes the
+  source read-only, masks the final manifest with an empty read-only file, and
+  unshares the network for all six processes. Matched wait-only and
+  public-heuristic baselines remain covered by the offline gates. This is a
+  tested training-execution and recovery boundary, not a completed campaign or
+  G22 pass.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
 payment, transfers, recovery, and the M17-M19 save/load transitions are native.
 The useful-service controllers are deterministic qualification oracles, not
-learned generalist policies. Runs truthfully record `rlimit-only` isolation
-because bubblewrap namespaces are unavailable on the WSL host. Byte-pinned
+learned generalist policies. Earlier native matrix runs truthfully record
+`rlimit-only` isolation where bubblewrap namespaces were unavailable. Byte-pinned
 Lufthansa v2 remains truthfully rejected because its archive contains malformed
 and truncated Squirrel source; AAAHogEx remains the active generalist but chose
 rail rather than aircraft in its retained M19 run. M20 uses unmodified external
@@ -194,9 +204,9 @@ the interaction cases prove native ownership isolation. The M20 controller is a
 deterministic competence oracle, the M14 3,650-day final protocol was not run,
 and M22 must still train and independently evaluate the broad learned generalist.
 The remaining M22 work includes the six full architecture-by-seed campaigns,
-development-only checkpoint selection, the preregistered fresh-process recovery
-fork, retained native G15-G21 regression, matched-baseline campaign evidence,
-and the one-shot preregistered final evaluation.
+development-only checkpoint selection, retained native G15-G21 regression,
+matched-baseline campaign evidence, CPU/CUDA performance evidence, and the
+one-shot preregistered final evaluation.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -241,7 +251,8 @@ full frozen V1 traceability regression with:
 
 The M22 validators are part of that command and rebuild both the JSON and bounded
 native corpus representations exactly from accepted G15-G21 evidence before
-accepting them. At this checkpoint the suite passes 363 V2 tests and the
+accepting them, then validates the retained exact-recovery report. At this
+checkpoint the suite passes 374 V2 tests and the
 unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
@@ -370,7 +381,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary; M22 next |
-| V2 generalist-learning foundation | Frozen 17-program/seven-stage contract, three trainer seeds, matched 1,457,520-parameter learned architectures plus a public heuristic, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, and CPU/CUDA policy/PPO tests | `M22 foundation FROZEN`; full campaigns, recovery/retention evidence, independent final suite, and G22 remain open |
+| V2 generalist-learning foundation | Frozen 17-program/seven-stage contract, three trainer seeds, matched 1,457,520-parameter learned architectures plus a public heuristic, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, CPU/CUDA policy/PPO tests, and exact update-16 recovery for both learned architectures across six isolated fresh processes | `M22 foundation FROZEN`; full campaigns, native retention, independent final suite, and G22 remain open |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
