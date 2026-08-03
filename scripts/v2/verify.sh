@@ -189,6 +189,11 @@ PYTHONPATH="$repository_root/scripts/v2" \
     --root "$repository_root" \
     --report "$repository_root/config/v2/m22-training-evidence.json"
 
+PYTHONPATH="$repository_root/scripts/v2" \
+    "$tools_python" "$repository_root/scripts/v2/validate_m22_qualification_evidence.py" \
+    --root "$repository_root" \
+    --report "$repository_root/config/v2/m22-qualification-evidence.json"
+
 "$tools_python" "$repository_root/scripts/v2/validate_traceability.py" \
     --root "$repository_root"
 

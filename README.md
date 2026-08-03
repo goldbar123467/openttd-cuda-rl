@@ -34,9 +34,13 @@ program. The rejected seed passes all 16 programs through update 48 in a
 development smoke. The revised source now reproduces exactly for both
 architectures in six new isolated fresh processes, and the complete clean
 six-campaign rerun now passes all 288 updates and all 36 development candidates.
-Development-only ordering provisionally selects monolithic seed `1636894266` at
-update 32; selection remains unfinalized pending native-retention and device
-gates. No G22 pass or V2 release claim has been made.
+Development-only ordering selects monolithic seed `1636894266` at update 32. A
+subsequent clean, final-manifest-blind qualification retains all 16 programs,
+passes every frozen CPU/CUDA tolerance at batches 1, 8, and 32, measures CUDA
+benefit for inference and updates at every batch, and revalidates the exact
+G15-G21 native evidence chain. Selection is now finalized before final access;
+the optimizer-free 42-case one-shot evaluation remains open. No G22 pass or V2
+release claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -100,6 +104,7 @@ gates. No G22 pass or V2 release claim has been made.
 · [`M22 semantic-v2 fresh-process recovery evidence`](config/v2/m22-recovery-evidence-v2.json)
 · [`M22 historical fresh-process recovery evidence`](config/v2/m22-recovery-evidence.json)
 · [`M22 matched training evidence`](config/v2/m22-training-evidence.json)
+· [`M22 selected-checkpoint qualification evidence`](config/v2/m22-qualification-evidence.json)
 · [`M22 final-only evaluation manifest`](config/v2/m22-evaluation-manifest.json)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
@@ -231,8 +236,22 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   made, and frozen ordering provisionally selects monolithic seed `1636894266`
   at update 32 with checkpoint
   `03894fd1238b69b6724d82eb441380312be4e8226efa602fa5e43972f7fa9f5f`.
-  Selection is not final until native retention and device gates pass. This is a
-  completed matched training/recovery boundary, not a G22 pass.
+  Clean source commit `7b8e01a` then qualifies that exact checkpoint inside a
+  read-only, network-unshared sandbox whose final manifest is replaced by an
+  empty read-only file. CPU/CUDA forward, PPO-loss, gradient, Adam-update, and
+  canonical-checkpoint maximum absolute errors remain at or below
+  `2.8611e-6`, `1.1921e-7`, `5.9605e-7`, `8.8987e-5`, and `9.0599e-5`,
+  respectively, against frozen tolerances of `1e-4`, `1e-5`, `5e-4`, `5e-4`,
+  and `1e-4`. All 41 compared greedy decisions are identical and the minimum
+  top-two margin is `4.9014`. The full 10-warmup/30-sample measurements show
+  CUDA update speedups of `1.287x`, `4.571x`, and `9.984x` and inference
+  speedups of `1.273x`, `5.159x`, and `9.336x` at batches 1, 8, and 32. All 16
+  native-qualified development programs pass identically on CPU and CUDA; the
+  corpus is rebuilt through the seven G15-G21 evidence validators before acceptance.
+  The 92.722-second process retained 371/371 GPU telemetry samples, peaking at
+  92 percent utilization, 5,958 MiB, 117.07 W, and 50 C. This closes native and
+  device qualification and finalizes selection, but it is not a G22 pass: the
+  final-only 42-case evaluation has not been opened or executed.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -249,12 +268,11 @@ and score projection, not third-party AI choices. Physical plane crashes are
 disabled in the qualification settings, while crash counts remain scored and
 the interaction cases prove native ownership isolation. The M20 controller is a
 deterministic competence oracle, the M14 3,650-day final protocol was not run,
-and M22 must still train and independently evaluate the broad learned generalist.
-The immediate M22 continuation is to qualify the provisional checkpoint through
-retained native G15-G21 regression and CPU/CUDA parity/performance evidence,
-then finalize selection before opening the final-only manifest. The remaining
-gate includes the optimizer-free one-shot preregistered final evaluation and its
-complete uncertainty/failure report.
+and M22 must still independently evaluate the broad learned generalist. The
+selected checkpoint is now frozen and qualified before final access. The
+immediate M22 continuation is the optimizer-free, read-only, one-shot execution
+of all 42 preregistered final cases with no retry, replacement, or post-result
+selection, followed by the complete uncertainty/failure report and G22 audit.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -300,8 +318,8 @@ full frozen V1 traceability regression with:
 The M22 validators are part of that command and rebuild both the JSON and bounded
 native corpus representations exactly from accepted G15-G21 evidence before
 accepting them, validate the historical and active exact-recovery reports, and
-validate the accepted matched-campaign report plus its fail-closed mutations.
-At this checkpoint the suite passes 387 V2
+validate the accepted matched-campaign and selected-checkpoint qualification
+reports plus their fail-closed mutations. At this checkpoint the suite passes 394 V2
 tests and the unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
@@ -430,7 +448,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary; M22 next |
-| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, CPU/CUDA policy/PPO tests, current and historical exact update-16 recovery, and six accepted 48-update CUDA campaigns with all 36 candidates development-eligible; monolithic seed `1636894266` update 32 is provisionally selected | `M22 matched training PASS`; selection remains unfinalized; native retention, device qualification, independent final suite, and G22 remain open |
+| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, and clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32; monolithic seed `1636894266` update 32 is finalized before final access | `M22 training/qualification PASS`; optimizer-free independent final suite and G22 remain open |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
