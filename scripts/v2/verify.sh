@@ -161,6 +161,14 @@ PYTHONPATH="$repository_root/scripts/v2" \
     "$tools_python" "$repository_root/scripts/v2/validate_m21_broad_evidence.py" \
     --root "$repository_root"
 
+PYTHONPATH="$repository_root/scripts/v2" \
+    "$tools_python" "$repository_root/scripts/v2/validate_m22_learning_contract.py" \
+    --root "$repository_root"
+
+PYTHONPATH="$repository_root/scripts/v2" \
+    "$tools_python" "$repository_root/scripts/v2/validate_m22_native_corpus.py" \
+    --root "$repository_root"
+
 "$tools_python" "$repository_root/scripts/v2/validate_traceability.py" \
     --root "$repository_root"
 

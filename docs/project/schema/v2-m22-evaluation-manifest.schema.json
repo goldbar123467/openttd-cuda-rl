@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-evaluation-manifest.schema.json",
+  "title": "OpenTTD-RL V2 M22 independent evaluation manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "manifest_id", "status", "split", "seed_derivation", "access_policy", "cases", "acceptance"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m22-evaluation-manifest.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m22-evaluation-manifest-1"},
+    "schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "manifest_id": {"const": "m22-independent-final-v1"},
+    "status": {"const": "PREREGISTERED"},
+    "split": {"const": "final"},
+    "seed_derivation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["algorithm", "domain", "ordinal_start"],
+      "properties": {
+        "algorithm": {"const": "sha256-first-31-bits-big-endian"},
+        "domain": {"const": "openttd-rl-v2-m22-final-v1"},
+        "ordinal_start": {"const": 1000}
+      }
+    },
+    "access_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["training", "development_selection", "final_runner", "policy_input"],
+      "properties": {
+        "training": {"const": "forbidden"},
+        "development_selection": {"const": "forbidden"},
+        "final_runner": {"const": "fresh-process-read-only-once-after-selection"},
+        "policy_input": {"const": "case-public-state-only-never-seed-or-required-program"}
+      }
+    },
+    "cases": {
+      "type": "array", "minItems": 42, "maxItems": 42,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["case_id", "task", "transport_mode", "climate", "map_width", "map_height", "cargo", "opponent", "seed", "required_program", "native_probe", "source_gate"],
+        "properties": {
+          "case_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "task": {"enum": ["service", "routing", "competition", "retention"]},
+          "transport_mode": {"enum": ["road", "rail", "water", "air", "multimodal", "company", "broad"]},
+          "climate": {"enum": ["temperate", "arctic", "tropic", "toyland"]},
+          "map_width": {"enum": [64, 128, 512, 1024]},
+          "map_height": {"enum": [64, 128, 1024]},
+          "cargo": {"type": "string", "pattern": "^(?:[A-Z0-9_]{4}|not-applicable)$"},
+          "opponent": {"enum": ["AAAHogEx", "KrakenAI2", "NoOpAI", "not-applicable"]},
+          "seed": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+          "required_program": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "native_probe": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "source_gate": {"enum": ["G15", "G16", "G17", "G18", "G19", "G20", "G21"]}
+        }
+      }
+    },
+    "acceptance": {"type": "object"}
+  }
+}

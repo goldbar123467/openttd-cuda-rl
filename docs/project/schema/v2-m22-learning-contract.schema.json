@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-learning-contract.schema.json",
+  "title": "OpenTTD-RL V2 M22 generalist learning contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "schema_sha256", "snapshot_date", "contract_id", "semantic_version", "status", "identities", "environment_boundary", "policy_interface", "architectures", "ppo", "seeds", "curriculum", "device", "checkpoint", "selection", "independent_evaluation", "acceptance"],
+  "properties": {
+    "$schema": {"const": "../../docs/project/schema/v2-m22-learning-contract.schema.json"},
+    "schema_version": {"const": "openttd-rl-v2-m22-learning-contract-1"},
+    "schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshot_date": {"const": "2026-08-02"},
+    "contract_id": {"const": "m22-generalist-learning-v1"},
+    "semantic_version": {"const": 1},
+    "status": {"const": "FROZEN"},
+    "identities": {"type": "object"},
+    "environment_boundary": {"type": "object"},
+    "policy_interface": {"type": "object"},
+    "architectures": {"type": "array", "minItems": 3, "maxItems": 3},
+    "ppo": {"type": "object"},
+    "seeds": {"type": "object"},
+    "curriculum": {"type": "object"},
+    "device": {"type": "object"},
+    "checkpoint": {"type": "object"},
+    "selection": {"type": "object"},
+    "independent_evaluation": {"type": "object"},
+    "acceptance": {"type": "object"}
+  }
+}
