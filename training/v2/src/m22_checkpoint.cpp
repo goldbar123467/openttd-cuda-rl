@@ -29,6 +29,7 @@ constexpr std::size_t kMaximumStateBytes = 2 * 1024 * 1024;
 constexpr std::size_t kMaximumPayloadBytes = 1024ULL * 1024ULL * 1024ULL;
 constexpr std::size_t kMaximumJsonBytes = 1024 * 1024;
 constexpr std::string_view kBoundary = "after-completed-ppo-update-and-retention-check-before-next-rollout";
+constexpr std::string_view kOptimizerSchema = "v2-m22-canonical-adam-v1";
 std::atomic<std::uint64_t> temporary_counter{0};
 
 class BytesWriter {
@@ -211,6 +212,145 @@ void sync_directory(const std::filesystem::path &path)
     const int saved_errno = errno;
     ::close(descriptor);
     if (result != 0) throw std::runtime_error("cannot sync M22 checkpoint directory: " + std::string(std::strerror(saved_errno)));
+}
+
+void require_adam_tensor(const torch::Tensor &value, const torch::Tensor &parameter, const char *name)
+{
+    if (!value.defined() || !value.device().is_cpu() || value.scalar_type() != torch::kFloat32 ||
+        value.sizes() != parameter.sizes() || !torch::isfinite(value).all().item<bool>()) {
+        throw std::invalid_argument(std::string("M22 canonical Adam ") + name + " tensor drifted");
+    }
+}
+
+void save_canonical_adam(const std::filesystem::path &path, M22Trainer &trainer)
+{
+    auto &optimizer = trainer.optimizer();
+    const auto &groups = optimizer.param_groups();
+    if (groups.size() != 1) throw std::invalid_argument("M22 canonical Adam parameter group inventory drifted");
+    const auto &parameters = groups.front().params();
+    const auto &states = optimizer.state();
+    if (parameters.empty() || states.empty() || states.size() > parameters.size()) {
+        throw std::invalid_argument("M22 canonical Adam state/parameter inventory drifted");
+    }
+    for (const auto &state : states) {
+        const auto known = std::any_of(parameters.begin(), parameters.end(), [&](const torch::Tensor &parameter) {
+            return parameter.unsafeGetTensorImpl() == state.first;
+        });
+        if (!known) throw std::invalid_argument("M22 canonical Adam contains an unknown parameter state");
+    }
+    torch::serialize::OutputArchive archive;
+    archive.write("schema", c10::IValue(std::string(kOptimizerSchema)));
+    archive.write("parameter_count", torch::tensor(static_cast<std::int64_t>(parameters.size()), torch::kInt64));
+    for (std::size_t index = 0; index < parameters.size(); ++index) {
+        const auto &parameter = parameters[index];
+        if (!parameter.device().is_cpu() || parameter.scalar_type() != torch::kFloat32) {
+            throw std::invalid_argument("M22 canonical Adam parameter is not CPU float32");
+        }
+        const auto found = states.find(parameter.unsafeGetTensorImpl());
+        torch::serialize::OutputArchive item(archive.compilation_unit());
+        item.write("has_state", torch::tensor(found == states.end() ? INT64_C(0) : INT64_C(1), torch::kInt64));
+        if (found == states.end()) {
+            archive.write("parameter/" + std::to_string(index), item);
+            continue;
+        }
+        const auto *state = dynamic_cast<const torch::optim::AdamParamState *>(found->second.get());
+        if (state == nullptr || state->step() <= 0) throw std::invalid_argument("M22 canonical Adam state type/step drifted");
+        require_adam_tensor(state->exp_avg(), parameter, "first-moment");
+        require_adam_tensor(state->exp_avg_sq(), parameter, "second-moment");
+        const auto has_maximum = state->max_exp_avg_sq().defined();
+        if (has_maximum) require_adam_tensor(state->max_exp_avg_sq(), parameter, "maximum-second-moment");
+        item.write("step", torch::tensor(state->step(), torch::kInt64));
+        item.write("exp_avg", state->exp_avg().contiguous(), true);
+        item.write("exp_avg_sq", state->exp_avg_sq().contiguous(), true);
+        item.write("has_max_exp_avg_sq", torch::tensor(has_maximum ? INT64_C(1) : INT64_C(0), torch::kInt64));
+        if (has_maximum) item.write("max_exp_avg_sq", state->max_exp_avg_sq().contiguous(), true);
+        archive.write("parameter/" + std::to_string(index), item);
+    }
+    archive.save_to(path.string());
+}
+
+std::int64_t scalar_i64(torch::serialize::InputArchive &archive, const std::string &name)
+{
+    torch::Tensor value;
+    archive.read(name, value);
+    if (!value.defined() || !value.device().is_cpu() || value.scalar_type() != torch::kInt64 || value.numel() != 1) {
+        throw std::invalid_argument("M22 canonical Adam integer field drifted: " + name);
+    }
+    return value.item<std::int64_t>();
+}
+
+void require_archive_keys(
+    const std::vector<std::string> &actual,
+    std::vector<std::string> expected,
+    const char *name)
+{
+    auto sorted_actual = actual;
+    std::sort(sorted_actual.begin(), sorted_actual.end());
+    std::sort(expected.begin(), expected.end());
+    if (sorted_actual != expected) throw std::invalid_argument(std::string("M22 canonical Adam ") + name + " key inventory drifted");
+}
+
+void load_canonical_adam(const std::filesystem::path &path, M22Trainer &trainer)
+{
+    torch::serialize::InputArchive archive;
+    archive.load_from(path.string());
+    auto &optimizer = trainer.optimizer();
+    auto &groups = optimizer.param_groups();
+    if (groups.size() != 1) throw std::invalid_argument("M22 canonical Adam parameter group inventory drifted");
+    auto &parameters = groups.front().params();
+    std::vector<std::string> expected_keys = {"schema", "parameter_count"};
+    expected_keys.reserve(parameters.size() + 2U);
+    for (std::size_t index = 0; index < parameters.size(); ++index) {
+        expected_keys.push_back("parameter/" + std::to_string(index));
+    }
+    require_archive_keys(archive.keys(), std::move(expected_keys), "root");
+    c10::IValue schema;
+    archive.read("schema", schema);
+    if (!schema.isString() || schema.toStringRef() != kOptimizerSchema) {
+        throw std::invalid_argument("M22 canonical Adam schema drifted");
+    }
+    const auto count = scalar_i64(archive, "parameter_count");
+    if (count <= 0 || static_cast<std::uint64_t>(count) != parameters.size()) {
+        throw std::invalid_argument("M22 canonical Adam parameter count drifted");
+    }
+    optimizer.state().clear();
+    for (std::size_t index = 0; index < parameters.size(); ++index) {
+        torch::serialize::InputArchive item;
+        archive.read("parameter/" + std::to_string(index), item);
+        const auto keys = item.keys();
+        const auto has_state = scalar_i64(item, "has_state");
+        if (has_state != 0 && has_state != 1) throw std::invalid_argument("M22 canonical Adam state marker drifted");
+        if (has_state == 0) {
+            require_archive_keys(keys, {"has_state"}, "empty-parameter");
+            continue;
+        }
+        const bool has_maximum_key = std::find(keys.begin(), keys.end(), "max_exp_avg_sq") != keys.end();
+        std::vector<std::string> expected = {"has_state", "step", "exp_avg", "exp_avg_sq", "has_max_exp_avg_sq"};
+        if (has_maximum_key) expected.push_back("max_exp_avg_sq");
+        require_archive_keys(keys, std::move(expected), "parameter");
+        const auto step = scalar_i64(item, "step");
+        const auto has_maximum = scalar_i64(item, "has_max_exp_avg_sq");
+        if (step <= 0 || (has_maximum != 0 && has_maximum != 1) || has_maximum_key != (has_maximum == 1)) {
+            throw std::invalid_argument("M22 canonical Adam step/maximum marker drifted");
+        }
+        torch::Tensor first;
+        torch::Tensor second;
+        item.read("exp_avg", first, true);
+        item.read("exp_avg_sq", second, true);
+        require_adam_tensor(first, parameters[index], "first-moment");
+        require_adam_tensor(second, parameters[index], "second-moment");
+        auto state = std::make_unique<torch::optim::AdamParamState>();
+        state->step(step);
+        state->exp_avg(first.contiguous());
+        state->exp_avg_sq(second.contiguous());
+        if (has_maximum == 1) {
+            torch::Tensor maximum;
+            item.read("max_exp_avg_sq", maximum, true);
+            require_adam_tensor(maximum, parameters[index], "maximum-second-moment");
+            state->max_exp_avg_sq(maximum.contiguous());
+        }
+        optimizer.state()[parameters[index].unsafeGetTensorImpl()] = std::move(state);
+    }
 }
 
 void validate_json(const std::string &value, const char *name)
@@ -489,7 +629,7 @@ M22SavedCheckpoint save_m22_checkpoint(
         const auto runtime_path = temporary / "runtime.pt";
         const auto state_path = temporary / "trainer-state.bin";
         torch::save(trainer.model(), model_path.string());
-        torch::save(trainer.optimizer(), optimizer_path.string());
+        save_canonical_adam(optimizer_path, trainer);
         torch::serialize::OutputArchive runtime;
         runtime.write("normalization_mean", campaign.normalization_mean.contiguous());
         runtime.write("normalization_variance", campaign.normalization_variance.contiguous());
@@ -574,7 +714,7 @@ M22LoadedCheckpoint load_m22_checkpoint(
     }
     auto trainer = std::make_unique<M22Trainer>(decoded.config, decoded.runtime.run_seed, architecture, torch::kCPU);
     torch::load(trainer->model(), (checkpoint_path / "model.pt").string());
-    torch::load(trainer->optimizer(), (checkpoint_path / "optimizer.pt").string());
+    load_canonical_adam(checkpoint_path / "optimizer.pt", *trainer);
     require_finite_generalist(trainer->model(), "M22 checkpoint load");
     if (!policy_device.is_cpu()) trainer->to(policy_device);
     trainer->restore_runtime_state(decoded.runtime);
