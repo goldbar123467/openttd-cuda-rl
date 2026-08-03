@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""Mutation tests for the retained failed M22 follow-up-v1 evidence."""
+
+from __future__ import annotations
+
+import copy
+import json
+import pathlib
+import tempfile
+import unittest
+
+import jsonschema
+
+import run_m22_followup_evaluation as runner
+import validate_m22_followup_evaluation as validator
+
+
+class M22FollowupEvaluationEvidenceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.root = pathlib.Path(__file__).resolve().parents[3]
+        cls.report = validator.load(cls.root / validator.CONFIG)
+        cls.artifact = pathlib.Path(cls.report["artifact_root"])
+        cls.evaluator = pathlib.Path("/home/thecl/.codex/artifacts/openttd-rl/v2-m22-final-evaluator-a/m22_evaluator")
+        cls.schema = validator.load(cls.root / runner.EVIDENCE_SCHEMA)
+
+    @staticmethod
+    def write(directory: pathlib.Path, value: object) -> pathlib.Path:
+        path = directory / "evidence.json"
+        path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+        return path
+
+    @staticmethod
+    def resign(value: dict[str, object]) -> None:
+        unsigned = copy.deepcopy(value)
+        unsigned.pop("report_sha256", None)
+        value["report_sha256"] = runner.sha256_bytes(runner.canonical_bytes(unsigned))
+
+    def mutation_fails(self, value: dict[str, object], pattern: str, *, live: bool = False,
+                       evaluator: bool = False) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            with self.assertRaisesRegex(validator.M22FollowupEvidenceError, pattern):
+                validator.validate(
+                    self.root, self.write(pathlib.Path(raw), value),
+                    artifact_root=self.artifact if live else None,
+                    evaluator_executable=self.evaluator if evaluator else None,
+                )
+
+    def test_repository_failed_evidence_validates_offline(self) -> None:
+        result = validator.validate(self.root)
+        self.assertEqual(result, {"cases": 42, "failures": 0, "live": False, "status": "FAIL"})
+
+    def test_live_evidence_and_every_retained_artifact_validate(self) -> None:
+        if not self.artifact.is_dir() or not self.evaluator.is_file():
+            self.skipTest("retained follow-up-v1 artifacts are unavailable")
+        result = validator.validate(
+            self.root, artifact_root=self.artifact, evaluator_executable=self.evaluator,
+        )
+        self.assertEqual(result, {"cases": 42, "failures": 0, "live": True, "status": "FAIL"})
+
+    def test_only_service_every_mode_predicate_is_false(self) -> None:
+        acceptance = self.report["acceptance"]
+        self.assertEqual([key for key, value in acceptance.items() if not value],
+                         ["overall", "service_every_mode"])
+        self.assertTrue(all(not run["failures"] for run in self.report["runs"]))
+        self.assertTrue(all(run["scores"]["learned_correct"] for run in self.report["runs"]))
+        self.assertTrue(all(run["native"]["status"] == "PASS" for run in self.report["runs"]))
+
+    def test_multimodal_routing_cases_have_positive_native_service(self) -> None:
+        cases = [run for run in self.report["runs"] if run["required_program"] == "multimodal-transfer"]
+        self.assertEqual(len(cases), 2)
+        for run in cases:
+            self.assertEqual((run["public_case"]["task"], run["public_case"]["transport_mode"]),
+                             ("routing", "multimodal"))
+            self.assertGreater(run["native"]["record"]["metrics"]["delivered"], 0)
+            self.assertGreater(run["native"]["record"]["metrics"]["income"], 0)
+
+    def test_protocol_is_exactly_one_read_without_retry_or_replacement(self) -> None:
+        protocol = self.report["protocol"]
+        self.assertEqual((protocol["cases_attempted"], protocol["evaluator_processes"],
+                          protocol["native_processes"], protocol["manifest_reads"]), (42, 42, 42, 1))
+        self.assertEqual((protocol["retries"], protocol["replacements"]), (0, 0))
+        self.assertFalse(protocol["post_result_selection"])
+
+    def test_report_digest_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["report_sha256"] = "0" * 64
+        self.mutation_fails(value, "report digest drifted")
+
+    def test_case_score_mutation_fails_after_valid_resigning(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["runs"][0]["scores"]["learned_return"] = 0.0
+        self.resign(value)
+        self.mutation_fails(value, "case score drifted")
+
+    def test_source_identity_mutation_fails_after_valid_resigning(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["source"]["files"][0]["sha256"] = "0" * 64
+        self.resign(value)
+        self.mutation_fails(value, "source identity drifted")
+
+    def test_native_artifact_digest_mutation_fails_live(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["runs"][0]["native"]["record"]["report_sha256"] = "0" * 64
+        self.resign(value)
+        self.mutation_fails(value, "retained follow-up case record drifted", live=True)
+
+    def test_evaluator_executable_mutation_fails_live(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["identity"]["evaluator_executable_sha256"] = "0" * 64
+        self.resign(value)
+        self.mutation_fails(value, "evaluator executable identity drifted", evaluator=True)
+
+    def test_final_v1_replacement_claim_fails_schema(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["immutable_final_v1"]["followup_replaces_final_v1"] = True
+        with self.assertRaises(jsonschema.ValidationError):
+            jsonschema.Draft202012Validator(self.schema).validate(value)
+
+    def test_retry_claim_fails_schema(self) -> None:
+        value = copy.deepcopy(self.report)
+        value["protocol"]["retries"] = 1
+        with self.assertRaises(jsonschema.ValidationError):
+            jsonschema.Draft202012Validator(self.schema).validate(value)
+
+
+if __name__ == "__main__":
+    unittest.main()

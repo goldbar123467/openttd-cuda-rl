@@ -59,7 +59,7 @@ class V2TraceabilityTests(unittest.TestCase):
         self.assertEqual(summary.planned, 17)
         self.assertEqual(summary.tests, 26)
         self.assertEqual(summary.tests_passed, 24)
-        self.assertEqual(summary.nonclosed_defects, 0)
+        self.assertEqual(summary.nonclosed_defects, 1)
 
     def test_requirements_schema_hash_drift_fails(self) -> None:
         registry = copy.deepcopy(self.registry)
@@ -147,7 +147,7 @@ class V2TraceabilityTests(unittest.TestCase):
 
     def test_defect_open_count_drift_fails(self) -> None:
         defects = copy.deepcopy(self.defects)
-        defects["open_counts"]["total_nonclosed"] = 1
+        defects["open_counts"]["total_nonclosed"] += 1
         with tempfile.TemporaryDirectory() as raw:
             with self.assertRaisesRegex(validate_traceability.V2TraceabilityError, "defect open counts drifted"):
                 self.validate_mutation(pathlib.Path(raw), defects=defects)

@@ -133,16 +133,80 @@
         "config/v2/m22-final-attempt-a.json",
         "tests/project/v2/test_v2_m22_final_evaluation_source.py"
       ]
+    },
+    {
+      "id": "V2-DEF-0005",
+      "kind": "DEFECT",
+      "title": "M22 final native harness projected invalid cargo, company, allocation, and map boundaries",
+      "severity": "MAJOR",
+      "blocks_release": true,
+      "status": "CLOSED",
+      "discovery_date": "2026-08-03",
+      "affected_requirement_ids": [
+        "V2-LEARN-007",
+        "V2-LEARN-008"
+      ],
+      "affected_gates": [
+        "G22"
+      ],
+      "first_observed": "Immutable final-v1 attempted all 42 cases once but eight native executions failed across passenger multimodal, 64-by-64 competition, authority/economy, and event recovery.",
+      "impact": "The learned policy and baseline statistics passed, but invalid harness/runtime boundaries prevented native every-mode, opponent, broad, and G15-G21 retention acceptance.",
+      "root_cause": "G19 forced freight truck stops for passenger multimodal service; G20 projected its frozen 128-by-128 eight-town floor onto sparse 64-by-64 worlds; G21 leaked competitor company context and directly allocated a disaster vehicle without checking pool capacity.",
+      "reproducer": [
+        "config/v2/m22-final-evaluation-evidence.json"
+      ],
+      "evidence": [
+        "README.md",
+        "config/v2/m22-final-evaluation-evidence.json",
+        "config/v2/m22-followup-runtime-source.json",
+        "config/v2/m22-followup-evaluation-evidence.json"
+      ],
+      "fix_revision": "4c7bbbf91380acdb299a8241e37241a02611ccdc",
+      "regression_test": "tests/project/v2/test_v2_m22_followup_runtime_source.py",
+      "closure_evidence": [
+        "config/v2/m22-followup-runtime-source.json",
+        "config/v2/m22-followup-evaluation-evidence.json",
+        "tests/project/v2/test_v2_m22_followup_evaluation_evidence.py"
+      ]
+    },
+    {
+      "id": "V2-DEF-0006",
+      "kind": "DEFECT",
+      "title": "M22 follow-up acceptance omitted routing-labeled multimodal service cases",
+      "severity": "MAJOR",
+      "blocks_release": true,
+      "status": "DIAGNOSED",
+      "discovery_date": "2026-08-03",
+      "affected_requirement_ids": [
+        "V2-LEARN-007",
+        "V2-LEARN-008"
+      ],
+      "affected_gates": [
+        "G22"
+      ],
+      "first_observed": "The source-frozen independent follow-up-v1 suite completed all 42 cases with zero classified failures, but its aggregate status was FAIL because service_every_mode alone was false.",
+      "impact": "All learned actions, native cases, opponents, broad probes, and confidence requirements passed, yet G22 cannot accept the suite or relabel it after access because the frozen aggregate omitted multimodal from its service-mode set.",
+      "root_cause": "The acceptance function selected only cases whose task equals service; both positive multimodal-transfer cases are correctly task=routing, so their delivered cargo and income were never admitted into the service-mode coverage set.",
+      "reproducer": [
+        "config/v2/m22-followup-evaluation-evidence.json"
+      ],
+      "evidence": [
+        "README.md",
+        "config/v2/m22-followup-evaluation-evidence.json"
+      ],
+      "fix_revision": null,
+      "regression_test": "tests/project/v2/test_v2_m22_followup_evaluation_evidence.py",
+      "closure_evidence": []
     }
   ],
   "open_counts": {
-    "defects": 0,
+    "defects": 1,
     "divergences": 0,
-    "release_blocking": 0,
-    "total_nonclosed": 0
+    "release_blocking": 1,
+    "total_nonclosed": 1
   },
   "diagnostics": {
     "last_reviewed_date": "2026-08-03",
-    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records and closes the M22 sampler and retention-classification failure found by the first complete matched development execution. V2-DEF-0003 records and closes the retained-runtime OpenGFX ordering, smoke-parent, and M15 tier-projection defects. V2-DEF-0004 records and closes the pre-case final-adapter failure: the first final-runner invocation read the frozen manifest but rejected an omitted public probe alias before creating the cases directory or executing any final case; the exact rejected attempt is retained and the adapter's accessed-manifest regression covers all 17 gate/probe pairs without changing the frozen checkpoint. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
+    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records and closes the M22 sampler and retention-classification failure found by the first complete matched development execution. V2-DEF-0003 records and closes the retained-runtime OpenGFX ordering, smoke-parent, and M15 tier-projection defects. V2-DEF-0004 records and closes the pre-case final-adapter failure. V2-DEF-0005 records and closes the four native harness/runtime boundary classes exposed by immutable final-v1: the corrected independent follow-up executed 42/42 native cases without a classified failure. V2-DEF-0006 remains diagnosed and release-blocking because follow-up-v1's frozen acceptance function omitted its two routing-labeled, positive-service multimodal cases; the complete zero-failure result remains FAIL and will not be relabeled or rerun. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
   }
 }

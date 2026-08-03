@@ -210,6 +210,18 @@ PYTHONPATH="$repository_root/scripts/v2" \
     "$tools_python" "$repository_root/scripts/v2/validate_m22_followup_manifest.py" \
     --root "$repository_root"
 
+if PYTHONPATH="$repository_root/scripts/v2" \
+    "$tools_python" "$repository_root/scripts/v2/validate_m22_followup_evaluation.py" \
+    --root "$repository_root"; then
+    echo "Expected retained M22 follow-up-v1 evidence to remain FAIL" >&2
+    exit 1
+else
+    followup_evidence_status=$?
+    if [[ "$followup_evidence_status" -ne 2 ]]; then
+        exit "$followup_evidence_status"
+    fi
+fi
+
 "$tools_python" "$repository_root/scripts/v2/validate_traceability.py" \
     --root "$repository_root"
 

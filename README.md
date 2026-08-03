@@ -87,9 +87,17 @@ not an acceptance rerun. A subsequent clean, create-only preparation has now
 identity-bound the corrected source and executable: all 98 upstream CTests and
 14 fixed, fresh, network-unshared source smokes pass. That preparation did not
 open a follow-up manifest or run an evaluator. A separate independent follow-up
-protocol is now frozen around 42 new unseen seeds and the corrected competition
-map contract, but its runner has not opened the manifest or executed a case. No
-G22 pass or V2 release claim has been made.
+protocol was then source-frozen around 42 new unseen seeds and the corrected
+competition map contract. Its sole execution retained all 42 cases in order,
+with 42 fresh evaluator processes, 42 fresh native processes, zero retries,
+zero replacements, and zero classified failures. Every learned action, native
+case, opponent, broad probe, climate, map size, and confidence requirement
+passed. The frozen aggregate nevertheless remains `FAIL`: its service predicate
+selected only `task=service`, omitting both positive routing-labeled multimodal
+service cases, so `service_every_mode` alone is false. This result is retained
+without relabeling or rerunning. V2-DEF-0006 records the release-blocking defect;
+a new source-frozen independent suite with unseen seeds is required. No G22 pass
+or V2 release claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -174,6 +182,7 @@ G22 pass or V2 release claim has been made.
 · [`M22 follow-up one-shot runner`](scripts/v2/run_m22_followup_evaluation.py)
 · [`M22 follow-up evidence validator`](scripts/v2/validate_m22_followup_evaluation.py)
 · [`M22 follow-up evidence schema`](docs/project/schema/v2-m22-followup-evaluation-evidence.schema.json)
+· [`M22 immutable failed follow-up-v1 evidence`](config/v2/m22-followup-evaluation-evidence.json)
 · [`M22 final one-shot runner`](scripts/v2/run_m22_final_evaluation.py)
 · [`M22 final evidence validator`](scripts/v2/validate_m22_final_evaluation.py)
 · [`M22 final evidence schema`](docs/project/schema/v2-m22-final-evaluation-evidence.schema.json)
@@ -506,9 +515,28 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   cases in order with one evaluator attempt and one network-unshared native
   dispatch apiece even after failures. The independent evidence validator
   recomputes every projection, artifact identity, score, failure, statistic,
-  protocol count, and acceptance result. At this source-freeze boundary the
-  follow-up runner has read zero manifests and launched zero follow-up evaluators
-  or native cases.
+  protocol count, and acceptance result. The source-frozen runner then opened
+  this manifest exactly once and retained all 42 cases in order: 42 evaluator
+  attempts/processes, 42 native dispatches/processes, no retry, no replacement,
+  and no post-result selection. All 42 learned actions equal their required
+  programs; every native case is `PASS`; all failure counts are zero; every
+  opponent, broad probe, climate, map size, program, and G15-G21 native-retention
+  check passes. Learned mean return is `1.54411`; the lower paired 95-percent
+  confidence bounds over seeded-random-legal and wait-only are `0.79532` and
+  `1.42295`. The retained report still truthfully evaluates to `FAIL` because
+  `service_every_mode` alone is false. Its frozen acceptance function collected
+  service modes only from cases with `task=service`, while both
+  `multimodal-transfer` cases are correctly labeled `task=routing` and
+  `transport_mode=multimodal`. Those two native cases delivered 17 and 23 units,
+  earned 360 and 488 income, and otherwise passed, but were absent from that
+  aggregate set. Independent offline and live validation reports
+  `V2_M22_FOLLOWUP_EVIDENCE=FAIL cases=42 failures=0`; evidence report SHA-256 is
+  `16faac5a8f83a185f619ca907017ebd1e22900ad90b19c31f95eccf2d8125d0e`
+  and the retained evidence file SHA-256 is
+  `8288143d77fdb6526efda1e9e60b108ecd6e5eccc4d672ee12b336e759bf5de5`.
+  V2-DEF-0005 is closed by the 42/42 corrected native executions. V2-DEF-0006
+  retains the aggregate omission as diagnosed and release-blocking. Follow-up-v1
+  is immutable failed evidence and will not be rerun, replaced, or relabeled.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -530,11 +558,11 @@ generalist. The selected checkpoint was frozen and qualified before final access
 and remains unchanged after the failed gate. The retained final-v1 runtime,
 optimizer-free evaluator, synthetic CUDA preflight, and complete uncertainty/
 failure report are preserved. Diagnosis and a reviewable source correction are
-now complete, the corrected runtime is identity-bound, and the independent
-follow-up protocol is frozen. The next M22 work is to execute that protocol once,
-audit every retained artifact independently, and preserve the result without
-presenting it as a retry or replacement for the immutable failed final-v1 suite.
-G22 stays open until that evidence passes.
+now complete, the corrected runtime is identity-bound, and the first independent
+follow-up is retained as a zero-classified-failure aggregate `FAIL`. The next M22
+work is to freeze a corrected aggregate before any access to a second independent
+suite, use another disjoint unseen-seed domain, execute it once, and preserve both
+earlier failed suites. G22 stays open until valid independent evidence passes.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -581,7 +609,10 @@ The M22 validators are part of that command and rebuild both the JSON and bounde
 native corpus representations exactly from accepted G15-G21 evidence before
 accepting them, validate the historical and active exact-recovery reports, and
 validate the accepted matched-campaign and selected-checkpoint qualification
-reports plus their fail-closed mutations. At this checkpoint the suite passes 487 V2
+reports plus their fail-closed mutations. The retained failed follow-up-v1 report
+is also recomputed and required to exit with its distinct evidence-failure status;
+an accidental pass or validation error fails the repository check. At this
+checkpoint the suite passes 499 V2
 tests and the unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
@@ -710,7 +741,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary; M22 next |
-| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32, an optimizer-free single-case evaluator with no final-label channel, a token-gated cumulative final-world patch, a retained 98-CTest final-v1 engine with the complete M20/M21 content closure, eight fresh network-unshared G15-G21 source smokes, and a create-only one-shot runner with complete failure/uncertainty accounting; its first manifest read is retained as a zero-case adapter rejection, then immutable final-v1 attempted all 42 cases without retry/replacement and produced 42/42 required learned programs plus positive lower paired confidence bounds but failed on eight native harness/runtime executions; all failure classes are diagnosed, a retained corrected runtime passes 98 CTests and 14 fixed source smokes, and a separate one-read 42-case follow-up protocol is frozen with unseen seeds and contracted 128-by-128 competition worlds | `M22 training/qualification and source gates PASS`; immutable final-v1 `FAIL`; corrected runtime and independent follow-up protocol source-frozen; execution and G22 remain open |
+| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, current and historical exact update-16 recovery, six accepted 48-update CUDA campaigns with all 36 candidates development-eligible, clean selected-checkpoint qualification across all 16 programs and CPU/CUDA batches 1/8/32, an optimizer-free single-case evaluator with no final-label channel, a token-gated cumulative final-world patch, a retained 98-CTest final-v1 engine with the complete M20/M21 content closure, eight fresh network-unshared G15-G21 source smokes, and a create-only one-shot runner with complete failure/uncertainty accounting; its first manifest read is retained as a zero-case adapter rejection, then immutable final-v1 attempted all 42 cases without retry/replacement and produced 42/42 required learned programs plus positive lower paired confidence bounds but failed on eight native harness/runtime executions; all native failure classes are diagnosed and corrected, the retained runtime passes 98 CTests and 14 fixed source smokes, and independent follow-up-v1 retained 42/42 learned and native passes with zero classified failures and positive lower paired confidence bounds, but its frozen aggregate omitted routing-labeled multimodal cases from service-mode coverage | `M22 training/qualification and native correction PASS`; immutable final-v1 and follow-up-v1 `FAIL`; V2-DEF-0006 release-blocking; G22 remains open pending a new source-frozen unseen-seed suite |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |
