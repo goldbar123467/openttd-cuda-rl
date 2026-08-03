@@ -69,6 +69,38 @@
         "config/v2/m22-recovery-evidence-v2.json",
         "config/v2/m22-training-evidence.json"
       ]
+    },
+    {
+      "id": "V2-DEF-0003",
+      "kind": "DEFECT",
+      "title": "M22 retained-runtime preparation omitted required staging and adapter preconditions",
+      "severity": "MAJOR",
+      "blocks_release": true,
+      "status": "CLOSED",
+      "discovery_date": "2026-08-03",
+      "affected_requirement_ids": [
+        "V2-LEARN-007",
+        "V2-LEARN-008"
+      ],
+      "affected_gates": [
+        "G22"
+      ],
+      "first_observed": "The first clean M22 retained-runtime attempt compiled but failed two graphics-dependent CTests; the next attempt passed CTest and staging but failed before its first smoke, and the non-accepting diagnostic then reached an unsupported G15 resource tier.",
+      "impact": "No invalid final-runtime record could be accepted, but the uncorrected preparer could not produce the complete native runtime required before independent evaluation.",
+      "root_cause": "The initial orchestration placed OpenGFX staging after CTest, did not create the shared smoke parent, and invented a final resource tier instead of projecting M15's accepted size-derived tier.",
+      "reproducer": [
+        "scripts/v2/prepare_m22_final_runtime.py"
+      ],
+      "evidence": [
+        "README.md",
+        "config/v2/m22-final-runtime-source.json"
+      ],
+      "fix_revision": "c0c3ac70436dcea467f26db11e5bf3ab2e7a2f1d",
+      "regression_test": "tests/project/v2/test_v2_m22_final_runtime_preparation.py",
+      "closure_evidence": [
+        "config/v2/m22-final-runtime-source.json",
+        "tests/project/v2/test_v2_m22_final_runtime_source.py"
+      ]
     }
   ],
   "open_counts": {
@@ -79,6 +111,6 @@
   },
   "diagnostics": {
     "last_reviewed_date": "2026-08-03",
-    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records and closes the M22 sampler and retention-classification failure found by the first complete matched development execution: its source correction, targeted CUDA reproduction, revised-source exact recovery, and complete six-campaign rerun all pass. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
+    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records and closes the M22 sampler and retention-classification failure found by the first complete matched development execution: its source correction, targeted CUDA reproduction, revised-source exact recovery, and complete six-campaign rerun all pass. V2-DEF-0003 records the fail-closed retained-runtime preparation attempts and closes their OpenGFX ordering, smoke-parent, and M15 tier-projection defects with the accepted 98-CTest/eight-smoke runtime record. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
   }
 }
