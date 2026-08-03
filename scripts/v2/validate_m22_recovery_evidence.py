@@ -108,19 +108,6 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         location = "/".join(map(str, exc.absolute_path)) or "<root>"
         raise M22RecoveryValidationError(f"M22 recovery schema failed at {location}: {exc.message}") from exc
     self_hash(report)
-    identity = report["identity"]
-    require(identity["learning_contract_sha256"] == recovery.sha256(root / recovery.CONTRACT),
-            "M22 recovery learning contract identity drifted")
-    require(identity["native_corpus_sha256"] == recovery.sha256(root / recovery.CORPUS),
-            "M22 recovery native corpus identity drifted")
-    require(identity["recovery_schema_sha256"] == recovery.sha256(root / recovery.SCHEMA),
-            "M22 recovery schema identity drifted")
-    if executable is not None:
-        require(identity["campaign_executable_sha256"] == recovery.sha256(executable.resolve()),
-                "M22 recovery campaign executable identity drifted")
-        require(identity["corpus_binary_sha256"] == recovery.sha256(corpus.resolve()),
-                "M22 recovery corpus binary identity drifted")
-        require(executable.resolve().is_file(), "M22 recovery executable is unavailable")
     source = report["source"]
     commit = source["repository_commit"]
     require(re.fullmatch(r"[0-9a-f]{40}", commit) is not None, "M22 recovery repository commit is malformed")
@@ -131,6 +118,20 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
     require(source["clean"] and source["files"] == expected_files and
             source["tree_sha256"] == recovery.sha256_bytes(recovery.canonical_bytes(expected_files)),
             "M22 recovery source tree identity drifted")
+    source_hashes = {item["path"]: item["sha256"] for item in expected_files}
+    identity = report["identity"]
+    require(identity["learning_contract_sha256"] == source_hashes[recovery.CONTRACT.as_posix()],
+            "M22 recovery learning contract identity drifted")
+    require(identity["native_corpus_sha256"] == source_hashes[recovery.CORPUS.as_posix()],
+            "M22 recovery native corpus identity drifted")
+    require(identity["recovery_schema_sha256"] == recovery.sha256(root / recovery.SCHEMA),
+            "M22 recovery schema identity drifted")
+    if executable is not None:
+        require(identity["campaign_executable_sha256"] == recovery.sha256(executable.resolve()),
+                "M22 recovery campaign executable identity drifted")
+        require(identity["corpus_binary_sha256"] == recovery.sha256(corpus.resolve()),
+                "M22 recovery corpus binary identity drifted")
+        require(executable.resolve().is_file(), "M22 recovery executable is unavailable")
     require(report["configuration"] == {
         "architectures": list(recovery.ARCHITECTURES), "continue_updates": 8, "device": "cuda:0",
         "fork_update": 16, "run_seed": 1910917137, "total_updates": 24, "transitions_per_update": 128,

@@ -1,10 +1,10 @@
 {
   "$schema": "../../docs/project/schema/v2-m22-learning-contract.schema.json",
-  "schema_version": "openttd-rl-v2-m22-learning-contract-1",
-  "schema_sha256": "9cbed797d41b73de8c74812fd57471872a97a30a0749fffd29a672a247cde13d",
-  "snapshot_date": "2026-08-02",
-  "contract_id": "m22-generalist-learning-v1",
-  "semantic_version": 1,
+  "schema_version": "openttd-rl-v2-m22-learning-contract-2",
+  "schema_sha256": "7f61b6e494a78f201fdefe13ec64df938d42ec773fb290f598085d9f722d42af",
+  "snapshot_date": "2026-08-03",
+  "contract_id": "m22-generalist-learning-v2",
+  "semantic_version": 2,
   "status": "FROZEN",
   "identities": {
     "v1_ppo_contract_sha256": "cb4311100d12238bc668645321a866e5044e0abb1753ba6145fe27abcb3964ac",
@@ -125,10 +125,13 @@
       {"index":5,"id":"G20-competition","programs":["competition-head-to-head"],"weight":10,"promotion":"complete public-state opponent outcome with intact RL company"},
       {"index":6,"id":"G21-broad","programs":["calendar-inspect","authority-economy","event-recovery","gamescript-response","content-discovery"],"weight":10,"promotion":"all five broad native probes and capability failures retained"}
     ],
-    "schedule":"stages-0-through-6-introduced-at-updates-0-4-8-12-16-20-24-then-weighted-joint-through-48",
+    "schedule":"stages-0-through-6-introduced-at-updates-0-4-8-12-16-20-24; every update covers every introduced program once before stage-weighted extras; environment order is shuffled; joint training continues through update 48",
+    "minimum_training_episodes_per_introduced_program_per_update":1,
+    "remaining_episode_sampler":"stage-weighted-then-uniform-within-stage",
+    "episode_order":"environment-rng-shuffled-before-rollout",
     "retention_interval_updates":4,
     "retention_suite":"all previously introduced development programs plus frozen G15-G21 native gate summaries",
-    "catastrophic_forgetting":"reject checkpoint if any previously passing required program loses native success/service or drops more than 5 percentage points in selection accuracy",
+    "catastrophic_forgetting":"reject checkpoint if any previously passing required program loses native success/service; with at most 16 binary development decisions, every such loss exceeds 5 percentage points in selection accuracy; misses confined to newly introduced programs are ineligible but are not forgetting",
     "final_seeds":"never-used"
   },
   "device": {

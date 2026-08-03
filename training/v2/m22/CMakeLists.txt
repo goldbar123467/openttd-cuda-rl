@@ -80,7 +80,7 @@ set_target_properties(m22_trainer_gate PROPERTIES BUILD_RPATH "${V2_NVIDIA_LIBRA
 target_link_options(m22_trainer_gate PRIVATE "LINKER:--disable-new-dtags")
 
 set(M22_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../..")
-set(M22_CORPUS_BINARY "${CMAKE_CURRENT_BINARY_DIR}/m22-native-corpus-0d474170-0af952bb.bin")
+set(M22_CORPUS_BINARY "${CMAKE_CURRENT_BINARY_DIR}/m22-native-corpus-f3ae8f89-0af952bb.bin")
 if(NOT EXISTS "${M22_CORPUS_BINARY}")
   execute_process(
     COMMAND

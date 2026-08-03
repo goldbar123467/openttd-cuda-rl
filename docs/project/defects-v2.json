@@ -36,16 +36,45 @@
         "config/v2/m21-broad-evidence.json",
         "docs/project/G21_GATE_REPORT.md"
       ]
+    },
+    {
+      "id": "V2-DEF-0002",
+      "kind": "DEFECT",
+      "title": "M22 late-stage sampling and expanding retention accuracy rejected a valid campaign boundary",
+      "severity": "MAJOR",
+      "blocks_release": true,
+      "status": "FIXED_PENDING_VERIFICATION",
+      "discovery_date": "2026-08-03",
+      "affected_requirement_ids": [
+        "V2-LEARN-001",
+        "V2-LEARN-005"
+      ],
+      "affected_gates": [
+        "G22"
+      ],
+      "first_observed": "The first complete six-process M22 development campaign was rejected after specialist-router seed 1636894266 stopped producing checkpoints beyond update 16.",
+      "impact": "Independent weighted draws could underrepresent late programs, and a miss confined to a newly introduced program was mislabeled as catastrophic forgetting, preventing complete evidence retention and weakening broad-policy training coverage.",
+      "root_cause": "The rollout sampler had no per-program episode floor, while retention compared aggregate accuracy across expanding program denominators instead of checking whether a previously passing program was lost.",
+      "reproducer": [
+        "scripts/v2/run_m22_training.py"
+      ],
+      "evidence": [
+        "README.md",
+        "config/v2/m22-learning-contract.json"
+      ],
+      "fix_revision": null,
+      "regression_test": "training/v2/tests/m22_campaign_gate.cpp",
+      "closure_evidence": []
     }
   ],
   "open_counts": {
-    "defects": 0,
+    "defects": 1,
     "divergences": 0,
-    "release_blocking": 0,
-    "total_nonclosed": 0
+    "release_blocking": 1,
+    "total_nonclosed": 1
   },
   "diagnostics": {
-    "last_reviewed_date": "2026-08-02",
-    "review_note": "The accepted M14-G21 implementation has zero nonclosed V2 defects or divergences. V2-DEF-0001 records and closes the seed-dependent M21 calendar-oracle defect found by the complete matrix. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set. Planned M22-M23 requirements are not defects merely because their gates have not run."
+    "last_reviewed_date": "2026-08-03",
+    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records the M22 sampler and retention-classification failure found by the first complete matched development execution; its source correction and targeted CUDA reproduction pass, but it remains release-blocking until revised-source recovery and six-campaign evidence pass. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
   }
 }

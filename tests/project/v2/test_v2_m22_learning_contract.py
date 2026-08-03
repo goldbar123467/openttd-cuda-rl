@@ -74,6 +74,16 @@ class M22LearningContractTests(unittest.TestCase):
         value = copy.deepcopy(self.contract); value["curriculum"]["stages"][-1]["programs"].pop()
         self.contract_mutation_fails(value, "every non-WAIT")
 
+    def test_curriculum_stratified_coverage_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.contract)
+        value["curriculum"]["minimum_training_episodes_per_introduced_program_per_update"] = 0
+        self.contract_mutation_fails(value, "stratified coverage")
+
+    def test_curriculum_expansion_is_not_forgetting(self) -> None:
+        value = copy.deepcopy(self.contract)
+        value["curriculum"]["catastrophic_forgetting"] = "reject every development accuracy decrease"
+        self.contract_mutation_fails(value, "expansion semantics")
+
     def test_checkpoint_inventory_mutation_fails(self) -> None:
         value = copy.deepcopy(self.contract); value["checkpoint"]["inventory"].pop()
         self.contract_mutation_fails(value, "checkpoint schema or exact inventory")

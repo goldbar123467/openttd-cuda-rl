@@ -174,6 +174,13 @@ def validate(
     stage_programs = [program for item in stages for program in item["programs"]]
     require(stage_programs == PROGRAMS[1:], "curriculum does not cover every non-WAIT program exactly once")
     require(contract["curriculum"]["retention_interval_updates"] == 4, "retention interval drifted")
+    require(contract["curriculum"]["minimum_training_episodes_per_introduced_program_per_update"] == 1 and
+            contract["curriculum"]["remaining_episode_sampler"] == "stage-weighted-then-uniform-within-stage" and
+            contract["curriculum"]["episode_order"] == "environment-rng-shuffled-before-rollout",
+            "curriculum stratified coverage contract drifted")
+    require("misses confined to newly introduced programs are ineligible but are not forgetting" in
+            contract["curriculum"]["catastrophic_forgetting"],
+            "catastrophic-forgetting expansion semantics drifted")
 
     environment = contract["environment_boundary"]
     require(environment["native_corpus"] == "config/v2/m22-native-corpus.json" and

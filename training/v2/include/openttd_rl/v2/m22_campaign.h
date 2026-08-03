@@ -4,7 +4,9 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <random>
 #include <string>
+#include <vector>
 
 #include "openttd_rl/v2/m22_checkpoint.h"
 
@@ -40,6 +42,15 @@ struct M22CampaignUpdateResult {
     M22RetentionResult retention;
 };
 
+[[nodiscard]] std::vector<std::uint8_t> m22_training_program_schedule(
+    std::uint32_t stage,
+    std::size_t episode_count,
+    std::mt19937_64 &environment_rng,
+    std::mt19937_64 &curriculum_rng);
+[[nodiscard]] bool m22_catastrophic_regression(
+    std::uint32_t previous_pass_mask,
+    std::uint32_t current_pass_mask) noexcept;
+
 class M22Campaign {
 public:
     M22Campaign(M22Corpus corpus, std::unique_ptr<M22Trainer> trainer);
@@ -61,7 +72,6 @@ public:
 
 private:
     [[nodiscard]] std::uint32_t stage_for_next_update() const noexcept;
-    [[nodiscard]] const M22CorpusEntry &sample_training_entry();
     void append_retention(const M22RetentionResult &result);
 
     M22Corpus corpus_;

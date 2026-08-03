@@ -183,18 +183,40 @@ std::uint32_t M22Campaign::stage_for_next_update() const noexcept
     return result;
 }
 
-const M22CorpusEntry &M22Campaign::sample_training_entry()
+std::vector<std::uint8_t> m22_training_program_schedule(
+    std::uint32_t stage,
+    std::size_t episode_count,
+    std::mt19937_64 &environment_rng,
+    std::mt19937_64 &curriculum_rng)
 {
+    if (stage >= kStagePrograms.size()) throw std::invalid_argument("M22 curriculum stage is out of range");
+    std::vector<std::uint8_t> result;
+    for (std::uint32_t introduced_stage = 0; introduced_stage <= stage; ++introduced_stage) {
+        result.insert(result.end(), kStagePrograms[introduced_stage].begin(), kStagePrograms[introduced_stage].end());
+    }
+    if (episode_count < result.size()) {
+        throw std::invalid_argument("M22 rollout cannot cover every introduced program");
+    }
     std::vector<double> weights;
-    for (std::uint32_t stage = 0; stage <= curriculum_stage_; ++stage) {
-        weights.push_back(static_cast<double>(kStageWeights[stage]));
+    for (std::uint32_t introduced_stage = 0; introduced_stage <= stage; ++introduced_stage) {
+        weights.push_back(static_cast<double>(kStageWeights[introduced_stage]));
     }
     std::discrete_distribution<std::size_t> choose_stage(weights.begin(), weights.end());
-    const auto stage = choose_stage(trainer_->curriculum_rng());
-    const auto &programs = kStagePrograms[stage];
-    std::uniform_int_distribution<std::size_t> choose_program(0, programs.size() - 1);
-    const auto program = programs[choose_program(trainer_->environment_rng())];
-    return corpus_.entry(M22CorpusSplit::Training, program);
+    while (result.size() < episode_count) {
+        const auto selected_stage = choose_stage(curriculum_rng);
+        const auto &programs = kStagePrograms[selected_stage];
+        std::uniform_int_distribution<std::size_t> choose_program(0, programs.size() - 1);
+        result.push_back(programs[choose_program(environment_rng)]);
+    }
+    std::shuffle(result.begin(), result.end(), environment_rng);
+    return result;
+}
+
+bool m22_catastrophic_regression(
+    std::uint32_t previous_pass_mask,
+    std::uint32_t current_pass_mask) noexcept
+{
+    return (previous_pass_mask & ~current_pass_mask) != 0;
 }
 
 M22CampaignUpdateResult M22Campaign::run_update()
@@ -214,11 +236,19 @@ M22CampaignUpdateResult M22Campaign::run_update()
     std::vector<const M22CorpusEntry *> current(8, nullptr);
     std::vector<std::uint32_t> case_order;
     case_order.reserve(static_cast<std::size_t>(config.rollout_steps * config.parallel_environments));
+    const auto episodes_per_update = static_cast<std::size_t>(
+        config.rollout_steps * config.parallel_environments / kM22SequenceLength);
+    const auto program_schedule = m22_training_program_schedule(
+        curriculum_stage_, episodes_per_update, trainer_->environment_rng(), trainer_->curriculum_rng());
+    std::size_t program_cursor = 0;
     for (std::int64_t time = 0; time < config.rollout_steps; ++time) {
         const bool reset = time % kM22SequenceLength == 0;
         if (reset) {
             for (std::size_t environment = 0; environment < current.size(); ++environment) {
-                current[environment] = &sample_training_entry();
+                if (program_cursor >= program_schedule.size()) {
+                    throw std::logic_error("M22 training program schedule ended before the rollout");
+                }
+                current[environment] = &corpus_.entry(M22CorpusSplit::Training, program_schedule[program_cursor++]);
                 environment_case_cursor_[environment] = current[environment]->program;
                 ++episode_;
             }
@@ -251,6 +281,9 @@ M22CampaignUpdateResult M22Campaign::run_update()
             bootstrap.index_put_({time, Slice()}, 0.0F);
             continuation.index_put_({time, Slice()}, 0.0F);
         }
+    }
+    if (program_cursor != program_schedule.size()) {
+        throw std::logic_error("M22 training program schedule exceeded the rollout");
     }
     const auto action_vector = torch::cat(actions);
     const auto log_vector = torch::cat(logs);
@@ -324,8 +357,7 @@ M22RetentionResult M22Campaign::evaluate_development()
     result.pass_mask = pass_mask;
     result.accuracy = static_cast<double>(passed) / static_cast<double>(count);
     result.mean_reward = reward / static_cast<double>(count);
-    result.catastrophic_regression = (retention_pass_mask_ & ~pass_mask) != 0 ||
-        retention_best_accuracy_ - result.accuracy > 0.05;
+    result.catastrophic_regression = m22_catastrophic_regression(retention_pass_mask_, pass_mask);
     result.checkpoint_allowed = !result.catastrophic_regression;
     result.selection_eligible = result.checkpoint_allowed && passed == count;
     retention_pass_mask_ |= pass_mask;

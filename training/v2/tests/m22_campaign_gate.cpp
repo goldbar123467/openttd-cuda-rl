@@ -23,6 +23,46 @@ bool sha256(const std::string &value)
     return value.size() == 64 && value.find_first_not_of("0123456789abcdef") == std::string::npos;
 }
 
+void test_curriculum_schedule()
+{
+    using namespace openttd_rl::v2;
+    for (std::uint32_t stage = 0; stage < 7; ++stage) {
+        std::mt19937_64 environment_a(UINT64_C(0x12345678));
+        std::mt19937_64 curriculum_a(UINT64_C(0x87654321));
+        std::mt19937_64 environment_b(UINT64_C(0x12345678));
+        std::mt19937_64 curriculum_b(UINT64_C(0x87654321));
+        const auto first = m22_training_program_schedule(stage, 16, environment_a, curriculum_a);
+        const auto repeat = m22_training_program_schedule(stage, 16, environment_b, curriculum_b);
+        require(first == repeat && first.size() == 16, "M22 stratified curriculum schedule is not exact");
+        const auto introduced = stage == 0 ? 1U : stage == 1 ? 2U : stage == 2 ? 4U :
+            stage == 3 ? 6U : stage == 4 ? 10U : stage == 5 ? 11U : 16U;
+        for (std::uint32_t program = 1; program <= introduced; ++program) {
+            require(std::count(first.begin(), first.end(), program) >= 1,
+                    "M22 curriculum schedule omitted an introduced program");
+        }
+        require(std::none_of(first.begin(), first.end(), [introduced](std::uint8_t program) {
+            return program == 0 || program > introduced;
+        }), "M22 curriculum schedule admitted an unavailable program");
+        if (stage == 6) {
+            for (std::uint32_t program = 1; program <= introduced; ++program) {
+                require(std::count(first.begin(), first.end(), program) == 1,
+                        "M22 full-curriculum schedule is not balanced");
+            }
+        }
+    }
+    require(!m22_catastrophic_regression(UINT32_C(126), UINT32_C(1022)),
+            "M22 new-program miss was mislabeled as catastrophic forgetting");
+    require(m22_catastrophic_regression(UINT32_C(126), UINT32_C(1014)),
+            "M22 loss of a previously passing program was not rejected");
+    try {
+        std::mt19937_64 environment(1);
+        std::mt19937_64 curriculum(2);
+        static_cast<void>(m22_training_program_schedule(6, 15, environment, curriculum));
+        require(false, "M22 undersized rollout schedule was accepted");
+    } catch (const std::invalid_argument &) {
+    }
+}
+
 double maximum_parameter_difference(
     const openttd_rl::v2::GeneralistPolicy &left,
     const openttd_rl::v2::GeneralistPolicy &right)
@@ -117,6 +157,7 @@ void run(const torch::Device &device, const std::filesystem::path &corpus_path)
 int main(int argc, char **argv)
 {
     try {
+        test_curriculum_schedule();
         if (argc != 5 || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--corpus") {
             throw std::invalid_argument("usage: m22_campaign_gate --device cpu|cuda:0 --corpus /absolute/path");
         }
