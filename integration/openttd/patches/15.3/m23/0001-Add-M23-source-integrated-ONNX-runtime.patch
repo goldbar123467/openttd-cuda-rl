@@ -1,0 +1,377 @@
+From a6cdb763a764253d96e16f1d0c8fbc8b58c9a928 Mon Sep 17 00:00:00 2001
+From: OpenTTD RL Evidence <evidence@openttd-rl.invalid>
+Date: Sat, 1 Jan 2000 00:00:00 +0000
+Subject: [PATCH] Add M23 source-integrated ONNX runtime
+
+---
+ CMakeLists.txt             |  24 +++++++
+ cmake/Options.cmake        |  12 ++++
+ src/CMakeLists.txt         |   6 ++
+ src/openttd.cpp            |  50 +++++++++++++-
+ src/rl_v2_neural_agent.cpp | 136 +++++++++++++++++++++++++++++++++++++
+ src/rl_v2_neural_agent.h   |  17 +++++
+ 6 files changed, 243 insertions(+), 2 deletions(-)
+ create mode 100644 src/rl_v2_neural_agent.cpp
+ create mode 100644 src/rl_v2_neural_agent.h
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index cd23186..a6e4086 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -307,6 +307,30 @@ if(OPTION_RL_NEURAL_AGENT)
+     set_property(TARGET openttd_test APPEND PROPERTY BUILD_RPATH "${OPENTTD_RL_ONNXRUNTIME_ROOT}/lib")
+ endif()
+ 
++if(OPTION_RL_V2_NEURAL_AGENT)
++    if(NOT IS_ABSOLUTE "${OPENTTD_RL_PROJECT_ROOT}" OR NOT EXISTS "${OPENTTD_RL_PROJECT_ROOT}/training/v2/src/m23_equivalence.cpp")
++        message(FATAL_ERROR "OPENTTD_RL_PROJECT_ROOT must be the absolute OpenTTD-RL repository root with M23 sources")
++    endif()
++    if(NOT IS_ABSOLUTE "${OPENTTD_RL_ONNXRUNTIME_ROOT}" OR NOT EXISTS "${OPENTTD_RL_ONNXRUNTIME_ROOT}/include/onnxruntime_cxx_api.h")
++        message(FATAL_ERROR "OPENTTD_RL_ONNXRUNTIME_ROOT must be an absolute ONNX Runtime 1.28.0 installation")
++    endif()
++    find_library(OPENTTD_RL_V2_ONNXRUNTIME_LIBRARY onnxruntime PATHS "${OPENTTD_RL_ONNXRUNTIME_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
++    find_package(OpenSSL 3.0 REQUIRED COMPONENTS Crypto)
++    target_sources(openttd_lib PRIVATE
++        "${OPENTTD_RL_PROJECT_ROOT}/training/v2/src/m23_equivalence.cpp"
++        "${OPENTTD_RL_PROJECT_ROOT}/training/v2/src/m23_golden.cpp"
++        "${OPENTTD_RL_PROJECT_ROOT}/training/v2/src/m23_onnx.cpp"
++    )
++    target_include_directories(openttd_lib PRIVATE
++        "${OPENTTD_RL_PROJECT_ROOT}/training/v2/include"
++        "${OPENTTD_RL_ONNXRUNTIME_ROOT}/include"
++    )
++    target_link_libraries(openttd "${OPENTTD_RL_V2_ONNXRUNTIME_LIBRARY}" OpenSSL::Crypto)
++    target_link_libraries(openttd_test PRIVATE "${OPENTTD_RL_V2_ONNXRUNTIME_LIBRARY}" OpenSSL::Crypto)
++    set_property(TARGET openttd APPEND PROPERTY BUILD_RPATH "${OPENTTD_RL_ONNXRUNTIME_ROOT}/lib")
++    set_property(TARGET openttd_test APPEND PROPERTY BUILD_RPATH "${OPENTTD_RL_ONNXRUNTIME_ROOT}/lib")
++endif()
++
+ include(Catch)
+ catch_discover_tests(openttd_test)
+ 
+diff --git a/cmake/Options.cmake b/cmake/Options.cmake
+index 71e151c..c980852 100644
+--- a/cmake/Options.cmake
++++ b/cmake/Options.cmake
+@@ -57,6 +57,7 @@ function(set_options)
+     option(OPTION_DEDICATED "Build dedicated server only (no GUI)" OFF)
+     option(OPTION_RL_ENVIRONMENT "Enable the experimental 32x32 RL environment map profile" OFF)
+     option(OPTION_RL_NEURAL_AGENT "Enable the inference-only OpenTTD-RL normal-game neural agent" OFF)
++    option(OPTION_RL_V2_NEURAL_AGENT "Enable the inference-only OpenTTD-RL V2 neural agent" OFF)
+     option(OPTION_INSTALL_FHS "Install with Filesystem Hierarchy Standard folders" ${DEFAULT_OPTION_INSTALL_FHS})
+     option(OPTION_USE_ASSERTS "Use assertions; leave enabled for nightlies, betas, and RCs" OFF)
+     option(OPTION_USE_NSIS "Use NSIS to create windows installer; enable only for stable releases" OFF)
+@@ -80,6 +81,7 @@ function(show_options)
+     message(STATUS "Option Dedicated - ${OPTION_DEDICATED}")
+     message(STATUS "Option RL Environment - ${OPTION_RL_ENVIRONMENT}")
+     message(STATUS "Option RL Neural Agent - ${OPTION_RL_NEURAL_AGENT}")
++    message(STATUS "Option RL V2 Neural Agent - ${OPTION_RL_V2_NEURAL_AGENT}")
+     message(STATUS "Option Install FHS - ${OPTION_INSTALL_FHS}")
+     message(STATUS "Option Use assert - ${OPTION_USE_ASSERTS}")
+     message(STATUS "Option Use NSIS - ${OPTION_USE_NSIS}")
+@@ -119,6 +121,16 @@ function(add_definitions_based_on_options)
+         add_definitions(-DWITH_RL_NEURAL_AGENT)
+     endif()
+ 
++    if(OPTION_RL_V2_NEURAL_AGENT)
++        if(NOT OPTION_RL_ENVIRONMENT)
++            message(FATAL_ERROR "OPTION_RL_V2_NEURAL_AGENT requires OPTION_RL_ENVIRONMENT")
++        endif()
++        if(OPTION_DEDICATED)
++            message(FATAL_ERROR "OPTION_RL_V2_NEURAL_AGENT is a playable GUI build and forbids OPTION_DEDICATED")
++        endif()
++        add_definitions(-DWITH_RL_V2_NEURAL_AGENT)
++    endif()
++
+     if(OPTION_USE_ASSERTS)
+         add_definitions(-DWITH_ASSERT)
+     else()
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 067153d..ba10753 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -84,6 +84,12 @@ add_files(
+     CONDITION OPTION_RL_NEURAL_AGENT
+ )
+ 
++add_files(
++    rl_v2_neural_agent.cpp
++    rl_v2_neural_agent.h
++    CONDITION OPTION_RL_V2_NEURAL_AGENT
++)
++
+ add_files(
+     soundloader_opus.cpp
+     CONDITION OpusFile_FOUND
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index b65a1a5..09d5373 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -96,6 +96,9 @@
+ #ifdef WITH_RL_NEURAL_AGENT
+ #	include "rl_neural_agent.h"
+ #endif
++#ifdef WITH_RL_V2_NEURAL_AGENT
++#	include "rl_v2_neural_agent.h"
++#endif
+ 
+ #include "linkgraph/linkgraphschedule.h"
+ 
+@@ -204,7 +207,11 @@ static void ShowHelp()
+ 		"  -Q                  = Don't scan for/load NewGRF files on startup\n"
+ 		"  -QQ                 = Disable NewGRF scanning/loading entirely\n"
+ #ifdef WITH_RL_ENVIRONMENT
++#ifdef WITH_RL_V2_NEURAL_AGENT
++		"  -B bridge_or_config = Run M03 with read_fd:write_fd or M23 from an absolute JSON config\n"
++#else
+ 		"  -B read_fd:write_fd = Run the synchronized M03 bridge over inherited pipes\n"
++#endif
+ 		"  -Z scenario_file    = Reset the deterministic M02 scenario from a canonical instance\n"
+ 		"  -Y output_file      = Write the deterministic M02 reset projection report\n"
+ 		"  -T output_file      = Execute and write the deterministic M02 scripted bus trajectory\n"
+@@ -452,6 +459,9 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+ #endif
++#ifdef WITH_RL_V2_NEURAL_AGENT
++	std::string rl_v2_neural_agent_config;     ///< Canonical M23 V2 normal-game/equivalence configuration.
++#endif
+ 
+ 	/**
+ 	 * Create a new callback.
+@@ -508,6 +518,18 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
+ #ifdef WITH_RL_ENVIRONMENT
++#ifdef WITH_RL_V2_NEURAL_AGENT
++		if (!rl_v2_neural_agent_config.empty()) {
++			try {
++				RunRlV2NeuralAgentConfig(rl_v2_neural_agent_config);
++			} catch (const std::exception &e) {
++				fmt::print(stderr, "{}\n", e.what());
++				UserError("M23 V2 neural agent: {}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		} else
++#endif
+ 		if (!rl_v2_broad_manifest.empty()) {
+ 			try {
+ 				RunRlV2BroadQualification(rl_v2_broad_manifest, rl_v2_broad_report);
+@@ -818,7 +840,16 @@ int openttd_main(std::span<std::string_view> arguments)
+ 			break;
+ 		case 'c': _config_file = mgo.opt; break;
+ #ifdef WITH_RL_ENVIRONMENT
+-		case 'B': scanner->rl_bridge_descriptors = mgo.opt; break;
++		case 'B':
++#ifdef WITH_RL_V2_NEURAL_AGENT
++			if (std::string_view(mgo.opt).find(':') == std::string_view::npos) {
++				scanner->rl_v2_neural_agent_config = mgo.opt;
++			} else
++#endif
++			{
++				scanner->rl_bridge_descriptors = mgo.opt;
++			}
++			break;
+ 		case 'C': scanner->rl_v2_rail_manifest = mgo.opt; break;
+ 		case 'E': scanner->rl_v2_episode_program = mgo.opt; break;
+ 		case 'F': scanner->rl_v2_episode_trace = mgo.opt; break;
+@@ -1003,7 +1034,11 @@ int openttd_main(std::span<std::string_view> arguments)
+ 
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	if (!scanner->rl_neural_agent_config.empty()) {
+-		if (!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty()) {
++		if (!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() ||
++#ifdef WITH_RL_V2_NEURAL_AGENT
++				!scanner->rl_v2_neural_agent_config.empty() ||
++#endif
++				dedicated || !scanner->connection_string.empty()) {
+ 			fmt::print(stderr, "M11 -A playback mode forbids bridge/scenario batch mode, dedicated mode, and networking\n");
+ 			return 1;
+ 		}
+@@ -1011,6 +1046,17 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ #endif
+ 
++#ifdef WITH_RL_V2_NEURAL_AGENT
++	if (!scanner->rl_v2_neural_agent_config.empty()) {
++		if (!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() ||
++				dedicated || !scanner->connection_string.empty()) {
++			fmt::print(stderr, "M23 -B playback mode forbids bridge/scenario batch mode, dedicated mode, and networking\n");
++			return 1;
++		}
++		_switch_mode = SM_NONE;
++	}
++#endif
++
+ 	DeterminePaths(arguments[0], only_local_path);
+ 	TarScanner::DoScan(TarScanner::Mode::Baseset);
+ 
+diff --git a/src/rl_v2_neural_agent.cpp b/src/rl_v2_neural_agent.cpp
+new file mode 100644
+index 0000000..cdce18c
+--- /dev/null
++++ b/src/rl_v2_neural_agent.cpp
+@@ -0,0 +1,136 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_v2_neural_agent.cpp M23 inference-only V2 source-integrated runtime. */
++
++#include "stdafx.h"
++
++#include "rl_v2_neural_agent.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++
++#include "openttd_rl/v2/m23_equivalence.h"
++#include "openttd_rl/v2/m23_onnx.h"
++
++#include <filesystem>
++#include <fstream>
++#include <set>
++#include <stdexcept>
++#include <string_view>
++
++using nlohmann::json;
++using openttd_rl::v2::M23DeploymentPackage;
++
++namespace {
++
++static constexpr std::string_view M23_CONTRACT_SHA256 = "cfb0309998eff08d6cf8cf51d14e965236bf1de3f0980e06f5d9ee9adb613f20";
++static constexpr std::string_view M23_PLAYBACK_SCHEMA = "openttd-rl-v2-m23-playback-config-1";
++static constexpr std::string_view MONOLITHIC_PACKAGE_ID = "50060fd871d3c737b41bb4523748fbaac5047fed106e9ce0a9d1b36c7637f955";
++static constexpr std::string_view SPECIALIST_PACKAGE_ID = "d280683090b65eeea8e6cba1ab6ece3ca561a1b1d1708840f8616855ff44ac5a";
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) throw std::runtime_error(fmt::format("M23 V2 neural agent: {}", message));
++}
++
++static void RequireKeys(const json &value, std::initializer_list<std::string_view> expected, std::string_view name)
++{
++	Require(value.is_object(), fmt::format("{} must be an object", name));
++	std::set<std::string> observed;
++	for (const auto &[key, item] : value.items()) {
++		(void)item;
++		observed.insert(key);
++	}
++	std::set<std::string> required;
++	for (const auto key : expected) required.emplace(key);
++	Require(observed == required, fmt::format("{} field inventory drifted", name));
++}
++
++static std::string ReadCanonicalJson(const std::filesystem::path &path)
++{
++	Require(path.is_absolute(), "configuration path must be absolute");
++	Require(std::filesystem::is_regular_file(path) && !std::filesystem::is_symlink(path),
++		"configuration must be a regular nonsymlink file");
++	const auto size = std::filesystem::file_size(path);
++	Require(size > 1 && size <= 1024U * 1024U, "configuration size is outside bounds");
++	std::ifstream input(path, std::ios::binary);
++	Require(static_cast<bool>(input), "cannot open configuration");
++	std::string bytes(static_cast<std::size_t>(size), '\0');
++	input.read(bytes.data(), static_cast<std::streamsize>(bytes.size()));
++	Require(static_cast<bool>(input) && input.peek() == std::ifstream::traits_type::eof(),
++		"cannot read exact configuration bytes");
++	Require(bytes.back() == '\n' && (bytes.size() < 2 || bytes[bytes.size() - 2] != '\r'),
++		"configuration must end in exactly one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n', "configuration has noncanonical trailing whitespace");
++	json parsed = json::parse(bytes);
++	Require(parsed.dump() == bytes, "configuration must be compact sorted JSON plus one LF");
++	return bytes;
++}
++
++static std::filesystem::path AbsolutePath(const json &value, std::string_view name)
++{
++	Require(value.is_string(), fmt::format("{} must be a string", name));
++	std::filesystem::path path(value.get<std::string>());
++	Require(path.is_absolute() && path.string().size() <= 4096U,
++		fmt::format("{} must be a bounded absolute path", name));
++	return path;
++}
++
++struct EquivalenceConfig {
++	std::filesystem::path golden_path;
++	std::filesystem::path monolithic_package_path;
++	std::filesystem::path specialist_package_path;
++	std::filesystem::path report_path;
++};
++
++static EquivalenceConfig ParseEquivalenceConfig(const std::filesystem::path &path)
++{
++	const json config = json::parse(ReadCanonicalJson(path));
++	RequireKeys(config, {"contract_sha256", "equivalence", "inference", "monolithic_package_path",
++		"operation", "schema_version", "specialist_package_path"}, "configuration");
++	Require(config.at("schema_version") == M23_PLAYBACK_SCHEMA, "configuration schema_version is incompatible");
++	Require(config.at("contract_sha256") == M23_CONTRACT_SHA256, "configuration contract_sha256 is incompatible");
++	Require(config.at("operation") == "equivalence", "configuration operation is unsupported at this boundary");
++	const json &inference = config.at("inference");
++	RequireKeys(inference, {"interval_ticks", "mode"}, "inference");
++	Require(inference.at("mode") == "greedy", "equivalence inference must use greedy mode");
++	Require(inference.at("interval_ticks") == 128, "equivalence interval must be the minimum frozen 128 ticks");
++	const json &equivalence = config.at("equivalence");
++	RequireKeys(equivalence, {"golden_path", "report_path"}, "equivalence");
++	EquivalenceConfig result{
++		AbsolutePath(equivalence.at("golden_path"), "equivalence.golden_path"),
++		AbsolutePath(config.at("monolithic_package_path"), "monolithic_package_path"),
++		AbsolutePath(config.at("specialist_package_path"), "specialist_package_path"),
++		AbsolutePath(equivalence.at("report_path"), "equivalence.report_path"),
++	};
++	Require(std::filesystem::is_regular_file(result.golden_path) && !std::filesystem::is_symlink(result.golden_path),
++		"equivalence golden is not a regular nonsymlink file");
++	Require(!std::filesystem::exists(result.report_path) && !std::filesystem::is_symlink(result.report_path) &&
++		std::filesystem::is_directory(result.report_path.parent_path()),
++		"equivalence report must be a new file below an existing directory");
++	return result;
++}
++
++} // namespace
++
++void RunRlV2NeuralAgentConfig(const std::string &config_path)
++{
++	const auto config = ParseEquivalenceConfig(std::filesystem::path(config_path));
++	M23DeploymentPackage monolithic(config.monolithic_package_path);
++	M23DeploymentPackage specialist(config.specialist_package_path);
++	Require(monolithic.package_id() == MONOLITHIC_PACKAGE_ID,
++		"monolithic package is valid but is not the frozen development package");
++	Require(specialist.package_id() == SPECIALIST_PACKAGE_ID,
++		"specialist package is valid but is not the frozen development package");
++	const auto summary = openttd_rl::v2::run_m23_onnx_equivalence(
++		config.golden_path, monolithic.model(), specialist.model(), config.report_path,
++		"source-integrated-ingame-onnxruntime-1.28.0-cpu");
++	Require(summary.cases == 48 && summary.failures == 0, "source-integrated equivalence failed");
++	fmt::print(stdout, "M23_INGAME_EQUIVALENCE=PASS cases={} failures={} max_abs={}\n",
++		summary.cases, summary.failures, summary.maximum_absolute);
++}
+diff --git a/src/rl_v2_neural_agent.h b/src/rl_v2_neural_agent.h
+new file mode 100644
+index 0000000..e156b9e
+--- /dev/null
++++ b/src/rl_v2_neural_agent.h
+@@ -0,0 +1,17 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ * OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
++ */
++
++/** @file rl_v2_neural_agent.h M23 inference-only V2 normal-game controller boundary. */
++
++#ifndef RL_V2_NEURAL_AGENT_H
++#define RL_V2_NEURAL_AGENT_H
++
++#include <string>
++
++void RunRlV2NeuralAgentConfig(const std::string &config_path);
++
++#endif /* RL_V2_NEURAL_AGENT_H */
+-- 
+2.43.0
+

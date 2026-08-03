@@ -49,7 +49,7 @@ target_link_libraries(openttd_rl_v2_m23_golden_format PUBLIC OpenSSL::Crypto)
 v2_enable_strict_warnings(openttd_rl_v2_m23_golden_format)
 set_property(TARGET openttd_rl_v2_m23_golden_format PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-add_library(openttd_rl_v2_m23_onnx ../src/m23_onnx.cpp)
+add_library(openttd_rl_v2_m23_onnx ../src/m23_equivalence.cpp ../src/m23_onnx.cpp)
 target_include_directories(openttd_rl_v2_m23_onnx PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_include_directories(openttd_rl_v2_m23_onnx SYSTEM PUBLIC "${V2_ONNXRUNTIME_INCLUDE_DIR}")
 target_link_libraries(openttd_rl_v2_m23_onnx PUBLIC "${V2_ONNXRUNTIME_LIBRARY}" openttd_rl_v2_m23_golden_format)

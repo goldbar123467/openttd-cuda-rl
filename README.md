@@ -116,14 +116,18 @@ adapter/evaluator. Two isolated prototype exports were byte-identical; the
 standalone native/ONNX comparison passed all 48 frozen architecture cases and
 580 rows with exact legal greedy actions and maximum absolute tensor error
 `1.33514e-05`, below the frozen combined `5e-5` tolerance. These are foundation
-results, not retained G23 in-game, reproduction, or release evidence. A second
+results, not retained G23 visible-playback, reproduction, or release evidence. A second
 foundation now exact-copies both seven-file checkpoints and creates both frozen
 six-file deployment layouts. Two independent package roots are byte-identical;
 their development package IDs are `50060fd871d3c737b41bb4523748fbaac5047fed106e9ce0a9d1b36c7637f955`
 and `d280683090b65eeea8e6cba1ab6ece3ca561a1b1d1708840f8616855ff44ac5a`.
 The Python validator and inference-only C++ loader accept both, while all 28
 frozen package, graph, tensor, recurrence, corruption, and batch mutations fail
-before inference.
+before inference. The same loader and shared equivalence implementation now
+compile into the cumulative OpenTTD source. A network-isolated `openttd -B`
+prototype produced all 48 source-integrated results, making 144 runtime-case
+results total; it matched the standalone report in every field except the
+declared runtime identity.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -223,9 +227,14 @@ before inference.
 · [`M23 two-architecture package builder`](scripts/v2/build_m23_packages.py)
 · [`M23 independent package validator`](scripts/v2/validate_m23_packages.py)
 · [`M23 complete rejection-matrix runner`](scripts/v2/run_m23_package_mutations.py)
+· [`M23 OpenTTD source-integrated patch`](integration/openttd/patches/15.3/m23/0001-Add-M23-source-integrated-ONNX-runtime.patch)
+· [`M23 shared in-game evidence validator`](scripts/v2/m23_ingame.py)
+· [`M23 source-integrated equivalence runner`](scripts/v2/run_m23_ingame_equivalence.py)
+· [`M23 independent in-game artifact validator`](scripts/v2/validate_m23_ingame_equivalence.py)
 · [`M23 native/ONNX build entry point`](training/v2/m23/CMakeLists.txt)
 · [`M23 deployment source and mutation tests`](tests/project/v2/test_v2_m23_deployment_source.py)
 · [`M23 package and mutation tests`](tests/project/v2/test_v2_m23_packages.py)
+· [`M23 source-integrated runtime tests`](tests/project/v2/test_v2_m23_ingame_source.py)
 · [`M22 final one-shot runner`](scripts/v2/run_m22_final_evaluation.py)
 · [`M22 final evidence validator`](scripts/v2/validate_m22_final_evaluation.py)
 · [`M22 final evidence schema`](docs/project/schema/v2-m22-final-evaluation-evidence.schema.json)
@@ -253,10 +262,10 @@ before inference.
 · [`G22 gate report`](docs/project/G22_GATE_REPORT.md)
 · [`M23 release contract`](docs/project/M23_RELEASE_CONTRACT.md)
 
-## M23 package and standalone-equivalence foundation boundary
+## M23 package and three-runtime-equivalence foundation boundary
 
-Development is intentionally paused after completing and testing the first M23
-implementation foundation over accepted G22 commit `e027ab6`. The repository
+Development has reached and tested the three-runtime M23 implementation
+foundation over accepted G22 commit `e027ab6`. The repository
 still records 77 of 86 V2 requirements as `PASS`, all six recorded V2 defects as
 `CLOSED`, and all nine `V2-RELEASE-*` requirements as `PLANNED`. The accepted
 follow-up-v2 evidence remains 42/42 with zero classified failures and SHA-256
@@ -314,9 +323,28 @@ Fifteen additional package tests cover canonical identity, strict JSON, complete
 inventories, exact graph semantics, golden recurrence, evaluation links, host
 path leakage, and the C++ load/request boundary.
 
+The next source-integrated foundation applies exactly to accepted M22 source
+tree `f8985045f9ba14bad1e46a81cb58fdbb8037f277` and produces tree
+`df143cb3ad2ada1023ce63c98ec90f941e48afd8`. It preserves the V1 `-A`
+playback entrypoint and the M03 `-B read_fd:write_fd` route while admitting an
+absolute M23 JSON configuration through `openttd -B`. The joint V1/V2 GUI build
+passed all 98 upstream CTests and links ONNX Runtime 1.28.0 and OpenSSL Crypto
+without LibTorch, CUDA, or Python. In a bubblewrap network namespace, OpenTTD
+validated both packages and reproduced all 48 cases and 580 rows with exact
+actions and the same `1.33514e-05` maximum absolute error. The 48 native, 48
+standalone, and 48 source-integrated records total the frozen 144; after removing
+only the runtime label, the standalone and in-game reports are identical. The
+in-game report SHA-256 is
+`23f784c7c29580f4faeceda34ba75bef539bb7c46b1664d87e709ba3949b9532`,
+and the independently revalidated foundation report SHA-256 is
+`7f3794d75a5b736334fd3a34196a1cc9347a952414dcb64cd6f6898a8af1d67a`.
+Fourteen new tests cover patch scope/application, V1/M03 compatibility, the
+inference-only dependency boundary, shared recurrence/output comparison,
+canonical configuration, exact package pinning, and report mutations.
+
 Those measurements are development prototypes, not accepted G23 evidence. The
-remaining work is to integrate and prove the third in-game runtime; prove the
-exact copied checkpoints load and resume at the G23 boundary; add visible
+remaining work is to prove the exact copied checkpoints load and resume at the
+G23 boundary; add visible
 normal-game operation across the retained transport modes and admitted opponents
 with start/stop/reload, health, logs, safe fallback, and actionable rejection
 behavior; complete the operator guide, benchmark, notices, and immutable release
@@ -699,10 +727,12 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   requirement. The next package foundation exact-copies both checkpoint
   inventories and builds both six-file deployment packages twice with identical
   bytes and package IDs. An inference-only C++ loader accepts both packages, and
-  the complete 28-label rejection matrix fails before inference. These remain
-  development identities until the source-integrated in-game runtime, copied-
-  checkpoint resume, visible campaigns, clean-root reproduction, release
-  documentation, manifest, and publication all pass.
+  the complete 28-label rejection matrix fails before inference. The shared
+  inference code then compiles into OpenTTD without training dependencies and
+  matches all 48 cases, bringing the prototype runtime-result total to 144 while
+  preserving V1 `-A` and M03 `-B`. These remain development identities until
+  copied-checkpoint resume, visible campaigns and controls, clean-root
+  reproduction, release documentation, manifest, and publication all pass.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -780,9 +810,9 @@ is also recomputed and required to exit with its distinct evidence-failure statu
 an accidental pass or validation error fails the repository check. The accepted
 follow-up-v2 report is independently recomputed and required to pass, including
 its exact required-program service admission and immutable earlier-suite
-boundaries. At the current M23 foundation boundary the suite passes 601 V2
+boundaries. At the current M23 foundation boundary the suite passes 615 V2
 tests, including the 26 pre-result contract mutations, 17 deployment-source
-mutations, and 15 package/loader tests, plus the unchanged 235-test V1
+mutations, 15 package/loader tests, and 14 source-integrated runtime tests, plus the unchanged 235-test V1
 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
@@ -912,7 +942,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary |
 | V2 generalist learning | Semantic-v2 17-program/seven-stage PPO curriculum, three seeds, matched 1,457,520-parameter learned architectures and non-neural/random/wait baselines, exact recurrent-attention-graph state and update-16 recovery, six accepted 48-update CUDA campaigns, all 36 development candidates eligible, selected-checkpoint retention across all 16 active programs, measured CPU/CUDA batches 1/8/32, and a source-frozen independent 42-case suite with one manifest read, 42 evaluator/native processes, zero retries/replacements/failures, positive paired lower confidence bounds, and profitable road/rail/water/air/multimodal service; immutable final-v1 and follow-up-v1 remain `FAIL` | `M22/G22 PASS`; frozen finite curriculum and independent-suite boundary; zero nonclosed defects; M23 next |
-| V2 packaging, playback, and publication | Pre-result M23 contract and 26 mutation tests freeze both exact checkpoints, two opset-18 packages, 144 three-runtime results, eight visible campaigns, controls/fallback/errors, one complete operator guide, two independent clean-root reproductions, immutable release documentation, full regression, and reviewed tag/assets. The deterministic exporter, native/ORT adapters, independent 48-case corpus, two byte-identical checkpoint/deployment package roots, inference-only C++ package loader, complete 28-label rejection matrix, and 32 implementation tests now pass as nonaccepting foundations | `M23 IN PROGRESS`; standalone equivalence and package prototypes pass; in-game/runtime evidence next; `G23 PLANNED`; 9 requirements remain; no V2 release claim |
+| V2 packaging, playback, and publication | Pre-result M23 contract and 26 mutation tests freeze both exact checkpoints, two opset-18 packages, 144 three-runtime results, eight visible campaigns, controls/fallback/errors, one complete operator guide, two independent clean-root reproductions, immutable release documentation, full regression, and reviewed tag/assets. The deterministic exporter, native/ORT adapters, independent 48-case corpus, two byte-identical checkpoint/deployment package roots, inference-only C++ package loader, complete 28-label rejection matrix, source-integrated OpenTTD runtime, exact 144-result comparison, and 46 implementation tests now pass as nonaccepting foundations | `M23 IN PROGRESS`; package and three-runtime equivalence prototypes pass; visible normal-game controller/campaign evidence next; `G23 PLANNED`; 9 requirements remain; no V2 release claim |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

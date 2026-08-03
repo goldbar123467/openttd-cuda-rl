@@ -156,9 +156,29 @@ Fifteen package tests independently cover canonical identity, exact inventory,
 graph and golden semantics, recurrence, evaluation links, path leakage, and the
 C++ load/request boundary.
 
+The source-integrated implementation foundation now applies one bounded patch
+to accepted M22 tree `f8985045f9ba14bad1e46a81cb58fdbb8037f277`, yielding
+tree `df143cb3ad2ada1023ce63c98ec90f941e48afd8`. It preserves V1 `-A` and
+the M03 `-B read_fd:write_fd` route, while an absolute JSON argument selects the
+M23 `openttd -B` path. The joint build passed all 98 upstream CTests and its
+runtime dependency closure includes ONNX Runtime 1.28.0 and OpenSSL Crypto but
+no LibTorch, CUDA, or Python. A network-isolated OpenTTD process validated both
+development packages and reproduced all 48 cases/580 rows with exact legal
+actions and maximum absolute tensor error `1.33514e-05`. Together with the 48
+native and 48 standalone records, all 144 frozen runtime-case results pass; the
+standalone and in-game reports differ only in their runtime identity. The
+in-game report SHA-256 is
+`23f784c7c29580f4faeceda34ba75bef539bb7c46b1664d87e709ba3949b9532`,
+and the independently validated foundation report SHA-256 is
+`7f3794d75a5b736334fd3a34196a1cc9347a952414dcb64cd6f6898a8af1d67a`.
+Fourteen additional tests cover exact patch scope/application, legacy CLI
+compatibility, shared recurrent/output comparison, configuration and package
+pinning, inference-only build separation, and report rejection mutations.
+
 These are development prototype measurements, not retained G23 evidence. No
-checkpoint package, deployment package, package ID, three-runtime result, visible
-campaign, clean-root result, release manifest, tag, or V2 release has yet been
+checkpoint package, deployment package, package ID, retained three-runtime
+result, visible campaign, clean-root result, release manifest, tag, or V2 release has yet been
 accepted. All nine `V2-RELEASE-*` requirements remain `PLANNED`. Copied-
-checkpoint load/resume and the source-integrated in-game runtime must pass before
-the prototype packages can become retained G23 candidates.
+checkpoint load/resume, the visible controller/controls, eight campaigns, and
+clean-root reproduction must pass before the prototype packages can become
+retained G23 candidates.
