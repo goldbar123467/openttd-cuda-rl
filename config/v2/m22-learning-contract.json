@@ -151,8 +151,8 @@
   "checkpoint": {
     "schema_id":"v2-m22-generalist-checkpoint-v1",
     "boundary":"after-completed-ppo-update-and-retention-check-before-next-rollout",
-    "base_package":"v2-m15-scalable-checkpoint-v1",
-    "additional_inventory":["m22.manifest","trainer-state.bin","selection.json"],
+    "base_package":"atomicity-and-content-addressing-derived-from-v2-m15-scalable-checkpoint-v1",
+    "inventory":["COMMITTED","m22.manifest","model.pt","optimizer.pt","runtime.pt","selection.json","trainer-state.bin"],
     "state":["architecture","model","optimizer","normalization","all-rng-streams","curriculum-stage","environment-case-cursor","episode","transition","completed-updates","recurrent-hidden-state","retention-history","development-selection","all-contract-identities"],
     "atomicity":"new-staging-directory-fsync-content-addressed-rename-never-overwrite",
     "recovery_fork_update":16,

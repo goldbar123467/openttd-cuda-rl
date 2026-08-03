@@ -74,6 +74,10 @@ class M22LearningContractTests(unittest.TestCase):
         value = copy.deepcopy(self.contract); value["curriculum"]["stages"][-1]["programs"].pop()
         self.contract_mutation_fails(value, "every non-WAIT")
 
+    def test_checkpoint_inventory_mutation_fails(self) -> None:
+        value = copy.deepcopy(self.contract); value["checkpoint"]["inventory"].pop()
+        self.contract_mutation_fails(value, "checkpoint schema or exact inventory")
+
     def test_final_seed_mutation_fails(self) -> None:
         value = copy.deepcopy(self.evaluation); value["cases"][0]["seed"] += 1
         self.evaluation_mutation_fails(value, "final seed derivation")

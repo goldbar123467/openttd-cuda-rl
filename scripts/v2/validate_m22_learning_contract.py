@@ -182,6 +182,12 @@ def validate(
             "native corpus boundary drifted")
 
     checkpoint = contract["checkpoint"]
+    require(checkpoint["schema_id"] == "v2-m22-generalist-checkpoint-v1" and checkpoint["inventory"] == [
+        "COMMITTED", "m22.manifest", "model.pt", "optimizer.pt", "runtime.pt", "selection.json", "trainer-state.bin",
+    ], "checkpoint schema or exact inventory drifted")
+    require(checkpoint["boundary"] == "after-completed-ppo-update-and-retention-check-before-next-rollout" and
+            checkpoint["cross_device"] == "canonical-CPU-payload-loadable-to-validated-runtime-device",
+            "checkpoint boundary or cross-device contract drifted")
     require(checkpoint["recovery_fork_update"] + checkpoint["recovery_continue_updates"] <= ppo["updates"],
             "checkpoint recovery continuation exceeds the campaign")
     for state in ("optimizer-semantic-tensors", "all-rng-streams", "case-order", "hidden-state", "checkpoint-semantic-identity"):

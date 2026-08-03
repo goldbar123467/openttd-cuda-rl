@@ -169,6 +169,11 @@ PYTHONPATH="$repository_root/scripts/v2" \
     "$tools_python" "$repository_root/scripts/v2/validate_m22_native_corpus.py" \
     --root "$repository_root"
 
+PYTHONPATH="$repository_root/scripts/v2" \
+    "$tools_python" -c \
+    'import pathlib,sys; import encode_m22_native_corpus as e; root=pathlib.Path(sys.argv[1]); data=e.encode(root); decoded=e.decode(data); print(f"V2_M22_CORPUS_BINARY=PASS entries={len(decoded.entries)} bytes={len(data)}")' \
+    "$repository_root"
+
 "$tools_python" "$repository_root/scripts/v2/validate_traceability.py" \
     --root "$repository_root"
 

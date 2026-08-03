@@ -19,7 +19,7 @@ inline constexpr std::int64_t kM22ModeCount = 7;
 inline constexpr std::int64_t kM22PlannerTokenWidth = 128;
 inline constexpr std::int64_t kM22ParameterCount = 1457520;
 inline constexpr const char *kM22LearningContractSha256 =
-    "8a38b2c72fab412eb4710288ede2fe8c91d9085dc98a09774bde924774dc91f6";
+    "0d47417080e1675ba3040a0eef210fd4cc8c7523b832edfa3d282da7134f6b40";
 
 enum class GeneralistArchitecture : std::uint8_t {
     Monolithic = 0,
