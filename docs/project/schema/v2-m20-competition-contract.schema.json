@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M20 competition contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "version", "identities", "roster", "fairness", "development_qualification", "final_protocol", "probes", "public_observation", "failure_policy", "semantic_replay", "scoring", "acceptance"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m20-competition-contract-1"},
+    "version": {"const": "m20-competition-v1"},
+    "identities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["competition_manifest_sha256", "map_manifest_sha256", "settings_manifest_sha256", "content_manifest_sha256", "policy_contract_sha256"],
+      "properties": {
+        "competition_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "map_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "settings_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "content_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "policy_contract_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "roster": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/opponent"}},
+    "fairness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legs", "same_map_settings_content_and_policy_within_block", "slot_and_delay_symmetry"],
+      "properties": {
+        "legs": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/leg"}},
+        "same_map_settings_content_and_policy_within_block": {"const": true},
+        "slot_and_delay_symmetry": {"const": true}
+      }
+    },
+    "development_qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["split", "calendar_days", "replicates_per_case", "native_runs", "shared_save_load_checkpoint_day", "seed_pairs", "case_counts"],
+      "properties": {
+        "split": {"const": "development"},
+        "calendar_days": {"const": 730},
+        "replicates_per_case": {"const": 2},
+        "native_runs": {"const": 64},
+        "shared_save_load_checkpoint_day": {"const": 700},
+        "seed_pairs": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/seed_pair"}},
+        "case_counts": {
+          "const": {"fault": 2, "head_to_head": 24, "interaction": 2, "mixed_field": 2, "solo": 2, "total": 32}
+        }
+      }
+    },
+    "final_protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["calendar_days", "development_final_separation", "executed_at_m20", "seed_set"],
+      "properties": {
+        "calendar_days": {"const": 3650},
+        "development_final_separation": {"const": true},
+        "executed_at_m20": {"const": false},
+        "seed_set": {"const": "m14-final"}
+      }
+    },
+    "probes": {"type": "object", "additionalProperties": false, "required": ["solo", "head_to_head", "mixed_field", "fault", "interaction"], "properties": {"solo": {"type": "string"}, "head_to_head": {"type": "string"}, "mixed_field": {"type": "string"}, "fault": {"type": "string"}, "interaction": {"type": "string"}}},
+    "public_observation": {"type": "object"},
+    "failure_policy": {"type": "object"},
+    "semantic_replay": {"type": "object"},
+    "scoring": {"type": "object"},
+    "acceptance": {"type": "object"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "opponent": {
+      "type": "object",
+      "required": ["name", "admission", "catalog_package_version", "declared_runtime_version", "package_evidence_sha256", "runtime_evidence_sha256"],
+      "properties": {
+        "name": {"enum": ["AAAHogEx", "KrakenAI2", "NoOpAI"]},
+        "admission": {"enum": ["TOURNAMENT", "CONTROL"]},
+        "catalog_package_version": {"type": "integer", "minimum": 1},
+        "declared_runtime_version": {"type": "integer", "minimum": 1},
+        "package_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "runtime_evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "leg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["leg", "rl_slot", "opponent_slot", "rl_start_delay_days", "opponent_start_delay_days"],
+      "properties": {
+        "leg": {"enum": ["A", "B", "C", "D"]},
+        "rl_slot": {"minimum": 0, "maximum": 1, "type": "integer"},
+        "opponent_slot": {"minimum": 0, "maximum": 1, "type": "integer"},
+        "rl_start_delay_days": {"enum": [0, 365]},
+        "opponent_start_delay_days": {"enum": [0, 365]}
+      }
+    },
+    "seed_pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordinal", "map_seed", "simulation_seed"],
+      "properties": {"ordinal": {"minimum": 0, "type": "integer"}, "map_seed": {"minimum": 0, "type": "integer"}, "simulation_seed": {"minimum": 0, "type": "integer"}}
+    }
+  }
+}

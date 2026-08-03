@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M20 competition source",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "retained_artifact", "base", "source", "patch", "build", "runtime", "executable"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m20-competition-source-1"},
+    "retained_artifact": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a"},
+    "base": {"$ref": "#/$defs/revision"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "commit", "tree"],
+      "properties": {
+        "path": {"const": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/source"},
+        "commit": {"$ref": "#/$defs/sha1"},
+        "tree": {"$ref": "#/$defs/sha1"}
+      }
+    },
+    "patch": {"$ref": "#/$defs/file"},
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cmake_arguments", "open_gfx", "upstream_ctest"],
+      "properties": {
+        "cmake_arguments": {"const": ["-DCMAKE_BUILD_TYPE=RelWithDebInfo", "-DOPTION_RL_ENVIRONMENT=ON", "-DOPTION_RL_NEURAL_AGENT=OFF", "-DOPTION_USE_ASSERTS=ON"]},
+        "open_gfx": {"$ref": "#/$defs/file"},
+        "upstream_ctest": {"const": {"passed": 98, "total": 98}}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["config", "content_manifest", "network_calls"],
+      "properties": {
+        "config": {"$ref": "#/$defs/file"},
+        "content_manifest": {"const": "config/v2/m20-content-manifest.json"},
+        "network_calls": {"const": "none"}
+      }
+    },
+    "executable": {"$ref": "#/$defs/file"}
+  },
+  "$defs": {
+    "sha1": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree"],
+      "properties": {"commit": {"$ref": "#/$defs/sha1"}, "tree": {"$ref": "#/$defs/sha1"}}
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["path", "sha256"],
+      "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/$defs/sha256"}}
+    }
+  }
+}

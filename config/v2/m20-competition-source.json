@@ -1,0 +1,46 @@
+{
+  "base": {
+    "commit": "1b07432dc0a196673a461bb49c7ca59d2175e9bf",
+    "tree": "ada560ed740f522bf7327703201e657503b6f9b9"
+  },
+  "build": {
+    "cmake_arguments": [
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+      "-DOPTION_RL_ENVIRONMENT=ON",
+      "-DOPTION_RL_NEURAL_AGENT=OFF",
+      "-DOPTION_USE_ASSERTS=ON"
+    ],
+    "open_gfx": {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/build-competition/baseset/opengfx-8.0.tar",
+      "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c"
+    },
+    "upstream_ctest": {
+      "passed": 98,
+      "total": 98
+    }
+  },
+  "executable": {
+    "bytes": 420233440,
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/build-competition/openttd",
+    "sha256": "b1904e3ab79dba3854124ac9450b06b9207a12b5f33496454bda24cbf110cc5e"
+  },
+  "patch": {
+    "path": "integration/openttd/patches/15.3/m20/competition/0001-Add-native-V2-competition-qualification.patch",
+    "sha256": "fd259d000ad55dc8e7fb5eb198cc16fa85c992d86b5144ba5f3124e4e3a1c286"
+  },
+  "retained_artifact": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a",
+  "runtime": {
+    "config": {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/openttd.cfg",
+      "sha256": "b23c83b3fd8ad48796ff86f26311670bbddb417a16884e4aea3e3e43587bc69d"
+    },
+    "content_manifest": "config/v2/m20-content-manifest.json",
+    "network_calls": "none"
+  },
+  "schema_version": "openttd-rl-v2-m20-competition-source-1",
+  "source": {
+    "commit": "95af5ebe73d4353e3d50f6bb54c02bb74bf1b8b4",
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/source",
+    "tree": "bca05d858ae5de2a9aa7d3f080ccb2f5677cb7e2"
+  }
+}

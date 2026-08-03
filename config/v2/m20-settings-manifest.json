@@ -1,0 +1,49 @@
+{
+  "ai": {
+    "competitor_speed": 4,
+    "disabled_vehicle_types": [],
+    "maximum_automatic_competitors": 0,
+    "native_company_slots": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "economy": {
+    "breakdowns": "disabled",
+    "disasters": false,
+    "economy_fluctuation": false,
+    "inflation": false,
+    "maximum_loan": 2000000,
+    "timekeeping_units": "calendar"
+  },
+  "game_calendar": {
+    "ending_year": 0,
+    "ending_year_behavior": "disabled-for-headless-qualification"
+  },
+  "linkgraph_distribution": {
+    "armoured": "manual",
+    "default": "manual",
+    "mail": "manual",
+    "passengers": "manual"
+  },
+  "orders": {
+    "gradual_loading": false,
+    "select_goods": false
+  },
+  "schema_version": "openttd-rl-v2-m20-settings-manifest-1",
+  "stations": {
+    "noise_limits": false,
+    "station_spread": 12,
+    "town_council_tolerance": "permissive"
+  },
+  "vehicles": {
+    "maximum_aircraft": 64,
+    "maximum_road_vehicles": 500,
+    "maximum_ships": 64,
+    "maximum_trains": 128,
+    "never_expire": true,
+    "plane_crashes": "disabled"
+  }
+}

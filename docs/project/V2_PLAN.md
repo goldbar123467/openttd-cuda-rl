@@ -9,12 +9,13 @@
 - Machine research baseline: [`config/v2/research-baseline.json`](../../config/v2/research-baseline.json)
 - Pinned setting inventory: [`config/v2/setting-inventory.json`](../../config/v2/setting-inventory.json)
 - Frozen competition protocol: [`config/v2/m14-competition-manifest.json`](../../config/v2/m14-competition-manifest.json)
-- Current gate: [`G19 PASS`](G19_GATE_REPORT.md); stopping point before M20
+- Current gate: [`G20 PASS`](G20_GATE_REPORT.md); main-branch checkpoint before M21
 - M15 contract: [`M15_SCALABLE_CONTRACT.md`](M15_SCALABLE_CONTRACT.md)
 - M16 contract: [`M16_CARGO_INDUSTRY_CONTRACT.md`](M16_CARGO_INDUSTRY_CONTRACT.md)
 - M17 contract: [`M17_RAIL_NETWORK_CONTRACT.md`](M17_RAIL_NETWORK_CONTRACT.md)
 - M18 contract: [`M18_SHIP_WATERWAY_CONTRACT.md`](M18_SHIP_WATERWAY_CONTRACT.md)
 - M19 contract: [`M19_AIR_MULTIMODAL_CONTRACT.md`](M19_AIR_MULTIMODAL_CONTRACT.md)
+- M20 contract: [`M20_COMPETITION_CONTRACT.md`](M20_COMPETITION_CONTRACT.md)
 
 V2 expands V1 to scalable maps, every base-game transport/cargo system,
 multimodal planning and reproducible competition against external OpenTTD AIs.
@@ -168,6 +169,15 @@ solo competence preserved, paired multi-seed results against every qualified aud
 opponent, clear uncertainty intervals and no cherry-picked missing runs. Winning
 every matchup is not required; a truthful reproducible benchmark is.
 
+[`G20_GATE_REPORT.md`](G20_GATE_REPORT.md) records the pass: 32 cases and 64
+native executions cover the complete admitted roster, two development seed pairs,
+four symmetric slot/start-delay legs, solo service, four-company mixed fields,
+opponent fault containment, and native ownership/subsidy/purchase interactions.
+All 32 public save/load and score projections replay exactly and all scheduled
+runs are scored. Unmodified third-party AI decision streams are published as
+stochastic fresh-process replicates rather than being misreported as byte-exact.
+The frozen 3,650-day M14 final protocol remains unexecuted at M20.
+
 ### M21 — Broad base-game, Game Script, NewGRF and event coverage
 
 Required outputs:
@@ -252,16 +262,18 @@ feature does not satisfy V2.
 
 ## Immediate implementation order
 
-M19 is complete and frozen at the requested main-branch checkpoint. M20 is next
+M20 is complete and frozen at the requested main-branch checkpoint. M21 is next
 in dependency order. Its next authorized sequence is:
 
-1. freeze shared-company, slot/start-delay, public-observation, scoring, failure,
-   and tournament-manifest contracts;
-2. extend the native harness for one RL company against one or many isolated
-   NoAI companies on one shared map;
-3. build deterministic solo, head-to-head, round-robin, mixed-field, fault, and
-   paired slot-swap corpora;
-4. prove manifest replay, public-state-only inference, complete scheduled-run
-   accounting, and uncertainty reporting; and
-5. retain the complete G19 air/multimodal, G18 water, G17 rail, G16 cargo, G15
-   scalable/passenger, and V1 compatibility boundaries in every M20 artifact.
+1. freeze the all-climate, calendar, economy-event, Game Script, NewGRF, and
+   capability-discovery contracts;
+2. cross long calendar boundaries for engine/facility introduction, expiry,
+   inflation, recessions, breakdowns, disasters, subsidies, exclusivity, and
+   local-authority behavior;
+3. exercise goals, questions, stories, league tables, save/load, and every
+   script-facing command disposition with pinned Game Script fixtures;
+4. byte-pin the declared compatibility content pack and prove representative
+   tram, cargo, industry, station, object, road, rail, ship, and aircraft
+   capabilities while failing closed on unknown content; and
+5. retain the complete G20 competition and G14-G19/V1 correctness boundaries in
+   every M21 artifact.

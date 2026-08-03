@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenTTD-RL V2 M20 competition evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_root", "contract_sha256", "source_sha256", "executable_sha256", "identities", "execution", "runner_modes", "aggregate", "scoring", "cases", "status"],
+  "properties": {
+    "schema_version": {"const": "openttd-rl-v2-m20-competition-evidence-1"},
+    "artifact_root": {"type": "string"},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "source_sha256": {"$ref": "#/$defs/sha256"},
+    "executable_sha256": {"$ref": "#/$defs/sha256"},
+    "identities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["competition_manifest_sha256", "content_manifest_sha256", "m20_contract_sha256", "map_manifest_sha256", "policy_package_sha256", "settings_manifest_sha256"],
+      "properties": {
+        "competition_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "content_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "m20_contract_sha256": {"$ref": "#/$defs/sha256"},
+        "map_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "policy_package_sha256": {"$ref": "#/$defs/sha256"},
+        "settings_manifest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_ai_decision_stream", "fresh_process_per_run", "network_calls", "process_limits", "sandbox", "shared_native_map"],
+      "properties": {
+        "external_ai_decision_stream": {"const": "stochastic-replicate"},
+        "fresh_process_per_run": {"const": true},
+        "network_calls": {"const": "none"},
+        "process_limits": {"const": true},
+        "sandbox": {"const": "rlimit-only"},
+        "shared_native_map": {"const": true}
+      }
+    },
+    "runner_modes": {"const": ["solo", "head_to_head", "round_robin", "mixed_field", "fault", "interaction"]},
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["all_scheduled_runs_included", "cases", "fault_cases", "head_to_head_cases", "interaction_cases", "maximum_wall_seconds", "mixed_field_cases", "native_runs", "opponents", "projection_replay_exact_cases", "replicates", "seed_blocks", "solo_cases"],
+      "properties": {
+        "all_scheduled_runs_included": {"const": true},
+        "cases": {"const": 32},
+        "fault_cases": {"const": 2},
+        "head_to_head_cases": {"const": 24},
+        "interaction_cases": {"const": 2},
+        "maximum_wall_seconds": {"exclusiveMinimum": 0, "type": "number"},
+        "mixed_field_cases": {"const": 2},
+        "native_runs": {"const": 64},
+        "opponents": {"const": 3},
+        "projection_replay_exact_cases": {"const": 32},
+        "replicates": {"const": 64},
+        "seed_blocks": {"const": 6},
+        "solo_cases": {"const": 2}
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["all_scheduled_runs_included", "bootstrap_resamples", "bootstrap_seed", "confidence", "opponents", "overall_confidence_interval", "overall_mean_company_value_difference", "sample_unit", "universal_victory_required"],
+      "properties": {
+        "all_scheduled_runs_included": {"const": true},
+        "bootstrap_resamples": {"const": 10000},
+        "bootstrap_seed": {"const": 141414},
+        "confidence": {"const": 0.95},
+        "opponents": {"type": "array", "minItems": 3, "maxItems": 3},
+        "overall_confidence_interval": {"$ref": "#/$defs/interval"},
+        "overall_mean_company_value_difference": {"type": "number"},
+        "sample_unit": {"const": "opponent-seed-four-leg-block"},
+        "universal_victory_required": {"const": false}
+      }
+    },
+    "cases": {"type": "array", "minItems": 32, "maxItems": 32, "items": {"$ref": "#/$defs/case"}},
+    "status": {"const": "PASS"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "interval": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+    "replicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "normalized_sha256", "report_path", "report_sha256", "wall_seconds"],
+      "properties": {
+        "name": {"enum": ["a", "b"]},
+        "normalized_sha256": {"$ref": "#/$defs/sha256"},
+        "report_path": {"type": "string"},
+        "report_sha256": {"$ref": "#/$defs/sha256"},
+        "wall_seconds": {"minimum": 0, "type": "number"}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "leg", "map_seed", "probe", "projection_replay_exact", "replicate_metrics", "replicates", "seed_ordinal", "simulation_seed"],
+      "properties": {
+        "case_id": {"type": "string"},
+        "leg": {"type": ["string", "null"]},
+        "map_seed": {"minimum": 0, "type": "integer"},
+        "probe": {"enum": ["solo", "head_to_head", "mixed_field", "fault", "interaction"]},
+        "projection_replay_exact": {"const": true},
+        "replicate_metrics": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "object"}},
+        "replicates": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/replicate"}},
+        "seed_ordinal": {"minimum": 0, "type": "integer"},
+        "simulation_seed": {"minimum": 0, "type": "integer"}
+      }
+    }
+  }
+}

@@ -1,0 +1,883 @@
+From 95af5ebe73d4353e3d50f6bb54c02bb74bf1b8b4 Mon Sep 17 00:00:00 2001
+From: OpenTTD-RL V2 Evidence <openttd-rl-v2@localhost>
+Date: Sun, 2 Aug 2026 20:30:42 -0400
+Subject: [PATCH] Add native V2 competition qualification
+
+---
+ src/CMakeLists.txt        |   2 +
+ src/openttd.cpp           |  28 +-
+ src/rl_v2_competition.cpp | 752 ++++++++++++++++++++++++++++++++++++++
+ src/rl_v2_competition.h   |  15 +
+ 4 files changed, 795 insertions(+), 2 deletions(-)
+ create mode 100644 src/rl_v2_competition.cpp
+ create mode 100644 src/rl_v2_competition.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 1523e1b..ed09c2b 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -68,6 +68,8 @@ add_files(
+     rl_v2_ship.h
+     rl_v2_air.cpp
+     rl_v2_air.h
++    rl_v2_competition.cpp
++    rl_v2_competition.h
+     rl_v2_observation.cpp
+     rl_v2_observation.h
+     CONDITION OPTION_RL_ENVIRONMENT
+diff --git a/src/openttd.cpp b/src/openttd.cpp
+index 845fbbf..f69480a 100644
+--- a/src/openttd.cpp
++++ b/src/openttd.cpp
+@@ -90,6 +90,7 @@
+ #	include "rl_v2_rail.h"
+ #	include "rl_v2_ship.h"
+ #	include "rl_v2_air.h"
++#	include "rl_v2_competition.h"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ #	include "rl_neural_agent.h"
+@@ -442,6 +443,8 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 	std::string rl_v2_ship_report;                 ///< Destination for the M18 ship qualification report.
+ 	std::string rl_v2_air_manifest;                ///< Canonical M19 aircraft qualification manifest.
+ 	std::string rl_v2_air_report;                  ///< Destination for the M19 aircraft qualification report.
++	std::string rl_v2_competition_manifest;        ///< Canonical M20 competition qualification manifest.
++	std::string rl_v2_competition_report;          ///< Destination for the M20 competition qualification report.
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 	std::string rl_neural_agent_config;        ///< Canonical M11 normal-game playback configuration.
+@@ -502,7 +505,16 @@ struct AfterNewGRFScan : NewGRFScanCallback {
+ 		IConsoleCmdExec("exec scripts/autoexec.scr 0");
+ 
+ #ifdef WITH_RL_ENVIRONMENT
+-		if (!rl_v2_air_manifest.empty()) {
++		if (!rl_v2_competition_manifest.empty()) {
++			try {
++				RunRlV2CompetitionQualification(rl_v2_competition_manifest, rl_v2_competition_report);
++			} catch (const std::exception &e) {
++				fmt::print(stderr, "{}\n", e.what());
++				UserError("{}", e.what());
++			}
++			_save_config = false;
++			_exit_game = true;
++		} else if (!rl_v2_air_manifest.empty()) {
+ 			try {
+ 				RunRlV2AirQualification(rl_v2_air_manifest, rl_v2_air_report);
+ 			} catch (const std::exception &e) {
+@@ -624,7 +636,7 @@ static std::vector<OptionData> CreateOptions()
+ 	/* Options that require a parameter. */
+ 	for (char c : "GIMSbcmnpqrstv"
+ #ifdef WITH_RL_ENVIRONMENT
+-			"BCEFHJKLNOPRTUWYZVuwaz"
++			"BCEFHJKLNOPRTUWYZViuwazy"
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 			"A"
+@@ -823,6 +835,8 @@ int openttd_main(std::span<std::string_view> arguments)
+ 		case 'w': scanner->rl_v2_ship_report = mgo.opt; break;
+ 		case 'a': scanner->rl_v2_air_manifest = mgo.opt; break;
+ 		case 'z': scanner->rl_v2_air_report = mgo.opt; break;
++		case 'i': scanner->rl_v2_competition_manifest = mgo.opt; break;
++		case 'y': scanner->rl_v2_competition_report = mgo.opt; break;
+ #endif
+ #ifdef WITH_RL_NEURAL_AGENT
+ 		case 'A': scanner->rl_neural_agent_config = mgo.opt; break;
+@@ -853,6 +867,16 @@ int openttd_main(std::span<std::string_view> arguments)
+ 	}
+ 
+ #ifdef WITH_RL_ENVIRONMENT
++	if (scanner->rl_v2_competition_manifest.empty() != scanner->rl_v2_competition_report.empty()) {
++		fmt::print(stderr, "M20 competition qualification requires both -i <manifest> and -y <report>\n");
++		return 1;
++	}
++	if (!scanner->rl_v2_competition_manifest.empty() && (!scanner->rl_v2_air_manifest.empty() || !scanner->rl_v2_ship_manifest.empty() ||
++			scanner->rl_v2_rail_manifest.empty() == false || !scanner->rl_v2_cargo_manifest.empty() || !scanner->rl_v2_reset_manifest.empty() ||
++			!scanner->rl_bridge_descriptors.empty() || !scanner->rl_scenario_instance.empty() || dedicated || !scanner->connection_string.empty())) {
++		fmt::print(stderr, "M20 competition qualification forbids earlier qualification, bridge/scenario, dedicated, and networking modes\n");
++		return 1;
++	}
+ 	if (scanner->rl_v2_air_manifest.empty() != scanner->rl_v2_air_report.empty()) {
+ 		fmt::print(stderr, "M19 aircraft qualification requires both -a <manifest> and -z <report>\n");
+ 		return 1;
+diff --git a/src/rl_v2_competition.cpp b/src/rl_v2_competition.cpp
+new file mode 100644
+index 0000000..fbe39b4
+--- /dev/null
++++ b/src/rl_v2_competition.cpp
+@@ -0,0 +1,752 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_competition.cpp Native V2 M20 shared-company qualification. */
++
++#include "stdafx.h"
++
++#include "rl_v2_competition.h"
++
++#include "3rdparty/nlohmann/json.hpp"
++#include "ai/ai_config.hpp"
++#include "ai/ai_info.hpp"
++#include "aircraft.h"
++#include "airport.h"
++#include "articulated_vehicles.h"
++#include "cargopacket.h"
++#include "cargotype.h"
++#include "command_func.h"
++#include "company_base.h"
++#include "company_cmd.h"
++#include "core/backup_type.hpp"
++#include "core/random_func.hpp"
++#include "economy_cmd.h"
++#include "engine_base.h"
++#include "genworld.h"
++#include "game/game_config.hpp"
++#include "industry.h"
++#include "misc_cmd.h"
++#include "newgrf_airport.h"
++#include "openttd.h"
++#include "order_base.h"
++#include "order_cmd.h"
++#include "progress.h"
++#include "rl_v2_cargo.h"
++#include "saveload/saveload.h"
++#include "script/api/script_object.hpp"
++#include "settings_type.h"
++#include "station_base.h"
++#include "station_cmd.h"
++#include "station_map.h"
++#include "subsidy_base.h"
++#include "subsidy_cmd.h"
++#include "timer/timer_game_calendar.h"
++#include "town.h"
++#include "vehicle_base.h"
++#include "vehicle_cmd.h"
++#include "vehicle_func.h"
++
++#include <algorithm>
++#include <array>
++#include <filesystem>
++#include <fstream>
++#include <numeric>
++#include <optional>
++#include <set>
++#include <stdexcept>
++#include <string_view>
++#include <vector>
++
++#include "safeguards.h"
++
++using nlohmann::json;
++
++extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = CompanyID::Invalid());
++extern void MakeNewgameSettingsLive();
++
++namespace {
++
++static constexpr std::string_view MANIFEST_SCHEMA = "openttd-rl-v2-m20-competition-run-1";
++static constexpr std::string_view REPORT_SCHEMA = "openttd-rl-v2-m20-competition-report-1";
++static constexpr uint MAP_SIDE = 128;
++static constexpr uint MAX_CALENDAR_DAYS = 730;
++
++struct OpponentRequest {
++	std::string name;
++	int version;
++	CompanyID slot;
++	uint start_delay_days;
++	std::string package_evidence_sha256;
++	std::string runtime_evidence_sha256;
++};
++
++struct Request {
++	std::string run_id;
++	std::string probe;
++	std::string split;
++	uint32_t map_seed;
++	uint32_t simulation_seed;
++	std::string competition_manifest_sha256;
++	std::string m20_contract_sha256;
++	std::string map_manifest_sha256;
++	std::string settings_manifest_sha256;
++	std::string content_manifest_sha256;
++	std::string engine_source_tree;
++	std::string executable_sha256;
++	std::string policy_package_sha256;
++	CompanyID rl_slot;
++	uint rl_start_delay_days;
++	uint calendar_days;
++	std::vector<OpponentRequest> opponents;
++};
++
++struct AirService {
++	VehicleID vehicle = VehicleID::Invalid();
++	StationID source = StationID::Invalid();
++	StationID destination = StationID::Invalid();
++	CargoType cargo = INVALID_CARGO;
++	uint capacity = 0;
++};
++
++[[noreturn]] static void Fail(std::string_view message)
++{
++	throw std::runtime_error(fmt::format("M20 competition qualification: {}", message));
++}
++
++static void Require(bool condition, std::string_view message)
++{
++	if (!condition) Fail(message);
++}
++
++static json ReadCanonicalJson(const std::string &path)
++{
++	std::ifstream input(path, std::ios::binary);
++	if (!input) Fail(fmt::format("cannot open manifest '{}'", path));
++	std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
++	Require(!bytes.empty() && bytes.back() == '\n', "manifest must end with one LF");
++	bytes.pop_back();
++	Require(!bytes.empty() && bytes.back() != '\n' && bytes.back() != '\r', "manifest has trailing whitespace");
++	json value;
++	try {
++		value = json::parse(bytes);
++	} catch (const json::exception &e) {
++		Fail(fmt::format("invalid manifest JSON: {}", e.what()));
++	}
++	Require(value.dump() == bytes, "manifest must be canonical compact JSON followed by LF");
++	return value;
++}
++
++static void WriteCanonicalNew(const std::string &path, const json &value)
++{
++	std::filesystem::path output(path);
++	Require(output.is_absolute() && !std::filesystem::exists(output), "report must be a new absolute path");
++	std::ofstream stream(output, std::ios::binary | std::ios::out | std::ios::trunc);
++	Require(stream.good(), fmt::format("cannot create report '{}'", path));
++	stream << value.dump() << '\n';
++	stream.flush();
++	Require(stream.good(), fmt::format("cannot write report '{}'", path));
++}
++
++static bool SafeName(std::string_view value)
++{
++	return !value.empty() && value.size() <= 96 && std::ranges::all_of(value, [](char c) {
++		return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
++	});
++}
++
++static bool IsSha256(std::string_view value)
++{
++	return value.size() == 64 && std::ranges::all_of(value, [](char c) {
++		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++	});
++}
++
++static CargoLabel LabelFromText(std::string_view label)
++{
++	Require(label.size() == 4, "cargo label must contain four bytes");
++	return CargoLabel{static_cast<uint32_t>(static_cast<uint8_t>(label[0])) << 24 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[1])) << 16 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[2])) << 8 |
++		static_cast<uint32_t>(static_cast<uint8_t>(label[3]))};
++}
++
++static Request Validate(const json &manifest)
++{
++	Require(manifest.is_object() && manifest.size() == 18, "manifest must contain exactly eighteen fields");
++	Require(manifest.at("schema_version") == MANIFEST_SCHEMA, "unsupported manifest schema_version");
++	Request request{
++		manifest.at("run_id").get<std::string>(),
++		manifest.at("probe").get<std::string>(),
++		manifest.at("split").get<std::string>(),
++		manifest.at("map_seed").get<uint32_t>(),
++		manifest.at("simulation_seed").get<uint32_t>(),
++		manifest.at("competition_manifest_sha256").get<std::string>(),
++		manifest.at("m20_contract_sha256").get<std::string>(),
++		manifest.at("map_manifest_sha256").get<std::string>(),
++		manifest.at("settings_manifest_sha256").get<std::string>(),
++		manifest.at("content_manifest_sha256").get<std::string>(),
++		manifest.at("engine_source_tree").get<std::string>(),
++		manifest.at("executable_sha256").get<std::string>(),
++		manifest.at("policy_package_sha256").get<std::string>(),
++		CompanyID{manifest.at("rl_slot").get<uint8_t>()},
++		manifest.at("rl_start_delay_days").get<uint>(),
++		manifest.at("calendar_days").get<uint>(),
++		{},
++	};
++	Require(SafeName(request.run_id), "invalid run_id");
++	Require(request.probe == "solo" || request.probe == "head_to_head" || request.probe == "mixed_field" ||
++		request.probe == "fault" || request.probe == "interaction", "unknown competition probe");
++	Require(request.split == "development", "M20 qualification runs must use the development split");
++	Require(IsSha256(request.competition_manifest_sha256) && IsSha256(request.m20_contract_sha256) &&
++		IsSha256(request.map_manifest_sha256) && IsSha256(request.settings_manifest_sha256) &&
++		IsSha256(request.content_manifest_sha256) && IsSha256(request.executable_sha256) && IsSha256(request.policy_package_sha256),
++		"competition, contract, map, settings, content, executable, and policy identities must be SHA-256");
++	Require(request.engine_source_tree.size() == 40 && std::ranges::all_of(request.engine_source_tree, [](char c) {
++		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++	}), "engine_source_tree must be a lowercase Git tree identity");
++	Require(request.rl_slot < MAX_COMPANIES && (request.rl_slot == CompanyID{0} || request.rl_slot == CompanyID{1} ||
++		request.rl_slot == CompanyID{2} || request.rl_slot == CompanyID{3}), "rl_slot must be 0..3");
++	Require(request.rl_start_delay_days == 0 || request.rl_start_delay_days == 365, "RL start delay must be 0 or 365 days");
++	Require(request.calendar_days >= 20 && request.calendar_days <= MAX_CALENDAR_DAYS, "calendar_days is outside 20..730");
++
++	Require(manifest.at("opponents").is_array(), "opponents must be an array");
++	std::set<uint8_t> slots{request.rl_slot.base()};
++	std::set<std::string> names;
++	for (const json &item : manifest.at("opponents")) {
++		Require(item.is_object() && item.size() == 6, "opponent entry must contain exactly six fields");
++		OpponentRequest opponent{
++			item.at("name").get<std::string>(), item.at("version").get<int>(), CompanyID{item.at("slot").get<uint8_t>()},
++			item.at("start_delay_days").get<uint>(), item.at("package_evidence_sha256").get<std::string>(),
++			item.at("runtime_evidence_sha256").get<std::string>(),
++		};
++		bool identity = (opponent.name == "AAAHogEx" && opponent.version == 115) ||
++			(opponent.name == "KrakenAI2" && opponent.version == 3) || (opponent.name == "NoOpAI" && opponent.version == 3);
++		Require(identity, "opponent is outside the frozen qualified roster");
++		Require(opponent.slot < MAX_COMPANIES && opponent.slot.base() <= 3 && slots.insert(opponent.slot.base()).second,
++			"opponent slot is invalid, duplicated, or collides with RL");
++		Require(names.insert(opponent.name).second, "opponent roster contains a duplicate name");
++		Require(opponent.start_delay_days == 0 || opponent.start_delay_days == 365, "opponent start delay must be 0 or 365 days");
++		Require(IsSha256(opponent.package_evidence_sha256) && IsSha256(opponent.runtime_evidence_sha256),
++			"opponent evidence identities must be SHA-256");
++		Require(request.calendar_days >= opponent.start_delay_days + 30, "opponent lacks thirty post-delay qualification days");
++		request.opponents.push_back(std::move(opponent));
++	}
++	Require(request.calendar_days >= request.rl_start_delay_days + 30, "RL lacks thirty post-delay qualification days");
++	if (request.probe == "solo") Require(request.opponents.empty(), "solo probe cannot include opponents");
++	if (request.probe == "head_to_head" || request.probe == "fault" || request.probe == "interaction") {
++		Require(request.opponents.size() == 1, "single-opponent probe requires exactly one opponent");
++	}
++	if (request.probe == "interaction") {
++		Require(request.rl_start_delay_days == 0 && request.opponents[0].start_delay_days == 0,
++			"interaction probe requires both participants at day zero");
++	}
++	if (request.probe == "mixed_field") Require(request.opponents.size() == 3, "mixed-field probe requires the complete three-opponent roster");
++	return request;
++}
++
++static void Configure(const Request &request)
++{
++	_settings_newgame.game_creation.generation_seed = request.map_seed;
++	_settings_newgame.game_creation.starting_year = TimerGameCalendar::Year{2050};
++	_settings_newgame.game_creation.ending_year = TimerGameCalendar::Year{0};
++	_settings_newgame.game_creation.map_x = 7;
++	_settings_newgame.game_creation.map_y = 7;
++	_settings_newgame.game_creation.landscape = LandscapeType::Temperate;
++	_settings_newgame.game_creation.se_flat_world_height = 1;
++	_settings_newgame.game_creation.custom_town_number = 16;
++	_settings_newgame.game_creation.custom_industry_number = 24;
++	_settings_newgame.difficulty.number_towns = CUSTOM_TOWN_NUMBER_DIFFICULTY;
++	_settings_newgame.difficulty.industry_density = ID_NORMAL;
++	_settings_newgame.difficulty.max_no_competitors = 0;
++	_settings_newgame.difficulty.competitors_interval = 0;
++	_settings_newgame.difficulty.max_loan = 2000000;
++	_settings_newgame.difficulty.competitor_speed = 4;
++	_settings_newgame.difficulty.vehicle_breakdowns = 0;
++	_settings_newgame.difficulty.disasters = false;
++	_settings_newgame.difficulty.economy = false;
++	_settings_newgame.difficulty.town_council_tolerance = TOWN_COUNCIL_PERMISSIVE;
++	_settings_newgame.ai.ai_disable_veh_train = false;
++	_settings_newgame.ai.ai_disable_veh_roadveh = false;
++	_settings_newgame.ai.ai_disable_veh_aircraft = false;
++	_settings_newgame.ai.ai_disable_veh_ship = false;
++	_settings_newgame.economy.inflation = false;
++	_settings_newgame.economy.town_layout = TL_ORIGINAL;
++	_settings_newgame.economy.timekeeping_units = TKU_CALENDAR;
++	_settings_newgame.economy.station_noise_level = false;
++	_settings_newgame.linkgraph.distribution_pax = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_mail = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_armoured = DT_MANUAL;
++	_settings_newgame.linkgraph.distribution_default = DT_MANUAL;
++	_settings_newgame.order.gradual_loading = false;
++	_settings_newgame.order.selectgoods = false;
++	_settings_newgame.station.station_spread = 12;
++	_settings_newgame.vehicle.max_aircraft = 64;
++	_settings_newgame.vehicle.plane_crashes = 0;
++	_settings_newgame.vehicle.max_roadveh = 500;
++	_settings_newgame.vehicle.max_ships = 64;
++	_settings_newgame.vehicle.max_trains = 128;
++	_settings_newgame.vehicle.never_expire_vehicles = true;
++	for (CompanyID id = CompanyID::Begin(); id < MAX_COMPANIES; ++id) _settings_newgame.script_config.ai[id].reset();
++	_settings_newgame.script_config.game.reset();
++	MakeNewgameSettingsLive();
++}
++
++static void ResetWorld(const Request &request)
++{
++	Configure(request);
++	_random.SetSeed(request.map_seed);
++	_interactive_random.SetSeed(request.map_seed ^ 0x4d415021U);
++	_game_mode = GM_NORMAL;
++	_switch_mode = SM_NONE;
++	SetModalProgress(false);
++	GenerateWorld(GWM_NEWGAME, MAP_SIDE, MAP_SIDE, false);
++	_random.SetSeed(request.simulation_seed ^ 0x4d323043U);
++	_interactive_random.SetSeed(request.simulation_seed ^ 0x434f4d50U);
++	ScriptObject::InitializeRandomizers();
++	Require(Map::SizeX() == MAP_SIDE && Map::SizeY() == MAP_SIDE, "qualification map has wrong dimensions");
++	Require(Town::GetNumItems() >= 8 && Industry::GetNumItems() >= 4, "shared map lacks generated towns or industries");
++	Require(Company::GetNumItems() == 0, "shared map unexpectedly created companies");
++}
++
++static void FundCompany(CompanyID company, Money amount)
++{
++	AutoRestoreBackup current(_current_company, OWNER_DEITY);
++	CommandCost result = Command<CMD_CHANGE_BANK_BALANCE>::Do(DoCommandFlag::Execute, TileIndex{}, amount, company, EXPENSES_OTHER);
++	Require(result.Succeeded(), "deity qualification funding failed");
++}
++
++static Company *StartRl(const Request &request, json &events)
++{
++	Company *company = DoStartupNewCompany(false, request.rl_slot);
++	Require(company != nullptr && company->index == request.rl_slot && !company->is_ai, "failed to create RL company in requested slot");
++	SetLocalCompany(request.rl_slot);
++	_current_company = request.rl_slot;
++	FundCompany(request.rl_slot, Money{10000000});
++	events.push_back({{"day", request.rl_start_delay_days}, {"kind", "rl_started"}, {"slot", request.rl_slot.base()}});
++	return company;
++}
++
++static Company *StartOpponent(const OpponentRequest &opponent, uint day, json &events)
++{
++	AIConfig *config = AIConfig::GetConfig(opponent.slot, AIConfig::SSS_FORCE_GAME);
++	Require(config != nullptr, "AI config allocation failed");
++	config->Change(opponent.name, opponent.version, true);
++	Require(config->GetInfo() != nullptr && config->GetInfo()->GetName() == opponent.name && config->GetInfo()->GetVersion() == opponent.version,
++		fmt::format("exact AI package is unavailable: {} v{}", opponent.name, opponent.version));
++	Company *company = DoStartupNewCompany(true, opponent.slot);
++	Require(company != nullptr && company->index == opponent.slot && company->is_ai && company->ai_instance != nullptr,
++		fmt::format("failed to start opponent {}", opponent.name));
++	if (!Company::IsValidID(_local_company)) SetLocalCompany(opponent.slot);
++	events.push_back({{"day", day}, {"kind", "opponent_started"}, {"name", opponent.name}, {"slot", opponent.slot.base()}, {"version", opponent.version}});
++	return company;
++}
++
++static StationID BuildAirportAt(TileIndex tile, uint8_t type)
++{
++	CommandCost test = Command<CMD_BUILD_AIRPORT>::Do({}, tile, type, 0, NEW_STATION, false);
++	Require(test.Succeeded(), "selected airport site no longer passes native test mode");
++	CommandCost execute = Command<CMD_BUILD_AIRPORT>::Do(DoCommandFlag::Execute, tile, type, 0, NEW_STATION, false);
++	Require(execute.Succeeded() && IsAirportTile(tile), "native airport execution failed");
++	return GetStationIndex(tile);
++}
++
++static std::optional<TileIndex> FindAirportSite(uint8_t type, std::optional<TileIndex> distant_from)
++{
++	const AirportSpec *spec = AirportSpec::Get(type);
++	for (uint y = 2; y + spec->size_y + 2 < Map::SizeY(); ++y) {
++		for (uint x = 2; x + spec->size_x + 2 < Map::SizeX(); ++x) {
++			TileIndex tile = TileXY(x, y);
++			if (TileHeight(tile) < 2) continue;
++			if (distant_from.has_value()) {
++				uint distance = DistanceManhattan(tile, *distant_from);
++				if (distance < 16) continue;
++			}
++			if (Command<CMD_BUILD_AIRPORT>::Do({}, tile, type, 0, NEW_STATION, false).Succeeded()) return tile;
++		}
++	}
++	return std::nullopt;
++}
++
++static AirService StartAirService(const Request &request, json &events)
++{
++	_current_company = request.rl_slot;
++	SetLocalCompany(request.rl_slot);
++	CargoType cargo = GetCargoTypeByLabel(LabelFromText("PASS"));
++	Require(IsValidCargoType(cargo), "passenger cargo is unavailable");
++	uint8_t airport_type = AT_METROPOLITAN;
++	auto source_tile = FindAirportSite(airport_type, std::nullopt);
++	Require(source_tile.has_value(), "no native-legal source airport site exists");
++	StationID source = BuildAirportAt(*source_tile, airport_type);
++	auto destination_tile = FindAirportSite(airport_type, source_tile);
++	Require(destination_tile.has_value(), "no native-legal distant destination airport site exists");
++	StationID destination = BuildAirportAt(*destination_tile, airport_type);
++	const Station *source_station = Station::Get(source);
++	Require(source_station->airport.GetNumHangars() > 0, "source airport has no hangar");
++	TileIndex hangar = source_station->airport.GetHangarTile(0);
++
++	VehicleID vehicle = VehicleID::Invalid();
++	uint capacity = 0;
++	for (const Engine *engine : Engine::IterateType(VEH_AIRCRAFT)) {
++		const AircraftVehicleInfo &info = engine->VehInfo<AircraftVehicleInfo>();
++		if ((info.subtype & AIR_CTOL) == 0 || !engine->company_avail.Test(request.rl_slot) || !engine->CanCarryCargo()) continue;
++		if (!HasBit(GetUnionOfArticulatedRefitMasks(engine->index, true), cargo) || !CanVehicleUseStation(engine->index, source_station)) continue;
++		auto build = Command<CMD_BUILD_VEHICLE>::Do(DoCommandFlag::Execute, hangar, engine->index, true, cargo, INVALID_CLIENT_ID);
++		if (std::get<0>(build).Failed()) continue;
++		vehicle = std::get<1>(build);
++		auto refit = Command<CMD_REFIT_VEHICLE>::Do(DoCommandFlag::Execute, vehicle, cargo, 0, false, false, 0);
++		Require(std::get<0>(refit).Succeeded(), "RL aircraft refit failed");
++		capacity = Aircraft::Get(vehicle)->cargo_cap;
++		break;
++	}
++	Require(Vehicle::IsValidID(vehicle) && capacity > 0, "no native aircraft could be built for RL service");
++	std::array<StationID, 2> stations{destination, source};
++	for (uint8_t ordinal = 0; ordinal < stations.size(); ++ordinal) {
++		Order order;
++		order.MakeGoToStation(stations[ordinal]);
++		order.SetStopLocation(OrderStopLocation::FarEnd);
++		Require(Command<CMD_INSERT_ORDER>::Do(DoCommandFlag::Execute, vehicle, VehicleOrderID{ordinal}, order).Succeeded(),
++			"RL aircraft order insertion failed");
++	}
++	Require(Vehicle::Get(vehicle)->GetNumOrders() == stations.size(), "RL aircraft order list did not retain both stations");
++	Require(CargoPacket::CanAllocateItem(), "cargo packet pool is full");
++	GoodsEntry &goods = Station::Get(source)->goods[cargo];
++	goods.rating = 255;
++	goods.status.Set(GoodsEntry::State::Rating);
++	Source cargo_source{Town::Get(TownID{0})->index, SourceType::Town};
++	goods.GetOrCreateData().cargo.Append(new CargoPacket(source, static_cast<uint16_t>(capacity), cargo_source), StationID::Invalid());
++	Vehicle *unit = Vehicle::Get(vehicle);
++	std::array<StationID, 1> next{destination};
++	uint loaded = goods.GetOrCreateData().cargo.Load(capacity, &unit->cargo, next, Station::Get(source)->xy);
++	Require(loaded == capacity, "RL aircraft loading lost qualification cargo");
++	RlV2SetQualificationAcceptance(destination, cargo, true);
++	Station::Get(destination)->goods[cargo].status.Set(GoodsEntry::State::Acceptance);
++	SetBit(Station::Get(destination)->always_accepted, cargo);
++	Require(Command<CMD_START_STOP_VEHICLE>::Do(DoCommandFlag::Execute, vehicle, false).Succeeded(), "RL aircraft start failed");
++	events.push_back({{"capacity", capacity}, {"day", request.rl_start_delay_days}, {"destination", destination.base()},
++		{"kind", "rl_service_started"}, {"source", source.base()}, {"vehicle", vehicle.base()}});
++	return {vehicle, source, destination, cargo, capacity};
++}
++
++static uint64_t DeliveredTotal(const Company *company)
++{
++	uint64_t total = std::accumulate(company->cur_economy.delivered_cargo.begin(), company->cur_economy.delivered_cargo.end(), uint64_t{0});
++	for (uint index = 0; index < company->num_valid_stat_ent; ++index) {
++		total += std::accumulate(company->old_economy[index].delivered_cargo.begin(),
++			company->old_economy[index].delivered_cargo.end(), uint64_t{0});
++	}
++	return total;
++}
++
++static Money OperatingProfitTotal(const Company *company)
++{
++	Money total = company->cur_economy.income + company->cur_economy.expenses;
++	for (uint index = 0; index < company->num_valid_stat_ent; ++index) {
++		total += company->old_economy[index].income + company->old_economy[index].expenses;
++	}
++	return total;
++}
++
++static Money IncomeTotal(const Company *company)
++{
++	Money total = company->cur_economy.income;
++	for (uint index = 0; index < company->num_valid_stat_ent; ++index) total += company->old_economy[index].income;
++	return total;
++}
++
++static json PublicCompany(CompanyID slot)
++{
++	const Company *company = Company::GetIfValid(slot);
++	if (company == nullptr) return {{"alive", false}, {"company_id", slot.base()}};
++	std::array<uint32_t, 4> vehicles{};
++	uint32_t crashed = 0;
++	for (const Vehicle *vehicle : Vehicle::Iterate()) {
++		if (vehicle->owner != slot || !vehicle->IsPrimaryVehicle()) continue;
++		if (vehicle->type < VEH_COMPANY_END) ++vehicles[vehicle->type];
++		if (vehicle->vehstatus.Test(VehState::Crashed)) ++crashed;
++	}
++	uint32_t stations = 0;
++	uint64_t waiting = 0;
++	for (const Station *station : Station::Iterate()) {
++		if (station->owner != slot) continue;
++		++stations;
++		for (CargoType cargo = 0; cargo < NUM_CARGO; ++cargo) {
++			if (!IsValidCargoType(cargo)) continue;
++			waiting += station->goods[cargo].AvailableCount();
++		}
++	}
++	uint32_t subsidies = 0;
++	for (const Subsidy *subsidy : Subsidy::Iterate()) if (subsidy->awarded == slot) ++subsidies;
++	return {
++		{"alive", true}, {"aircraft", vehicles[VEH_AIRCRAFT]}, {"company_id", slot.base()},
++		{"company_value", CalculateCompanyValue(company).base()}, {"crashed_vehicles", crashed},
++		{"delivered_cargo_units", DeliveredTotal(company)}, {"infrastructure", {
++			{"airports", company->infrastructure.airport}, {"rail", company->infrastructure.GetRailTotal()},
++			{"road", company->infrastructure.GetRoadTotal()}, {"signals", company->infrastructure.signal},
++			{"station_tiles", company->infrastructure.station}, {"water", company->infrastructure.water}}},
++		{"is_ai", company->is_ai}, {"loan", company->current_loan.base()}, {"money", company->money.base()},
++		{"operating_profit", OperatingProfitTotal(company).base()},
++		{"performance", company->cur_economy.performance_history}, {"road_vehicles", vehicles[VEH_ROAD]},
++		{"ships", vehicles[VEH_SHIP]}, {"stations", stations}, {"subsidies_awarded", subsidies},
++		{"trains", vehicles[VEH_TRAIN]}, {"waiting_cargo_units", waiting},
++	};
++}
++
++static json PublicSnapshot(const Request &request)
++{
++	json companies = json::array();
++	companies.push_back(PublicCompany(request.rl_slot));
++	for (const OpponentRequest &opponent : request.opponents) companies.push_back(PublicCompany(opponent.slot));
++	std::sort(companies.begin(), companies.end(), [](const json &a, const json &b) {
++		return a.at("company_id").get<uint8_t>() < b.at("company_id").get<uint8_t>();
++	});
++	return {
++		{"companies", std::move(companies)},
++		{"map", {{"height", Map::SizeY()}, {"industries", Industry::GetNumItems()}, {"towns", Town::GetNumItems()}, {"width", Map::SizeX()}}},
++	};
++}
++
++static json Score(const Request &request)
++{
++	json rl = PublicCompany(request.rl_slot);
++	json opponents = json::array();
++	for (const OpponentRequest &opponent : request.opponents) {
++		json public_state = PublicCompany(opponent.slot);
++		int64_t opponent_value = public_state.at("alive").get<bool>() ? public_state.at("company_value").get<int64_t>() : 0;
++		opponents.push_back({
++			{"company_value_difference", rl.at("company_value").get<int64_t>() - opponent_value},
++			{"name", opponent.name}, {"public_state", std::move(public_state)},
++		});
++	}
++	return {{"opponents", std::move(opponents)}, {"rl", std::move(rl)}};
++}
++
++static json RunInteraction(const Request &request, uint day, json &events)
++{
++	Require(!request.opponents.empty() && Company::IsValidID(request.rl_slot) && Company::IsValidID(request.opponents[0].slot),
++		"interaction probe lacks live companies");
++	CargoType cargo = GetCargoTypeByLabel(LabelFromText("PASS"));
++	Require(IsValidCargoType(cargo) && Town::GetNumItems() >= 2, "interaction subsidy prerequisites are absent");
++	{
++		AutoRestoreBackup current(_current_company, OWNER_DEITY);
++		Source source{TownID{0}.base(), SourceType::Town};
++		Source destination{TownID{1}.base(), SourceType::Town};
++		Require(Command<CMD_CREATE_SUBSIDY>::Do(DoCommandFlag::Execute, cargo, source, destination).Succeeded(),
++			"native subsidy creation failed");
++	}
++	Subsidy *subsidy = *Subsidy::Iterate().begin();
++	subsidy->AwardTo(request.rl_slot);
++	Require(subsidy->awarded == request.rl_slot, "native subsidy award state diverged");
++	CompanyID target = request.opponents[0].slot;
++	json target_before = PublicCompany(target);
++	const Vehicle *target_vehicle = nullptr;
++	for (const Vehicle *vehicle : Vehicle::Iterate()) {
++		if (vehicle->owner == target && vehicle->IsPrimaryVehicle()) {
++			target_vehicle = vehicle;
++			break;
++		}
++	}
++	Require(target_vehicle != nullptr, "interaction target has no native vehicle for ownership-collision probe");
++	_current_company = request.rl_slot;
++	SetLocalCompany(request.rl_slot);
++	Require(Command<CMD_START_STOP_VEHICLE>::Do({}, target_vehicle->index, false).Failed(),
++		"cross-company vehicle-control collision was not rejected");
++	events.push_back({{"day", day}, {"kind", "ownership_collision_rejected"}, {"owner", target.base()},
++		{"requester", request.rl_slot.base()}, {"vehicle", target_vehicle->index.base()}});
++	FundCompany(request.rl_slot, Money{100000000});
++	_current_company = request.rl_slot;
++	SetLocalCompany(request.rl_slot);
++	CommandCost takeover_test = Command<CMD_BUY_COMPANY>::Do({}, target, true);
++	Require(takeover_test.Succeeded(), "native hostile-takeover test rejected qualified target");
++	CommandCost takeover = Command<CMD_BUY_COMPANY>::Do(DoCommandFlag::Execute, target, true);
++	Require(takeover.Succeeded() && !Company::IsValidID(target) && Company::IsValidID(request.rl_slot),
++		"native hostile takeover did not merge target into RL company");
++	events.push_back({{"day", day}, {"kind", "subsidy_awarded"}, {"slot", request.rl_slot.base()}, {"subsidy", subsidy->index.base()}});
++	events.push_back({{"cost", takeover.GetCost().base()}, {"day", day}, {"kind", "company_acquired"},
++		{"purchaser", request.rl_slot.base()}, {"target", target.base()}});
++	return {{"collision_disposition", {{"crashed_vehicles_scored", true}, {"ownership_collision_rejected", true},
++			{"physical_plane_crashes_disabled", true}}}, {"subsidy_awarded", true}, {"takeover_cost", takeover.GetCost().base()},
++		{"target_before", std::move(target_before)}, {"target_removed", true}};
++}
++
++static json Run(const Request &request, const std::string &save_path)
++{
++	ResetWorld(request);
++	json events = json::array();
++	std::vector<bool> opponent_started(request.opponents.size(), false);
++	bool rl_started = false;
++	bool service_started = false;
++	bool fault_injected = false;
++	bool save_load_complete = false;
++	uint64_t save_bytes = 0;
++	json interaction = nullptr;
++	AirService service;
++	static constexpr uint CHECKPOINT_DAY = 700;
++	Require(std::filesystem::path(save_path).is_absolute() && !std::filesystem::exists(save_path), "save path is invalid or already exists");
++	uint64_t total_ticks = static_cast<uint64_t>(request.calendar_days) * Ticks::DAY_TICKS;
++	for (uint64_t tick = 0; tick < total_ticks;) {
++		uint day = static_cast<uint>(tick / Ticks::DAY_TICKS);
++		if (!rl_started && day >= request.rl_start_delay_days) {
++			StartRl(request, events);
++			rl_started = true;
++			service = StartAirService(request, events);
++			service_started = true;
++		}
++		for (size_t index = 0; index < request.opponents.size(); ++index) {
++			if (!opponent_started[index] && day >= request.opponents[index].start_delay_days) {
++				StartOpponent(request.opponents[index], day, events);
++				opponent_started[index] = true;
++			}
++		}
++		if (request.probe == "fault" && !fault_injected && day >= 10 && opponent_started[0]) {
++			CompanyID target = request.opponents[0].slot;
++			AutoRestoreBackup current(_current_company, OWNER_DEITY);
++			CommandCost removed = Command<CMD_COMPANY_CTRL>::Do(DoCommandFlag::Execute, CCA_DELETE, target, CRR_MANUAL, INVALID_CLIENT_ID);
++			Require(removed.Succeeded() && !Company::IsValidID(target), "opponent fault containment did not remove target company");
++			events.push_back({{"day", day}, {"kind", "opponent_failure_contained"}, {"slot", target.base()}});
++			fault_injected = true;
++		}
++		if (service_started) RlV2SetQualificationAcceptance(service.destination, service.cargo, true);
++		StateGameLoop();
++		if (_pause_mode.Any()) {
++			if (_pause_mode.Test(PauseMode::Normal) &&
++				(_pause_mode.base() == PauseModes{PauseMode::Normal}.base() ||
++					_pause_mode.base() == PauseModes{PauseMode::Normal, PauseMode::CommandDuringPause}.base())) {
++				Require(Command<CMD_PAUSE>::Do(DoCommandFlag::Execute, PauseMode::Normal, false).Succeeded(),
++					"failed to release a native headless competition pause");
++				events.push_back({{"day", day}, {"kind", "headless_pause_released"}});
++				continue;
++			}
++			Require(_pause_mode == PauseMode::LinkGraph,
++				fmt::format("unexpected pause during competition loop: mode={} day={} tick={}", _pause_mode.base(), day, tick));
++			continue;
++		}
++		if (const Aircraft *aircraft = Aircraft::GetIfValid(service.vehicle);
++				aircraft != nullptr && aircraft->vehstatus.Test(VehState::Crashed)) {
++			Fail(fmt::format("RL aircraft crashed at tick={} day={} state={} target={}", tick, day, aircraft->state,
++				aircraft->targetairport.base()));
++		}
++		if (service_started && Vehicle::IsValidID(service.vehicle) &&
++				(Aircraft::Get(service.vehicle)->GetNumOrders() != 2 || Aircraft::Get(service.vehicle)->GetNumManualOrders() != 2)) {
++			Fail(fmt::format("RL aircraft order list disappeared at tick={} day={} orders={} manual_orders={}", tick, day,
++				Aircraft::Get(service.vehicle)->GetNumOrders(), Aircraft::Get(service.vehicle)->GetNumManualOrders()));
++		}
++		if (service_started && (!Vehicle::IsValidID(service.vehicle) || Station::GetIfValid(service.source) == nullptr ||
++				Station::GetIfValid(service.destination) == nullptr)) {
++			const Company *company = Company::GetIfValid(request.rl_slot);
++			Fail(fmt::format("RL air-service assets disappeared at tick={} day={} company_alive={} money={} vehicle_valid={} source_valid={} destination_valid={}",
++				tick, day, company != nullptr, company == nullptr ? 0 : company->money.base(), Vehicle::IsValidID(service.vehicle),
++				Station::GetIfValid(service.source) != nullptr, Station::GetIfValid(service.destination) != nullptr));
++		}
++		bool all_started = rl_started && std::ranges::all_of(opponent_started, std::identity{});
++		bool any_started = rl_started || std::ranges::any_of(opponent_started, std::identity{});
++		if (!save_load_complete && any_started && day >= CHECKPOINT_DAY) {
++			if (request.probe == "interaction") {
++				Require(all_started, "interaction checkpoint lacks a participant");
++				interaction = RunInteraction(request, day, events);
++			}
++			CompanyID checkpoint_company = Company::IsValidID(request.rl_slot) ? request.rl_slot : request.opponents[0].slot;
++			SetLocalCompany(checkpoint_company);
++			_current_company = checkpoint_company;
++			json before_save = PublicSnapshot(request);
++			Require(SaveOrLoad(save_path, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "shared native SAVE failed");
++			Money saved_money = Company::Get(checkpoint_company)->money;
++			Company::Get(checkpoint_company)->money += Money{12345};
++			Require(SaveOrLoad(save_path, SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK, "shared native LOAD failed");
++			if (_pause_mode.Test(PauseMode::SaveLoad)) {
++				Require(Command<CMD_PAUSE>::Do(DoCommandFlag::Execute, PauseMode::SaveLoad, false).Succeeded(),
++					"failed to release native save/load pause");
++			}
++			if (_pause_mode.Test(PauseMode::Normal)) {
++				Require(Command<CMD_PAUSE>::Do(DoCommandFlag::Execute, PauseMode::Normal, false).Succeeded(),
++					"failed to release native normal pause after load");
++			}
++			Require(_pause_mode.None() || _pause_mode == PauseMode::LinkGraph,
++				fmt::format("native load left an unsupported competition pause: mode={}", _pause_mode.base()));
++			SetLocalCompany(checkpoint_company);
++			_current_company = checkpoint_company;
++			json after_load = PublicSnapshot(request);
++			Require(Company::Get(checkpoint_company)->money == saved_money && before_save == after_load,
++				fmt::format("public shared-company state did not restore exactly across save/load: before={} after={}",
++					before_save.dump(), after_load.dump()));
++			save_bytes = std::filesystem::file_size(save_path);
++			save_load_complete = true;
++		}
++		++tick;
++	}
++	Require(rl_started && service_started && Company::IsValidID(request.rl_slot), "RL company did not survive the shared simulation");
++	Require(save_load_complete && save_bytes > 0, "shared save/load checkpoint did not complete");
++	const Company *rl = Company::Get(request.rl_slot);
++	const Aircraft *rl_aircraft = Aircraft::GetIfValid(service.vehicle);
++	const Station *rl_source = Station::GetIfValid(service.source);
++	const Station *rl_destination = Station::GetIfValid(service.destination);
++	const Order *first_order = rl_aircraft == nullptr ? nullptr : rl_aircraft->GetOrder(VehicleOrderID{0});
++	const Order *second_order = rl_aircraft == nullptr ? nullptr : rl_aircraft->GetOrder(VehicleOrderID{1});
++	Require(DeliveredTotal(rl) >= service.capacity && IncomeTotal(rl) > 0,
++		fmt::format("RL solo competence was not retained in shared simulation: delivered={} capacity={} income={} state={} cargo={} target={} stopped={} tick_counter={} running_ticks={} position={}/{} order_type={} order_destination={} real_index={} first_type={} first_destination={} second_type={} second_destination={} source_waiting={} destination_waiting={}",
++			DeliveredTotal(rl), service.capacity, IncomeTotal(rl).base(), rl_aircraft == nullptr ? 255 : rl_aircraft->state,
++			rl_aircraft == nullptr ? 0 : rl_aircraft->cargo.TotalCount(),
++			rl_aircraft == nullptr ? 255 : rl_aircraft->targetairport.base(),
++			rl_aircraft == nullptr || rl_aircraft->vehstatus.Test(VehState::Stopped),
++			rl_aircraft == nullptr ? 0 : rl_aircraft->tick_counter,
++			rl_aircraft == nullptr ? 0 : rl_aircraft->running_ticks,
++			rl_aircraft == nullptr ? 255 : rl_aircraft->previous_pos,
++			rl_aircraft == nullptr ? 255 : rl_aircraft->pos,
++			rl_aircraft == nullptr ? 255 : to_underlying(rl_aircraft->current_order.GetType()),
++			rl_aircraft == nullptr ? 65535 : rl_aircraft->current_order.GetDestination().base(),
++			rl_aircraft == nullptr ? 255 : rl_aircraft->cur_real_order_index,
++			first_order == nullptr ? 255 : to_underlying(first_order->GetType()),
++			first_order == nullptr ? 65535 : first_order->GetDestination().base(),
++			second_order == nullptr ? 255 : to_underlying(second_order->GetType()),
++			second_order == nullptr ? 65535 : second_order->GetDestination().base(),
++			rl_source == nullptr ? 0 : rl_source->goods[service.cargo].AvailableCount(),
++			rl_destination == nullptr ? 0 : rl_destination->goods[service.cargo].AvailableCount()));
++	if (request.probe == "fault") Require(fault_injected, "fault probe did not inject a participant failure");
++
++	json final_public = PublicSnapshot(request);
++	json policy_observation = {
++		{"public_companies", final_public.at("companies")}, {"public_events", events}, {"public_map", final_public.at("map")},
++		{"schema_version", "openttd-rl-v2-m20-public-observation-1"}, {"self_company_id", request.rl_slot.base()},
++	};
++	json result = {
++		{"events", std::move(events)}, {"fault_contained", request.probe != "fault" || fault_injected},
++		{"interaction", std::move(interaction)}, {"policy_input", std::move(policy_observation)},
++		{"policy_input_fields", {"public_map_state", "public_station_and_vehicle_state", "public_company_state", "own_company_private_state", "public_events"}},
++		{"privileged_inputs", json::array()}, {"save_bytes", save_bytes},
++		{"save_load_public_exact", true}, {"score", Score(request)}, {"ticks", total_ticks},
++	};
++	RlV2ClearQualificationAcceptance();
++	return result;
++}
++
++} // namespace
++
++void RunRlV2CompetitionQualification(const std::string &manifest_path, const std::string &report_path)
++{
++	Request request = Validate(ReadCanonicalJson(manifest_path));
++	try {
++		json result = Run(request, report_path + ".sav");
++		json opponents = json::array();
++		for (const OpponentRequest &opponent : request.opponents) {
++			opponents.push_back({{"name", opponent.name}, {"package_evidence_sha256", opponent.package_evidence_sha256},
++				{"runtime_evidence_sha256", opponent.runtime_evidence_sha256}, {"slot", opponent.slot.base()},
++				{"start_delay_days", opponent.start_delay_days}, {"version", opponent.version}});
++		}
++		json report = {
++			{"engine_source_tree", request.engine_source_tree}, {"executable_sha256", request.executable_sha256},
++			{"identity", {{"competition_manifest_sha256", request.competition_manifest_sha256},
++				{"content_manifest_sha256", request.content_manifest_sha256}, {"m20_contract_sha256", request.m20_contract_sha256},
++				{"map_manifest_sha256", request.map_manifest_sha256}, {"policy_package_sha256", request.policy_package_sha256},
++				{"settings_manifest_sha256", request.settings_manifest_sha256}}},
++			{"request", {{"calendar_days", request.calendar_days}, {"map_seed", request.map_seed}, {"opponents", std::move(opponents)},
++				{"probe", request.probe}, {"rl_slot", request.rl_slot.base()}, {"rl_start_delay_days", request.rl_start_delay_days},
++				{"run_id", request.run_id}, {"simulation_seed", request.simulation_seed}, {"split", request.split}}},
++			{"result", std::move(result)}, {"run_id", request.run_id}, {"schema_version", REPORT_SCHEMA}, {"status", "PASS"},
++		};
++		WriteCanonicalNew(report_path, report);
++	} catch (const std::exception &e) {
++		WriteCanonicalNew(report_path, {{"error", e.what()}, {"status", "FAIL"}});
++		throw;
++	}
++}
+diff --git a/src/rl_v2_competition.h b/src/rl_v2_competition.h
+new file mode 100644
+index 0000000..6d66152
+--- /dev/null
++++ b/src/rl_v2_competition.h
+@@ -0,0 +1,15 @@
++/*
++ * This file is part of OpenTTD.
++ * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
++ */
++
++/** @file rl_v2_competition.h Native V2 M20 shared-company qualification. */
++
++#ifndef RL_V2_COMPETITION_H
++#define RL_V2_COMPETITION_H
++
++#include <string>
++
++void RunRlV2CompetitionQualification(const std::string &manifest_path, const std::string &report_path);
++
++#endif /* RL_V2_COMPETITION_H */
+-- 
+2.43.0
+

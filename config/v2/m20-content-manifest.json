@@ -1,0 +1,52 @@
+{
+  "ai_archives": [
+    {
+      "catalog_package_version": 115,
+      "declared_runtime_version": 115,
+      "name": "AAAHogEx",
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/content_download/ai/484f4745-AAAHogEx-115.tar",
+      "sha256": "40796e8beb127965e3aa9cd1a9683ca689adaefe9c131d849b69def65bba9cb4"
+    },
+    {
+      "catalog_package_version": 3,
+      "declared_runtime_version": 3,
+      "name": "KrakenAI2",
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/content_download/ai/4b524132-KrakenAI2-3.tar",
+      "sha256": "3f7812ea51d0ae6f8109e65639e7062c7fe5bd236d4a328f9f0baab0c2958fdb"
+    },
+    {
+      "catalog_package_version": 4,
+      "declared_runtime_version": 3,
+      "identity_note": "The catalog/archive revision is 4 while info.nut truthfully declares runtime API version 3.",
+      "name": "NoOpAI",
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/content_download/ai/4e6f7041-NoOpAI-4.tar",
+      "sha256": "44fdaeac656c53f787d95af5b8eb1bd18585ed7f09fc21056ff44f4550167b57"
+    }
+  ],
+  "base_graphics": {
+    "name": "OpenGFX",
+    "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/build-competition/baseset/opengfx-8.0.tar",
+    "sha256": "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c",
+    "version": "8.0"
+  },
+  "libraries": [
+    {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/content_download/ai/library/4752412a-Graph.AyStar-6.tar",
+      "sha256": "4e76533f1f38240bf8bb5abfca0b6cc2ea182a1c6ccf7f5f3980e5ae8d219e27"
+    },
+    {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/content_download/ai/library/5046524f-Pathfinder.Road-4.tar",
+      "sha256": "64b178e3d9c28a0d41e9bdace02ee119ae2e7c986de560c40eed51fa684e31ae"
+    },
+    {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/content_download/ai/library/51554248-Queue.BinaryHeap-1.tar",
+      "sha256": "a83eb5002b1246330dfc467dbd1076687d227156a697cc140f6d04515cf3bb67"
+    },
+    {
+      "path": "/home/thecl/.codex/artifacts/openttd-rl/v2-m20-competition-a/content_download/ai/library/5350524c-SuperLib-40.tar",
+      "sha256": "19dd0c6416872ec90fe92fced9d1cfc0e239a500a1017838840c554f4e014c70"
+    }
+  ],
+  "network_acquisition_during_runs": false,
+  "schema_version": "openttd-rl-v2-m20-content-manifest-1"
+}

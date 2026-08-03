@@ -9,8 +9,10 @@ all base cargo/industry chains and transport modes, multimodal planning, and
 reproducible shared-map competition against byte-pinned OpenTTD AIs. G14 authority
 and opponent qualification, G15 scalable passenger operation, G16 cargo/industry
 accounting, G17 rail networks, G18 ships/waterways, and G19 aircraft/multimodal
-service have passed. This checkpoint intentionally stops at G19; M20 has not
-started and no V2 release claim has been made.
+service have passed. G20 now adds native shared-map competition, fair paired
+external-AI evaluation, public-state isolation, fault containment, and complete
+scoring. This checkpoint intentionally stops at G20; M21-M23 remain planned and
+no V2 release claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -55,6 +57,12 @@ started and no V2 release claim has been made.
 · [`M19 aircraft/multimodal contract`](config/v2/m19-air-contract.json)
 · [`M19 aircraft source evidence`](config/v2/m19-air-source.json)
 · [`M19 aircraft matrix evidence`](config/v2/m19-air-evidence.json)
+· [`M20 competition contract`](config/v2/m20-competition-contract.json)
+· [`M20 map manifest`](config/v2/m20-map-manifest.json)
+· [`M20 settings manifest`](config/v2/m20-settings-manifest.json)
+· [`M20 content manifest`](config/v2/m20-content-manifest.json)
+· [`M20 competition source evidence`](config/v2/m20-competition-source.json)
+· [`M20 competition matrix evidence`](config/v2/m20-competition-evidence.json)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
 · [`M14 competition protocol`](docs/project/M14_INVENTORY_AND_COMPETITION.md)
@@ -69,8 +77,10 @@ started and no V2 release claim has been made.
 · [`G18 gate report`](docs/project/G18_GATE_REPORT.md)
 · [`M19 aircraft/multimodal contract`](docs/project/M19_AIR_MULTIMODAL_CONTRACT.md)
 · [`G19 gate report`](docs/project/G19_GATE_REPORT.md)
+· [`M20 competitive-company contract`](docs/project/M20_COMPETITION_CONTRACT.md)
+· [`G20 gate report`](docs/project/G20_GATE_REPORT.md)
 
-## Version 2 implementation through G19
+## Version 2 implementation through G20
 
 The committed V2 work is a gate-controlled expansion, not a release candidate:
 
@@ -103,6 +113,15 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   save/load, native occupancy/failure behavior, profitable airplane/helicopter
   service, bounded close/reopen recovery, exact road-water-air accounting, and a
   deterministic four-mode router; all 20 twins are exact.
+- M20/G20 runs native shared-map competition against byte-pinned AAAHogEx v115,
+  KrakenAI2 v3, and the NoOpAI control. Its 32-case/64-run development matrix
+  covers two seeds, four symmetric slot/start-delay legs, solo competence,
+  four-company mixed fields, opponent deletion/fault containment, wrong-owner
+  vehicle control rejection, native subsidies, hostile purchase, and shared
+  save/load. All scheduled runs are included and all 32 public save/load and
+  score projections replay exactly. The stratified RL-minus-opponent company-
+  value difference is 9,672,271.958 with a 95% interval of 9,635,177.458 to
+  9,709,366.458; universal victory is not a gate requirement.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -112,8 +131,14 @@ learned generalist policies. Runs truthfully record `rlimit-only` isolation
 because bubblewrap namespaces are unavailable on the WSL host. Byte-pinned
 Lufthansa v2 remains truthfully rejected because its archive contains malformed
 and truncated Squirrel source; AAAHogEx remains the active generalist but chose
-rail rather than aircraft in its retained run. M20 shared-company competition
-is the next planned stage and is deliberately absent from this checkpoint.
+rail rather than aircraft in its retained M19 run. M20 uses unmodified external
+AIs and retains both fresh-process results when their private decision streams
+vary; exactness is claimed for frozen manifests, public save/load restoration,
+and score projection, not third-party AI choices. Physical plane crashes are
+disabled in the qualification settings, while crash counts remain scored and
+the interaction cases prove native ownership isolation. The M20 controller is a
+deterministic competence oracle, the M14 3,650-day final protocol was not run,
+and M21 broad base-game/Game Script/NewGRF coverage is next.
 
 ![OpenTTD RL V1 neural agent completing paid bus service](docs/assets/openttd-rl-v1-playback.png)
 
@@ -273,7 +298,8 @@ independent project and does not imply OpenTTD endorsement.
 | V2 cargo and industries | All 46 four-climate cargo occurrences, 31 labels, 37 industry specs, 24 production edges, 204 exact-twin native runs, shared passenger/mail, subsidies, and exploit-free transfer accounting | `M16/G16 PASS`; frozen cargo/accounting boundary |
 | V2 rail networks | Four rail types, six track orientations, 116 train engine entries, 12 signal variants, native consists/orders/timetables/service/autoreplace/save-load, profitable passenger/freight runs, and a 32,768-tick two-train junction soak | `M17/G17 PASS`; frozen rail boundary |
 | V2 ships and waterways | Sea/canal/river semantics, 11 ship engines, native docks/depots/buoys/locks/aqueducts, independent region connectivity, lifecycle/save-load, profitable natural/constructed routes, conserved road transfer, bounded recovery, and ShipAI active with two ships across save/load | `M18/G18 PASS`; frozen water boundary |
-| V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary; M20 not started |
+| V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
+| V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary; M21 next |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

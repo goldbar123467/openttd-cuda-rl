@@ -1,0 +1,190 @@
+{
+  "acceptance": {
+    "all_scheduled_runs_required": true,
+    "fault_containment_required": true,
+    "manifest_and_public_projection_replay_exact": true,
+    "interaction_projection_required": true,
+    "no_privileged_inputs": true,
+    "solo_competence_required": true,
+    "universal_victory_required": false
+  },
+  "development_qualification": {
+    "calendar_days": 730,
+    "case_counts": {
+      "fault": 2,
+      "head_to_head": 24,
+      "interaction": 2,
+      "mixed_field": 2,
+      "solo": 2,
+      "total": 32
+    },
+    "native_runs": 64,
+    "replicates_per_case": 2,
+    "seed_pairs": [
+      {
+        "map_seed": 190521439,
+        "ordinal": 0,
+        "simulation_seed": 532039881
+      },
+      {
+        "map_seed": 458833225,
+        "ordinal": 1,
+        "simulation_seed": 733125471
+      }
+    ],
+    "shared_save_load_checkpoint_day": 700,
+    "split": "development"
+  },
+  "failure_policy": {
+    "engine_or_harness_failure": "fail-gate-with-retained-report",
+    "missing_run": "fail-gate-never-drop",
+    "opponent_failure": "native-company-delete-loss-floor-and-public-event",
+    "rerun_for_scoring": false
+  },
+  "fairness": {
+    "legs": [
+      {
+        "leg": "A",
+        "opponent_slot": 1,
+        "opponent_start_delay_days": 365,
+        "rl_slot": 0,
+        "rl_start_delay_days": 0
+      },
+      {
+        "leg": "B",
+        "opponent_slot": 0,
+        "opponent_start_delay_days": 365,
+        "rl_slot": 1,
+        "rl_start_delay_days": 0
+      },
+      {
+        "leg": "C",
+        "opponent_slot": 1,
+        "opponent_start_delay_days": 0,
+        "rl_slot": 0,
+        "rl_start_delay_days": 365
+      },
+      {
+        "leg": "D",
+        "opponent_slot": 0,
+        "opponent_start_delay_days": 0,
+        "rl_slot": 1,
+        "rl_start_delay_days": 365
+      }
+    ],
+    "same_map_settings_content_and_policy_within_block": true,
+    "slot_and_delay_symmetry": true
+  },
+  "final_protocol": {
+    "calendar_days": 3650,
+    "development_final_separation": true,
+    "executed_at_m20": false,
+    "seed_set": "m14-final"
+  },
+  "identities": {
+    "competition_manifest_sha256": "2218667f2ca74740bfbe57af3a978eb2ee33f925eb6e2faaed03394a04bb98ee",
+    "content_manifest_sha256": "9181ee83d204fc9af95501a699fa583d8240d3f0620ec692b6f67465cc7120de",
+    "map_manifest_sha256": "d0f9216a1735de2643db088ae288f89ac3c76b3867ccccb678186f8b3280aaa9",
+    "policy_contract_sha256": "3118092e65e547f4485fa15ab0469333102ea2f8c545641da2dfaecb9930324c",
+    "settings_manifest_sha256": "fccf0e04040bc360453e39bb88c07c2d3fc7ff43619add791829fed2381b5c30"
+  },
+  "probes": {
+    "fault": "delete one running opponent through native company control, retain an explicit loss event, and prove the RL service and shared save/load survive",
+    "head_to_head": "schedule every admitted opponent in every symmetric leg on both frozen development seed pairs",
+    "interaction": "reject cross-company vehicle control, create and award a native subsidy, test and execute native company purchase, and project ownership/accounting/collision events",
+    "mixed_field": "run RL, AAAHogEx, KrakenAI2, and NoOpAI concurrently in four distinct native company slots",
+    "solo": "retain positive native passenger delivery and gross income without an opponent"
+  },
+  "public_observation": {
+    "allowed_policy_fields": [
+      "public_map_state",
+      "public_station_and_vehicle_state",
+      "public_company_state",
+      "own_company_private_state",
+      "public_events"
+    ],
+    "denied_policy_fields": [
+      "opponent_ai_memory",
+      "opponent_ai_settings_not_public_in_game",
+      "opponent_pathfinder_state",
+      "opponent_private_orders",
+      "future_random_events",
+      "future_map_generation_state",
+      "final_suite_label_or_seed_as_policy_input"
+    ],
+    "native_public_company_fields": [
+      "alive",
+      "company_value",
+      "money",
+      "loan",
+      "operating_profit",
+      "performance",
+      "delivered_cargo_units",
+      "waiting_cargo_units",
+      "stations",
+      "vehicles",
+      "infrastructure",
+      "subsidies_awarded"
+    ],
+    "privileged_inputs_expected": []
+  },
+  "roster": [
+    {
+      "admission": "TOURNAMENT",
+      "catalog_package_version": 115,
+      "declared_runtime_version": 115,
+      "name": "AAAHogEx",
+      "package_evidence_sha256": "6c30a080985dd95f056f40a8fb386883f27466afee9380ded4767908d5825fbe",
+      "runtime_evidence_sha256": "40b76ae7bcee66ca6c1ee7271f49cbc7499823a29d4e736f0d758b58b67d355e"
+    },
+    {
+      "admission": "TOURNAMENT",
+      "catalog_package_version": 3,
+      "declared_runtime_version": 3,
+      "name": "KrakenAI2",
+      "package_evidence_sha256": "32e5d09951bc0c7f71d67f6e036643b131de059f2fc54ce388b0ecd8e36a250e",
+      "runtime_evidence_sha256": "4e680be090a1c6aa729aee42f040e2b169ac02cca1ae473c7c48c10f11c66672"
+    },
+    {
+      "admission": "CONTROL",
+      "catalog_package_version": 4,
+      "declared_runtime_version": 3,
+      "identity_note": "NoOpAI's catalog/archive revision is 4; its selected runtime declaration is version 3.",
+      "name": "NoOpAI",
+      "package_evidence_sha256": "2594108b831c202a1d58daa454e4a4281cb461ec1a5e79096fbbaf78206453e1",
+      "runtime_evidence_sha256": "3cbe3e0497a2a32162dc0934d7780274f3d55fbb0d82a257da8e47c7e6565998"
+    }
+  ],
+  "schema_version": "openttd-rl-v2-m20-competition-contract-1",
+  "semantic_replay": {
+    "exact": [
+      "manifest identities",
+      "settings",
+      "slots and delays",
+      "package selection",
+      "event and score schema",
+      "public save/load restoration",
+      "score projection from retained public state"
+    ],
+    "external_ai_decision_stream": "published stochastic replicate; byte equality is not claimed for unmodified third-party AI choices",
+    "raw_replicates_retained": true,
+    "save_file_byte_count": "retained but excluded from semantic normalization because native compression size may vary"
+  },
+  "scoring": {
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 141414,
+    "confidence": 0.95,
+    "interval": "paired-opponent-stratified-percentile-bootstrap",
+    "primary": "mean_four_leg_company_value_difference",
+    "replicate_aggregation": "mean-within-leg-before-four-leg-block",
+    "sample_unit": "opponent-seed-four-leg-block",
+    "secondary": [
+      "survival",
+      "operating_profit",
+      "delivered_cargo_units",
+      "company_value",
+      "failure_count"
+    ]
+  },
+  "version": "m20-competition-v1"
+}

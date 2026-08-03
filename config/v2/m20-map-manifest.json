@@ -1,0 +1,21 @@
+{
+  "calendar": {
+    "development_days": 730,
+    "final_protocol_days": 3650,
+    "starting_year": 2050
+  },
+  "climate": "temperate",
+  "generation": {
+    "flat_world_height": 1,
+    "industries": 24,
+    "minimum_generated_industries": 4,
+    "minimum_generated_towns": 8,
+    "towns": 16
+  },
+  "height": 128,
+  "map_seed_source": "m14-development-seed-set",
+  "native_generator": "GWM_NEWGAME",
+  "schema_version": "openttd-rl-v2-m20-map-manifest-1",
+  "simulation_seed_source": "paired-m14-development-seed",
+  "width": 128
+}
