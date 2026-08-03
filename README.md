@@ -31,9 +31,10 @@ update 16. The resulting semantic-v2 learning contract now guarantees one
 training episode for every introduced program in every update before drawing
 weighted extras, and defines forgetting only as loss of a previously passing
 program. The rejected seed passes all 16 programs through update 48 in a
-development smoke, but the revised source still requires new accepted recovery
-and six-campaign evidence. No campaign evidence was accepted, and no G22 pass or
-V2 release claim has been made.
+development smoke. The revised source now reproduces exactly for both
+architectures in six new isolated fresh processes, so only the new six-campaign
+evidence remains at this stage. No campaign evidence was accepted, and no G22
+pass or V2 release claim has been made.
 
 [`V2 feature and competitor research`](docs/project/V2_RESEARCH.md)
 · [`V2 milestone and release plan`](docs/project/V2_PLAN.md)
@@ -94,7 +95,8 @@ V2 release claim has been made.
 · [`M21 native harness patch`](integration/openttd/patches/15.3/m21/broad/0001-Add-native-V2-broad-feature-qualification.patch)
 · [`M22 generalist learning contract`](config/v2/m22-learning-contract.json)
 · [`M22 native-qualified corpus`](config/v2/m22-native-corpus.json)
-· [`M22 fresh-process recovery evidence`](config/v2/m22-recovery-evidence.json)
+· [`M22 semantic-v2 fresh-process recovery evidence`](config/v2/m22-recovery-evidence-v2.json)
+· [`M22 historical fresh-process recovery evidence`](config/v2/m22-recovery-evidence.json)
 · [`M22 final-only evaluation manifest`](config/v2/m22-evaluation-manifest.json)
 · [`M14 source decision`](docs/project/M14_ENGINE_SOURCE_DECISION.md)
 · [`M14 opponent acquisition`](docs/project/M14_OPPONENT_ACQUISITION.md)
@@ -214,8 +216,12 @@ The committed V2 work is a gate-controlled expansion, not a release candidate:
   bit disappears. A full CUDA smoke of the formerly failing seed produced all
   six checkpoints and passed all 16 development programs at every check from
   update 28 through 48. Because that smoke used an uncommitted source, it is
-  diagnostic rather than accepted evidence. This is a tested training-execution
-  and exact-recovery boundary, not a completed campaign or G22 pass.
+  diagnostic rather than accepted evidence. The committed semantic-v2 source
+  subsequently passed exact update-16 recovery for both architectures in six
+  new fresh CUDA processes, including byte-identical case/action projections,
+  trajectories, optimizer state, recurrent state, metrics, and checkpoint
+  packages. This is a tested training-execution and exact-recovery boundary, not
+  a completed campaign or G22 pass.
 
 Cargo packets, sink acceptance, and competence preloading in M16-M19 are bounded
 qualification fixtures. Construction, vehicles, pathfinding, movement, delivery,
@@ -233,9 +239,9 @@ disabled in the qualification settings, while crash counts remain scored and
 the interaction cases prove native ownership isolation. The M20 controller is a
 deterministic competence oracle, the M14 3,650-day final protocol was not run,
 and M22 must still train and independently evaluate the broad learned generalist.
-The immediate M22 continuation is to rerun exact recovery for the corrected
-source and rerun all six architecture-by-seed campaigns from scratch. The
-remaining gate then includes development-only
+The immediate M22 continuation is to rerun all six architecture-by-seed
+campaigns from scratch against the corrected source. The remaining gate then
+includes development-only
 checkpoint selection, retained native G15-G21 regression, matched-baseline
 campaign evidence, CPU/CUDA performance evidence, and the one-shot
 preregistered final evaluation.
@@ -283,9 +289,10 @@ full frozen V1 traceability regression with:
 
 The M22 validators are part of that command and rebuild both the JSON and bounded
 native corpus representations exactly from accepted G15-G21 evidence before
-accepting them, validate the retained exact-recovery report, and exercise the
+accepting them, validate the historical and active exact-recovery reports, and
+exercise the
 matched-campaign report's strict schema and fail-closed mutations. There is no
-accepted matched-campaign report yet. At this checkpoint the suite passes 381 V2
+accepted matched-campaign report yet. At this checkpoint the suite passes 382 V2
 tests and the unchanged 235-test V1 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15
@@ -414,7 +421,7 @@ independent project and does not imply OpenTTD endorsement.
 | V2 aircraft and multimodal routing | Ten airport specifications, 41 aircraft entries, native construction/lifecycle/occupancy/failure, profitable airplane and helicopter service, conserved road-water-air transfer, closed-airport recovery, and deterministic four-mode routing | `M19/G19 PASS`; frozen air/multimodal boundary |
 | V2 competitive companies and external-AI benchmark | Native shared maps with exact company slots, three byte-pinned admitted opponents, four symmetric slot/delay legs, public-state-only inputs, fault containment, ownership/subsidy/purchase interactions, 64 complete executions, exact public replay, and preregistered uncertainty | `M20/G20 PASS`; frozen development-competition boundary |
 | V2 broad base game, Game Script, and finite NewGRF pack | Four climates over 1900–2100, authority/economy and recoverable-event semantics, ten byte-locked open-license NewGRFs, 14 closed capabilities, a live pinned API-15 Game Script, all 18 feature/145 command dispositions, 32 native runs, 16 exact report twins, 14 byte-identical save pairs, and three pre-world rejections | `M21/G21 PASS`; frozen finite-content boundary; M22 next |
-| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, CPU/CUDA policy/PPO tests, historical exact update-16 recovery for both learned architectures across six isolated fresh processes, and fail-closed six-campaign evidence tooling; the first full execution was rejected, and the corrected specialist seed now passes all programs in a diagnostic CUDA rerun | `M22 execution checkpoint`; revised-source recovery and all six accepted campaigns must be rerun; native retention, independent final suite, and G22 remain open |
+| V2 generalist-learning foundation | Semantic-v2 17-program/seven-stage contract with per-update introduced-program coverage, three trainer seeds, matched 1,457,520-parameter learned architectures plus public-heuristic/random/wait baselines, exact PPO/recovery/device semantics, a 32-entry native-qualified training/development corpus, a final-blind 42-case manifest, CPU/CUDA policy/PPO tests, current and historical exact update-16 recovery for both learned architectures across six isolated fresh processes each, and fail-closed six-campaign evidence tooling; the first full execution was rejected, and the corrected specialist seed now passes all programs in a diagnostic CUDA rerun | `M22 execution checkpoint`; all six accepted campaigns must be rerun; native retention, independent final suite, and G22 remain open |
 | Reward, termination, and trajectories | Native lifetime-delta projection, eight-component scalar, 13 typed outcomes, exploit guards, and byte-exact bounded trajectories | `M06/G06 PASS`; frozen learning-data boundary |
 | PPO trainer | Trusted C++/LibTorch clipped PPO, exact recovery, structured monitoring, and development-selected MLP | `M07/G07 PASS`; frozen CPU oracle |
 | CNN and combined models | Frozen 32-channel CNN plus structured/spatial fusion, paired learning, and live OpenTTD smoke | `M08/G08 PASS`; ready for independent comparison |

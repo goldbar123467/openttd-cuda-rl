@@ -20,7 +20,8 @@ class M22RecoveryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.root = pathlib.Path(__file__).resolve().parents[3]
-        cls.report = runner.load(cls.root / "config/v2/m22-recovery-evidence.json")
+        cls.report = runner.load(cls.root / "config/v2/m22-recovery-evidence-v2.json")
+        cls.historical_report = runner.load(cls.root / "config/v2/m22-recovery-evidence.json")
 
     @staticmethod
     def rehash(value: dict[str, object]) -> None:
@@ -62,6 +63,9 @@ class M22RecoveryTests(unittest.TestCase):
 
     def test_repository_recovery_evidence_passes(self) -> None:
         validator.validate_value(self.report, self.root)
+
+    def test_historical_recovery_evidence_remains_valid(self) -> None:
+        validator.validate_value(self.historical_report, self.root)
 
     def test_resumed_trace_mutation_fails(self) -> None:
         value = copy.deepcopy(self.report)

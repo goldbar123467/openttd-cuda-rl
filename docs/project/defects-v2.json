@@ -60,9 +60,10 @@
       ],
       "evidence": [
         "README.md",
-        "config/v2/m22-learning-contract.json"
+        "config/v2/m22-learning-contract.json",
+        "config/v2/m22-recovery-evidence-v2.json"
       ],
-      "fix_revision": null,
+      "fix_revision": "52d6eaca9659c3484ec25676b98c43c31dc3fcd7",
       "regression_test": "training/v2/tests/m22_campaign_gate.cpp",
       "closure_evidence": []
     }
@@ -75,6 +76,6 @@
   },
   "diagnostics": {
     "last_reviewed_date": "2026-08-03",
-    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records the M22 sampler and retention-classification failure found by the first complete matched development execution; its source correction and targeted CUDA reproduction pass, but it remains release-blocking until revised-source recovery and six-campaign evidence pass. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
+    "review_note": "The accepted M14-G21 implementation retains zero nonclosed defects or divergences. V2-DEF-0002 records the M22 sampler and retention-classification failure found by the first complete matched development execution; its source correction, targeted CUDA reproduction, and revised-source exact-recovery campaign pass, but it remains release-blocking until the new six-campaign evidence passes. ChooChoo, SimpleAI, and malformed Lufthansa packages retain their truthful rejection dispositions; ShipAI's M14 healthy-inactive result remains supplemented by M18 scenario-specific active evidence. G20 publishes external-AI choices as stochastic replicates, and G21 deliberately claims only the finite ten-package NewGRF compatibility set."
   }
 }

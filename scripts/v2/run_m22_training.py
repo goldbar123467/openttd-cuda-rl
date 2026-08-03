@@ -22,7 +22,7 @@ import run_m22_recovery as recovery
 
 CONTRACT = pathlib.Path("config/v2/m22-learning-contract.json")
 CORPUS = pathlib.Path("config/v2/m22-native-corpus.json")
-RECOVERY = pathlib.Path("config/v2/m22-recovery-evidence.json")
+RECOVERY = pathlib.Path("config/v2/m22-recovery-evidence-v2.json")
 SCHEMA = pathlib.Path("docs/project/schema/v2-m22-training-evidence.schema.json")
 SEEDS = (1910917137, 1360150311, 1636894266)
 ARCHITECTURES = recovery.ARCHITECTURES
@@ -30,7 +30,7 @@ CANDIDATE_UPDATES = (8, 16, 24, 32, 40, 48)
 BASELINES = ("public-heuristic-v1", "seeded-random-legal-v1", "wait-only-v1")
 RANDOM_DOMAIN = "openttd-rl-v2-m22-random-legal-v1"
 SOURCE_PATHS = tuple(sorted(set(recovery.SOURCE_PATHS + (
-    "config/v2/m22-recovery-evidence.json",
+    "config/v2/m22-recovery-evidence-v2.json",
     "scripts/v2/run_m22_training.py",
     "scripts/v2/validate_m22_training_evidence.py",
     "training/v2/tests/m22_campaign_gate.cpp",
