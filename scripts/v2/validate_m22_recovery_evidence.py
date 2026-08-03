@@ -86,21 +86,35 @@ def validate_artifacts(report: dict[str, Any], artifact_root: pathlib.Path) -> N
                 require(observed == checkpoint["files"], "M22 recovery checkpoint artifact identity mismatch")
 
 
+def committed_bytes(root: pathlib.Path, commit: str, relative: str) -> bytes:
+    return subprocess.run(
+        ["git", "show", f"{commit}:{relative}"], cwd=root, check=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    ).stdout
+
+
 def committed_source_files(root: pathlib.Path, commit: str) -> list[dict[str, str]]:
     result = []
     for relative in recovery.SOURCE_PATHS:
-        completed = subprocess.run(
-            ["git", "show", f"{commit}:{relative}"], cwd=root, check=True,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
-        result.append({"path": relative, "sha256": hashlib.sha256(completed.stdout).hexdigest()})
+        result.append({"path": relative, "sha256": hashlib.sha256(committed_bytes(root, commit, relative)).hexdigest()})
     return result
 
 
 def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pathlib.Path | None = None,
                    executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None) -> None:
     root = root.resolve()
-    schema = load(root / recovery.SCHEMA)
+    source = report.get("source")
+    require(isinstance(source, dict), "M22 recovery source identity is absent")
+    commit = source.get("repository_commit")
+    require(isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{40}", commit) is not None,
+            "M22 recovery repository commit is malformed")
+    contained = subprocess.run(["git", "cat-file", "-e", commit + "^{commit}"], cwd=root,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    require(contained.returncode == 0, "M22 recovery source commit is not retained")
+    try:
+        schema = json.loads(committed_bytes(root, commit, recovery.SCHEMA.as_posix()))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise M22RecoveryValidationError(f"M22 committed recovery schema is malformed: {exc}") from exc
     jsonschema.Draft202012Validator.check_schema(schema)
     try:
         jsonschema.Draft202012Validator(schema).validate(report)
@@ -108,12 +122,6 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         location = "/".join(map(str, exc.absolute_path)) or "<root>"
         raise M22RecoveryValidationError(f"M22 recovery schema failed at {location}: {exc.message}") from exc
     self_hash(report)
-    source = report["source"]
-    commit = source["repository_commit"]
-    require(re.fullmatch(r"[0-9a-f]{40}", commit) is not None, "M22 recovery repository commit is malformed")
-    contained = subprocess.run(["git", "cat-file", "-e", commit + "^{commit}"], cwd=root,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    require(contained.returncode == 0, "M22 recovery source commit is not retained")
     expected_files = committed_source_files(root, commit)
     require(source["clean"] and source["files"] == expected_files and
             source["tree_sha256"] == recovery.sha256_bytes(recovery.canonical_bytes(expected_files)),
@@ -124,7 +132,8 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
             "M22 recovery learning contract identity drifted")
     require(identity["native_corpus_sha256"] == source_hashes[recovery.CORPUS.as_posix()],
             "M22 recovery native corpus identity drifted")
-    require(identity["recovery_schema_sha256"] == recovery.sha256(root / recovery.SCHEMA),
+    require(identity["recovery_schema_sha256"] == hashlib.sha256(
+                committed_bytes(root, commit, recovery.SCHEMA.as_posix())).hexdigest(),
             "M22 recovery schema identity drifted")
     if executable is not None:
         require(identity["campaign_executable_sha256"] == recovery.sha256(executable.resolve()),

@@ -95,9 +95,12 @@
     },
     "update": {
       "type": "object", "additionalProperties": false,
-      "required": ["approximate_kl", "clip_fraction", "correct_program_fraction", "entropy", "explained_variance", "gradient_norm", "mean_rollout_reward", "policy_loss", "retention_ran", "stage", "trace", "transitions", "update", "value_loss"],
+      "required": ["action_counts", "approximate_kl", "case_program_counts", "clip_fraction", "correct_program_fraction", "entropy", "explained_variance", "gradient_norm", "mean_rollout_reward", "policy_loss", "retention_ran", "stage", "trace", "transitions", "update", "value_loss"],
       "properties": {
-        "approximate_kl": {"type": "number"}, "clip_fraction": {"type": "number"}, "correct_program_fraction": {"type": "number"},
+        "action_counts": {"type": "array", "minItems": 17, "maxItems": 17, "items": {"type": "integer", "minimum": 0}},
+        "approximate_kl": {"type": "number"},
+        "case_program_counts": {"type": "array", "minItems": 17, "maxItems": 17, "items": {"type": "integer", "minimum": 0}},
+        "clip_fraction": {"type": "number"}, "correct_program_fraction": {"type": "number"},
         "entropy": {"type": "number"}, "explained_variance": {"type": "number"}, "gradient_norm": {"type": "number"},
         "mean_rollout_reward": {"type": "number"}, "policy_loss": {"type": "number"}, "retention_ran": {"type": "boolean"},
         "retention": {"$ref": "#/$defs/retention"}, "stage": {"type": "integer", "minimum": 0, "maximum": 6},

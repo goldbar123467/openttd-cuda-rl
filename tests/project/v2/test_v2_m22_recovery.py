@@ -57,6 +57,8 @@ class M22RecoveryTests(unittest.TestCase):
         jsonschema.Draft202012Validator.check_schema(schema)
         self.assertFalse(schema["additionalProperties"])
         self.assertEqual(schema["properties"]["configuration"]["properties"]["fork_update"]["const"], 16)
+        self.assertIn("action_counts", schema["$defs"]["update"]["required"])
+        self.assertIn("case_program_counts", schema["$defs"]["update"]["required"])
 
     def test_repository_recovery_evidence_passes(self) -> None:
         validator.validate_value(self.report, self.root)
