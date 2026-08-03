@@ -1,0 +1,1132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.invalid/schema/v2-m22-followup-evaluation-evidence.schema.json",
+  "title": "OpenTTD-RL V2 M22 independent follow-up evaluation evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "acceptance",
+    "artifact_root",
+    "failure_counts",
+    "identity",
+    "immutable_final_v1",
+    "manifest",
+    "preflight",
+    "protocol",
+    "report_sha256",
+    "runs",
+    "schema_version",
+    "source",
+    "statistics",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "openttd-rl-v2-m22-followup-evaluation-evidence-1"
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "FAIL"
+      ]
+    },
+    "report_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "artifact_root": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "all_42_once",
+        "all_climates",
+        "all_map_sizes",
+        "all_programs",
+        "broad_retained",
+        "learned_lower_ci_above_random",
+        "learned_lower_ci_above_wait",
+        "native_g15_g21_retained",
+        "no_failures",
+        "opponents_retained",
+        "overall",
+        "service_every_mode"
+      ],
+      "properties": {
+        "all_42_once": {
+          "type": "boolean"
+        },
+        "all_climates": {
+          "type": "boolean"
+        },
+        "all_map_sizes": {
+          "type": "boolean"
+        },
+        "all_programs": {
+          "type": "boolean"
+        },
+        "broad_retained": {
+          "type": "boolean"
+        },
+        "learned_lower_ci_above_random": {
+          "type": "boolean"
+        },
+        "learned_lower_ci_above_wait": {
+          "type": "boolean"
+        },
+        "native_g15_g21_retained": {
+          "type": "boolean"
+        },
+        "no_failures": {
+          "type": "boolean"
+        },
+        "opponents_retained": {
+          "type": "boolean"
+        },
+        "overall": {
+          "type": "boolean"
+        },
+        "service_every_mode": {
+          "type": "boolean"
+        }
+      }
+    },
+    "failure_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "broad-retention",
+        "evaluator-identity",
+        "evaluator-process",
+        "evaluator-public-boundary",
+        "evaluator-report",
+        "learned-program-mismatch",
+        "native-execution",
+        "native-service",
+        "opponent-retention"
+      ],
+      "properties": {
+        "broad-retention": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "evaluator-identity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "evaluator-process": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "evaluator-public-boundary": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "evaluator-report": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "learned-program-mismatch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "native-execution": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "native-service": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "opponent-retention": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_schema_sha256",
+        "bubblewrap_sha256",
+        "checkpoint_id",
+        "evaluation_manifest_schema_sha256",
+        "evaluator_executable_sha256",
+        "evaluator_report_schema_sha256",
+        "immutable_final_v1_evidence_sha256",
+        "learning_contract_sha256",
+        "native_executable_sha256",
+        "native_source_tree",
+        "qualification_evidence_sha256",
+        "runtime_source_sha256"
+      ],
+      "properties": {
+        "aggregate_schema_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "bubblewrap_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "checkpoint_id": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evaluation_manifest_schema_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evaluator_executable_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evaluator_report_schema_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "learning_contract_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "native_executable_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "native_source_tree": {
+          "$ref": "#/$defs/git"
+        },
+        "qualification_evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "runtime_source_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "immutable_final_v1_evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_count",
+        "id",
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "case_count": {
+          "const": 42
+        },
+        "id": {
+          "const": "m22-independent-followup-v1"
+        },
+        "path": {
+          "const": "config/v2/m22-followup-manifest.json"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "preflight": {
+      "$ref": "#/$defs/preflight"
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_order",
+        "cases_attempted",
+        "cases_declared",
+        "evaluator_attempts",
+        "evaluator_processes",
+        "manifest_reads",
+        "native_dispatches",
+        "native_processes",
+        "post_result_selection",
+        "prior_nonexecuting_attempts",
+        "replacements",
+        "retries",
+        "total_manifest_reads"
+      ],
+      "properties": {
+        "case_order": {
+          "type": "array",
+          "minItems": 42,
+          "maxItems": 42,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/case_id"
+          }
+        },
+        "cases_attempted": {
+          "const": 42
+        },
+        "cases_declared": {
+          "const": 42
+        },
+        "evaluator_attempts": {
+          "const": 42
+        },
+        "evaluator_processes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "manifest_reads": {
+          "const": 1
+        },
+        "native_dispatches": {
+          "const": 42
+        },
+        "native_processes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 42
+        },
+        "post_result_selection": {
+          "const": false
+        },
+        "prior_nonexecuting_attempts": {
+          "const": 0
+        },
+        "replacements": {
+          "const": 0
+        },
+        "retries": {
+          "const": 0
+        },
+        "total_manifest_reads": {
+          "const": 1
+        }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 42,
+      "maxItems": 42,
+      "items": {
+        "$ref": "#/$defs/run"
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clean",
+        "files",
+        "repository_commit",
+        "repository_tree",
+        "tree_sha256"
+      ],
+      "properties": {
+        "clean": {
+          "const": true
+        },
+        "files": {
+          "type": "array",
+          "minItems": 20,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/source_file"
+          }
+        },
+        "repository_commit": {
+          "$ref": "#/$defs/git"
+        },
+        "repository_tree": {
+          "$ref": "#/$defs/git"
+        },
+        "tree_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "paired_effects",
+        "policies"
+      ],
+      "properties": {
+        "paired_effects": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/effect"
+          }
+        },
+        "policies": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/policy_stats"
+          }
+        }
+      }
+    },
+    "immutable_final_v1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cases_attempted",
+        "evidence_path",
+        "evidence_sha256",
+        "followup_replaces_final_v1",
+        "original_cases_reexecuted",
+        "status"
+      ],
+      "properties": {
+        "cases_attempted": {
+          "const": 42
+        },
+        "evidence_path": {
+          "const": "config/v2/m22-final-evaluation-evidence.json"
+        },
+        "evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "followup_replaces_final_v1": {
+          "const": false
+        },
+        "original_cases_reexecuted": {
+          "const": 0
+        },
+        "status": {
+          "const": "FAIL"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "git": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "program": {
+      "enum": [
+        "wait",
+        "road-passenger",
+        "road-cargo",
+        "rail-passenger",
+        "rail-freight",
+        "ship-natural",
+        "ship-constructed",
+        "air-service",
+        "air-helicopter",
+        "multimodal-transfer",
+        "mode-router",
+        "competition-head-to-head",
+        "calendar-inspect",
+        "authority-economy",
+        "event-recovery",
+        "gamescript-response",
+        "content-discovery"
+      ]
+    },
+    "active_program": {
+      "enum": [
+        "road-passenger",
+        "road-cargo",
+        "rail-passenger",
+        "rail-freight",
+        "ship-natural",
+        "ship-constructed",
+        "air-service",
+        "air-helicopter",
+        "multimodal-transfer",
+        "mode-router",
+        "competition-head-to-head",
+        "calendar-inspect",
+        "authority-economy",
+        "event-recovery",
+        "gamescript-response",
+        "content-discovery"
+      ]
+    },
+    "baseline_policy": {
+      "enum": [
+        "seeded-random-legal",
+        "wait-only",
+        "public-heuristic-v1"
+      ]
+    },
+    "failure": {
+      "enum": [
+        "evaluator-process",
+        "evaluator-report",
+        "evaluator-identity",
+        "evaluator-public-boundary",
+        "learned-program-mismatch",
+        "native-execution",
+        "native-service",
+        "opponent-retention",
+        "broad-retention"
+      ]
+    },
+    "public_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "cargo",
+        "climate",
+        "map_height",
+        "map_width",
+        "native_probe",
+        "opponent",
+        "source_gate",
+        "task",
+        "transport_mode"
+      ],
+      "properties": {
+        "case_id": {
+          "$ref": "#/$defs/case_id"
+        },
+        "cargo": {
+          "type": "string",
+          "pattern": "^(?:[A-Z0-9_]{4}|not-applicable)$"
+        },
+        "climate": {
+          "enum": [
+            "temperate",
+            "arctic",
+            "tropic",
+            "toyland"
+          ]
+        },
+        "map_height": {
+          "enum": [
+            64,
+            128,
+            1024
+          ]
+        },
+        "map_width": {
+          "enum": [
+            64,
+            128,
+            512,
+            1024
+          ]
+        },
+        "native_probe": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+$"
+        },
+        "opponent": {
+          "enum": [
+            "AAAHogEx",
+            "KrakenAI2",
+            "NoOpAI",
+            "not-applicable"
+          ]
+        },
+        "source_gate": {
+          "enum": [
+            "G15",
+            "G16",
+            "G17",
+            "G18",
+            "G19",
+            "G20",
+            "G21"
+          ]
+        },
+        "task": {
+          "enum": [
+            "service",
+            "routing",
+            "competition",
+            "retention"
+          ]
+        },
+        "transport_mode": {
+          "enum": [
+            "road",
+            "rail",
+            "water",
+            "air",
+            "multimodal",
+            "company",
+            "broad"
+          ]
+        }
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempt",
+        "exit_code",
+        "fresh_process",
+        "launched",
+        "network_unshared",
+        "stderr_path",
+        "stderr_sha256",
+        "stdout_path",
+        "stdout_sha256",
+        "timed_out",
+        "wall_seconds"
+      ],
+      "properties": {
+        "attempt": {
+          "const": 1
+        },
+        "exit_code": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "fresh_process": {
+          "const": true
+        },
+        "launched": {
+          "type": "boolean"
+        },
+        "network_unshared": {
+          "const": true
+        },
+        "stderr_path": {
+          "const": "evaluator.stderr"
+        },
+        "stderr_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "stdout_path": {
+          "const": "evaluator.stdout"
+        },
+        "stdout_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "timed_out": {
+          "type": "boolean"
+        },
+        "wall_seconds": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "action_index",
+        "failure_category",
+        "failure_detail",
+        "legal_active_program",
+        "process",
+        "report_path",
+        "report_sha256",
+        "status"
+      ],
+      "properties": {
+        "action": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/program"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "action_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 16
+        },
+        "failure_category": {
+          "oneOf": [
+            {
+              "enum": [
+                "evaluator-process",
+                "evaluator-report",
+                "evaluator-identity",
+                "evaluator-public-boundary"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failure_detail": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "legal_active_program": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/active_program"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "process": {
+          "$ref": "#/$defs/process"
+        },
+        "report_path": {
+          "oneOf": [
+            {
+              "const": "evaluator-report.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "report_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "native_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case",
+        "executable_sha256",
+        "fresh_processes",
+        "manifest_path",
+        "manifest_sha256",
+        "metrics",
+        "native_probe",
+        "network_unshared",
+        "openttd_log_path",
+        "openttd_log_sha256",
+        "report_path",
+        "report_sha256",
+        "source_tree",
+        "status",
+        "wall_seconds"
+      ],
+      "properties": {
+        "case": {
+          "$ref": "#/$defs/public_case"
+        },
+        "executable_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "fresh_processes": {
+          "const": 1
+        },
+        "manifest_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "metrics": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": [
+              "integer",
+              "number",
+              "string",
+              "boolean"
+            ]
+          }
+        },
+        "native_probe": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+$"
+        },
+        "network_unshared": {
+          "const": true
+        },
+        "openttd_log_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "openttd_log_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "report_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "report_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source_tree": {
+          "$ref": "#/$defs/git"
+        },
+        "status": {
+          "const": "PASS"
+        },
+        "wall_seconds": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "native": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_inventory",
+        "attempt",
+        "failure_category",
+        "failure_detail",
+        "record",
+        "status"
+      ],
+      "properties": {
+        "artifact_inventory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
+        },
+        "attempt": {
+          "const": 1
+        },
+        "failure_category": {
+          "oneOf": [
+            {
+              "const": "native-execution"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failure_detail": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "record": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/native_record"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "correct",
+        "decision_seed",
+        "policy",
+        "return"
+      ],
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/program"
+        },
+        "correct": {
+          "type": "boolean"
+        },
+        "decision_seed": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "policy": {
+          "$ref": "#/$defs/baseline_policy"
+        },
+        "return": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baselines",
+        "learned_correct",
+        "learned_return",
+        "native_reward"
+      ],
+      "properties": {
+        "baselines": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/baseline"
+          }
+        },
+        "learned_correct": {
+          "type": "boolean"
+        },
+        "learned_return": {
+          "type": "number",
+          "minimum": 0
+        },
+        "native_reward": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_path",
+        "evaluator",
+        "failures",
+        "native",
+        "ordinal",
+        "private_seed",
+        "public_case",
+        "required_program",
+        "scores"
+      ],
+      "properties": {
+        "artifact_path": {
+          "type": "string",
+          "pattern": "^cases/[0-9]{2}-[a-z0-9-]+$"
+        },
+        "evaluator": {
+          "$ref": "#/$defs/evaluator"
+        },
+        "failures": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/failure"
+          }
+        },
+        "native": {
+          "$ref": "#/$defs/native"
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 41
+        },
+        "private_seed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "public_case": {
+          "$ref": "#/$defs/public_case"
+        },
+        "required_program": {
+          "$ref": "#/$defs/active_program"
+        },
+        "scores": {
+          "$ref": "#/$defs/scores"
+        }
+      }
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluator",
+        "public_case"
+      ],
+      "properties": {
+        "evaluator": {
+          "$ref": "#/$defs/evaluator"
+        },
+        "public_case": {
+          "$ref": "#/$defs/public_case"
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ci95_lower",
+        "ci95_upper",
+        "maximum",
+        "mean",
+        "median",
+        "minimum",
+        "n",
+        "sample_sd",
+        "standard_error",
+        "t_critical_95"
+      ],
+      "properties": {
+        "ci95_lower": {
+          "type": "number"
+        },
+        "ci95_upper": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "mean": {
+          "type": "number"
+        },
+        "median": {
+          "type": "number"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "n": {
+          "const": 42
+        },
+        "sample_sd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "standard_error": {
+          "type": "number",
+          "minimum": 0
+        },
+        "t_critical_95": {
+          "type": "number",
+          "minimum": 2,
+          "maximum": 2.1
+        }
+      }
+    },
+    "policy_stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "statistics"
+      ],
+      "properties": {
+        "policy": {
+          "enum": [
+            "learned",
+            "seeded-random-legal",
+            "wait-only",
+            "public-heuristic-v1"
+          ]
+        },
+        "statistics": {
+          "$ref": "#/$defs/stats"
+        }
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline",
+        "learned",
+        "statistics"
+      ],
+      "properties": {
+        "baseline": {
+          "$ref": "#/$defs/baseline_policy"
+        },
+        "learned": {
+          "const": "learned"
+        },
+        "statistics": {
+          "$ref": "#/$defs/stats"
+        }
+      }
+    },
+    "source_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}
