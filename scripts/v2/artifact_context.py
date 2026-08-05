@@ -56,6 +56,8 @@ def _validate_component(value: str, *, label: str) -> None:
 def _relative_parts(value: str, *, label: str) -> tuple[str, ...]:
     if not isinstance(value, str) or not value or "\\" in value or "\x00" in value:
         raise ArtifactContextError(f"{label} must be a safe nonempty relative POSIX path: {value!r}")
+    if value == ".":
+        return ()
     parts = value.split("/")
     if value.startswith("/") or any(part in {"", ".", ".."} for part in parts):
         raise ArtifactContextError(f"{label} must be a safe nonempty relative POSIX path: {value!r}")

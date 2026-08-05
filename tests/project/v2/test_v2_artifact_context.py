@@ -216,7 +216,6 @@ class V2ArtifactContextTests(unittest.TestCase):
 
     def test_requirement_rejects_ambiguous_lexical_relative_paths(self) -> None:
         ambiguous = (
-            ".",
             "./inputs/x",
             "inputs//x",
             "inputs/./x",
@@ -228,6 +227,44 @@ class V2ArtifactContextTests(unittest.TestCase):
                 with self.subTest(constructor=constructor.__name__, relative=relative), \
                         self.assertRaises(ArtifactContextError):
                     constructor("safe-name", relative, "file", "consumer")
+
+    def test_exact_dot_resolves_file_role_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            manifest = self.load_valid_manifest(root)
+            requirement = RoleRequirement(
+                "recovery-v1-executable", ".", "file", "recovery",
+            )
+            manifest.preflight((requirement,))
+            self.assertEqual(
+                manifest.resolve(requirement),
+                root / "inputs/recovery-v1-executable",
+            )
+
+    def test_exact_dot_resolves_directory_role_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            manifest = self.load_valid_manifest(root)
+            requirement = RoleRequirement(
+                "training-artifacts", ".", "directory", "trainer",
+            )
+            manifest.preflight((requirement,))
+            self.assertEqual(
+                manifest.resolve(requirement),
+                root / "inputs/training-artifacts",
+            )
+
+    def test_exact_dot_resolves_artifact_set_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            artifact_set = root / "set-a"
+            artifact_set.mkdir()
+            context = ArtifactContext.live(root)
+            requirement = ArtifactRequirement(
+                "set-a", ".", "directory", "consumer",
+            )
+            context.preflight((requirement,))
+            self.assertEqual(context.resolve(requirement), artifact_set)
 
     def test_role_requirement_preflights_nested_checkpoint_and_log_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
