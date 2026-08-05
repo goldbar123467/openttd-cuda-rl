@@ -15,9 +15,19 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    add_artifact_root_argument,
+)
+
 
 CONFIG = pathlib.Path("config/v2/m15-competence-source.json")
 SCHEMA = pathlib.Path("docs/project/schema/v2-m15-competence-source.schema.json")
+BASE_LOGICAL_SET = "v2-m15-episode-a"
+RESULT_LOGICAL_SET = "v2-m15-competence-a"
+LIVE_CONSUMER = "m15-competence-source"
 EXPECTED_FILES = ["src/rl_v2_action.cpp"]
 FORBIDDEN_V1_FILES = {
     "src/rl_action.cpp", "src/rl_action.h", "src/rl_bridge.cpp", "src/rl_bridge.h",
@@ -66,14 +76,47 @@ def git(repository: pathlib.Path, *arguments: str) -> str:
     return result.stdout.strip()
 
 
+def _recorded_result_set(config: dict[str, Any]) -> str:
+    recorded = config["build"]["artifact_root"]
+    path = pathlib.PurePosixPath(recorded)
+    require(
+        isinstance(recorded, str)
+        and recorded.startswith("/")
+        and not recorded.startswith("//")
+        and str(path) == recorded
+        and all(part not in {"", ".", ".."} for part in path.parts[1:]),
+        "M15 competence recorded build root is not an absolute normalized POSIX path",
+    )
+    require(path.name == RESULT_LOGICAL_SET, "M15 competence logical artifact set drifted")
+    return path.name
+
+
+def _requirements(config: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    result_set = _recorded_result_set(config)
+    executable = config["build"]["executable"]
+    return (
+        ArtifactRequirement(BASE_LOGICAL_SET, "source", "directory", LIVE_CONSUMER),
+        ArtifactRequirement(BASE_LOGICAL_SET, "source/.git", "directory", LIVE_CONSUMER),
+        ArtifactRequirement(result_set, "source", "directory", LIVE_CONSUMER),
+        ArtifactRequirement(result_set, "source/.git", "directory", LIVE_CONSUMER),
+        ArtifactRequirement(result_set, executable["path"], "file", LIVE_CONSUMER, executable["sha256"]),
+    )
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    return _requirements(load_json(root / CONFIG))
+
+
 def validate(
     root: pathlib.Path,
     config_path: pathlib.Path | None = None,
     schema_path: pathlib.Path | None = None,
     *,
-    base_source: pathlib.Path | None = None,
-    artifact_root: pathlib.Path | None = None,
+    artifact_context: ArtifactContext | None = None,
 ) -> M15CompetenceSourceSummary:
+    context = artifact_context or ArtifactContext.offline()
+    repository_config = config_path is None
     root = root.resolve()
     config_path, schema_path = config_path or root / CONFIG, schema_path or root / SCHEMA
     config, schema = load_json(config_path), load_json(schema_path)
@@ -94,8 +137,17 @@ def validate(
     for token in ("RunPassengerService", "FindServiceSite", "StateGameLoop", "CMD_BUILD_VEHICLE", "delivered_passengers", 'operation == \"SERVICE\"'):
         require(token in patch_text, f"M15 competence patch lost required token: {token}")
 
-    if base_source is not None:
-        base_source = base_source.resolve()
+    _recorded_result_set(config)
+    if context.is_live:
+        requirements = required_live_inputs(root) if repository_config else _requirements(config)
+        context.preflight(requirements)
+        live_paths = {
+            (requirement.logical_set, requirement.relative_path): context.resolve(requirement)
+            for requirement in requirements
+        }
+        base_source = live_paths[(BASE_LOGICAL_SET, "source")]
+        result_source = live_paths[(RESULT_LOGICAL_SET, "source")]
+        executable = live_paths[(RESULT_LOGICAL_SET, config["build"]["executable"]["path"])]
         require(git(base_source, "status", "--porcelain") == "", "M15 competence base source is dirty")
         require(git(base_source, "rev-parse", "HEAD") == config["base"]["commit"], "M15 competence base commit drifted")
         require(git(base_source, "rev-parse", "HEAD^{tree}") == config["base"]["tree"], "M15 competence base tree drifted")
@@ -108,34 +160,28 @@ def validate(
             applied = subprocess.run(["git", "-C", str(target), "apply", "--index", "--whitespace=error-all", str(patch)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             require(applied.returncode == 0, f"cannot apply M15 competence patch: {applied.stderr.strip()}")
             require(git(target, "write-tree") == config["result"]["tree"], "M15 competence result tree drifted")
-
-    if artifact_root is not None:
-        artifact_root = artifact_root.resolve()
-        require(str(artifact_root) == config["build"]["artifact_root"], "M15 competence build artifact root drifted")
-        executable = artifact_root / config["build"]["executable"]["path"]
+        require(git(result_source, "status", "--porcelain") == "", "M15 competence retained source is dirty")
+        require(git(result_source, "rev-parse", "HEAD") == config["result"]["commit"], "M15 competence retained commit drifted")
+        require(git(result_source, "rev-parse", "HEAD^{tree}") == config["result"]["tree"], "M15 competence retained tree drifted")
         require(executable.is_file() and not executable.is_symlink(), "M15 competence executable is missing or a symlink")
         require(executable.stat().st_size == config["build"]["executable"]["size"], "M15 competence executable size drifted")
         require(sha256_file(executable) == config["build"]["executable"]["sha256"], "M15 competence executable SHA-256 drifted")
-        source = artifact_root / "source"
-        require(git(source, "status", "--porcelain") == "", "M15 competence retained source is dirty")
-        require(git(source, "rev-parse", "HEAD") == config["result"]["commit"], "M15 competence retained commit drifted")
-        require(git(source, "rev-parse", "HEAD^{tree}") == config["result"]["tree"], "M15 competence retained tree drifted")
-    return M15CompetenceSourceSummary(len(touched), config["result"]["tree"], base_source is not None, artifact_root is not None)
+    return M15CompetenceSourceSummary(len(touched), config["result"]["tree"], context.is_live, context.is_live)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--config", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--base-source", type=pathlib.Path)
-    parser.add_argument("--artifact-root", type=pathlib.Path)
-    args = parser.parse_args()
+    add_artifact_root_argument(parser)
+    args = parser.parse_args(argv)
     try:
-        summary = validate(args.root, args.config, args.schema, base_source=args.base_source, artifact_root=args.artifact_root)
+        context = ArtifactContext.offline() if args.artifact_root is None else ArtifactContext.live(args.artifact_root)
+        summary = validate(args.root, args.config, args.schema, artifact_context=context)
         print(f"V2_M15_COMPETENCE_SOURCE=PASS files={summary.files} result_tree={summary.result_tree} live_source={str(summary.live_source).lower()} live_build={str(summary.live_build).lower()}")
         return 0
-    except (M15CompetenceSourceError, OSError) as exc:
+    except (M15CompetenceSourceError, ArtifactContextError, OSError) as exc:
         print(f"V2_M15_COMPETENCE_SOURCE=FAIL {exc}")
         return 1
 

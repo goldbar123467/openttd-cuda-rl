@@ -13,16 +13,27 @@ import subprocess
 import sys
 from collections import Counter
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    LiveInputManifest,
+    RoleRequirement,
+    ValidationMode,
+)
 import qualify_m15_native_map
 
 
 SCHEMA_RELATIVE = pathlib.Path("docs/project/schema/v2-m15-map-evidence.schema.json")
 CONTRACT_RELATIVE = pathlib.Path("config/v2/m15-scalable-contract.json")
 EVIDENCE_NAME = "m15-map-evidence.json"
+LIVE_CONSUMER = "m15-map-matrix"
+OPENTTD_ROLE = "m14-openttd-executable"
 
 
 class M15MapMatrixError(ValueError):
@@ -108,6 +119,105 @@ def result_projection(manifest: dict[str, Any], artifact_dir: str, evidence_sha2
     }
 
 
+def _recorded_artifact_set(evidence: dict[str, Any]) -> str:
+    recorded_hint = evidence["artifact_base_hint"]
+    hint = pathlib.PurePosixPath(recorded_hint)
+    require(
+        isinstance(recorded_hint, str)
+        and recorded_hint.startswith("/")
+        and not recorded_hint.startswith("//")
+        and str(hint) == recorded_hint
+        and all(part not in {"", ".", ".."} for part in hint.parts[1:]),
+        "M15 map recorded artifact hint is not an absolute normalized POSIX path",
+    )
+    logical_set = evidence["artifact_root"]
+    require(
+        isinstance(logical_set, str)
+        and logical_set not in {"", ".", ".."}
+        and "/" not in logical_set
+        and "\\" not in logical_set,
+        "M15 map logical artifact set is not one POSIX path component",
+    )
+    return logical_set
+
+
+def _artifact_requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    logical_set = _recorded_artifact_set(evidence)
+    requirements: list[ArtifactRequirement] = [
+        ArtifactRequirement(logical_set, ".", "directory", LIVE_CONSUMER),
+    ]
+    for item in evidence["results"]:
+        directory = item["artifact_dir"]
+        requirements.extend([
+            ArtifactRequirement(logical_set, directory, "directory", LIVE_CONSUMER),
+            ArtifactRequirement(
+                logical_set,
+                f"{directory}/{item['evidence_file']}",
+                "file",
+                LIVE_CONSUMER,
+                item["evidence_sha256"],
+            ),
+        ])
+        if item["outcome"] == "GENERATED":
+            requirements.extend([
+                ArtifactRequirement(
+                    logical_set,
+                    f"{directory}/{qualify_m15_native_map.TRANSCRIPT_NAME}",
+                    "file",
+                    LIVE_CONSUMER,
+                ),
+                ArtifactRequirement(
+                    logical_set,
+                    f"{directory}/{qualify_m15_native_map.SAVE_RELATIVE.as_posix()}",
+                    "file",
+                    LIVE_CONSUMER,
+                    item["save_sha256"],
+                ),
+            ])
+    return tuple(requirements)
+
+
+def _role_requirements(evidence: dict[str, Any]) -> tuple[RoleRequirement, ...]:
+    return (
+        RoleRequirement(
+            OPENTTD_ROLE,
+            ".",
+            "file",
+            LIVE_CONSUMER,
+            evidence["executable"]["sha256"],
+        ),
+    )
+
+
+def required_live_inputs(
+    root: pathlib.Path,
+    evidence_path: pathlib.Path | None = None,
+) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    return _artifact_requirements(load_json(evidence_path or root / "config/v2/m15-map-evidence.json"))
+
+
+def required_live_roles(
+    root: pathlib.Path,
+    evidence_path: pathlib.Path | None = None,
+) -> tuple[RoleRequirement, ...]:
+    root = root.resolve()
+    return _role_requirements(load_json(evidence_path or root / "config/v2/m15-map-evidence.json"))
+
+
+def live_inputs_for_openttd(
+    artifact_root: pathlib.Path,
+    openttd: pathlib.Path,
+) -> LiveInputManifest:
+    """Represent an already selected executable through the typed map role."""
+
+    return LiveInputManifest(
+        ValidationMode.LIVE,
+        artifact_root,
+        MappingProxyType({OPENTTD_ROLE: openttd}),
+    )
+
+
 def run_matrix(
     root: pathlib.Path,
     openttd: pathlib.Path,
@@ -178,8 +288,19 @@ def run_matrix(
         },
     }
     matrix_path = artifact_root / EVIDENCE_NAME
-    matrix_path.write_text(json.dumps(matrix, indent=2) + "\n", encoding="utf-8")
-    validate(root, matrix_path, artifact_base=artifact_root.parent, openttd=openttd)
+    pending_path = artifact_root / f".{EVIDENCE_NAME}.pending"
+    pending_path.write_text(json.dumps(matrix, indent=2) + "\n", encoding="utf-8")
+    try:
+        validate(
+            root,
+            pending_path,
+            artifact_context=ArtifactContext.live(artifact_root.parent),
+            live_inputs=live_inputs_for_openttd(artifact_root.parent, openttd),
+        )
+        pending_path.replace(matrix_path)
+    except Exception:
+        pending_path.unlink(missing_ok=True)
+        raise
     return matrix_path
 
 
@@ -188,9 +309,11 @@ def validate(
     evidence_path: pathlib.Path | None = None,
     schema_path: pathlib.Path | None = None,
     *,
-    artifact_base: pathlib.Path | None = None,
-    openttd: pathlib.Path | None = None,
+    artifact_context: ArtifactContext | None = None,
+    live_inputs: LiveInputManifest | None = None,
 ) -> M15MapMatrixSummary:
+    context = artifact_context or ArtifactContext.offline()
+    repository_evidence = evidence_path is None
     root = root.resolve()
     evidence_path = evidence_path or root / "config/v2/m15-map-evidence.json"
     schema_path = schema_path or root / SCHEMA_RELATIVE
@@ -233,15 +356,38 @@ def validate(
     }
     require(evidence["counts"] == expected_counts, "M15 map matrix summary counts drifted")
     require(counts == {"GENERATED": 39, "PREFLIGHT_REJECTED": 10}, f"M15 map matrix outcome inventory drifted: {dict(counts)}")
+    logical_set = _recorded_artifact_set(evidence)
 
-    if artifact_base is not None:
-        artifact_root = artifact_base.resolve() / evidence["artifact_root"]
-        require(artifact_root.is_dir() and not artifact_root.is_symlink(), "M15 live map artifact root is missing or a symlink")
-        if openttd is not None:
-            openttd = openttd.resolve()
-            require(evidence["executable"] == {"sha256": sha256_file(openttd), "size": openttd.stat().st_size}, "M15 map matrix executable drifted")
+    if context.is_live:
+        requirements = (
+            required_live_inputs(root)
+            if repository_evidence
+            else _artifact_requirements(evidence)
+        )
+        roles = (
+            required_live_roles(root)
+            if repository_evidence
+            else _role_requirements(evidence)
+        )
+        context.preflight(requirements)
+        if live_inputs is None:
+            raise ArtifactContextError("live map validation requires the m14-openttd-executable role")
+        live_inputs.preflight(roles)
+        live_paths = {
+            requirement.relative_path: context.resolve(requirement)
+            for requirement in requirements
+            if requirement.logical_set == logical_set
+        }
+        openttd = live_inputs.resolve(roles[0])
+        require(
+            evidence["executable"] == {
+                "sha256": sha256_file(openttd),
+                "size": openttd.stat().st_size,
+            },
+            "M15 map matrix executable drifted",
+        )
         for item in results:
-            evidence_file = artifact_root / item["artifact_dir"] / item["evidence_file"]
+            evidence_file = live_paths[f"{item['artifact_dir']}/{item['evidence_file']}"]
             require(evidence_file.is_file() and not evidence_file.is_symlink(), f"M15 live evidence is missing or a symlink: {evidence_file}")
             require(sha256_file(evidence_file) == item["evidence_sha256"], f"M15 {item['width']}x{item['height']} evidence digest drifted")
             manifest = qualify_m15_native_map.validate_manifest(root, evidence_file, openttd=openttd)
@@ -253,7 +399,7 @@ def validate(
         preflight_rejected=counts["PREFLIGHT_REJECTED"],
         save_bytes=expected_counts["save_bytes"],
         maximum_rss_kib=expected_counts["maximum_rss_kib"],
-        live_artifacts=artifact_base is not None,
+        live_artifacts=context.is_live,
     )
 
 
@@ -262,30 +408,47 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--openttd", type=pathlib.Path)
     parser.add_argument("--artifact-root", type=pathlib.Path)
-    parser.add_argument("--evidence", type=pathlib.Path)
-    parser.add_argument("--artifact-base", type=pathlib.Path)
-    parser.add_argument("--seed", type=int, default=1110312784)
-    parser.add_argument("--workers", type=int, default=2)
-    parser.add_argument("--sandbox", choices=("bubblewrap", "test-none"), default="bubblewrap")
-    return parser.parse_args(argv)
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--workers", type=int)
+    parser.add_argument("--sandbox", choices=("bubblewrap", "test-none"))
+    args = parser.parse_args(argv)
+    creation_requested = any(
+        value is not None
+        for value in (args.openttd, args.artifact_root, args.seed, args.workers, args.sandbox)
+    )
+    if creation_requested and (args.openttd is None or args.artifact_root is None):
+        parser.error("creation requires both --openttd and --artifact-root")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
+    args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
         if args.artifact_root is not None:
-            require(args.openttd is not None and args.evidence is None and args.artifact_base is None, "matrix run requires --openttd and forbids validation-only options")
-            path = run_matrix(args.root, args.openttd, args.artifact_root, args.seed, workers=args.workers, sandbox=args.sandbox)
+            assert args.openttd is not None
+            path = run_matrix(
+                args.root,
+                args.openttd,
+                args.artifact_root,
+                args.seed if args.seed is not None else 1110312784,
+                workers=args.workers if args.workers is not None else 2,
+                sandbox=args.sandbox if args.sandbox is not None else "bubblewrap",
+            )
             print(f"V2_M15_MAP_MATRIX=GENERATED evidence={path} sha256={sha256_file(path)}")
             return 0
-        summary = validate(args.root, args.evidence, artifact_base=args.artifact_base, openttd=args.openttd)
+        summary = validate(args.root, artifact_context=ArtifactContext.offline())
         print(
             f"V2_M15_MAP_MATRIX=PASS rectangles={summary.rectangles} generated={summary.generated} "
             f"preflight_rejected={summary.preflight_rejected} save_bytes={summary.save_bytes} "
             f"max_rss_kib={summary.maximum_rss_kib} live={str(summary.live_artifacts).lower()}"
         )
         return 0
-    except (M15MapMatrixError, qualify_m15_native_map.M15MapQualificationError, OSError) as exc:
+    except (
+        M15MapMatrixError,
+        qualify_m15_native_map.M15MapQualificationError,
+        ArtifactContextError,
+        OSError,
+    ) as exc:
         print(f"V2_M15_MAP_MATRIX=FAIL {exc}", file=sys.stderr)
         return 1
 

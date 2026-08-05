@@ -8,6 +8,7 @@ import json
 import pathlib
 import sys
 
+from artifact_context import ArtifactContext, ArtifactContextError
 import run_m15_map_matrix
 
 
@@ -29,21 +30,28 @@ def main(argv: list[str] | None = None) -> int:
         run_m15_map_matrix.validate(
             root,
             args.artifact_matrix,
-            artifact_base=args.artifact_base,
-            openttd=args.openttd,
+            artifact_context=ArtifactContext.live(args.artifact_base),
+            live_inputs=run_m15_map_matrix.live_inputs_for_openttd(
+                args.artifact_base,
+                args.openttd,
+            ),
         )
         if output.exists() or output.is_symlink():
             raise run_m15_map_matrix.M15MapMatrixError(f"refusing to overwrite frozen map evidence: {output}")
         value = run_m15_map_matrix.load_json(args.artifact_matrix)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-        frozen = run_m15_map_matrix.validate(root, output)
+        frozen = run_m15_map_matrix.validate(
+            root,
+            output,
+            artifact_context=ArtifactContext.offline(),
+        )
         print(
             f"V2_M15_MAP_EVIDENCE_FROZEN rectangles={frozen.rectangles} generated={frozen.generated} "
             f"preflight_rejected={frozen.preflight_rejected} output={output} sha256={run_m15_map_matrix.sha256_file(output)}"
         )
         return 0
-    except (run_m15_map_matrix.M15MapMatrixError, OSError) as exc:
+    except (run_m15_map_matrix.M15MapMatrixError, ArtifactContextError, OSError) as exc:
         print(f"V2_M15_MAP_EVIDENCE_FREEZE=FAIL {exc}", file=sys.stderr)
         return 1
 
