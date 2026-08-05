@@ -407,6 +407,24 @@ class V2ArtifactContextTests(unittest.TestCase):
                     ), self.assertRaises(ArtifactContextError):
                         LiveInputManifest.load(root)
 
+    def test_live_input_manifest_rejects_exact_dot_role_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            self.make_live_inputs(root)
+            roles = json.loads(
+                (root / "v2-live-inputs.json").read_text(encoding="utf-8")
+            )["roles"]
+            roles["training-artifacts"] = "."
+            self.make_live_inputs(root, roles=roles)
+
+            def frozen_digest(path: pathlib.Path) -> str:
+                return FROZEN_FILE_DIGESTS[path.name]
+
+            with mock.patch.object(
+                artifact_context, "_sha256_file", side_effect=frozen_digest,
+            ), self.assertRaises(ArtifactContextError):
+                LiveInputManifest.load(root)
+
     def test_live_input_manifest_exposes_role_names_without_raw_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             manifest = self.load_valid_manifest(pathlib.Path(temporary))

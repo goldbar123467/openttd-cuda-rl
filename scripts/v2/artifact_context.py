@@ -53,11 +53,20 @@ def _validate_component(value: str, *, label: str) -> None:
         raise ArtifactContextError(f"{label} must be one nonempty POSIX path component: {value!r}")
 
 
-def _relative_parts(value: str, *, label: str) -> tuple[str, ...]:
+def _relative_parts(
+    value: str,
+    *,
+    label: str,
+    allow_root_selector: bool = False,
+) -> tuple[str, ...]:
     if not isinstance(value, str) or not value or "\\" in value or "\x00" in value:
         raise ArtifactContextError(f"{label} must be a safe nonempty relative POSIX path: {value!r}")
     if value == ".":
-        return ()
+        if allow_root_selector:
+            return ()
+        raise ArtifactContextError(
+            f"{label} must be a safe nonempty relative POSIX path: {value!r}"
+        )
     parts = value.split("/")
     if value.startswith("/") or any(part in {"", ".", ".."} for part in parts):
         raise ArtifactContextError(f"{label} must be a safe nonempty relative POSIX path: {value!r}")
@@ -99,7 +108,11 @@ class ArtifactRequirement:
 
     def __post_init__(self) -> None:
         _validate_component(self.logical_set, label="logical artifact set")
-        _relative_parts(self.relative_path, label="artifact relative path")
+        _relative_parts(
+            self.relative_path,
+            label="artifact relative path",
+            allow_root_selector=True,
+        )
         _validate_kind_and_digest(self.kind, self.expected_sha256)
 
 
@@ -113,7 +126,11 @@ class RoleRequirement:
 
     def __post_init__(self) -> None:
         _validate_component(self.role, label="live-input role")
-        _relative_parts(self.relative_path, label="role relative path")
+        _relative_parts(
+            self.relative_path,
+            label="role relative path",
+            allow_root_selector=True,
+        )
         _validate_kind_and_digest(self.kind, self.expected_sha256)
 
 
@@ -252,7 +269,11 @@ class ArtifactContext:
     def resolve(self, requirement: ArtifactRequirement) -> pathlib.Path:
         if not isinstance(requirement, ArtifactRequirement):
             raise TypeError("artifact resolution requires an ArtifactRequirement")
-        relative = _relative_parts(requirement.relative_path, label="artifact relative path")
+        relative = _relative_parts(
+            requirement.relative_path,
+            label="artifact relative path",
+            allow_root_selector=True,
+        )
         return self.artifact_set(requirement.logical_set).joinpath(*relative)
 
     def preflight(self, requirements: Sequence[ArtifactRequirement]) -> None:
@@ -457,7 +478,11 @@ class LiveInputManifest:
             base = self._roles[requirement.role]
         except KeyError as exc:
             raise ArtifactContextError(f"live-input role is not declared: {requirement.role}") from exc
-        relative = _relative_parts(requirement.relative_path, label="role relative path")
+        relative = _relative_parts(
+            requirement.relative_path,
+            label="role relative path",
+            allow_root_selector=True,
+        )
         return base.joinpath(*relative)
 
     def preflight(self, requirements: Sequence[RoleRequirement]) -> None:
