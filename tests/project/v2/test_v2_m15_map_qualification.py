@@ -23,6 +23,7 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     LiveInputManifest,
+    RoleRequirement,
     ValidationMode,
 )
 import freeze_m15_map_evidence
@@ -174,6 +175,7 @@ class M15MapQualificationTests(unittest.TestCase):
         directory: pathlib.Path,
         *,
         validation: object,
+        events: list[tuple[str, object]] | None = None,
     ):
         manifests: dict[pathlib.Path, dict[str, object]] = {}
 
@@ -186,6 +188,8 @@ class M15MapQualificationTests(unittest.TestCase):
             _seed: int,
             _sandbox: str,
         ) -> tuple[tuple[int, int], str]:
+            if events is not None:
+                events.append(("run_one", _openttd))
             run_root = artifact_root / f"map-{width:04d}x{height:04d}"
             run_root.mkdir()
             evidence_path = run_root / qualify_m15_native_map.EVIDENCE_NAME
@@ -225,9 +229,9 @@ class M15MapQualificationTests(unittest.TestCase):
             ),
             mock.patch.object(run_m15_map_matrix, "validate", side_effect=validation) as validator,
             mock.patch.object(
-                run_m15_map_matrix,
-                "live_inputs_for_openttd",
-                return_value=mock.sentinel.live_inputs,
+                artifact_context,
+                "_sha256_file",
+                return_value=self.matrix["executable"]["sha256"],
             ),
             mock.patch("builtins.print"),
         ):
@@ -434,6 +438,232 @@ class M15MapQualificationTests(unittest.TestCase):
                     executable,
                 )
 
+    def test_run_matrix_rejects_invalid_executable_before_artifact_creation_or_jobs(self) -> None:
+        cases = (
+            ("relative", "unambiguous absolute"),
+            ("root-equal", "below artifact root"),
+            ("outside", "outside artifact root"),
+            ("symlink", "symlink traversal"),
+            ("wrong-kind", "expected regular file"),
+            ("wrong-digest", "SHA-256 mismatch"),
+        )
+        for name, expected in cases:
+            with self.subTest(candidate=name), tempfile.TemporaryDirectory() as raw:
+                directory = pathlib.Path(raw).resolve()
+                live_root = directory / "live"
+                live_root.mkdir()
+                artifact_root = live_root / "new-matrix"
+                if name == "relative":
+                    executable = pathlib.Path("relative-openttd")
+                elif name == "root-equal":
+                    executable = live_root
+                elif name == "outside":
+                    executable = directory / "outside-openttd"
+                    executable.write_bytes(b"outside")
+                elif name == "symlink":
+                    target = live_root / "real-openttd"
+                    target.write_bytes(b"fixture")
+                    executable = live_root / "openttd"
+                    executable.symlink_to(target)
+                elif name == "wrong-kind":
+                    executable = live_root / "openttd"
+                    executable.mkdir()
+                else:
+                    executable = live_root / "openttd"
+                    executable.write_bytes(b"wrong digest")
+
+                manifests: dict[pathlib.Path, dict[str, object]] = {}
+
+                def run_one(
+                    _root: pathlib.Path,
+                    _openttd: pathlib.Path,
+                    matrix_root: pathlib.Path,
+                    width: int,
+                    height: int,
+                    _seed: int,
+                    _sandbox: str,
+                ) -> tuple[tuple[int, int], str]:
+                    result_root = matrix_root / f"map-{width:04d}x{height:04d}"
+                    result_root.mkdir()
+                    evidence_path = result_root / qualify_m15_native_map.EVIDENCE_NAME
+                    evidence_path.write_text("{}\n", encoding="utf-8")
+                    generated = (
+                        width * height
+                        <= qualify_m15_native_map.MAXIMUM_GENERATED_TILES
+                    )
+                    manifests[evidence_path] = {
+                        "engine_source": self.matrix["engine_source"],
+                        "executable": self.matrix["executable"],
+                        "contract_sha256": self.matrix["contract_sha256"],
+                        "request": {
+                            "width": width,
+                            "height": height,
+                            "tile_count": width * height,
+                        },
+                        "outcome": (
+                            "GENERATED" if generated else "PREFLIGHT_REJECTED"
+                        ),
+                        "reason_code": (
+                            None
+                            if generated
+                            else "tile-count-exceeds-useful-play-preflight-budget"
+                        ),
+                        "observations": {
+                            "save": (
+                                {"size": 1, "sha256": "1" * 64}
+                                if generated
+                                else None
+                            ),
+                            "map": (
+                                {"map_sha256": "2" * 64}
+                                if generated
+                                else None
+                            ),
+                        },
+                        "resources": {
+                            "max_rss_kib": 1 if generated else 0,
+                            "wall_seconds": 0,
+                        },
+                    }
+                    return (width, height), "fixture"
+
+                created_roots: list[pathlib.Path] = []
+                real_mkdir = pathlib.Path.mkdir
+
+                def tracked_mkdir(path: pathlib.Path, *args: object, **kwargs: object) -> None:
+                    if path == artifact_root:
+                        created_roots.append(path)
+                    real_mkdir(path, *args, **kwargs)
+
+                with (
+                    mock.patch.object(
+                        run_m15_map_matrix,
+                        "run_one",
+                        side_effect=run_one,
+                    ) as runner,
+                    mock.patch.object(
+                        qualify_m15_native_map,
+                        "validate_manifest",
+                        side_effect=lambda _root, path, **_kwargs: manifests[path],
+                    ),
+                    mock.patch.object(
+                        pathlib.Path,
+                        "mkdir",
+                        autospec=True,
+                        side_effect=tracked_mkdir,
+                    ),
+                    mock.patch("builtins.print"),
+                    self.assertRaises(ArtifactContextError) as raised,
+                ):
+                    run_m15_map_matrix.run_matrix(
+                        self.root,
+                        executable,
+                        artifact_root,
+                        self.matrix["seed"],
+                        workers=1,
+                        sandbox="test-none",
+                    )
+                self.assertEqual(runner.call_count, 0)
+                self.assertEqual(created_roots, [])
+                self.assertFalse(artifact_root.exists())
+                self.assertFalse(
+                    (artifact_root / run_m15_map_matrix.EVIDENCE_NAME).exists()
+                )
+                self.assert_no_publication_temp(
+                    artifact_root,
+                    run_m15_map_matrix.EVIDENCE_NAME,
+                )
+                self.assertIn(expected, str(raised.exception))
+
+    def test_run_matrix_binds_preflights_and_resolves_before_first_job(self) -> None:
+        events: list[tuple[str, object]] = []
+        summary = run_m15_map_matrix.M15MapMatrixSummary(49, 39, 10, 39, 1, True)
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            with self.stubbed_matrix_run(
+                directory,
+                validation=lambda *_args, **_kwargs: summary,
+                events=events,
+            ) as (executable, artifact_root, _):
+                real_bind = run_m15_map_matrix.live_inputs_for_openttd
+                real_preflight = LiveInputManifest.preflight
+                real_resolve = LiveInputManifest.resolve
+                real_mkdir = pathlib.Path.mkdir
+
+                def bind(
+                    context: ArtifactContext,
+                    candidate: pathlib.Path,
+                ) -> LiveInputManifest:
+                    events.append(("bind", candidate is executable))
+                    return real_bind(context, candidate)
+
+                def preflight(
+                    manifest: LiveInputManifest,
+                    requirements: tuple[RoleRequirement, ...],
+                ) -> None:
+                    events.append(("preflight", requirements))
+                    real_preflight(manifest, requirements)
+
+                def resolve(
+                    manifest: LiveInputManifest,
+                    requirement: RoleRequirement,
+                ) -> pathlib.Path:
+                    events.append(("resolve", requirement))
+                    return real_resolve(manifest, requirement)
+
+                def tracked_mkdir(
+                    path: pathlib.Path,
+                    *args: object,
+                    **kwargs: object,
+                ) -> None:
+                    if path == artifact_root:
+                        events.append(("artifact_root", path))
+                    real_mkdir(path, *args, **kwargs)
+
+                with (
+                    mock.patch.object(
+                        run_m15_map_matrix,
+                        "live_inputs_for_openttd",
+                        side_effect=bind,
+                    ),
+                    mock.patch.object(
+                        LiveInputManifest,
+                        "preflight",
+                        autospec=True,
+                        side_effect=preflight,
+                    ),
+                    mock.patch.object(
+                        LiveInputManifest,
+                        "resolve",
+                        autospec=True,
+                        side_effect=resolve,
+                    ),
+                    mock.patch.object(
+                        pathlib.Path,
+                        "mkdir",
+                        autospec=True,
+                        side_effect=tracked_mkdir,
+                    ),
+                ):
+                    run_m15_map_matrix.run_matrix(
+                        self.root,
+                        executable,
+                        artifact_root,
+                        self.matrix["seed"],
+                        workers=1,
+                        sandbox="test-none",
+                    )
+
+        event_names = [name for name, _ in events]
+        artifact_index = event_names.index("artifact_root")
+        self.assertEqual(event_names[:2], ["bind", "preflight"])
+        self.assertGreaterEqual(event_names[2:artifact_index].count("resolve"), 1)
+        self.assertEqual(set(event_names[2:artifact_index]), {"resolve"})
+        self.assertIs(events[0][1], True)
+        jobs = [value for name, value in events if name == "run_one"]
+        self.assertEqual(len(jobs), 49)
+        self.assertEqual(set(jobs), {executable})
+
     def test_live_map_rejects_role_manifest_from_another_context_before_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             directory = pathlib.Path(raw).resolve()
@@ -635,9 +865,9 @@ class M15MapQualificationTests(unittest.TestCase):
                     side_effect=run_m15_map_matrix.M15MapMatrixError("generated validation failed"),
                 ),
                 mock.patch.object(
-                    run_m15_map_matrix,
-                    "live_inputs_for_openttd",
-                    return_value=mock.sentinel.live_inputs,
+                    artifact_context,
+                    "_sha256_file",
+                    return_value=self.matrix["executable"]["sha256"],
                 ),
                 mock.patch("builtins.print"),
             ):

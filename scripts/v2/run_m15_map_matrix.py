@@ -263,13 +263,17 @@ def run_matrix(
     sandbox: str = "bubblewrap",
 ) -> pathlib.Path:
     root = root.resolve()
-    openttd = openttd.resolve()
     artifact_root = artifact_root.resolve()
     require(artifact_root.is_absolute() and not artifact_root.exists() and not artifact_root.is_symlink(), "matrix artifact root must be a new absolute path")
     require(1 <= workers <= 4, "M15 map matrix workers must be in 1..4")
     contract = load_json(root / CONTRACT_RELATIVE)
     require(seed in {value for item in contract["seeds"]["sets"].values() for value in item["seeds"]}, "matrix seed is not frozen")
     rectangles = [tuple(item) for item in contract["map"]["native_rectangles"]]
+    context = ArtifactContext.live(artifact_root.parent)
+    live_inputs = live_inputs_for_openttd(context, openttd)
+    live_roles = required_live_roles(root)
+    live_inputs.preflight(live_roles)
+    openttd = live_inputs.resolve(live_roles[0])
     artifact_root.mkdir(mode=0o700)
     outputs: dict[tuple[int, int], str] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -323,8 +327,6 @@ def run_matrix(
         },
     }
     matrix_path = artifact_root / EVIDENCE_NAME
-    context = ArtifactContext.live(artifact_root.parent)
-    live_inputs = live_inputs_for_openttd(context, openttd)
     publish_json_no_overwrite(
         matrix_path,
         matrix,
