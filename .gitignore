@@ -10,6 +10,7 @@ __pycache__/
 
 .DS_Store
 .ipynb_checkpoints/
+.worktrees/
 
 # P0 generated artifacts must not be committed. Compact, reviewed evidence lives
 # under evidence/p0 instead.
