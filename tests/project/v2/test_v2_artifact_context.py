@@ -425,6 +425,177 @@ class V2ArtifactContextTests(unittest.TestCase):
             ), self.assertRaises(ArtifactContextError):
                 LiveInputManifest.load(root)
 
+    def test_live_role_binding_accepts_contained_subset_with_root_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            training = root / "inputs/training-artifacts"
+            training.mkdir(parents=True)
+            context = ArtifactContext.live(root)
+
+            manifest = LiveInputManifest.bind(
+                context,
+                {"training-artifacts": training},
+            )
+            requirement = RoleRequirement(
+                "training-artifacts", ".", "directory", "trainer",
+            )
+
+            manifest.preflight((requirement,))
+            self.assertEqual(manifest.artifact_root, context.artifact_root)
+            self.assertEqual(manifest.roles, frozenset({"training-artifacts"}))
+            self.assertEqual(manifest.resolve(requirement), training)
+
+    def test_live_role_binding_accepts_filesystem_root_context(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            training = pathlib.Path(temporary).resolve()
+            manifest = LiveInputManifest.bind(
+                ArtifactContext.live(pathlib.Path("/")),
+                {"training-artifacts": training},
+            )
+
+            self.assertEqual(manifest.artifact_root, pathlib.Path("/"))
+            self.assertEqual(
+                manifest.resolve(RoleRequirement(
+                    "training-artifacts", ".", "directory", "trainer",
+                )),
+                training,
+            )
+
+    def test_live_role_binding_accepts_digest_bound_role(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            executable = root / "inputs/m14-openttd-executable"
+            executable.parent.mkdir()
+            executable.write_bytes(b"controlled executable fixture\n")
+            expected = FROZEN_FILE_DIGESTS["m14-openttd-executable"]
+            requirement = RoleRequirement(
+                "m14-openttd-executable", ".", "file", "map validator", expected,
+            )
+
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                return_value=expected,
+            ):
+                manifest = LiveInputManifest.bind(
+                    ArtifactContext.live(root),
+                    {"m14-openttd-executable": str(executable)},
+                )
+                manifest.preflight((requirement,))
+
+            self.assertEqual(manifest.resolve(requirement), executable)
+
+    def test_live_role_binding_rejects_noncanonical_root_equal_or_outside_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary).resolve()
+            root = base / "artifact-root"
+            root.mkdir()
+            outside = base / "outside"
+            outside.mkdir()
+            context = ArtifactContext.live(root)
+            rejected = (
+                "relative/training-artifacts",
+                str(root),
+                str(outside),
+                f"{root}/inputs/../training-artifacts",
+                f"{root}/./inputs/training-artifacts",
+                f"{root}//inputs/training-artifacts",
+                f"{root}/inputs/training-artifacts/",
+            )
+
+            for path in rejected:
+                with self.subTest(path=path), self.assertRaises(ArtifactContextError):
+                    LiveInputManifest.bind(
+                        context,
+                        {"training-artifacts": path},
+                    )
+
+    def test_live_role_binding_rejects_unknown_symlink_wrong_kind_and_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            real_directory = root / "inputs/real-directory"
+            real_directory.mkdir(parents=True)
+            linked_directory = root / "inputs/linked-directory"
+            linked_directory.symlink_to(real_directory, target_is_directory=True)
+            plain_file = root / "inputs/plain-file"
+            plain_file.write_bytes(b"plain file\n")
+            wrong_digest = root / "inputs/m14-openttd-executable"
+            wrong_digest.write_bytes(b"wrong executable bytes\n")
+            context = ArtifactContext.live(root)
+            rejected = (
+                {"unknown-role": real_directory},
+                {"training-artifacts": linked_directory},
+                {"training-artifacts": plain_file},
+                {"m14-openttd-executable": real_directory},
+                {"m14-openttd-executable": wrong_digest},
+            )
+
+            for bindings in rejected:
+                with self.subTest(bindings=bindings), self.assertRaises(ArtifactContextError):
+                    LiveInputManifest.bind(context, bindings)
+
+    def test_live_role_binding_requires_live_existing_nonsymlink_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary).resolve()
+            real_root = base / "real-root"
+            training = real_root / "inputs/training-artifacts"
+            training.mkdir(parents=True)
+            linked_root = base / "linked-root"
+            linked_root.symlink_to(real_root, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                ArtifactContextError,
+                "^offline validation attempted live artifact access$",
+            ):
+                LiveInputManifest.bind(
+                    ArtifactContext.offline(),
+                    {"training-artifacts": training},
+                )
+            for context, path in (
+                (ArtifactContext.live(base / "missing-root"), base / "missing-root/input"),
+                (ArtifactContext.live(linked_root), linked_root / "inputs/training-artifacts"),
+            ):
+                with self.subTest(root=context.artifact_root), self.assertRaises(
+                    ArtifactContextError,
+                ):
+                    LiveInputManifest.bind(context, {"training-artifacts": path})
+
+    def test_live_role_binding_rejects_a_path_from_another_context_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary).resolve()
+            first = base / "first"
+            second = base / "second"
+            first.mkdir()
+            training = second / "inputs/training-artifacts"
+            training.mkdir(parents=True)
+
+            with self.assertRaisesRegex(ArtifactContextError, "outside artifact root"):
+                LiveInputManifest.bind(
+                    ArtifactContext.live(first),
+                    {"training-artifacts": training},
+                )
+
+    def test_live_role_binding_copies_bindings_and_exposes_only_role_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            training = root / "inputs/training-artifacts"
+            training.mkdir(parents=True)
+            bindings = {"training-artifacts": training}
+            manifest = LiveInputManifest.bind(ArtifactContext.live(root), bindings)
+
+            bindings["training-artifacts"] = root
+
+            self.assertEqual(manifest.roles, frozenset({"training-artifacts"}))
+            self.assertTrue(all(isinstance(role, str) for role in manifest.roles))
+            self.assertEqual(
+                manifest.resolve(RoleRequirement(
+                    "training-artifacts", ".", "directory", "trainer",
+                )),
+                training,
+            )
+            with self.assertRaises(AttributeError):
+                manifest.roles.add("qualification-artifacts")
+
     def test_live_input_manifest_exposes_role_names_without_raw_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             manifest = self.load_valid_manifest(pathlib.Path(temporary))

@@ -19,6 +19,7 @@ class SourceContextError(ValueError):
 
 _COMMIT = re.compile(r"[0-9a-fA-F]{40}")
 _REPOSITORY_OVERRIDES = ("--git-dir", "--work-tree", "--namespace", "--bare")
+_NO_REPOSITORY_COMMANDS = frozenset({"clone"})
 
 
 def _first_symlink(path: pathlib.Path) -> pathlib.Path | None:
@@ -26,6 +27,128 @@ def _first_symlink(path: pathlib.Path) -> pathlib.Path | None:
         if candidate.is_symlink():
             return candidate
     return None
+
+
+def _git_environment() -> dict[str, str]:
+    return {
+        key: value for key, value in os.environ.items()
+        if not key.startswith("GIT_")
+    }
+
+
+def _validate_git_arguments(arguments: tuple[str, ...]) -> None:
+    if not arguments or any(not isinstance(argument, str) for argument in arguments):
+        raise SourceContextError("Git command arguments must be nonempty strings")
+    if any(
+        argument.startswith("-C")
+        or argument == option
+        or argument.startswith(f"{option}=")
+        for argument in arguments
+        for option in _REPOSITORY_OVERRIDES
+    ):
+        raise SourceContextError("Git repository override arguments are forbidden")
+    if arguments[0].startswith("-"):
+        raise SourceContextError("Git command must begin with a subcommand")
+
+
+def _repository_path(repository: pathlib.Path | str) -> pathlib.Path:
+    if not isinstance(repository, (pathlib.Path, str)):
+        raise SourceContextError("Git repository must be an absolute path")
+    raw = str(repository)
+    if (
+        not raw.startswith("/")
+        or raw.startswith("//")
+        or "\\" in raw
+        or "\x00" in raw
+        or any(part in {"", ".", ".."} for part in raw[1:].split("/"))
+    ):
+        raise SourceContextError("Git repository must be an unambiguous absolute path")
+    path = pathlib.Path(raw)
+    symlink = _first_symlink(path)
+    if symlink is not None:
+        raise SourceContextError(f"Git repository traverses a symlink: {symlink}")
+    if not path.is_dir():
+        raise SourceContextError(f"Git repository must be an existing directory: {path}")
+    return path
+
+
+def _invoke_git(
+    command: tuple[str, ...],
+    *,
+    repository: pathlib.Path | None,
+    environment: dict[str, str],
+) -> subprocess.CompletedProcess[bytes]:
+    try:
+        return subprocess.run(
+            command,
+            env=environment,
+            capture_output=True,
+            check=False,
+        )
+    except OSError as exc:
+        if repository is None:
+            raise SourceContextError(f"cannot run Git: {exc}") from exc
+        raise SourceContextError(f"cannot run Git against {repository}: {exc}") from exc
+
+
+def _validate_repository_identity(
+    repository: pathlib.Path,
+    environment: dict[str, str],
+) -> None:
+    prefix = ("git", "--no-replace-objects", "-C", str(repository))
+    bare = _invoke_git(
+        (*prefix, "rev-parse", "--is-bare-repository"),
+        repository=repository,
+        environment=environment,
+    )
+    if bare.returncode != 0:
+        raise SourceContextError(f"Git repository is not a repository root: {repository}")
+    identity_argument = (
+        "--absolute-git-dir" if bare.stdout.strip() == b"true" else "--show-toplevel"
+    )
+    identity = _invoke_git(
+        (*prefix, "rev-parse", identity_argument),
+        repository=repository,
+        environment=environment,
+    )
+    if identity.returncode != 0:
+        raise SourceContextError(f"Git repository is not a repository root: {repository}")
+    try:
+        identified = pathlib.Path(identity.stdout.decode("utf-8").strip())
+    except UnicodeDecodeError as exc:
+        raise SourceContextError("Git repository path is not UTF-8") from exc
+    if identified != repository:
+        raise SourceContextError(f"Git repository is not a repository root: {repository}")
+
+
+def run_git(
+    *arguments: str,
+    repository: pathlib.Path | str | None = None,
+) -> subprocess.CompletedProcess[bytes]:
+    """Run Git through one scrubbed, replacement-free subprocess boundary."""
+
+    _validate_git_arguments(arguments)
+    environment = _git_environment()
+    if repository is None:
+        if arguments[0] not in _NO_REPOSITORY_COMMANDS:
+            raise SourceContextError(
+                f"Git command requires an explicit repository: {arguments[0]}"
+            )
+        return _invoke_git(
+            ("git", "--no-replace-objects", *arguments),
+            repository=None,
+            environment=environment,
+        )
+    repository_path = _repository_path(repository)
+    _validate_repository_identity(repository_path, environment)
+    return _invoke_git(
+        (
+            "git", "--no-replace-objects", "-C", str(repository_path),
+            *arguments,
+        ),
+        repository=repository_path,
+        environment=environment,
+    )
 
 
 def add_object_repository_argument(
@@ -85,28 +208,7 @@ class SourceContext:
         return self._object_repository
 
     def _run_git(self, *arguments: str) -> subprocess.CompletedProcess[bytes]:
-        repository = self.object_repository
-        if any(
-            argument.startswith("-C")
-            or argument == option
-            or argument.startswith(f"{option}=")
-            for argument in arguments
-            for option in _REPOSITORY_OVERRIDES
-        ):
-            raise SourceContextError("Git repository override arguments are forbidden")
-        environment = {
-            key: value for key, value in os.environ.items()
-            if not key.startswith("GIT_")
-        }
-        try:
-            return subprocess.run(
-                ("git", "--no-replace-objects", "-C", str(repository), *arguments),
-                env=environment,
-                capture_output=True,
-                check=False,
-            )
-        except OSError as exc:
-            raise SourceContextError(f"cannot run Git against {repository}: {exc}") from exc
+        return run_git(*arguments, repository=self.object_repository)
 
     def git_bytes(self, *arguments: str) -> bytes:
         observed = self._run_git(*arguments)

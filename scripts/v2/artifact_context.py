@@ -374,6 +374,29 @@ def _manifest_role_path(root: pathlib.Path, value: str) -> pathlib.Path:
     return root.joinpath(*parts)
 
 
+def _bound_role_path(
+    root: pathlib.Path,
+    value: pathlib.Path | str,
+) -> pathlib.Path:
+    if not isinstance(value, (pathlib.Path, str)):
+        raise ArtifactContextError(f"live-input binding must be a path: {value!r}")
+    raw = str(value)
+    candidate = pathlib.Path("/").joinpath(
+        *_absolute_parts(raw, label="live-input binding")
+    )
+    try:
+        relative = candidate.relative_to(root)
+    except ValueError as exc:
+        raise ArtifactContextError(
+            f"live-input binding is outside artifact root: {raw}"
+        ) from exc
+    if relative == pathlib.Path("."):
+        raise ArtifactContextError(
+            f"live-input binding must be below artifact root: {raw}"
+        )
+    return candidate
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class LiveInputManifest:
     mode: ValidationMode
@@ -383,6 +406,55 @@ class LiveInputManifest:
     @classmethod
     def offline(cls) -> LiveInputManifest:
         return cls(ValidationMode.OFFLINE, None, MappingProxyType({}))
+
+    @classmethod
+    def bind(
+        cls,
+        context: ArtifactContext,
+        bindings: Mapping[str, pathlib.Path | str],
+    ) -> LiveInputManifest:
+        """Bind a validated subset of known live roles through one context."""
+
+        if not isinstance(context, ArtifactContext):
+            raise TypeError("live-input binding requires an ArtifactContext")
+        root = context._live_root()
+        if root != pathlib.Path("/"):
+            _absolute_parts(str(root), label="artifact root")
+        _raise_issues(_path_issues(root, kind="directory", label="artifact root"))
+        if not isinstance(bindings, Mapping):
+            raise TypeError("live-input bindings must be a mapping")
+
+        issues: list[str] = []
+        roles: dict[str, pathlib.Path] = {}
+        for role, value in bindings.items():
+            if role not in LIVE_INPUT_ROLE_SPECS:
+                issues.append(f"live-input bindings: unknown role {role!r}")
+                continue
+            try:
+                roles[role] = _bound_role_path(root, value)
+            except ArtifactContextError as exc:
+                issues.append(f"live-input role {role}: {exc}")
+
+        aliases: dict[pathlib.Path, list[str]] = {}
+        for role, path in roles.items():
+            spec = LIVE_INPUT_ROLE_SPECS[role]
+            if spec.expected_sha256 is not None:
+                aliases.setdefault(path, []).append(role)
+            issues.extend(_path_issues(
+                path,
+                kind=spec.kind,
+                label=f"live-input role {role}",
+                expected_sha256=spec.expected_sha256,
+            ))
+        for path, names in aliases.items():
+            digests = {LIVE_INPUT_ROLE_SPECS[name].expected_sha256 for name in names}
+            if len(names) > 1 and len(digests) > 1:
+                issues.append(
+                    f"incompatible live-input roles alias {path}: "
+                    f"{', '.join(sorted(names))}"
+                )
+        _raise_issues(issues)
+        return cls(ValidationMode.LIVE, root, MappingProxyType(dict(roles)))
 
     @classmethod
     def load(cls, artifact_root: pathlib.Path | str) -> LiveInputManifest:
