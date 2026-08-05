@@ -253,6 +253,31 @@ class M21BroadEvidenceTests(unittest.TestCase):
                     artifact_context=ArtifactContext.live(base),
                 )
 
+    def test_broken_symlink_at_absent_content_save_fails_live(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            _, config_path, artifact_set = make_live_evidence_fixture(
+                base, self.config, self.contract, self.source,
+            )
+            content = next(record for record in self.config["cases"] if record["probe"] == "content")
+            report = artifact_set / content["replicates"][0]["report_path"]
+            pathlib.Path(f"{report}.sav").symlink_to(artifact_set / "missing-save-target")
+            with self.assertRaisesRegex(validator.M21EvidenceError, "unexpectedly retained a save"):
+                validator.validate(self.root, config_path,
+                                   artifact_context=ArtifactContext.live(base))
+
+    def test_broken_symlink_at_absent_negative_report_fails_live(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            _, config_path, artifact_set = make_live_evidence_fixture(
+                base, self.config, self.contract, self.source,
+            )
+            negative_log = artifact_set / self.config["negative_cases"][0]["log_path"]
+            (negative_log.parent / "report.json").symlink_to(artifact_set / "missing-report-target")
+            with self.assertRaisesRegex(validator.M21EvidenceError, "negative rejection"):
+                validator.validate(self.root, config_path,
+                                   artifact_context=ArtifactContext.live(base))
+
     def test_case_omission_fails(self) -> None:
         value = copy.deepcopy(self.config); value["cases"].pop()
         self.mutation_fails(value)

@@ -95,7 +95,9 @@ def _requirements(root: pathlib.Path, source: dict[str, Any]) -> tuple[ArtifactR
         ArtifactRequirement(result_set, "source/.git", "directory", LIVE_CONSUMER),
         *matrix.required_runtime_inputs(root, source),
     )
-    require(len(requirements) == len(set(requirements)), "source/runtime inventory contains duplicates")
+    physical_keys = [(item.logical_set, item.relative_path, item.kind) for item in requirements]
+    require(len(physical_keys) == len(set(physical_keys)), "source/runtime inventory contains duplicate physical inputs")
+    require(len(requirements) == 21, "source/runtime inventory must contain exactly 21 physical inputs")
     return requirements
 
 

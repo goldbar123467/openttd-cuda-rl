@@ -25,10 +25,22 @@ from source_context import SourceContextError, run_git
 
 CONFIG = pathlib.Path("config/v2/m20-competition-source.json")
 SCHEMA = pathlib.Path("docs/project/schema/v2-m20-competition-source.schema.json")
+CONTRACT = pathlib.Path("config/v2/m20-competition-contract.json")
+CONTENT_MANIFEST = pathlib.Path("config/v2/m20-content-manifest.json")
+CONTRACT_SHA256 = "0771754a850fca46411003aa903999a9864a31a38bfd3695d8d23397717bf0ef"
 TOUCHED = ["src/CMakeLists.txt", "src/openttd.cpp", "src/rl_v2_competition.cpp", "src/rl_v2_competition.h"]
 BASE_LOGICAL_SET = "v2-m19-air-a"
 RESULT_LOGICAL_SET = "v2-m20-competition-a"
 LIVE_CONSUMER = "m20-competition-source"
+CONTENT_RELATIVE_PATHS = (
+    "content_download/ai/484f4745-AAAHogEx-115.tar",
+    "content_download/ai/4b524132-KrakenAI2-3.tar",
+    "content_download/ai/4e6f7041-NoOpAI-4.tar",
+    "content_download/ai/library/4752412a-Graph.AyStar-6.tar",
+    "content_download/ai/library/5046524f-Pathfinder.Road-4.tar",
+    "content_download/ai/library/51554248-Queue.BinaryHeap-1.tar",
+    "content_download/ai/library/5350524c-SuperLib-40.tar",
+)
 
 
 class M20SourceError(ValueError):
@@ -100,12 +112,51 @@ def _recorded_result_set(config: dict[str, Any]) -> str:
     return path.name
 
 
-def _content_records(root: pathlib.Path, config: dict[str, Any]) -> list[dict[str, Any]]:
-    content = load(root / config["runtime"]["content_manifest"])
-    return [content["base_graphics"], *content["ai_archives"], *content["libraries"]]
+def _content_records(root: pathlib.Path, config: dict[str, Any], *, repository_config: bool) -> list[dict[str, Any]]:
+    require(config["runtime"]["content_manifest"] == CONTENT_MANIFEST.as_posix(), "content manifest path drifted")
+    content_path = root / CONTENT_MANIFEST
+    require(content_path.is_file() and not content_path.is_symlink(), "content manifest is missing or unsafe")
+    if repository_config:
+        contract_path = root / CONTRACT
+        require(contract_path.is_file() and not contract_path.is_symlink() and sha256(contract_path) == CONTRACT_SHA256,
+                "M20 contract identity drifted")
+        contract = load(contract_path)
+        require(sha256(content_path) == contract["identities"]["content_manifest_sha256"],
+                "content manifest identity drifted")
+    content = load(content_path)
+    require(set(content) == {"ai_archives", "base_graphics", "libraries", "network_acquisition_during_runs", "schema_version"}
+            and content["schema_version"] == "openttd-rl-v2-m20-content-manifest-1"
+            and content["network_acquisition_during_runs"] is False
+            and isinstance(content["base_graphics"], dict)
+            and isinstance(content["ai_archives"], list) and len(content["ai_archives"]) == 3
+            and isinstance(content["libraries"], list) and len(content["libraries"]) == 4
+            and all(isinstance(record, dict) for record in [*content["ai_archives"], *content["libraries"]]),
+            "content inventory/structure drifted")
+    base_graphics = content["base_graphics"]
+    require(base_graphics.get("name") == "OpenGFX" and base_graphics.get("version") == "8.0"
+            and base_graphics.get("path") == config["build"]["open_gfx"]["path"]
+            and base_graphics.get("sha256") == config["build"]["open_gfx"]["sha256"],
+            "base graphics must exactly alias the core OpenGFX declaration")
+    require(
+        tuple((record.get("name"), record.get("catalog_package_version"), record.get("declared_runtime_version"))
+              for record in content["ai_archives"])
+        == (("AAAHogEx", 115, 115), ("KrakenAI2", 3, 3), ("NoOpAI", 4, 3)),
+        "content inventory/structure drifted",
+    )
+    extras = [*content["ai_archives"], *content["libraries"]]
+    relative_paths = tuple(_recorded_relative(config["retained_artifact"], record["path"], label="content")
+                           for record in extras)
+    physical_paths = [
+        (RESULT_LOGICAL_SET, relative_path, "file")
+        for relative_path in relative_paths
+    ]
+    require(len(physical_paths) == len(set(physical_paths)), "duplicate physical content input")
+    require(relative_paths == CONTENT_RELATIVE_PATHS, "content inventory/path drifted")
+    return [base_graphics, *extras]
 
 
-def _requirements(root: pathlib.Path, config: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+def _requirements(root: pathlib.Path, config: dict[str, Any], *, repository_config: bool = False,
+                  content_files: list[dict[str, Any]] | None = None) -> tuple[ArtifactRequirement, ...]:
     result_set = _recorded_result_set(config)
     recorded_root = config["retained_artifact"]
     requirements = [
@@ -117,7 +168,8 @@ def _requirements(root: pathlib.Path, config: dict[str, Any]) -> tuple[ArtifactR
         ArtifactRequirement(result_set, "build-competition/baseset/opengfx-8.0.tar", "file", LIVE_CONSUMER, config["build"]["open_gfx"]["sha256"]),
         ArtifactRequirement(result_set, "openttd.cfg", "file", LIVE_CONSUMER, config["runtime"]["config"]["sha256"]),
     ]
-    for record in _content_records(root, config):
+    records = content_files if content_files is not None else _content_records(root, config, repository_config=repository_config)
+    for record in records[1:]:
         requirement = ArtifactRequirement(
             result_set,
             _recorded_relative(recorded_root, record["path"], label="content"),
@@ -125,15 +177,19 @@ def _requirements(root: pathlib.Path, config: dict[str, Any]) -> tuple[ArtifactR
             LIVE_CONSUMER,
             record["sha256"],
         )
-        if requirement not in requirements:
-            requirements.append(requirement)
-    require(len(requirements) == len(set(requirements)), "source/runtime inventory contains duplicates")
+        physical_key = (requirement.logical_set, requirement.relative_path, requirement.kind)
+        require(physical_key not in {(item.logical_set, item.relative_path, item.kind) for item in requirements},
+                "duplicate physical content input")
+        requirements.append(requirement)
+    require(len(requirements) == 14, "source/runtime inventory must contain exactly 14 physical inputs")
+    require(len({(item.logical_set, item.relative_path, item.kind) for item in requirements}) == 14,
+            "source/runtime inventory contains duplicate physical inputs")
     return tuple(requirements)
 
 
 def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
     root = root.resolve()
-    return _requirements(root, load(root / CONFIG))
+    return _requirements(root, load(root / CONFIG), repository_config=True)
 
 
 def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema_path: pathlib.Path | None = None,
@@ -157,9 +213,9 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema
         require(token in text, f"patch lost required token: {token}")
     for forbidden in ("std::system(", "popen(", "fork(", "execve(", "mock_score", "fake_company"):
         require(forbidden not in text, f"patch contains forbidden implementation path: {forbidden}")
-    content_files = _content_records(root, config)
+    content_files = _content_records(root, config, repository_config=repository_config)
     require(config["build"]["upstream_ctest"] == {"passed": 98, "total": 98}, "upstream CTest result drifted")
-    requirements = _requirements(root, config)
+    requirements = _requirements(root, config, repository_config=repository_config, content_files=content_files)
     if context.is_live:
         requirements = required_live_inputs(root) if repository_config else requirements
         context.preflight(requirements)

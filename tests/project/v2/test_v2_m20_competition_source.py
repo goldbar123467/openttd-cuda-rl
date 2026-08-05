@@ -20,6 +20,40 @@ from tests.project.v2.test_v2_m16_cargo_source import make_live_source_fixture a
 import validate_m20_competition_source as validator
 
 
+def make_custom_record_fixture(
+    repository_root: pathlib.Path,
+    directory: pathlib.Path,
+    config: dict[str, Any],
+) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path]:
+    project_root = directory / "project"
+    patch = project_root / config["patch"]["path"]
+    patch.parent.mkdir(parents=True)
+    shutil.copyfile(repository_root / config["patch"]["path"], patch)
+    content_path = project_root / config["runtime"]["content_manifest"]
+    content_path.parent.mkdir(parents=True)
+    shutil.copyfile(repository_root / config["runtime"]["content_manifest"], content_path)
+    config_path = directory / "source.json"
+    config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    return project_root, config_path, content_path
+
+
+def make_repository_record_fixture(
+    repository_root: pathlib.Path,
+    directory: pathlib.Path,
+) -> tuple[pathlib.Path, pathlib.Path]:
+    config = validator.load(repository_root / validator.CONFIG)
+    project_root, _, content_path = make_custom_record_fixture(repository_root, directory, config)
+    for relative in (
+        validator.CONFIG,
+        validator.SCHEMA,
+        pathlib.Path("config/v2/m20-competition-contract.json"),
+    ):
+        target = project_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(repository_root / relative, target)
+    return project_root, content_path
+
+
 def make_live_source_fixture(
     repository_root: pathlib.Path,
     directory: pathlib.Path,
@@ -145,6 +179,79 @@ class M20CompetitionSourceTests(unittest.TestCase):
         self.assertEqual(value["retained_artifact"], recorded["retained_artifact"])
         self.assertEqual(value["source"]["path"], recorded["source"]["path"])
         self.assertEqual(self.config, recorded)
+
+    def test_custom_content_manifest_ai_omission_fails_offline(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            project_root, config_path, content_path = make_custom_record_fixture(
+                self.root, pathlib.Path(raw), self.config,
+            )
+            content = validator.load(content_path)
+            content["ai_archives"].pop()
+            content_path.write_text(json.dumps(content) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M20SourceError, "content inventory"):
+                validator.validate(project_root, config_path, self.schema,
+                                   artifact_context=ArtifactContext.offline())
+
+    def test_custom_base_graphics_split_from_core_opengfx_fails_offline(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            project_root, config_path, content_path = make_custom_record_fixture(
+                self.root, pathlib.Path(raw), self.config,
+            )
+            content = validator.load(content_path)
+            content["base_graphics"]["path"] = (
+                f"{self.config['retained_artifact']}/build-competition/baseset/alternate-opengfx-8.0.tar"
+            )
+            content_path.write_text(json.dumps(content) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M20SourceError, "base graphics.*OpenGFX"):
+                validator.validate(project_root, config_path, self.schema,
+                                   artifact_context=ArtifactContext.offline())
+
+    def test_custom_conflicting_content_alias_fails_offline(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            project_root, config_path, content_path = make_custom_record_fixture(
+                self.root, pathlib.Path(raw), self.config,
+            )
+            content = validator.load(content_path)
+            content["ai_archives"][0]["path"] = content["ai_archives"][1]["path"]
+            content["ai_archives"][0]["sha256"] = "0" * 64
+            content_path.write_text(json.dumps(content) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M20SourceError, "duplicate physical content"):
+                validator.validate(project_root, config_path, self.schema,
+                                   artifact_context=ArtifactContext.offline())
+
+    def test_repository_content_manifest_digest_mutation_fails_offline(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            project_root, content_path = make_repository_record_fixture(self.root, pathlib.Path(raw))
+            content = validator.load(content_path)
+            content["ai_archives"][0]["sha256"] = "0" * 64
+            content_path.write_text(json.dumps(content) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M20SourceError, "content manifest identity"):
+                validator.validate(project_root, artifact_context=ArtifactContext.offline())
+
+    def test_repository_contract_digest_mutation_fails_offline(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            project_root, _ = make_repository_record_fixture(self.root, pathlib.Path(raw))
+            contract_path = project_root / "config/v2/m20-competition-contract.json"
+            contract_path.write_bytes(contract_path.read_bytes() + b" \n")
+            with self.assertRaisesRegex(validator.M20SourceError, "M20 contract identity"):
+                validator.validate(project_root, artifact_context=ArtifactContext.offline())
+
+    def test_relocated_live_base_graphics_split_fails_before_git(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            project_root, _, config_path = make_live_source_fixture(self.root, base, self.config)
+            content_path = project_root / self.config["runtime"]["content_manifest"]
+            content = validator.load(content_path)
+            recorded = f"{self.config['retained_artifact']}/build-competition/baseset/alternate-opengfx-8.0.tar"
+            content["base_graphics"]["path"] = recorded
+            content_path.write_text(json.dumps(content) + "\n", encoding="utf-8")
+            alternate = base / "v2-m20-competition-a/build-competition/baseset/alternate-opengfx-8.0.tar"
+            shutil.copyfile(base / "v2-m20-competition-a/build-competition/baseset/opengfx-8.0.tar", alternate)
+            with mock.patch.object(validator, "git", side_effect=AssertionError("unexpected Git read")) as reader:
+                with self.assertRaisesRegex(validator.M20SourceError, "base graphics.*OpenGFX"):
+                    validator.validate(project_root, config_path, self.schema,
+                                       artifact_context=ArtifactContext.live(base))
+            reader.assert_not_called()
 
     def test_live_preflight_fails_before_git(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

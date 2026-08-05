@@ -126,7 +126,9 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, *,
                 require(replicate["save"] is None, f"content case unexpectedly retained a save: {case['case_id']}")
                 if context.is_live:
                     report_path = live_paths[replicate["report_path"]]
-                    require(not pathlib.Path(str(report_path) + ".sav").exists(), f"content case unexpectedly retained a save: {case['case_id']}")
+                    absent_save = pathlib.Path(str(report_path) + ".sav")
+                    require(not absent_save.exists() and not absent_save.is_symlink(),
+                            f"content case unexpectedly retained a save: {case['case_id']}")
             else:
                 saves.append(replicate["save"])
             if context.is_live:
@@ -152,7 +154,9 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, *,
                 f"negative rejection drifted: {record['case_id']}")
         if context.is_live:
             log = live_paths[record["log_path"]]
-            require(expected["diagnostic"] in log.read_text(encoding="utf-8") and not (log.parent / "report.json").exists(),
+            absent_report = log.parent / "report.json"
+            require(expected["diagnostic"] in log.read_text(encoding="utf-8") and
+                    not absent_report.exists() and not absent_report.is_symlink(),
                     f"negative rejection drifted: {record['case_id']}")
     return {"cases": 16, "commands": coverage_summary["commands"], "features": coverage_summary["features"], "runs": 32, "twins": 16, "live": context.is_live}
 

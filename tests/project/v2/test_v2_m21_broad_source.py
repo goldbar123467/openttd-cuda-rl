@@ -207,6 +207,100 @@ class M21BroadSourceTests(unittest.TestCase):
         })
         self.assertTrue(all(path.is_relative_to(runtime_root) for path in paths.values()))
 
+    def test_extra_runtime_config_fails_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["runtime"]["configs"]["extra"] = {
+            "path": f"{value['retained_artifact']}/extra.cfg",
+            "sha256": "0" * 64,
+        }
+        self.mutation_fails(value, "config inventory")
+
+    def test_runtime_discovery_path_mutations_fail_offline(self) -> None:
+        mutations = (
+            ("executable", ("executable", "path"),
+             f"{self.source['retained_artifact']}/build-broad/not-discovered/openttd", "executable path"),
+            ("base-config", ("runtime", "configs", "base", "path"),
+             f"{self.source['retained_artifact']}/not-discovered/base.cfg", "base config path"),
+            ("content-root", ("runtime", "content_root"),
+             f"{self.source['retained_artifact']}/build-broad/not-discovered/m21", "content root path"),
+            ("gamescript-root", ("runtime", "gamescript_root"),
+             f"{self.source['retained_artifact']}/build-broad/not-discovered/m21coverage", "Game Script root path"),
+            ("content-name", ("runtime", "content_files", 0, "name"), "renamed.grf", "content inventory"),
+        )
+        for label, keys, replacement, pattern in mutations:
+            with self.subTest(label=label):
+                value = copy.deepcopy(self.source)
+                target: Any = value
+                for key in keys[:-1]:
+                    target = target[key]
+                target[keys[-1]] = replacement
+                self.mutation_fails(value, pattern)
+
+    def test_conflicting_content_physical_alias_fails_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["runtime"]["content_files"][1]["name"] = value["runtime"]["content_files"][0]["name"]
+        value["runtime"]["content_files"][1]["sha256"] = "0" * 64
+        self.mutation_fails(value, "duplicate physical runtime input")
+
+    def test_relocated_declared_opengfx_outside_discovery_layout_fails_live(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path = make_live_source_fixture(self.root, base, self.source)
+            expected = base / "v2-m21-broad-a/build-broad/baseset/opengfx-8.0.tar"
+            alternate = base / "v2-m21-broad-a/build-broad/not-discovered/opengfx-8.0.tar"
+            alternate.parent.mkdir(parents=True)
+            alternate.write_bytes(expected.read_bytes())
+            value["build"]["open_gfx"]["path"] = (
+                f"{self.source['retained_artifact']}/build-broad/not-discovered/opengfx-8.0.tar"
+            )
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(matrix.M21MatrixError, "OpenGFX path"):
+                validator.validate(self.root, config_path,
+                                   artifact_context=ArtifactContext.live(base))
+
+    def test_run_command_uses_complete_relocated_discovery_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, _ = make_live_source_fixture(self.root, base, self.source)
+            executable = base / "v2-m21-broad-a/build-broad/openttd"
+            executable.write_text(
+                "#!/usr/bin/env python3\n"
+                "import json, os, pathlib, sys\n"
+                "target = pathlib.Path(sys.argv[sys.argv.index('-k') + 1])\n"
+                "target.write_text(json.dumps({'argv': sys.argv[1:], 'cwd': os.getcwd()}))\n",
+                encoding="utf-8",
+            )
+            executable.chmod(0o700)
+            value["executable"]["bytes"] = executable.stat().st_size
+            value["executable"]["sha256"] = hashlib.sha256(executable.read_bytes()).hexdigest()
+            runtime_root, paths = matrix.validate_runtime(self.root, value, ArtifactContext.live(base))
+            request = base / "request.json"
+            report = base / "report.json"
+            request.write_text("{}\n", encoding="utf-8")
+            try:
+                completed = matrix.run_command(runtime_root, paths, "content", request, report)
+            except TypeError as exc:
+                self.fail(f"runner does not consume the complete relocated runtime map: {exc}")
+            self.assertEqual(completed.returncode, 0)
+            observed = json.loads(report.read_text(encoding="utf-8"))
+            discovery_root = runtime_root / "build-broad"
+            self.assertEqual(pathlib.Path(observed["cwd"]), discovery_root)
+            config_index = observed["argv"].index("-c")
+            self.assertEqual(pathlib.Path(observed["argv"][config_index + 1]), runtime_root / "content.cfg")
+            self.assertEqual(paths["open_gfx"], discovery_root / "baseset/opengfx-8.0.tar")
+            self.assertEqual(
+                {paths[f"content:{name}"] for name in (
+                    "fish.grf", "rattroads.grf", "airports.grf", "stations.grf", "industries.grf",
+                    "trains.grf", "aircraft.grf", "objects.grf", "tracks.grf", "roadhog.grf",
+                )},
+                {discovery_root / "newgrf/m21" / name for name in (
+                    "fish.grf", "rattroads.grf", "airports.grf", "stations.grf", "industries.grf",
+                    "trains.grf", "aircraft.grf", "objects.grf", "tracks.grf", "roadhog.grf",
+                )},
+            )
+            self.assertEqual(paths["gamescript:info.nut"], discovery_root / "game/m21coverage/info.nut")
+            self.assertEqual(paths["gamescript:main.nut"], discovery_root / "game/m21coverage/main.nut")
+
     def test_live_preflight_fails_before_git_or_runtime_helper(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             with mock.patch.object(validator, "git", side_effect=AssertionError("unexpected live read")) as reader, \

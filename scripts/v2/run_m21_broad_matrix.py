@@ -32,6 +32,19 @@ GAMESCRIPT_MAIN = pathlib.Path("config/v2/m21-gamescript/main.nut")
 REPLICATES = ("a", "b")
 RUNTIME_LOGICAL_SET = "v2-m21-broad-a"
 RUNTIME_CONSUMER = "m21-broad-runtime"
+EXECUTABLE_RELATIVE = "build-broad/openttd"
+OPEN_GFX_RELATIVE = "build-broad/baseset/opengfx-8.0.tar"
+CONFIG_RELATIVES = {
+    "base": "base.cfg",
+    "content": "content.cfg",
+    "gamescript": "gamescript.cfg",
+}
+CONTENT_ROOT_RELATIVE = "build-broad/newgrf/m21"
+CONTENT_NAMES = (
+    "fish.grf", "rattroads.grf", "airports.grf", "stations.grf", "industries.grf",
+    "trains.grf", "aircraft.grf", "objects.grf", "tracks.grf", "roadhog.grf",
+)
+GAMESCRIPT_ROOT_RELATIVE = "build-broad/game/m21coverage"
 
 
 class M21MatrixError(ValueError):
@@ -145,37 +158,77 @@ def _recorded_runtime_relative(source: dict[str, Any], recorded_path: str, *, la
 def required_runtime_inputs(root: pathlib.Path, source: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
     root = root.resolve()
     recorded_root = source["retained_artifact"]
-    require(pathlib.PurePosixPath(recorded_root).name == RUNTIME_LOGICAL_SET, "M21 retained artifact logical set drifted")
+    recorded = pathlib.PurePosixPath(recorded_root)
+    require(isinstance(recorded_root, str) and recorded_root.startswith("/") and not recorded_root.startswith("//") and
+            str(recorded) == recorded_root and all(part not in {"", ".", ".."} for part in recorded.parts[1:]) and
+            recorded.name == RUNTIME_LOGICAL_SET, "M21 retained artifact logical set drifted")
+    require(tuple(source["runtime"]["configs"]) == tuple(CONFIG_RELATIVES), "M21 runtime config inventory drifted")
+    require(_recorded_runtime_relative(source, source["executable"]["path"], label="executable") == EXECUTABLE_RELATIVE,
+            "M21 executable path drifted")
+    require(_recorded_runtime_relative(source, source["build"]["open_gfx"]["path"], label="OpenGFX") == OPEN_GFX_RELATIVE,
+            "M21 OpenGFX path drifted")
+    config_paths = tuple(
+        _recorded_runtime_relative(source, source["runtime"]["configs"][name]["path"], label=f"{name} config")
+        for name in CONFIG_RELATIVES
+    )
+    require(len(config_paths) == len(set(config_paths)), "M21 runtime config inventory contains duplicates")
     requirements = [
-        ArtifactRequirement(RUNTIME_LOGICAL_SET, _recorded_runtime_relative(source, source["executable"]["path"], label="executable"),
+        ArtifactRequirement(RUNTIME_LOGICAL_SET, EXECUTABLE_RELATIVE,
                             "file", RUNTIME_CONSUMER, source["executable"]["sha256"]),
-        ArtifactRequirement(RUNTIME_LOGICAL_SET, _recorded_runtime_relative(source, source["build"]["open_gfx"]["path"], label="OpenGFX"),
+        ArtifactRequirement(RUNTIME_LOGICAL_SET, OPEN_GFX_RELATIVE,
                             "file", RUNTIME_CONSUMER, source["build"]["open_gfx"]["sha256"]),
     ]
-    for name, record in source["runtime"]["configs"].items():
+    for (name, relative), recorded_relative in zip(CONFIG_RELATIVES.items(), config_paths, strict=True):
+        record = source["runtime"]["configs"][name]
+        require(recorded_relative == relative, f"M21 {name} config path drifted")
         requirements.append(ArtifactRequirement(
             RUNTIME_LOGICAL_SET,
-            _recorded_runtime_relative(source, record["path"], label=f"{name} config"),
+            relative,
             "file",
             RUNTIME_CONSUMER,
             record["sha256"],
         ))
     content_root = _recorded_runtime_relative(source, source["runtime"]["content_root"], label="content root")
-    for record in source["runtime"]["content_files"]:
+    require(content_root == CONTENT_ROOT_RELATIVE, "M21 content root path drifted")
+    content_names = tuple(record["name"] for record in source["runtime"]["content_files"])
+    require(len(content_names) == len(set(content_names)), "duplicate physical runtime input")
+    require(content_names == CONTENT_NAMES, "M21 content inventory drifted")
+    for record, name in zip(source["runtime"]["content_files"], CONTENT_NAMES, strict=True):
         requirements.append(ArtifactRequirement(
             RUNTIME_LOGICAL_SET,
-            f"{content_root}/{record['name']}",
+            f"{CONTENT_ROOT_RELATIVE}/{name}",
             "file",
             RUNTIME_CONSUMER,
             record["sha256"],
         ))
     gamescript_root = _recorded_runtime_relative(source, source["runtime"]["gamescript_root"], label="Game Script root")
+    require(gamescript_root == GAMESCRIPT_ROOT_RELATIVE, "M21 Game Script root path drifted")
     requirements.extend((
-        ArtifactRequirement(RUNTIME_LOGICAL_SET, f"{gamescript_root}/info.nut", "file", RUNTIME_CONSUMER, sha256(root / GAMESCRIPT_INFO)),
-        ArtifactRequirement(RUNTIME_LOGICAL_SET, f"{gamescript_root}/main.nut", "file", RUNTIME_CONSUMER, sha256(root / GAMESCRIPT_MAIN)),
+        ArtifactRequirement(RUNTIME_LOGICAL_SET, f"{GAMESCRIPT_ROOT_RELATIVE}/info.nut", "file", RUNTIME_CONSUMER, sha256(root / GAMESCRIPT_INFO)),
+        ArtifactRequirement(RUNTIME_LOGICAL_SET, f"{GAMESCRIPT_ROOT_RELATIVE}/main.nut", "file", RUNTIME_CONSUMER, sha256(root / GAMESCRIPT_MAIN)),
     ))
-    require(len(requirements) == len(set(requirements)), "M21 runtime input inventory contains duplicates")
+    physical_keys = [(item.logical_set, item.relative_path, item.kind) for item in requirements]
+    require(len(physical_keys) == len(set(physical_keys)), "duplicate physical runtime input")
+    require(len(requirements) == 17, "M21 runtime input inventory must contain exactly 17 physical inputs")
     return tuple(requirements)
+
+
+def expected_runtime_paths(runtime_root: pathlib.Path) -> dict[str, pathlib.Path]:
+    return {
+        "executable": runtime_root / EXECUTABLE_RELATIVE,
+        "open_gfx": runtime_root / OPEN_GFX_RELATIVE,
+        **{f"config:{name}": runtime_root / relative for name, relative in CONFIG_RELATIVES.items()},
+        **{f"content:{name}": runtime_root / CONTENT_ROOT_RELATIVE / name for name in CONTENT_NAMES},
+        "gamescript:info.nut": runtime_root / GAMESCRIPT_ROOT_RELATIVE / "info.nut",
+        "gamescript:main.nut": runtime_root / GAMESCRIPT_ROOT_RELATIVE / "main.nut",
+    }
+
+
+def validate_execution_layout(runtime_root: pathlib.Path, named_paths: dict[str, pathlib.Path]) -> None:
+    expected = expected_runtime_paths(runtime_root)
+    require(set(named_paths) == set(expected), "M21 runtime named-path inventory drifted")
+    for name, expected_path in expected.items():
+        require(named_paths[name] == expected_path, f"M21 runtime discovery path drifted: {name}")
 
 
 def validate_runtime(root: pathlib.Path, source: dict[str, Any], artifact_context: ArtifactContext) -> tuple[pathlib.Path, dict[str, pathlib.Path]]:
@@ -211,6 +264,7 @@ def validate_runtime(root: pathlib.Path, source: dict[str, Any], artifact_contex
             "staged Game Script identity drifted")
     named_paths["gamescript:info.nut"] = info
     named_paths["gamescript:main.nut"] = main
+    validate_execution_layout(runtime_root, named_paths)
     return runtime_root, named_paths
 
 
@@ -284,37 +338,42 @@ def validate_report(report: dict[str, Any], case: dict[str, Any], replicate: str
         require(all(value > 0 for value in result["assets"].values()), f"content capability projection is vacuous: {run_id}")
 
 
-def run_command(executable: pathlib.Path, config: pathlib.Path, request: pathlib.Path, report: pathlib.Path) -> subprocess.CompletedProcess[str]:
+def run_command(runtime_root: pathlib.Path, runtime_paths: dict[str, pathlib.Path], config_name: str,
+                request: pathlib.Path, report: pathlib.Path) -> subprocess.CompletedProcess[str]:
+    validate_execution_layout(runtime_root, runtime_paths)
+    require(config_name in CONFIG_RELATIVES, f"unknown M21 runtime config: {config_name}")
+    executable = runtime_paths["executable"]
+    config = runtime_paths[f"config:{config_name}"]
     command = [str(executable), "-x", "-X", "-I", "OpenGFX", "-m", "null", "-s", "null", "-v", "null",
                "-c", str(config), "-j", str(request), "-k", str(report)]
-    return subprocess.run(command, cwd=executable.parent, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    return subprocess.run(command, cwd=runtime_root / "build-broad", text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           timeout=120, preexec_fn=apply_limits, start_new_session=True)
 
 
-def run_negative(executable: pathlib.Path, configs: dict[str, pathlib.Path], artifact_root: pathlib.Path,
+def run_negative(runtime_root: pathlib.Path, runtime_paths: dict[str, pathlib.Path], artifact_root: pathlib.Path,
                  contract: dict[str, Any], source: dict[str, Any], contract_hash: str, content_hash: str) -> list[dict[str, Any]]:
     base_case = {"case_id": "negative", "landscape": "temperate", "probe": "content", "seed": 21999}
     records = []
     for negative in contract["negative_cases"]:
         request = manifest(base_case, "negative", contract, source, contract_hash, content_hash)
-        config = configs["content"]
+        config_name = "content"
         if negative["mutation"] == "unknown-capability":
             request["expected_capabilities"][-1] = "unknown_vehicle"
             request["expected_newgrfs"] = []
-            config = configs["base"]
+            config_name = "base"
         elif negative["mutation"] == "unknown-content-id":
             request["expected_newgrfs"] = [{"id": "ffffffff", "md5": contract["newgrfs"][0]["md5"]}]
         else:
             request["schema_version"] = "openttd-rl-v2-m21-broad-run-999"
             request["expected_newgrfs"] = []
             request["expected_capabilities"] = []
-            config = configs["base"]
+            config_name = "base"
         request["run_id"] = negative["case_id"]
         root = artifact_root / negative["case_id"]
         root.mkdir(mode=0o700)
         request_path, report_path = root / "manifest.json", root / "report.json"
         write_new(request_path, request)
-        completed = run_command(executable, config, request_path, report_path)
+        completed = run_command(runtime_root, runtime_paths, config_name, request_path, report_path)
         (root / "openttd.log").write_text(completed.stdout, encoding="utf-8")
         require(completed.returncode != 0 and negative["diagnostic"] in completed.stdout and not report_path.exists(),
                 f"negative case did not fail closed before report/world: {negative['case_id']}")
@@ -323,14 +382,15 @@ def run_negative(executable: pathlib.Path, configs: dict[str, pathlib.Path], art
     return records
 
 
-def run_one(executable: pathlib.Path, config: pathlib.Path, artifact_root: pathlib.Path, case: dict[str, Any], replicate: str,
+def run_one(runtime_root: pathlib.Path, runtime_paths: dict[str, pathlib.Path], config_name: str,
+            artifact_root: pathlib.Path, case: dict[str, Any], replicate: str,
             contract: dict[str, Any], source: dict[str, Any], contract_hash: str, content_hash: str) -> dict[str, Any]:
     root = artifact_root / case["case_id"] / f"replicate-{replicate}"
     root.mkdir(parents=True, mode=0o700)
     request_path, report_path = root / "manifest.json", root / "report.json"
     write_new(request_path, manifest(case, replicate, contract, source, contract_hash, content_hash))
     started = time.monotonic()
-    completed = run_command(executable, config, request_path, report_path)
+    completed = run_command(runtime_root, runtime_paths, config_name, request_path, report_path)
     wall = round(time.monotonic() - started, 6)
     (root / "openttd.log").write_text(completed.stdout, encoding="utf-8")
     require(completed.returncode == 0, f"native run failed {case['case_id']}-{replicate}: {completed.stdout.strip()}")
@@ -354,17 +414,17 @@ def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.
     contract, coverage, source = load(root / CONTRACT), load(root / COVERAGE), load(root / SOURCE)
     identity = identities(root, contract)
     coverage_summary = validate_coverage(root, contract, coverage)
-    _, runtime_paths = validate_runtime(root, source, artifact_context)
-    executable = runtime_paths["executable"]
-    configs = {name: runtime_paths[f"config:{name}"] for name in source["runtime"]["configs"]}
+    runtime_root, runtime_paths = validate_runtime(root, source, artifact_context)
+    validate_execution_layout(runtime_root, runtime_paths)
     contract_hash, content_hash = sha256(root / CONTRACT), identity["content_lock_sha256"]
     artifact_root.mkdir(mode=0o700)
-    negatives = run_negative(executable, configs, artifact_root, contract, source, contract_hash, content_hash)
+    negatives = run_negative(runtime_root, runtime_paths, artifact_root, contract, source, contract_hash, content_hash)
     cases = []
     maximum_wall = 0.0
     for ordinal, case in enumerate(contract["cases"], 1):
-        config = configs["gamescript"] if case["probe"] == "gamescript" else configs["content"] if case["probe"] == "content" else configs["base"]
-        replicates = [run_one(executable, config, artifact_root, case, name, contract, source, contract_hash, content_hash)
+        config_name = "gamescript" if case["probe"] == "gamescript" else "content" if case["probe"] == "content" else "base"
+        replicates = [run_one(runtime_root, runtime_paths, config_name, artifact_root, case, name,
+                              contract, source, contract_hash, content_hash)
                       for name in REPLICATES]
         require(replicates[0]["normalized_sha256"] == replicates[1]["normalized_sha256"], f"exact twin drifted: {case['case_id']}")
         if replicates[0]["save"] is not None:
