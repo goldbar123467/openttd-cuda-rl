@@ -8,7 +8,6 @@ import hashlib
 import json
 import pathlib
 import re
-import subprocess
 import tempfile
 from dataclasses import dataclass
 from typing import Any
@@ -21,6 +20,7 @@ from artifact_context import (
     ArtifactRequirement,
     add_artifact_root_argument,
 )
+from source_context import SourceContextError, run_git
 
 
 CONFIG = pathlib.Path("config/v2/m15-native-source.json")
@@ -77,13 +77,20 @@ def sha256_file(path: pathlib.Path) -> str:
         raise M15NativeSourceError(f"cannot hash {path}: {exc}") from exc
 
 
+def invoke_git(*arguments: str, repository: pathlib.Path | None = None):
+    try:
+        return run_git(*arguments, repository=repository)
+    except SourceContextError as exc:
+        raise M15NativeSourceError(
+            f"git {' '.join(arguments)} failed: {exc}"
+        ) from exc
+
+
 def git(repository: pathlib.Path, *arguments: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(repository), *arguments], text=True,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
-    )
-    require(result.returncode == 0, f"git {' '.join(arguments)} failed: {(result.stderr or result.stdout).strip()}")
-    return result.stdout.strip()
+    result = invoke_git(*arguments, repository=repository)
+    detail = (result.stderr or result.stdout).decode("utf-8", errors="replace").strip()
+    require(result.returncode == 0, f"git {' '.join(arguments)} failed: {detail}")
+    return result.stdout.decode("utf-8", errors="replace").strip()
 
 
 def _recorded_result_set(config: dict[str, Any]) -> str:
@@ -177,14 +184,27 @@ def validate(
         require(git(base_source, "rev-parse", "HEAD^{tree}") == config["base"]["tree"], "M15 base source tree drifted")
         with tempfile.TemporaryDirectory(prefix="openttd-rl-v2-m15-source-") as raw:
             target = pathlib.Path(raw) / "source"
-            result = subprocess.run(["git", "clone", "-q", "--no-hardlinks", str(base_source), str(target)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            require(result.returncode == 0, f"cannot clone M15 base source: {result.stderr.strip()}")
+            result = invoke_git(
+                "clone", "-q", "--no-hardlinks", str(base_source), str(target)
+            )
+            clone_detail = result.stderr.decode("utf-8", errors="replace").strip()
+            require(result.returncode == 0, f"cannot clone M15 base source: {clone_detail}")
             for name in names:
                 patch = patch_directory / name
-                check = subprocess.run(["git", "-C", str(target), "apply", "--check", "--whitespace=error-all", str(patch)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                require(check.returncode == 0 and not re.search(r"\b(?:offset|fuzz|warning)\b", check.stdout + check.stderr, re.I), f"M15 patch does not apply exactly: {name}")
-                applied = subprocess.run(["git", "-C", str(target), "apply", "--index", "--whitespace=error-all", str(patch)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                require(applied.returncode == 0, f"cannot apply M15 patch: {name}: {applied.stderr.strip()}")
+                check = invoke_git(
+                    "apply", "--check", "--whitespace=error-all", str(patch),
+                    repository=target,
+                )
+                check_output = (check.stdout + check.stderr).decode(
+                    "utf-8", errors="replace"
+                )
+                require(check.returncode == 0 and not re.search(r"\b(?:offset|fuzz|warning)\b", check_output, re.I), f"M15 patch does not apply exactly: {name}")
+                applied = invoke_git(
+                    "apply", "--index", "--whitespace=error-all", str(patch),
+                    repository=target,
+                )
+                apply_detail = applied.stderr.decode("utf-8", errors="replace").strip()
+                require(applied.returncode == 0, f"cannot apply M15 patch: {name}: {apply_detail}")
             require(git(target, "write-tree") == config["result"]["tree"], "M15 composed result tree drifted")
         require(git(result_source, "status", "--porcelain") == "", "M15 retained source is dirty")
         require(git(result_source, "rev-parse", "HEAD^{tree}") == config["result"]["tree"], "M15 retained result tree drifted")

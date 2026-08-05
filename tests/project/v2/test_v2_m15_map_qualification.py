@@ -4,18 +4,21 @@
 from __future__ import annotations
 
 import copy
+import contextlib
 import hashlib
 import io
 import json
 import pathlib
+import re
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-from types import MappingProxyType
 from unittest import mock
 
+import artifact_context
 from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
@@ -26,6 +29,27 @@ import freeze_m15_map_evidence
 import qualify_m15_native_map
 import run_m15_map_matrix
 import validate_m15_map_evidence
+
+
+class _FailingTemporaryFile:
+    def __init__(self, path: pathlib.Path) -> None:
+        self.name = str(path)
+        self._stream = path.open("w", encoding="utf-8")
+
+    def __enter__(self) -> _FailingTemporaryFile:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        self._stream.close()
+
+    def write(self, _value: str) -> int:
+        raise OSError("injected publication write failure")
+
+
+def _failing_named_temporary_file(**kwargs: object) -> _FailingTemporaryFile:
+    directory = pathlib.Path(str(kwargs["dir"]))
+    path = directory / f"{kwargs['prefix']}injected{kwargs['suffix']}"
+    return _FailingTemporaryFile(path)
 
 
 class M15MapQualificationTests(unittest.TestCase):
@@ -77,6 +101,7 @@ class M15MapQualificationTests(unittest.TestCase):
         executable.parent.mkdir(parents=True)
         executable.write_bytes(b"relocated map executable\n")
         executable.chmod(0o755)
+        frozen_executable_sha256 = matrix["executable"]["sha256"]
         matrix["executable"] = {
             "sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
             "size": executable.stat().st_size,
@@ -132,12 +157,85 @@ class M15MapQualificationTests(unittest.TestCase):
         matrix["counts"]["save_bytes"] = sum(item["save_size"] or 0 for item in matrix["results"])
         matrix_path = directory / "matrix.json"
         matrix_path.write_text(json.dumps(matrix, indent=2) + "\n", encoding="utf-8")
-        live_inputs = LiveInputManifest(
-            ValidationMode.LIVE,
-            base,
-            MappingProxyType({"m14-openttd-executable": executable}),
-        )
+        with mock.patch.object(
+            artifact_context,
+            "_sha256_file",
+            return_value=frozen_executable_sha256,
+        ):
+            live_inputs = LiveInputManifest.bind(
+                ArtifactContext.live(base),
+                {"m14-openttd-executable": executable},
+            )
         return project, base, matrix_path, live_inputs, manifests, matrix
+
+    @contextlib.contextmanager
+    def stubbed_matrix_run(
+        self,
+        directory: pathlib.Path,
+        *,
+        validation: object,
+    ):
+        manifests: dict[pathlib.Path, dict[str, object]] = {}
+
+        def run_one(
+            _root: pathlib.Path,
+            _openttd: pathlib.Path,
+            artifact_root: pathlib.Path,
+            width: int,
+            height: int,
+            _seed: int,
+            _sandbox: str,
+        ) -> tuple[tuple[int, int], str]:
+            run_root = artifact_root / f"map-{width:04d}x{height:04d}"
+            run_root.mkdir()
+            evidence_path = run_root / qualify_m15_native_map.EVIDENCE_NAME
+            evidence_path.write_text("{}\n", encoding="utf-8")
+            generated = width * height <= qualify_m15_native_map.MAXIMUM_GENERATED_TILES
+            manifests[evidence_path] = {
+                "engine_source": self.matrix["engine_source"],
+                "executable": self.matrix["executable"],
+                "contract_sha256": self.matrix["contract_sha256"],
+                "request": {"width": width, "height": height, "tile_count": width * height},
+                "outcome": "GENERATED" if generated else "PREFLIGHT_REJECTED",
+                "reason_code": (
+                    None
+                    if generated
+                    else "tile-count-exceeds-useful-play-preflight-budget"
+                ),
+                "observations": {
+                    "save": ({"size": 1, "sha256": "1" * 64} if generated else None),
+                    "map": ({"map_sha256": "2" * 64} if generated else None),
+                },
+                "resources": {
+                    "max_rss_kib": 1 if generated else 0,
+                    "wall_seconds": 0,
+                },
+            }
+            return (width, height), "fixture"
+
+        executable = directory / "openttd"
+        executable.write_bytes(b"fixture executable")
+        target = directory / "new-matrix"
+        with (
+            mock.patch.object(run_m15_map_matrix, "run_one", side_effect=run_one),
+            mock.patch.object(
+                qualify_m15_native_map,
+                "validate_manifest",
+                side_effect=lambda _root, path, **_kwargs: manifests[path],
+            ),
+            mock.patch.object(run_m15_map_matrix, "validate", side_effect=validation) as validator,
+            mock.patch.object(
+                run_m15_map_matrix,
+                "live_inputs_for_openttd",
+                return_value=mock.sentinel.live_inputs,
+            ),
+            mock.patch("builtins.print"),
+        ):
+            yield executable, target, validator
+
+    def assert_no_publication_temp(self, parent: pathlib.Path, name: str) -> None:
+        self.assertEqual(list(parent.glob(f".{name}.*.tmp")), [])
+        self.assertFalse((parent / f".{name}.pending").exists())
 
     def test_repository_matrix_passes(self) -> None:
         summary = run_m15_map_matrix.validate(
@@ -253,7 +351,7 @@ class M15MapQualificationTests(unittest.TestCase):
                 "validate_manifest",
                 side_effect=AssertionError("unexpected live read"),
             ) as reader:
-                with self.assertRaisesRegex(ArtifactContextError, "offline validation"):
+                with self.assertRaisesRegex(ArtifactContextError, "artifact root does not match"):
                     run_m15_map_matrix.validate(
                         project,
                         matrix_path,
@@ -262,6 +360,102 @@ class M15MapQualificationTests(unittest.TestCase):
                         live_inputs=LiveInputManifest.offline(),
                     )
             reader.assert_not_called()
+
+    def test_generation_role_binding_accepts_same_root_exact_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            executable = base / "roles" / "openttd"
+            executable.parent.mkdir()
+            executable.write_bytes(b"fixture")
+            context = ArtifactContext.live(base)
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                return_value=self.matrix["executable"]["sha256"],
+            ):
+                live_inputs = run_m15_map_matrix.live_inputs_for_openttd(
+                    context,
+                    executable,
+                )
+        self.assertEqual(live_inputs.artifact_root, context.artifact_root)
+        self.assertEqual(live_inputs.roles, {run_m15_map_matrix.OPENTTD_ROLE})
+
+    def test_generation_role_binding_rejects_relative_artifact_root(self) -> None:
+        context = ArtifactContext(ValidationMode.LIVE, pathlib.Path("relative"))
+        with self.assertRaisesRegex(ArtifactContextError, "artifact root"):
+            run_m15_map_matrix.live_inputs_for_openttd(
+                context,
+                pathlib.Path("relative/openttd"),
+            )
+
+    def test_generation_role_binding_rejects_executable_outside_root(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            base = directory / "live"
+            base.mkdir()
+            executable = directory / "outside-openttd"
+            executable.write_bytes(b"fixture")
+            with self.assertRaisesRegex(ArtifactContextError, "outside artifact root"):
+                run_m15_map_matrix.live_inputs_for_openttd(
+                    ArtifactContext.live(base),
+                    executable,
+                )
+
+    def test_generation_role_binding_rejects_artifact_root_itself(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            with self.assertRaisesRegex(ArtifactContextError, "below artifact root"):
+                run_m15_map_matrix.live_inputs_for_openttd(
+                    ArtifactContext.live(base),
+                    base,
+                )
+
+    def test_generation_role_binding_rejects_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            target = base / "real-openttd"
+            target.write_bytes(b"fixture")
+            executable = base / "openttd"
+            executable.symlink_to(target)
+            with self.assertRaisesRegex(ArtifactContextError, "symlink traversal"):
+                run_m15_map_matrix.live_inputs_for_openttd(
+                    ArtifactContext.live(base),
+                    executable,
+                )
+
+    def test_generation_role_binding_rejects_digest_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            executable = base / "openttd"
+            executable.write_bytes(b"wrong executable")
+            with self.assertRaisesRegex(ArtifactContextError, "SHA-256 mismatch"):
+                run_m15_map_matrix.live_inputs_for_openttd(
+                    ArtifactContext.live(base),
+                    executable,
+                )
+
+    def test_live_map_rejects_role_manifest_from_another_context_before_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            project, _, matrix_path, live_inputs, _, _ = self.make_live_matrix_fixture(directory)
+            other = directory / "other-live"
+            other.mkdir()
+            with (
+                mock.patch.object(
+                    ArtifactContext,
+                    "preflight",
+                    side_effect=AssertionError("unexpected artifact preflight"),
+                ) as preflight,
+                self.assertRaisesRegex(ArtifactContextError, "artifact root does not match"),
+            ):
+                run_m15_map_matrix.validate(
+                    project,
+                    matrix_path,
+                    project / run_m15_map_matrix.SCHEMA_RELATIVE,
+                    artifact_context=ArtifactContext.live(other),
+                    live_inputs=live_inputs,
+                )
+            preflight.assert_not_called()
 
     def test_required_live_inputs_are_the_exact_map_closure(self) -> None:
         requirements = run_m15_map_matrix.required_live_inputs(self.root)
@@ -367,6 +561,30 @@ class M15MapQualificationTests(unittest.TestCase):
         self.assertEqual(context.artifact_root, base)
         self.assertIs(validator.call_args.kwargs["live_inputs"], live_inputs)
 
+    def test_documented_live_map_command_uses_supported_validator_interface(self) -> None:
+        document = (self.root / "docs/project/M15_SCALABLE_CONTRACT.md").read_text(
+            encoding="utf-8"
+        )
+        block = next(
+            value
+            for value in re.findall(r"```text\n(.*?)```", document, flags=re.DOTALL)
+            if "m15_map" in value
+        )
+        tokens = shlex.split(block.replace("\\\n", " "))
+        self.assertEqual(
+            tokens[:2],
+            ["python3", "scripts/v2/validate_m15_map_evidence.py"],
+        )
+        args = validate_m15_map_evidence.parse_args(tokens[2:])
+        self.assertEqual(args.artifact_root, pathlib.Path("<common-root>"))
+        self.assertNotIn("--artifact-base", tokens)
+        self.assertNotIn("--openttd", tokens)
+        self.assertIn(
+            "`<common-root>/v2-live-inputs.json` binds the exact "
+            "`m14-openttd-executable` role",
+            re.sub(r"\s+", " ", document),
+        )
+
     def test_generated_matrix_is_not_published_when_live_validation_fails(self) -> None:
         manifests: dict[pathlib.Path, dict[str, object]] = {}
 
@@ -416,6 +634,11 @@ class M15MapQualificationTests(unittest.TestCase):
                     "validate",
                     side_effect=run_m15_map_matrix.M15MapMatrixError("generated validation failed"),
                 ),
+                mock.patch.object(
+                    run_m15_map_matrix,
+                    "live_inputs_for_openttd",
+                    return_value=mock.sentinel.live_inputs,
+                ),
                 mock.patch("builtins.print"),
             ):
                 with self.assertRaisesRegex(run_m15_map_matrix.M15MapMatrixError, "generated validation failed"):
@@ -428,6 +651,66 @@ class M15MapQualificationTests(unittest.TestCase):
                         sandbox="test-none",
                     )
             self.assertFalse((target / run_m15_map_matrix.EVIDENCE_NAME).exists())
+            self.assert_no_publication_temp(target, run_m15_map_matrix.EVIDENCE_NAME)
+
+    def test_generated_matrix_write_failure_leaves_no_publication(self) -> None:
+        summary = run_m15_map_matrix.M15MapMatrixSummary(49, 39, 10, 39, 1, True)
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            with (
+                self.stubbed_matrix_run(
+                    directory,
+                    validation=lambda *_args, **_kwargs: summary,
+                ) as (executable, target, _),
+                mock.patch(
+                    "tempfile.NamedTemporaryFile",
+                    side_effect=_failing_named_temporary_file,
+                ),
+                self.assertRaisesRegex(OSError, "injected publication write failure"),
+            ):
+                run_m15_map_matrix.run_matrix(
+                    self.root,
+                    executable,
+                    target,
+                    self.matrix["seed"],
+                    workers=1,
+                    sandbox="test-none",
+                )
+            self.assertFalse((target / run_m15_map_matrix.EVIDENCE_NAME).exists())
+            self.assert_no_publication_temp(target, run_m15_map_matrix.EVIDENCE_NAME)
+
+    def test_generated_matrix_concurrent_final_is_preserved(self) -> None:
+        summary = run_m15_map_matrix.M15MapMatrixSummary(49, 39, 10, 39, 1, True)
+        competitor = b"concurrent publisher\n"
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            with self.stubbed_matrix_run(
+                directory,
+                validation=lambda *_args, **_kwargs: summary,
+            ) as (executable, target, _):
+                destination = target / run_m15_map_matrix.EVIDENCE_NAME
+
+                def concurrent_link(_source: pathlib.Path, final: pathlib.Path) -> None:
+                    pathlib.Path(final).write_bytes(competitor)
+                    raise FileExistsError(final)
+
+                with (
+                    mock.patch.object(run_m15_map_matrix.os, "link", side_effect=concurrent_link),
+                    self.assertRaisesRegex(
+                        run_m15_map_matrix.M15MapMatrixError,
+                        "refusing to overwrite",
+                    ),
+                ):
+                    run_m15_map_matrix.run_matrix(
+                        self.root,
+                        executable,
+                        target,
+                        self.matrix["seed"],
+                        workers=1,
+                        sandbox="test-none",
+                    )
+            self.assertEqual(destination.read_bytes(), competitor)
+            self.assert_no_publication_temp(target, run_m15_map_matrix.EVIDENCE_NAME)
 
     def test_preflight_rejection_is_machine_validated_without_launch(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -529,10 +812,25 @@ class M15MapQualificationTests(unittest.TestCase):
         with self.assertRaisesRegex(run_m15_map_matrix.M15MapMatrixError, "generated evidence is incomplete"):
             self.validate_matrix_mutation(matrix)
 
+    def test_unique_wrong_artifact_directory_fails_exact_mapping(self) -> None:
+        matrix = copy.deepcopy(self.matrix)
+        matrix["results"][0]["artifact_dir"] = "map-9999x9999"
+        with self.assertRaisesRegex(run_m15_map_matrix.M15MapMatrixError, "artifact directory drifted"):
+            self.validate_matrix_mutation(matrix)
+
+    def test_swapped_artifact_directories_fail_exact_mapping(self) -> None:
+        matrix = copy.deepcopy(self.matrix)
+        matrix["results"][0]["artifact_dir"], matrix["results"][1]["artifact_dir"] = (
+            matrix["results"][1]["artifact_dir"],
+            matrix["results"][0]["artifact_dir"],
+        )
+        with self.assertRaisesRegex(run_m15_map_matrix.M15MapMatrixError, "artifact directory drifted"):
+            self.validate_matrix_mutation(matrix)
+
     def test_duplicate_artifact_directory_fails(self) -> None:
         matrix = copy.deepcopy(self.matrix)
         matrix["results"][1]["artifact_dir"] = matrix["results"][0]["artifact_dir"]
-        with self.assertRaisesRegex(run_m15_map_matrix.M15MapMatrixError, "duplicated"):
+        with self.assertRaisesRegex(run_m15_map_matrix.M15MapMatrixError, "artifact directory drifted"):
             self.validate_matrix_mutation(matrix)
 
     def test_summary_count_drift_fails(self) -> None:
@@ -543,12 +841,131 @@ class M15MapQualificationTests(unittest.TestCase):
 
     def test_live_validation_requires_artifact_root(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            executable = base / "openttd"
+            executable.write_bytes(b"fixture executable")
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                return_value=self.matrix["executable"]["sha256"],
+            ):
+                live_inputs = LiveInputManifest.bind(
+                    ArtifactContext.live(base),
+                    {run_m15_map_matrix.OPENTTD_ROLE: executable},
+                )
             with self.assertRaisesRegex(ArtifactContextError, "missing"):
                 run_m15_map_matrix.validate(
                     self.root,
-                    artifact_context=ArtifactContext.live(pathlib.Path(raw).resolve()),
-                    live_inputs=LiveInputManifest.offline(),
+                    artifact_context=ArtifactContext.live(base),
+                    live_inputs=live_inputs,
                 )
+
+    def test_freeze_offline_validation_failure_leaves_no_publication(self) -> None:
+        summary = run_m15_map_matrix.M15MapMatrixSummary(49, 39, 10, 39, 1, True)
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            source = directory / "matrix.json"
+            source.write_text(json.dumps(self.matrix), encoding="utf-8")
+            executable = directory / "openttd"
+            executable.write_bytes(b"fixture executable")
+            output = directory / "published" / "map.json"
+            with (
+                mock.patch.object(
+                    run_m15_map_matrix,
+                    "validate",
+                    side_effect=[
+                        summary,
+                        run_m15_map_matrix.M15MapMatrixError(
+                            "injected offline validation failure"
+                        ),
+                    ],
+                ),
+                mock.patch.object(
+                    run_m15_map_matrix,
+                    "live_inputs_for_openttd",
+                    return_value=mock.sentinel.live_inputs,
+                ),
+                mock.patch("sys.stderr", new_callable=io.StringIO),
+            ):
+                result = freeze_m15_map_evidence.main([
+                    "--root", str(self.root),
+                    "--artifact-matrix", str(source),
+                    "--artifact-base", str(directory),
+                    "--openttd", str(executable),
+                    "--output", str(output),
+                ])
+            self.assertEqual(result, 1)
+            self.assertFalse(output.exists())
+            self.assert_no_publication_temp(output.parent, output.name)
+
+    def test_freeze_write_failure_leaves_no_publication(self) -> None:
+        summary = run_m15_map_matrix.M15MapMatrixSummary(49, 39, 10, 39, 1, True)
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            source = directory / "matrix.json"
+            source.write_text(json.dumps(self.matrix), encoding="utf-8")
+            executable = directory / "openttd"
+            executable.write_bytes(b"fixture executable")
+            output = directory / "published" / "map.json"
+            with (
+                mock.patch.object(run_m15_map_matrix, "validate", return_value=summary),
+                mock.patch.object(
+                    run_m15_map_matrix,
+                    "live_inputs_for_openttd",
+                    return_value=mock.sentinel.live_inputs,
+                ),
+                mock.patch(
+                    "tempfile.NamedTemporaryFile",
+                    side_effect=_failing_named_temporary_file,
+                ),
+                mock.patch("sys.stderr", new_callable=io.StringIO),
+            ):
+                result = freeze_m15_map_evidence.main([
+                    "--root", str(self.root),
+                    "--artifact-matrix", str(source),
+                    "--artifact-base", str(directory),
+                    "--openttd", str(executable),
+                    "--output", str(output),
+                ])
+            self.assertEqual(result, 1)
+            self.assertFalse(output.exists())
+            self.assert_no_publication_temp(output.parent, output.name)
+
+    def test_freeze_concurrent_final_is_preserved(self) -> None:
+        summary = run_m15_map_matrix.M15MapMatrixSummary(49, 39, 10, 39, 1, True)
+        competitor = b"concurrent freezer\n"
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            source = directory / "matrix.json"
+            source.write_text(json.dumps(self.matrix), encoding="utf-8")
+            executable = directory / "openttd"
+            executable.write_bytes(b"fixture executable")
+            output = directory / "published" / "map.json"
+
+            def concurrent_link(_source: pathlib.Path, final: pathlib.Path) -> None:
+                pathlib.Path(final).write_bytes(competitor)
+                raise FileExistsError(final)
+
+            with (
+                mock.patch.object(run_m15_map_matrix, "validate", return_value=summary),
+                mock.patch.object(
+                    run_m15_map_matrix,
+                    "live_inputs_for_openttd",
+                    return_value=mock.sentinel.live_inputs,
+                ),
+                mock.patch.object(run_m15_map_matrix.os, "link", side_effect=concurrent_link),
+                mock.patch("sys.stderr", new_callable=io.StringIO),
+            ):
+                result = freeze_m15_map_evidence.main([
+                    "--root", str(self.root),
+                    "--artifact-matrix", str(source),
+                    "--artifact-base", str(directory),
+                    "--openttd", str(executable),
+                    "--output", str(output),
+                ])
+            self.assertEqual(result, 1)
+            self.assertEqual(output.read_bytes(), competitor)
+            self.assert_no_publication_temp(output.parent, output.name)
 
     def test_freeze_helper_keeps_supported_live_validation_workflow(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -558,6 +975,11 @@ class M15MapQualificationTests(unittest.TestCase):
             requirement = run_m15_map_matrix.required_live_roles(project, matrix_path)[0]
             executable = live_inputs.resolve(requirement)
             with (
+                mock.patch.object(
+                    run_m15_map_matrix,
+                    "live_inputs_for_openttd",
+                    return_value=live_inputs,
+                ) as binder,
                 mock.patch.object(
                     qualify_m15_native_map,
                     "validate_manifest",
@@ -577,6 +999,8 @@ class M15MapQualificationTests(unittest.TestCase):
                 published = output.is_file()
         self.assertEqual(result, 0)
         self.assertTrue(published)
+        context = binder.call_args.args[0]
+        self.assertEqual(context.artifact_root, base)
 
 
 if __name__ == "__main__":

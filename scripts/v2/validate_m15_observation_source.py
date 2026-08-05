@@ -8,7 +8,6 @@ import hashlib
 import json
 import pathlib
 import re
-import subprocess
 import tempfile
 from dataclasses import dataclass
 from typing import Any
@@ -21,6 +20,7 @@ from artifact_context import (
     ArtifactRequirement,
     add_artifact_root_argument,
 )
+from source_context import SourceContextError, run_git
 
 
 CONFIG = pathlib.Path("config/v2/m15-observation-source.json")
@@ -72,10 +72,20 @@ def sha256_file(path: pathlib.Path) -> str:
         raise M15ObservationSourceError(f"cannot hash {path}: {exc}") from exc
 
 
+def invoke_git(*arguments: str, repository: pathlib.Path | None = None):
+    try:
+        return run_git(*arguments, repository=repository)
+    except SourceContextError as exc:
+        raise M15ObservationSourceError(
+            f"git {' '.join(arguments)} failed: {exc}"
+        ) from exc
+
+
 def git(repository: pathlib.Path, *arguments: str) -> str:
-    result = subprocess.run(["git", "-C", str(repository), *arguments], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    require(result.returncode == 0, f"git {' '.join(arguments)} failed: {(result.stderr or result.stdout).strip()}")
-    return result.stdout.strip()
+    result = invoke_git(*arguments, repository=repository)
+    detail = (result.stderr or result.stdout).decode("utf-8", errors="replace").strip()
+    require(result.returncode == 0, f"git {' '.join(arguments)} failed: {detail}")
+    return result.stdout.decode("utf-8", errors="replace").strip()
 
 
 def _recorded_result_set(config: dict[str, Any]) -> str:
@@ -150,12 +160,15 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema
         require(git(base_source, "rev-parse", "HEAD^{tree}") == config["base"]["tree"], "M15 observation base tree drifted")
         with tempfile.TemporaryDirectory(prefix="openttd-rl-v2-m15-observation-source-") as raw:
             target = pathlib.Path(raw) / "source"
-            cloned = subprocess.run(["git", "clone", "-q", "--no-hardlinks", str(base_source), str(target)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            require(cloned.returncode == 0, f"cannot clone observation base source: {cloned.stderr.strip()}")
-            checked = subprocess.run(["git", "-C", str(target), "apply", "--check", "--whitespace=error-all", str(patch)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            require(checked.returncode == 0 and not re.search(r"\b(?:offset|fuzz|warning)\b", checked.stdout + checked.stderr, re.I), "M15 observation patch does not apply exactly")
-            applied = subprocess.run(["git", "-C", str(target), "apply", "--index", "--whitespace=error-all", str(patch)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            require(applied.returncode == 0, f"cannot apply M15 observation patch: {applied.stderr.strip()}")
+            cloned = invoke_git("clone", "-q", "--no-hardlinks", str(base_source), str(target))
+            clone_detail = cloned.stderr.decode("utf-8", errors="replace").strip()
+            require(cloned.returncode == 0, f"cannot clone observation base source: {clone_detail}")
+            checked = invoke_git("apply", "--check", "--whitespace=error-all", str(patch), repository=target)
+            check_output = (checked.stdout + checked.stderr).decode("utf-8", errors="replace")
+            require(checked.returncode == 0 and not re.search(r"\b(?:offset|fuzz|warning)\b", check_output, re.I), "M15 observation patch does not apply exactly")
+            applied = invoke_git("apply", "--index", "--whitespace=error-all", str(patch), repository=target)
+            apply_detail = applied.stderr.decode("utf-8", errors="replace").strip()
+            require(applied.returncode == 0, f"cannot apply M15 observation patch: {apply_detail}")
             require(git(target, "write-tree") == config["result"]["tree"], "M15 observation result tree drifted")
         require(git(result_source, "status", "--porcelain") == "", "M15 observation retained source is dirty")
         require(git(result_source, "rev-parse", "HEAD") == config["result"]["commit"], "M15 observation retained commit drifted")

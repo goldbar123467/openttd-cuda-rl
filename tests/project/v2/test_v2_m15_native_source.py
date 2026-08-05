@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -15,7 +16,11 @@ from typing import Any
 from unittest import mock
 
 from artifact_context import ArtifactContext, ArtifactContextError, resolve_artifact_root
+import validate_m15_action_source
+import validate_m15_competence_source
+import validate_m15_episode_source
 import validate_m15_native_source
+import validate_m15_observation_source
 
 
 def _git(repository: pathlib.Path, *arguments: str) -> str:
@@ -134,6 +139,108 @@ def make_live_source_fixture(
     return value, fixture_config, fixture_schema, base_source, result_source
 
 
+def _source_validator_cases(root: pathlib.Path) -> tuple[tuple[Any, ...], ...]:
+    native = validate_m15_native_source.load_json(root / validate_m15_native_source.CONFIG)
+    observation = validate_m15_observation_source.load_json(
+        root / validate_m15_observation_source.CONFIG
+    )
+    action = validate_m15_action_source.load_json(root / validate_m15_action_source.CONFIG)
+    episode = validate_m15_episode_source.load_json(root / validate_m15_episode_source.CONFIG)
+    competence = validate_m15_competence_source.load_json(
+        root / validate_m15_competence_source.CONFIG
+    )
+    return (
+        (
+            "native",
+            validate_m15_native_source,
+            native,
+            root / validate_m15_native_source.SCHEMA,
+            str(
+                pathlib.Path(native["patch_series"]["directory"])
+                / native["patch_series"]["patches"][0]["name"]
+            ),
+            "m12-release-final-a",
+            "composed-source/openttd",
+            "v2-m15-native-a",
+        ),
+        (
+            "observation",
+            validate_m15_observation_source,
+            observation,
+            root / validate_m15_observation_source.SCHEMA,
+            observation["patch"]["path"],
+            "v2-m15-native-a",
+            "source",
+            "v2-m15-observation-a",
+        ),
+        (
+            "action",
+            validate_m15_action_source,
+            action,
+            root / validate_m15_action_source.SCHEMA,
+            action["patch"]["path"],
+            "v2-m15-observation-a",
+            "source",
+            "v2-m15-action-a",
+        ),
+        (
+            "episode",
+            validate_m15_episode_source,
+            episode,
+            root / validate_m15_episode_source.SCHEMA,
+            episode["patch"]["path"],
+            "v2-m15-action-a",
+            "source",
+            "v2-m15-episode-a",
+        ),
+        (
+            "competence",
+            validate_m15_competence_source,
+            competence,
+            root / validate_m15_competence_source.SCHEMA,
+            competence["patch"]["path"],
+            "v2-m15-episode-a",
+            "source",
+            "v2-m15-competence-a",
+        ),
+    )
+
+
+def _hostile_git_environment(
+    directory: pathlib.Path,
+    base_source: pathlib.Path,
+) -> dict[str, str]:
+    redirect = directory / "hostile-repository"
+    subprocess.run(
+        ["git", "clone", "-q", "--no-hardlinks", str(base_source), str(redirect)],
+        check=True,
+    )
+    return {
+        "GIT_DIR": str(redirect / ".git"),
+        "GIT_WORK_TREE": str(redirect),
+    }
+
+
+def _install_replacement_refs(
+    base_source: pathlib.Path,
+    result_source: pathlib.Path,
+) -> None:
+    base_commit = _git(base_source, "rev-parse", "HEAD")
+    result_commit = _git(result_source, "rev-parse", "HEAD")
+    subprocess.run(
+        ["git", "-C", str(base_source), "fetch", "-q", str(result_source), result_commit],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(base_source), "replace", base_commit, result_commit],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(result_source), "replace", result_commit, base_commit],
+        check=True,
+    )
+
+
 class M15NativeSourceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -211,6 +318,61 @@ class M15NativeSourceTests(unittest.TestCase):
         read_repositories = {call.args[0] for call in reader.call_args_list}
         self.assertIn(base_source, read_repositories)
         self.assertIn(result_source, read_repositories)
+
+    def test_every_source_validator_ignores_hostile_git_environment_during_clone_apply(self) -> None:
+        for (
+            name, validator, config, schema, patch_relative,
+            base_set, base_relative, result_set,
+        ) in _source_validator_cases(self.root):
+            with self.subTest(validator=name), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                _, config_path, schema_path, base_source, _ = make_live_source_fixture(
+                    self.root,
+                    base,
+                    config,
+                    schema,
+                    patch_relative=patch_relative,
+                    base_set=base_set,
+                    base_relative=base_relative,
+                    result_set=result_set,
+                    config_filename=f"{name}-source.json",
+                )
+                hostile = _hostile_git_environment(base, base_source)
+                with mock.patch.dict(os.environ, hostile):
+                    summary = validator.validate(
+                        self.root,
+                        config_path,
+                        schema_path,
+                        artifact_context=ArtifactContext.live(base),
+                    )
+                self.assertTrue(summary.live_source and summary.live_build)
+
+    def test_every_source_validator_ignores_replacement_refs_for_source_identity(self) -> None:
+        for (
+            name, validator, config, schema, patch_relative,
+            base_set, base_relative, result_set,
+        ) in _source_validator_cases(self.root):
+            with self.subTest(validator=name), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                _, config_path, schema_path, base_source, result_source = make_live_source_fixture(
+                    self.root,
+                    base,
+                    config,
+                    schema,
+                    patch_relative=patch_relative,
+                    base_set=base_set,
+                    base_relative=base_relative,
+                    result_set=result_set,
+                    config_filename=f"{name}-source.json",
+                )
+                _install_replacement_refs(base_source, result_source)
+                summary = validator.validate(
+                    self.root,
+                    config_path,
+                    schema_path,
+                    artifact_context=ArtifactContext.live(base),
+                )
+                self.assertTrue(summary.live_source and summary.live_build)
 
     def test_live_preflight_fails_before_source_read(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

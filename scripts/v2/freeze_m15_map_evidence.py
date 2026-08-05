@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import pathlib
 import sys
 
@@ -27,24 +26,25 @@ def main(argv: list[str] | None = None) -> int:
     root = args.root.resolve()
     output = (args.output or root / "config/v2/m15-map-evidence.json").resolve()
     try:
+        context = ArtifactContext.live(args.artifact_base)
         run_m15_map_matrix.validate(
             root,
             args.artifact_matrix,
-            artifact_context=ArtifactContext.live(args.artifact_base),
+            artifact_context=context,
             live_inputs=run_m15_map_matrix.live_inputs_for_openttd(
-                args.artifact_base,
+                context,
                 args.openttd,
             ),
         )
-        if output.exists() or output.is_symlink():
-            raise run_m15_map_matrix.M15MapMatrixError(f"refusing to overwrite frozen map evidence: {output}")
         value = run_m15_map_matrix.load_json(args.artifact_matrix)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-        frozen = run_m15_map_matrix.validate(
-            root,
+        frozen = run_m15_map_matrix.publish_json_no_overwrite(
             output,
-            artifact_context=ArtifactContext.offline(),
+            value,
+            lambda pending: run_m15_map_matrix.validate(
+                root,
+                pending,
+                artifact_context=ArtifactContext.offline(),
+            ),
         )
         print(
             f"V2_M15_MAP_EVIDENCE_FROZEN rectangles={frozen.rectangles} generated={frozen.generated} "

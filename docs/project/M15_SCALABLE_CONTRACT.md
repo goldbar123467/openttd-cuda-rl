@@ -48,10 +48,12 @@ Live verification additionally rehashes and semantically validates all 49
 per-rectangle manifests:
 
 ```text
-python3 scripts/v2/run_m15_map_matrix.py --root . \
-  --artifact-base /home/thecl/.codex/artifacts/openttd-rl \
-  --openttd /home/thecl/.codex/artifacts/openttd-rl/m12-release-final-a/build/openttd-headless/openttd
+python3 scripts/v2/validate_m15_map_evidence.py --root . \
+  --artifact-root <common-root>
 ```
+
+`<common-root>/v2-live-inputs.json` binds the exact
+`m14-openttd-executable` role used by the retained map matrix.
 
 This proves the native generator/save/load boundary and the allocation policy;
 it does not yet prove V2 RL reset, bounded observation construction, or useful

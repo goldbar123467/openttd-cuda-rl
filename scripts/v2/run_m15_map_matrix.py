@@ -11,10 +11,11 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
-from types import MappingProxyType
-from typing import Any
+from typing import Any, TypeVar
 
 import jsonschema
 
@@ -24,7 +25,6 @@ from artifact_context import (
     ArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
-    ValidationMode,
 )
 import qualify_m15_native_map
 
@@ -34,6 +34,7 @@ CONTRACT_RELATIVE = pathlib.Path("config/v2/m15-scalable-contract.json")
 EVIDENCE_NAME = "m15-map-evidence.json"
 LIVE_CONSUMER = "m15-map-matrix"
 OPENTTD_ROLE = "m14-openttd-executable"
+PublicationResult = TypeVar("PublicationResult")
 
 
 class M15MapMatrixError(ValueError):
@@ -206,16 +207,50 @@ def required_live_roles(
 
 
 def live_inputs_for_openttd(
-    artifact_root: pathlib.Path,
+    context: ArtifactContext,
     openttd: pathlib.Path,
 ) -> LiveInputManifest:
     """Represent an already selected executable through the typed map role."""
 
-    return LiveInputManifest(
-        ValidationMode.LIVE,
-        artifact_root,
-        MappingProxyType({OPENTTD_ROLE: openttd}),
+    return LiveInputManifest.bind(
+        context,
+        {OPENTTD_ROLE: openttd},
     )
+
+
+def publish_json_no_overwrite(
+    destination: pathlib.Path,
+    value: dict[str, Any],
+    validator: Callable[[pathlib.Path], PublicationResult],
+) -> PublicationResult:
+    """Validate a durable temporary JSON file before an atomic no-overwrite publish."""
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary: pathlib.Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as stream:
+            temporary = pathlib.Path(stream.name)
+            stream.write(json.dumps(value, indent=2) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        summary = validator(temporary)
+        try:
+            os.link(temporary, destination)
+        except FileExistsError as exc:
+            raise M15MapMatrixError(
+                f"refusing to overwrite map evidence: {destination}"
+            ) from exc
+        return summary
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def run_matrix(
@@ -288,19 +323,18 @@ def run_matrix(
         },
     }
     matrix_path = artifact_root / EVIDENCE_NAME
-    pending_path = artifact_root / f".{EVIDENCE_NAME}.pending"
-    pending_path.write_text(json.dumps(matrix, indent=2) + "\n", encoding="utf-8")
-    try:
-        validate(
+    context = ArtifactContext.live(artifact_root.parent)
+    live_inputs = live_inputs_for_openttd(context, openttd)
+    publish_json_no_overwrite(
+        matrix_path,
+        matrix,
+        lambda pending_path: validate(
             root,
             pending_path,
-            artifact_context=ArtifactContext.live(artifact_root.parent),
-            live_inputs=live_inputs_for_openttd(artifact_root.parent, openttd),
-        )
-        pending_path.replace(matrix_path)
-    except Exception:
-        pending_path.unlink(missing_ok=True)
-        raise
+            artifact_context=context,
+            live_inputs=live_inputs,
+        ),
+    )
     return matrix_path
 
 
@@ -336,8 +370,12 @@ def validate(
     expected_rectangles = [tuple(item) for item in contract["map"]["native_rectangles"]]
     results = evidence["results"]
     require([(item["width"], item["height"]) for item in results] == expected_rectangles, "M15 map matrix rectangle order/coverage drifted")
-    require(len({item["artifact_dir"] for item in results}) == len(results), "M15 map matrix artifact directories are duplicated")
     for item in results:
+        expected_directory = f"map-{item['width']:04d}x{item['height']:04d}"
+        require(
+            item["artifact_dir"] == expected_directory,
+            f"M15 {item['width']}x{item['height']} artifact directory drifted",
+        )
         require(item["tile_count"] == item["width"] * item["height"], f"M15 {item['width']}x{item['height']} tile count drifted")
         if item["tile_count"] <= qualify_m15_native_map.MAXIMUM_GENERATED_TILES:
             require(item["outcome"] == "GENERATED" and item["reason_code"] is None, f"M15 {item['width']}x{item['height']} was not generated inside budget")
@@ -359,6 +397,12 @@ def validate(
     logical_set = _recorded_artifact_set(evidence)
 
     if context.is_live:
+        if live_inputs is None:
+            raise ArtifactContextError("live map validation requires the m14-openttd-executable role")
+        if live_inputs.artifact_root != context.artifact_root:
+            raise ArtifactContextError(
+                "live map role manifest artifact root does not match artifact context"
+            )
         requirements = (
             required_live_inputs(root)
             if repository_evidence
@@ -370,8 +414,6 @@ def validate(
             else _role_requirements(evidence)
         )
         context.preflight(requirements)
-        if live_inputs is None:
-            raise ArtifactContextError("live map validation requires the m14-openttd-executable role")
         live_inputs.preflight(roles)
         live_paths = {
             requirement.relative_path: context.resolve(requirement)
