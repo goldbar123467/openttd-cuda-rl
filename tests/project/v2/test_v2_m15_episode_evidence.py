@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 import json
 import pathlib
 import shutil
@@ -13,7 +14,12 @@ import tempfile
 import unittest
 from unittest import mock
 
-from artifact_context import ArtifactContext, resolve_artifact_root
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    resolve_artifact_root,
+)
 import freeze_m15_episode_evidence
 
 
@@ -29,6 +35,20 @@ class M15EpisodeEvidenceTests(unittest.TestCase):
         path = directory / "episode-evidence.json"
         path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
         return path
+
+    @staticmethod
+    def materialize_synthetic_closure(
+        base: pathlib.Path,
+        requirements: tuple[ArtifactRequirement, ...],
+    ) -> tuple[ArtifactRequirement, ...]:
+        for requirement in requirements:
+            path = base / requirement.logical_set / requirement.relative_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"synthetic episode fixture\n")
+        return tuple(
+            dataclasses.replace(requirement, expected_sha256=None)
+            for requirement in requirements
+        )
 
     def test_repository_evidence_passes(self) -> None:
         summary = freeze_m15_episode_evidence.validate(
@@ -99,49 +119,120 @@ class M15EpisodeEvidenceTests(unittest.TestCase):
 
     def test_newly_frozen_evidence_validates_from_generated_set_parent(self) -> None:
         runs = {item["artifact_dir"]: item for item in self.config["runs"]}
-        observed: dict[str, object] = {}
-
-        def validate_generated(
-            root: pathlib.Path,
-            config_path: pathlib.Path,
-            schema_path: pathlib.Path | None = None,
-            *,
-            artifact_context: ArtifactContext | None = None,
-        ) -> None:
-            self.assertEqual(root, self.root)
-            self.assertIsNone(schema_path)
-            self.assertIsNotNone(artifact_context)
-            assert artifact_context is not None
-            self.assertTrue(artifact_context.is_live)
-            observed["artifact_root"] = artifact_context.artifact_root
-            observed["bytes"] = config_path.read_bytes()
+        committed_path = self.root / freeze_m15_episode_evidence.CONFIG
+        committed_bytes = committed_path.read_bytes()
 
         with tempfile.TemporaryDirectory() as raw:
             base = pathlib.Path(raw).resolve()
             artifact_root = base / freeze_m15_episode_evidence.LOGICAL_ARTIFACT_SET
-            artifact_root.mkdir()
+            synthetic_requirements = self.materialize_synthetic_closure(
+                base,
+                freeze_m15_episode_evidence.required_live_inputs(self.root),
+            )
             output = base / "episode-evidence.json"
             with (
+                mock.patch.object(
+                    freeze_m15_episode_evidence,
+                    "required_live_inputs",
+                    return_value=synthetic_requirements,
+                ),
                 mock.patch.object(
                     freeze_m15_episode_evidence,
                     "project_run",
                     side_effect=lambda root, artifact, directory: copy.deepcopy(
                         runs[directory]
                     ),
-                ),
-                mock.patch.object(
-                    freeze_m15_episode_evidence,
-                    "validate",
-                    side_effect=validate_generated,
-                ),
+                ) as run_reader,
             ):
                 frozen = freeze_m15_episode_evidence.freeze(
                     self.root,
                     artifact_root,
                     output,
                 )
-            self.assertEqual(frozen.read_bytes(), observed["bytes"])
-            self.assertEqual(observed["artifact_root"], base)
+            self.assertEqual(frozen.read_bytes(), committed_bytes)
+            self.assertEqual(committed_path.read_bytes(), committed_bytes)
+            self.assertEqual(
+                freeze_m15_episode_evidence.load_json(frozen)["artifact_base_hint"],
+                self.config["artifact_base_hint"],
+            )
+            self.assertEqual(
+                [call.args for call in run_reader.call_args_list],
+                [
+                    (self.root, artifact_root, directory)
+                    for directory in (
+                        *freeze_m15_episode_evidence.RUN_DIRS,
+                        *freeze_m15_episode_evidence.RUN_DIRS,
+                    )
+                ],
+            )
+
+    def test_live_preflight_rejects_missing_episode_inputs_before_read(self) -> None:
+        runs = {item["artifact_dir"]: item for item in self.config["runs"]}
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            (base / self.config["artifact_root"]).mkdir()
+            with mock.patch.object(
+                freeze_m15_episode_evidence,
+                "project_run",
+                side_effect=lambda root, artifact, directory: copy.deepcopy(
+                    runs[directory]
+                ),
+            ) as run_reader:
+                with self.assertRaisesRegex(ArtifactContextError, "missing file"):
+                    freeze_m15_episode_evidence.validate(
+                        self.root,
+                        artifact_context=ArtifactContext.live(base),
+                    )
+            run_reader.assert_not_called()
+
+    def test_live_preflight_rejects_nested_episode_symlink_before_read(self) -> None:
+        runs = {item["artifact_dir"]: item for item in self.config["runs"]}
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            set_root = base / self.config["artifact_root"]
+            path = set_root / "run-a/resource.txt"
+            path.parent.mkdir(parents=True)
+            target = base / "outside-resource.txt"
+            target.write_text("outside\n", encoding="utf-8")
+            path.symlink_to(target)
+            with mock.patch.object(
+                freeze_m15_episode_evidence,
+                "project_run",
+                side_effect=lambda root, artifact, directory: copy.deepcopy(
+                    runs[directory]
+                ),
+            ) as run_reader:
+                with self.assertRaisesRegex(ArtifactContextError, "symlink traversal"):
+                    freeze_m15_episode_evidence.validate(
+                        self.root,
+                        artifact_context=ArtifactContext.live(base),
+                    )
+            run_reader.assert_not_called()
+
+    def test_live_preflight_rejects_episode_digest_before_read(self) -> None:
+        runs = {item["artifact_dir"]: item for item in self.config["runs"]}
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            trace = (
+                base
+                / self.config["artifact_root"]
+                / "run-a/episode-trace.json"
+            )
+            trace.parent.mkdir(parents=True)
+            trace.write_bytes(b"wrong trace digest\n")
+            with mock.patch.object(
+                freeze_m15_episode_evidence,
+                "project_run",
+                side_effect=lambda root, artifact, directory: copy.deepcopy(
+                    runs[directory]
+                ),
+            ) as run_reader:
+                with self.assertRaisesRegex(ArtifactContextError, "SHA-256 mismatch"):
+                    freeze_m15_episode_evidence.validate(
+                        self.root,
+                        artifact_context=ArtifactContext.live(base),
+                    )
+            run_reader.assert_not_called()
 
     def test_required_live_inputs_are_the_exact_episode_closure(self) -> None:
         fixed_files = (

@@ -155,6 +155,7 @@ def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path
     for key in ("manifest_sha256", "projection_sha256", "metadata_sha256", "binary_sha256"):
         require(repeat[key] == primary[key], f"observation deterministic repeat {key} differs")
     source = load_json(root / SOURCE)
+    recorded = load_json(root / CONFIG)
     value = {
         "$schema": "../../docs/project/schema/v2-m15-observation-evidence.schema.json",
         "schema_version": "openttd-rl-v2-m15-observation-evidence-1",
@@ -162,7 +163,7 @@ def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path
         "contract_sha256": sha256_file(root / CONTRACT), "observation_source_sha256": sha256_file(root / SOURCE),
         "metadata_schema_sha256": sha256_file(root / METADATA_SCHEMA),
         "executable": {key: source["build"]["executable"][key] for key in ("sha256", "size")},
-        "artifact_base_hint": str(artifact_root.parent), "artifact_root": artifact_root.name,
+        "artifact_base_hint": recorded["artifact_base_hint"], "artifact_root": artifact_root.name,
         "cases": cases,
         "determinism": {
             "primary_artifact_dir": CASE_DIRS[0], "repeat_artifact_dir": REPEAT_DIR,
@@ -214,6 +215,7 @@ def validate(
     logical_set = _recorded_artifact_set(config)
 
     if context.is_live:
+        context.preflight(required_live_inputs(root))
         artifact_root = context.artifact_set(logical_set)
         require(artifact_root.is_dir() and not artifact_root.is_symlink(), "M15 observation live artifact root is missing or a symlink")
         live_cases = [case_from_artifact(root, artifact_root, directory) for directory in CASE_DIRS]

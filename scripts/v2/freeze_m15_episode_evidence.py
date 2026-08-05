@@ -240,11 +240,12 @@ def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path
     runs = [project_run(root, artifact_root, directory) for directory in RUN_DIRS]
     require(runs[0]["trace_sha256"] == runs[1]["trace_sha256"], "episode full-run traces are not byte-identical")
     source = load_json(root / EPISODE_SOURCE)
+    recorded = load_json(root / CONFIG)
     value = {
         "$schema": "../../docs/project/schema/v2-m15-episode-evidence.schema.json", "schema_version": "openttd-rl-v2-m15-episode-evidence-1", "schema_sha256": sha256_file(root / SCHEMA), "snapshot_date": "2026-08-02",
         "contract_sha256": sha256_file(root / CONTRACT), "action_contract_sha256": sha256_file(root / ACTION_CONTRACT), "action_source_sha256": sha256_file(root / ACTION_SOURCE), "episode_source_sha256": sha256_file(root / EPISODE_SOURCE),
         "program_schema_sha256": sha256_file(root / PROGRAM_SCHEMA), "trace_schema_sha256": sha256_file(root / TRACE_SCHEMA), "program_sha256": sha256_file(root / PROGRAM),
-        "executable": {key: source["build"]["executable"][key] for key in ("sha256", "size")}, "artifact_base_hint": str(artifact_root.parent), "artifact_root": artifact_root.name, "runs": runs,
+        "executable": {key: source["build"]["executable"][key] for key in ("sha256", "size")}, "artifact_base_hint": recorded["artifact_base_hint"], "artifact_root": artifact_root.name, "runs": runs,
         "determinism": {"primary_artifact_dir": RUN_DIRS[0], "repeat_artifact_dir": RUN_DIRS[1], "trace_sha256": runs[0]["trace_sha256"], "byte_identical": True},
         "policy": {"all_twelve_families_executed": True, "authoritative_native_commands": True, "exact_tick_advancement": True, "native_save_load": True, "state_save_observation_candidate_replay_exact": True, "full_program_repeat_exact": True, "g15_pass_claim": False},
         "summary": summarize(runs),
@@ -281,6 +282,7 @@ def validate(
     require(config["runs"][0]["trace_sha256"] == config["runs"][1]["trace_sha256"] == config["determinism"]["trace_sha256"], "M15 episode deterministic trace lock drifted")
     logical_set = _recorded_artifact_set(config)
     if context.is_live:
+        context.preflight(required_live_inputs(root))
         artifact_root = context.artifact_set(logical_set)
         require([project_run(root, artifact_root, directory) for directory in RUN_DIRS] == config["runs"], "M15 episode live runs drifted")
     return M15EpisodeEvidenceSummary(len(config["runs"]), config["summary"]["transitions_per_run"], len(config["runs"][0]["coverage"]), config["summary"]["maximum_rss_kib"], context.is_live)

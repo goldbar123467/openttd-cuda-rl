@@ -193,13 +193,14 @@ def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path
         require(repeat[key] == primary[key], f"action deterministic repeat {key} differs")
     action_cases = [action_case_from_artifact(root, artifact_root, directory) for directory in ACTION_DIRS]
     source = load_json(root / ACTION_SOURCE)
+    recorded = load_json(root / CONFIG)
     value = {
         "$schema": "../../docs/project/schema/v2-m15-action-evidence.schema.json", "schema_version": "openttd-rl-v2-m15-action-evidence-1",
         "schema_sha256": sha256_file(root / SCHEMA), "snapshot_date": "2026-08-02", "contract_sha256": sha256_file(root / CONTRACT),
         "action_contract_sha256": sha256_file(root / ACTION_CONTRACT), "action_source_sha256": sha256_file(root / ACTION_SOURCE),
         "metadata_schema_sha256": sha256_file(root / METADATA_SCHEMA), "request_schema_sha256": sha256_file(root / REQUEST_SCHEMA),
         "result_schema_sha256": sha256_file(root / RESULT_SCHEMA), "executable": {key: source["build"]["executable"][key] for key in ("sha256", "size")},
-        "artifact_base_hint": str(artifact_root.parent), "artifact_root": artifact_root.name, "map_cases": map_cases, "action_cases": action_cases,
+        "artifact_base_hint": recorded["artifact_base_hint"], "artifact_root": artifact_root.name, "map_cases": map_cases, "action_cases": action_cases,
         "determinism": {"primary_artifact_dir": MAP_DIRS[0], "repeat_artifact_dir": REPEAT_DIR, **{key: primary[key] for key in ("observation_sha256", "candidate_metadata_sha256", "candidate_binary_sha256", "snapshot_token")}, "byte_identical": True},
         "policy": {"exact_candidate_bytes": qualify_m15_action.CANDIDATE_BYTES, "bounded_streaming_top_k": True, "full_native_domain_counts": True,
             "rectangular_maps": True, "maximum_budget_map": True, "all_initial_families_executed": True, "all_twelve_families_executed": False,
@@ -247,6 +248,7 @@ def validate(
     require(all(config["determinism"][key] == primary[key] for key in ("observation_sha256", "candidate_metadata_sha256", "candidate_binary_sha256", "snapshot_token")), "M15 action deterministic lock drifted")
     logical_set = _recorded_artifact_set(config)
     if context.is_live:
+        context.preflight(required_live_inputs(root))
         artifact_root = context.artifact_set(logical_set)
         require(artifact_root.is_dir() and not artifact_root.is_symlink(), "M15 action live artifact root is missing or a symlink")
         require([map_case_from_artifact(root, artifact_root, directory) for directory in MAP_DIRS] == config["map_cases"], "M15 action live map cases drifted")

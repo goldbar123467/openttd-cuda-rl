@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 import json
 import pathlib
 import shutil
@@ -13,7 +14,12 @@ import tempfile
 import unittest
 from unittest import mock
 
-from artifact_context import ArtifactContext, resolve_artifact_root
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    resolve_artifact_root,
+)
 import freeze_m15_action_evidence
 import qualify_m15_action
 
@@ -30,6 +36,20 @@ class M15ActionEvidenceTests(unittest.TestCase):
         path = directory / "action-evidence.json"
         path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
         return path
+
+    @staticmethod
+    def materialize_synthetic_closure(
+        base: pathlib.Path,
+        requirements: tuple[ArtifactRequirement, ...],
+    ) -> tuple[ArtifactRequirement, ...]:
+        for requirement in requirements:
+            path = base / requirement.logical_set / requirement.relative_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"synthetic action fixture\n")
+        return tuple(
+            dataclasses.replace(requirement, expected_sha256=None)
+            for requirement in requirements
+        )
 
     def test_repository_evidence_passes(self) -> None:
         summary = freeze_m15_action_evidence.validate(
@@ -102,6 +122,7 @@ class M15ActionEvidenceTests(unittest.TestCase):
                 freeze_m15_action_evidence.map_case_from_artifact(self.root, target_root, "reset-0064x0064")
 
     def test_relocated_live_artifacts_do_not_rewrite_recorded_base(self) -> None:
+        recorded_bytes = (self.root / freeze_m15_action_evidence.CONFIG).read_bytes()
         recorded_base = self.config["artifact_base_hint"]
         map_cases = {
             item["artifact_dir"]: item for item in self.config["map_cases"]
@@ -131,29 +152,55 @@ class M15ActionEvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             base = pathlib.Path(raw).resolve()
             relocated_set = base / self.config["artifact_root"]
-            relocated_set.mkdir()
+            synthetic_requirements = self.materialize_synthetic_closure(
+                base,
+                freeze_m15_action_evidence.required_live_inputs(self.root),
+            )
             with (
+                mock.patch.object(
+                    freeze_m15_action_evidence,
+                    "required_live_inputs",
+                    return_value=synthetic_requirements,
+                ),
                 mock.patch.object(
                     freeze_m15_action_evidence,
                     "map_case_from_artifact",
                     side_effect=map_projection,
-                ),
+                ) as map_reader,
                 mock.patch.object(
                     freeze_m15_action_evidence,
                     "action_case_from_artifact",
                     side_effect=action_projection,
-                ),
+                ) as action_reader,
             ):
                 summary = freeze_m15_action_evidence.validate(
                     self.root,
                     artifact_context=ArtifactContext.live(base),
                 )
 
+            self.assertEqual(
+                [call.args for call in map_reader.call_args_list],
+                [
+                    (self.root, relocated_set, directory)
+                    for directory in (
+                        *freeze_m15_action_evidence.MAP_DIRS,
+                        freeze_m15_action_evidence.REPEAT_DIR,
+                    )
+                ],
+            )
+            self.assertEqual(
+                [call.args for call in action_reader.call_args_list],
+                [
+                    (self.root, relocated_set, directory)
+                    for directory in freeze_m15_action_evidence.ACTION_DIRS
+                ],
+            )
+
         self.assertTrue(summary.live)
         self.assertEqual(self.config["artifact_base_hint"], recorded_base)
-        reloaded = freeze_m15_action_evidence.load_json(
-            self.root / freeze_m15_action_evidence.CONFIG
-        )
+        config_path = self.root / freeze_m15_action_evidence.CONFIG
+        self.assertEqual(config_path.read_bytes(), recorded_bytes)
+        reloaded = freeze_m15_action_evidence.load_json(config_path)
         self.assertEqual(reloaded["artifact_base_hint"], recorded_base)
 
     def test_newly_frozen_evidence_validates_from_generated_set_parent(self) -> None:
@@ -163,28 +210,82 @@ class M15ActionEvidenceTests(unittest.TestCase):
         action_cases = {
             item["artifact_dir"]: item for item in self.config["action_cases"]
         }
-        observed: dict[str, object] = {}
-
-        def validate_generated(
-            root: pathlib.Path,
-            config_path: pathlib.Path,
-            schema_path: pathlib.Path | None = None,
-            *,
-            artifact_context: ArtifactContext | None = None,
-        ) -> None:
-            self.assertEqual(root, self.root)
-            self.assertIsNone(schema_path)
-            self.assertIsNotNone(artifact_context)
-            assert artifact_context is not None
-            self.assertTrue(artifact_context.is_live)
-            observed["artifact_root"] = artifact_context.artifact_root
-            observed["bytes"] = config_path.read_bytes()
+        committed_path = self.root / freeze_m15_action_evidence.CONFIG
+        committed_bytes = committed_path.read_bytes()
 
         with tempfile.TemporaryDirectory() as raw:
             base = pathlib.Path(raw).resolve()
             artifact_root = base / freeze_m15_action_evidence.LOGICAL_ARTIFACT_SET
-            artifact_root.mkdir()
+            synthetic_requirements = self.materialize_synthetic_closure(
+                base,
+                freeze_m15_action_evidence.required_live_inputs(self.root),
+            )
             output = base / "action-evidence.json"
+            with (
+                mock.patch.object(
+                    freeze_m15_action_evidence,
+                    "required_live_inputs",
+                    return_value=synthetic_requirements,
+                ),
+                mock.patch.object(
+                    freeze_m15_action_evidence,
+                    "map_case_from_artifact",
+                    side_effect=lambda root, artifact, directory: copy.deepcopy(
+                        map_cases.get(directory, self.config["map_cases"][0])
+                    ),
+                ) as map_reader,
+                mock.patch.object(
+                    freeze_m15_action_evidence,
+                    "action_case_from_artifact",
+                    side_effect=lambda root, artifact, directory: copy.deepcopy(
+                        action_cases[directory]
+                    ),
+                ) as action_reader,
+            ):
+                frozen = freeze_m15_action_evidence.freeze(
+                    self.root,
+                    artifact_root,
+                    output,
+                )
+            self.assertEqual(frozen.read_bytes(), committed_bytes)
+            self.assertEqual(committed_path.read_bytes(), committed_bytes)
+            self.assertEqual(
+                freeze_m15_action_evidence.load_json(frozen)["artifact_base_hint"],
+                self.config["artifact_base_hint"],
+            )
+            self.assertEqual(
+                [call.args for call in map_reader.call_args_list],
+                [
+                    (self.root, artifact_root, directory)
+                    for directory in (
+                        *freeze_m15_action_evidence.MAP_DIRS,
+                        freeze_m15_action_evidence.REPEAT_DIR,
+                        *freeze_m15_action_evidence.MAP_DIRS,
+                        freeze_m15_action_evidence.REPEAT_DIR,
+                    )
+                ],
+            )
+            self.assertEqual(
+                [call.args for call in action_reader.call_args_list],
+                [
+                    (self.root, artifact_root, directory)
+                    for directory in (
+                        *freeze_m15_action_evidence.ACTION_DIRS,
+                        *freeze_m15_action_evidence.ACTION_DIRS,
+                    )
+                ],
+            )
+
+    def test_live_preflight_rejects_missing_action_inputs_before_read(self) -> None:
+        map_cases = {
+            item["artifact_dir"]: item for item in self.config["map_cases"]
+        }
+        action_cases = {
+            item["artifact_dir"]: item for item in self.config["action_cases"]
+        }
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            (base / self.config["artifact_root"]).mkdir()
             with (
                 mock.patch.object(
                     freeze_m15_action_evidence,
@@ -192,27 +293,59 @@ class M15ActionEvidenceTests(unittest.TestCase):
                     side_effect=lambda root, artifact, directory: copy.deepcopy(
                         map_cases.get(directory, self.config["map_cases"][0])
                     ),
-                ),
+                ) as map_reader,
                 mock.patch.object(
                     freeze_m15_action_evidence,
                     "action_case_from_artifact",
                     side_effect=lambda root, artifact, directory: copy.deepcopy(
                         action_cases[directory]
                     ),
-                ),
+                ) as action_reader,
+            ):
+                with self.assertRaisesRegex(ArtifactContextError, "missing file"):
+                    freeze_m15_action_evidence.validate(
+                        self.root,
+                        artifact_context=ArtifactContext.live(base),
+                    )
+            map_reader.assert_not_called()
+            action_reader.assert_not_called()
+
+    def test_live_preflight_rejects_symlinked_base_before_action_read(self) -> None:
+        map_cases = {
+            item["artifact_dir"]: item for item in self.config["map_cases"]
+        }
+        action_cases = {
+            item["artifact_dir"]: item for item in self.config["action_cases"]
+        }
+        with tempfile.TemporaryDirectory() as raw:
+            parent = pathlib.Path(raw).resolve()
+            target = parent / "target"
+            (target / self.config["artifact_root"]).mkdir(parents=True)
+            base = parent / "base-link"
+            base.symlink_to(target, target_is_directory=True)
+            with (
                 mock.patch.object(
                     freeze_m15_action_evidence,
-                    "validate",
-                    side_effect=validate_generated,
-                ),
+                    "map_case_from_artifact",
+                    side_effect=lambda root, artifact, directory: copy.deepcopy(
+                        map_cases.get(directory, self.config["map_cases"][0])
+                    ),
+                ) as map_reader,
+                mock.patch.object(
+                    freeze_m15_action_evidence,
+                    "action_case_from_artifact",
+                    side_effect=lambda root, artifact, directory: copy.deepcopy(
+                        action_cases[directory]
+                    ),
+                ) as action_reader,
             ):
-                frozen = freeze_m15_action_evidence.freeze(
-                    self.root,
-                    artifact_root,
-                    output,
-                )
-            self.assertEqual(frozen.read_bytes(), observed["bytes"])
-            self.assertEqual(observed["artifact_root"], base)
+                with self.assertRaisesRegex(ArtifactContextError, "symlink traversal"):
+                    freeze_m15_action_evidence.validate(
+                        self.root,
+                        artifact_context=ArtifactContext.live(base),
+                    )
+            map_reader.assert_not_called()
+            action_reader.assert_not_called()
 
     def test_required_live_inputs_are_the_exact_action_closure(self) -> None:
         map_directories = (
