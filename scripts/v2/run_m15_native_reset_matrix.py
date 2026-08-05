@@ -307,24 +307,42 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--openttd", type=pathlib.Path)
     parser.add_argument("--opengfx", type=pathlib.Path)
     parser.add_argument("--artifact-root", type=pathlib.Path)
-    parser.add_argument("--evidence", type=pathlib.Path)
-    parser.add_argument("--seed", type=int, default=1110312784)
-    parser.add_argument("--workers", type=int, default=2)
-    parser.add_argument("--sandbox", choices=("bubblewrap", "test-none"), default="bubblewrap")
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--workers", type=int)
+    parser.add_argument("--sandbox", choices=("bubblewrap", "test-none"))
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
-    creation_options = (args.openttd, args.opengfx, args.artifact_root)
-    if any(value is not None for value in creation_options) and args.evidence is not None:
-        parser.error("creation options cannot be mixed with validation options")
+    creation_options = (
+        args.openttd,
+        args.opengfx,
+        args.artifact_root,
+        args.seed,
+        args.workers,
+        args.sandbox,
+    )
+    if any(value is not None for value in creation_options) and any(
+        value is None for value in (args.openttd, args.opengfx, args.artifact_root)
+    ):
+        parser.error(
+            "creation mode requires --artifact-root, --openttd, and --opengfx"
+        )
     try:
         if args.artifact_root is not None:
-            require(args.openttd is not None and args.opengfx is not None, "creation requires --openttd and --opengfx")
-            path = run_matrix(args.root, args.openttd, args.opengfx, args.artifact_root, args.seed, workers=args.workers, sandbox=args.sandbox)
+            seed = args.seed if args.seed is not None else 1110312784
+            workers = args.workers if args.workers is not None else 2
+            sandbox = args.sandbox if args.sandbox is not None else "bubblewrap"
+            path = run_matrix(
+                args.root,
+                args.openttd,
+                args.opengfx,
+                args.artifact_root,
+                seed,
+                workers=workers,
+                sandbox=sandbox,
+            )
             print(f"V2_M15_NATIVE_RESET_MATRIX=GENERATED evidence={path} sha256={sha256_file(path)}")
             return 0
-        require(args.openttd is None and args.opengfx is None, "creation requires --artifact-root")
         summary_value = validate(
             args.root,
-            args.evidence,
             artifact_context=ArtifactContext.offline(),
         )
         print(f"V2_M15_NATIVE_RESET_MATRIX=PASS rectangles={summary_value.rectangles} generated={summary_value.generated} preflight_rejected={summary_value.preflight_rejected} max_rss_kib={summary_value.maximum_rss_kib} live={str(summary_value.live).lower()}")

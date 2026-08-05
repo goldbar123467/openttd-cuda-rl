@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import io
 import json
 import pathlib
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -15,10 +17,10 @@ from unittest import mock
 from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
-    ArtifactRequirement,
     resolve_artifact_root,
 )
 import acquire_ai_package
+import freeze_m15_native_reset_evidence
 import qualify_m15_native_reset
 import validate_m15_native_reset_evidence
 
@@ -124,21 +126,11 @@ class M15NativeResetTests(unittest.TestCase):
                     result["evidence_sha256"] = hashlib.sha256(evidence_bytes).hexdigest()
             value["summary"] = validate_m15_native_reset_evidence.expected_summary(value["results"])
             config_path = self.write(base, value)
-            requirements = tuple(
-                ArtifactRequirement(
-                    "v2-m15-native-a",
-                    requirement.relative_path,
-                    requirement.kind,
-                    requirement.consumer,
-                )
-                for requirement in validate_m15_native_reset_evidence.required_live_inputs(self.root)
+            self.assertNotEqual(
+                value["results"][0]["evidence_sha256"],
+                self.matrix["results"][0]["evidence_sha256"],
             )
             with (
-                mock.patch.object(
-                    validate_m15_native_reset_evidence,
-                    "required_live_inputs",
-                    return_value=requirements,
-                ),
                 mock.patch.object(qualify_m15_native_reset, "validate_schema") as schema_reader,
                 mock.patch.object(
                     qualify_m15_native_reset,
@@ -163,6 +155,37 @@ class M15NativeResetTests(unittest.TestCase):
                 for result in value["results"]
             ],
         )
+
+    def test_freeze_helper_failure_does_not_publish_generated_evidence(self) -> None:
+        generated_results = iter(copy.deepcopy(self.matrix["results"]))
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            artifact_set = base / "v2-m15-native-a"
+            artifact_set.mkdir()
+            output = base / "frozen" / "native-reset.json"
+            with (
+                mock.patch.object(
+                    validate_m15_native_reset_evidence,
+                    "result_from_live",
+                    side_effect=lambda *_args: next(generated_results),
+                ),
+                mock.patch.object(sys, "argv", [
+                    str(self.root / "scripts/v2/freeze_m15_native_reset_evidence.py"),
+                    "--root",
+                    str(self.root),
+                    "--artifact-base",
+                    str(artifact_set),
+                    "--output",
+                    str(output),
+                ]),
+                mock.patch("sys.stderr", new_callable=io.StringIO) as stderr,
+            ):
+                result = freeze_m15_native_reset_evidence.main()
+
+            self.assertEqual(result, 1)
+            self.assertIn("V2_M15_NATIVE_RESET_EVIDENCE=FAIL", stderr.getvalue())
+            self.assertFalse(output.exists())
+            self.assertEqual(list(output.parent.iterdir()), [])
 
     def test_live_preflight_fails_before_reset_read(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

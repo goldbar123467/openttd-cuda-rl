@@ -117,9 +117,7 @@ def _recorded_artifact_set(evidence: dict[str, Any]) -> str:
     return path.name
 
 
-def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
-    root = root.resolve()
-    evidence = load_json(root / EVIDENCE)
+def _requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
     logical_set = _recorded_artifact_set(evidence)
     requirements: list[ArtifactRequirement] = []
     for result in evidence["results"]:
@@ -140,6 +138,11 @@ def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
     return tuple(requirements)
 
 
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    return _requirements(load_json(root / EVIDENCE))
+
+
 def validate(
     root: pathlib.Path,
     evidence_path: pathlib.Path | None = None,
@@ -148,6 +151,7 @@ def validate(
     artifact_context: ArtifactContext | None = None,
 ) -> M15NativeResetEvidenceSummary:
     context = artifact_context or ArtifactContext.offline()
+    repository_evidence = evidence_path is None
     root = root.resolve()
     evidence_path = evidence_path or root / EVIDENCE
     schema_path = schema_path or root / SCHEMA
@@ -171,7 +175,12 @@ def validate(
     logical_set = _recorded_artifact_set(evidence)
 
     if context.is_live:
-        context.preflight(required_live_inputs(root))
+        requirements = (
+            required_live_inputs(root)
+            if repository_evidence
+            else _requirements(evidence)
+        )
+        context.preflight(requirements)
         artifact_base = context.artifact_set(logical_set)
         for expected, result in zip(EXPECTED, results, strict=True):
             run, artifact_dir, width, height = expected

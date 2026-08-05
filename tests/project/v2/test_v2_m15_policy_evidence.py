@@ -16,7 +16,6 @@ from unittest import mock
 from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
-    ArtifactRequirement,
     resolve_artifact_root,
 )
 import validate_m15_policy_evidence
@@ -160,24 +159,14 @@ class M15PolicyEvidenceTests(unittest.TestCase):
                 report_path.write_text(json.dumps(report, sort_keys=True) + "\n", encoding="utf-8")
                 run["report_sha256"] = hashlib.sha256(report_path.read_bytes()).hexdigest()
 
-            requirements = tuple(
-                ArtifactRequirement(
-                    requirement.logical_set,
-                    requirement.relative_path,
-                    requirement.kind,
-                    requirement.consumer,
-                )
-                for requirement in validate_m15_policy_evidence.required_live_inputs(self.root)
+            self.assertNotEqual(
+                value["build"]["executable"]["sha256"],
+                self.config["build"]["executable"]["sha256"],
             )
             config_path = self.write(base, value)
             real_git = validate_m15_policy_evidence.git
             real_checkpoint = validate_m15_policy_evidence.validate_checkpoint
             with (
-                mock.patch.object(
-                    validate_m15_policy_evidence,
-                    "required_live_inputs",
-                    return_value=requirements,
-                ),
                 mock.patch.object(
                     validate_m15_policy_evidence,
                     "git",
@@ -275,6 +264,22 @@ class M15PolicyEvidenceTests(unittest.TestCase):
         value = copy.deepcopy(self.config)
         value["runs"].pop()
         self.mutation_fails(value)
+
+    def test_cuda_run_cannot_alias_cpu_artifact_directory(self) -> None:
+        value = copy.deepcopy(self.config)
+        value["runs"][1]["artifact_directory"] = "cpu"
+        self.mutation_fails(value, "device/artifact directory order")
+
+    def test_device_artifact_directories_cannot_be_swapped(self) -> None:
+        value = copy.deepcopy(self.config)
+        value["runs"][0]["artifact_directory"] = "cuda"
+        value["runs"][1]["artifact_directory"] = "cpu"
+        self.mutation_fails(value, "device/artifact directory order")
+
+    def test_device_artifact_directories_must_be_unique(self) -> None:
+        value = copy.deepcopy(self.config)
+        value["runs"][0]["artifact_directory"] = "cuda"
+        self.mutation_fails(value, "device/artifact directory order")
 
     def test_report_digest_drift_fails_live(self) -> None:
         value = copy.deepcopy(self.config)

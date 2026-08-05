@@ -80,9 +80,7 @@ def _recorded_artifact_set(config: dict[str, Any]) -> str:
     return path.name
 
 
-def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
-    root = root.resolve()
-    config = load_json(root / CONFIG)
+def _requirements(config: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
     logical_set = _recorded_artifact_set(config)
     requirements: list[ArtifactRequirement] = [
         ArtifactRequirement(
@@ -113,6 +111,11 @@ def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
     return tuple(requirements)
 
 
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    return _requirements(load_json(root / CONFIG))
+
+
 def expected_summary(cases: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "cases": len(cases),
@@ -139,6 +142,7 @@ def validate(
     artifact_context: ArtifactContext | None = None,
 ) -> M15CompetenceEvidenceSummary:
     context = artifact_context or ArtifactContext.offline()
+    repository_config = config_path is None
     root = root.resolve()
     config_path, schema_path = config_path or root / CONFIG, schema_path or root / SCHEMA
     config, schema = load_json(config_path), load_json(schema_path)
@@ -176,7 +180,11 @@ def validate(
     logical_set = _recorded_artifact_set(config)
 
     if context.is_live:
-        requirements = required_live_inputs(root)
+        requirements = (
+            required_live_inputs(root)
+            if repository_config
+            else _requirements(config)
+        )
         context.preflight(requirements)
         artifact_root = context.artifact_set(logical_set)
         matrix_path = context.resolve(requirements[0])

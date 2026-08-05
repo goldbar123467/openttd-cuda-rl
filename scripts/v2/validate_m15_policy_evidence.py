@@ -107,9 +107,7 @@ def _recorded_artifact_set(config: dict[str, Any]) -> str:
     return build_root.name
 
 
-def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
-    root = root.resolve()
-    config = load_json(root / CONFIG)
+def _requirements(config: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
     logical_set = _recorded_artifact_set(config)
     requirements: list[ArtifactRequirement] = [
         ArtifactRequirement(logical_set, ".", "directory", LIVE_CONSUMER),
@@ -166,6 +164,11 @@ def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
     return tuple(requirements)
 
 
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    return _requirements(load_json(root / CONFIG))
+
+
 def validate(
     root: pathlib.Path,
     config_path: pathlib.Path | None = None,
@@ -174,6 +177,7 @@ def validate(
     artifact_context: ArtifactContext | None = None,
 ) -> M15PolicyEvidenceSummary:
     context = artifact_context or ArtifactContext.offline()
+    repository_config = config_path is None
     root = root.resolve()
     config_path, schema_path = config_path or root / CONFIG, schema_path or root / SCHEMA
     config, schema = load_json(config_path), load_json(schema_path)
@@ -191,7 +195,13 @@ def validate(
     require(paths == sorted(paths) and len(paths) == len(set(paths)), "policy source inventory is not sorted and unique")
     for item in config["source"]["files"]:
         require(sha256_file(root / "training/v2" / item["path"]) == item["sha256"], f"repository policy source drifted: {item['path']}")
-    require([item["device"] for item in config["runs"]] == ["cpu", "cuda:0"], "policy device run order drifted")
+    require(
+        [
+            (item["device"], item["artifact_directory"])
+            for item in config["runs"]
+        ] == [("cpu", "cpu"), ("cuda:0", "cuda")],
+        "policy device/artifact directory order drifted",
+    )
     parameter_counts = {item["parameter_count"] for item in config["runs"]}
     require(len(parameter_counts) == 1, "policy parameter counts diverged across devices")
     require(config["summary"] == {
@@ -205,7 +215,11 @@ def validate(
     logical_set = _recorded_artifact_set(config)
 
     if context.is_live:
-        requirements = required_live_inputs(root)
+        requirements = (
+            required_live_inputs(root)
+            if repository_config
+            else _requirements(config)
+        )
         context.preflight(requirements)
         live_paths = {item.relative_path: context.resolve(item) for item in requirements}
         source_artifact = live_paths["source"]

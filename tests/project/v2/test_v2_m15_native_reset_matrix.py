@@ -308,27 +308,100 @@ class M15NativeResetMatrixTests(unittest.TestCase):
                 capture_output=True,
                 check=False,
             )
-        self.assertEqual(completed.returncode, 1)
-        self.assertIn("creation requires --openttd and --opengfx", completed.stderr)
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("creation mode requires", completed.stderr)
 
-    def test_runner_rejects_mixed_creation_and_validation_options(self) -> None:
+    def test_runner_rejects_validation_evidence_option(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(self.root / "scripts/v2/run_m15_native_reset_matrix.py"),
+                "--root",
+                str(self.root),
+                "--evidence",
+                str(self.root / run_m15_native_reset_matrix.EVIDENCE),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("unrecognized arguments: --evidence", completed.stderr)
+
+    def test_runner_rejects_each_incomplete_creation_option(self) -> None:
+        options = (
+            ("--openttd", "/tmp/openttd"),
+            ("--opengfx", "/tmp/opengfx"),
+            ("--artifact-root", "/tmp/generated-matrix"),
+            ("--seed", "1110312784"),
+            ("--workers", "1"),
+            ("--sandbox", "test-none"),
+        )
+        for option in options:
+            with self.subTest(option=option[0]):
+                completed = subprocess.run(
+                    [
+                        sys.executable,
+                        str(self.root / "scripts/v2/run_m15_native_reset_matrix.py"),
+                        "--root",
+                        str(self.root),
+                        *option,
+                    ],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(completed.returncode, 2, completed.stdout)
+                self.assertIn("creation mode requires", completed.stderr)
+
+    def test_runner_rejects_mixed_incomplete_creation_options(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(self.root / "scripts/v2/run_m15_native_reset_matrix.py"),
+                "--root",
+                str(self.root),
+                "--openttd",
+                "/tmp/openttd",
+                "--workers",
+                "1",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("creation mode requires", completed.stderr)
+
+    def test_freeze_helper_reports_preflight_failure_without_output(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            output_directory = base / "output"
+            output_directory.mkdir()
+            output = output_directory / "matrix.json"
             completed = subprocess.run(
                 [
                     sys.executable,
-                    str(self.root / "scripts/v2/run_m15_native_reset_matrix.py"),
+                    str(self.root / "scripts/v2/freeze_m15_native_reset_matrix.py"),
                     "--root",
                     str(self.root),
-                    "--artifact-root",
-                    raw,
-                    "--evidence",
+                    "--matrix",
                     str(self.root / run_m15_native_reset_matrix.EVIDENCE),
+                    "--artifact-base",
+                    str(base),
+                    "--output",
+                    str(output),
                 ],
                 text=True,
                 capture_output=True,
                 check=False,
             )
-        self.assertEqual(completed.returncode, 2)
+
+            self.assertEqual(completed.returncode, 1)
+            self.assertIn("V2_M15_NATIVE_RESET_MATRIX=FAIL", completed.stderr)
+            self.assertNotIn("TypeError", completed.stderr)
+            self.assertFalse(output.exists())
+            self.assertEqual(list(output_directory.iterdir()), [])
 
     def test_runner_reports_generated_artifact_preflight_failure(self) -> None:
         with (

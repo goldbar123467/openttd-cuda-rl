@@ -14,7 +14,6 @@ from unittest import mock
 from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
-    ArtifactRequirement,
     resolve_artifact_root,
 )
 import run_m15_cross_scale_replay
@@ -87,19 +86,27 @@ class M15CrossScaleReplayEvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             base = pathlib.Path(raw).resolve()
             logical_set = pathlib.PurePosixPath(recorded_root).name
-            requirements = tuple(
-                ArtifactRequirement(
-                    logical_set,
-                    requirement.relative_path,
-                    requirement.kind,
-                    requirement.consumer,
-                )
-                for requirement in validate_m15_cross_scale_replay_evidence.required_live_inputs(self.root)
-            )
+            requirements = validate_m15_cross_scale_replay_evidence.required_live_inputs(self.root)
+            fixture_bytes = b"custom cross-scale fixture\n"
             for requirement in requirements:
                 path = base / logical_set / requirement.relative_path
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(b"synthetic cross-scale fixture\n")
+                path.write_bytes(fixture_bytes)
+            fixture_sha256 = hashlib.sha256(fixture_bytes).hexdigest()
+            for case in value["cases"]:
+                for field in (
+                    "trace_sha256",
+                    "projection_sha256",
+                    "checkpoint_sha256",
+                    "save_sha256",
+                    "observation_sha256",
+                    "candidate_sha256",
+                ):
+                    case[field] = fixture_sha256
+            self.assertNotEqual(
+                value["cases"][0]["trace_sha256"],
+                self.config["cases"][0]["trace_sha256"],
+            )
             matrix = {
                 "outcome": "PASS",
                 "program_sha256": value["program_sha256"],
@@ -128,18 +135,11 @@ class M15CrossScaleReplayEvidenceTests(unittest.TestCase):
                 projected["wall_seconds"] = projected["maximum_wall_seconds"]
                 return projected
 
-            with (
-                mock.patch.object(
-                    validate_m15_cross_scale_replay_evidence,
-                    "required_live_inputs",
-                    return_value=requirements,
-                ),
-                mock.patch.object(
-                    run_m15_cross_scale_replay,
-                    "project_run",
-                    side_effect=project,
-                ) as reader,
-            ):
+            with mock.patch.object(
+                run_m15_cross_scale_replay,
+                "project_run",
+                side_effect=project,
+            ) as reader:
                 summary = validate_m15_cross_scale_replay_evidence.validate(
                     self.root,
                     config_path,
