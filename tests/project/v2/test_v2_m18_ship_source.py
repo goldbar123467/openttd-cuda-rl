@@ -92,6 +92,11 @@ class M18ShipSourceTests(unittest.TestCase):
         value["patch"]["sha256"] = "0" * 64
         self.mutation_fails(value, "patch identity")
 
+    def test_upstream_ctest_mutation_fails_offline(self) -> None:
+        value = copy.deepcopy(self.config)
+        value["build"]["upstream_ctest"]["passed"] -= 1
+        self.mutation_fails(value, "upstream CTest")
+
     def test_source_tree_mutation_fails_live(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             base = pathlib.Path(raw).resolve()

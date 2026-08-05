@@ -5,10 +5,14 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import io
 import json
 import pathlib
+import shutil
+import tarfile
 import tempfile
 import unittest
+from types import MappingProxyType
 from typing import Any
 from unittest import mock
 
@@ -17,122 +21,216 @@ from artifact_context import (
     ArtifactContextError,
     LiveInputManifest,
     RoleRequirement,
+    ValidationMode,
     resolve_artifact_root,
 )
-import artifact_context
 import validate_m18_shipai_evidence as validator
 
 
-def _write_padded_json(path: pathlib.Path, value: object, size: int) -> None:
-    encoded = (json.dumps(value, sort_keys=True) + "\n").encode("utf-8")
-    if len(encoded) > size:
-        raise AssertionError(f"fixture JSON exceeds retained size: {len(encoded)} > {size}")
-    path.write_bytes(encoded + b" " * (size - len(encoded)))
+def _write_json(path: pathlib.Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _sha256(path: pathlib.Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _write_archive(path: pathlib.Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    members = {
+        "ShipAI/LICENSE": b"GNU General Public License version 2 fixture\n",
+        "ShipAI/info.nut": (
+            b'class ShipAI extends AIInfo {\n'
+            b' function GetName() { return "ShipAI"; }\n'
+            b' function GetVersion() { return 10; }\n'
+            b' function GetAPIVersion() { return "1.11"; }\n'
+            b'}\nRegisterAI(ShipAI());\n'
+        ),
+        "ShipAI/main.nut": b"class ShipAIController extends AIController {}\n",
+    }
+    with tarfile.open(path, "w") as archive:
+        for name, data in members.items():
+            info = tarfile.TarInfo(name)
+            info.mode = 0o644
+            info.mtime = 0
+            info.size = len(data)
+            archive.addfile(info, io.BytesIO(data))
 
 
 def make_live_shipai_fixture(
+    repository_root: pathlib.Path,
     directory: pathlib.Path,
     config: dict[str, Any],
-    package_record: dict[str, Any],
-    executable_identity: dict[str, Any],
+    package_index: dict[str, Any],
+    runtime_index: dict[str, Any],
+    ship_evidence: dict[str, Any],
 ) -> dict[str, Any]:
+    project_root = directory / "project"
+    for relative in (
+        validator.acquire_ai_package.SCHEMA_RELATIVE,
+        validator.qualify_ai_runtime.SCHEMA_RELATIVE,
+        pathlib.Path("config/v1/openttd-source-profile.json"),
+        pathlib.Path("config/v2/research-baseline.json"),
+    ):
+        target = project_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(repository_root / relative, target)
+
+    evidence = copy.deepcopy(config)
+    package_index_value = copy.deepcopy(package_index)
+    runtime_index_value = copy.deepcopy(runtime_index)
+    ship_evidence_value = copy.deepcopy(ship_evidence)
+    package_record = next(item for item in package_index_value["results"] if item["name"] == "ShipAI")
     artifact_root = directory / "relocated-artifacts"
     artifact_root.mkdir()
     executable = artifact_root / "m14-openttd"
-    with executable.open("wb") as stream:
-        stream.truncate(executable_identity["size"])
+    executable.write_bytes(b"#!/bin/sh\nexit 0\n")
+    executable.chmod(0o755)
+    executable_identity = {"sha256": _sha256(executable), "size": executable.stat().st_size}
+    package_index_value["executable"] = executable_identity
 
     package_set = artifact_root / package_record["artifact_dir"]
     package_set.mkdir()
     package_archive = package_set / "content_download/53484950-ShipAI-v10.tar"
-    package_archive.parent.mkdir()
-    with package_archive.open("wb") as stream:
-        stream.truncate(package_record["archive_bytes"])
+    _write_archive(package_archive)
+    catalog = validator.acquire_ai_package.CatalogRecord(
+        content_id=1,
+        content_type="AI",
+        state="selected",
+        name="ShipAI",
+        server_unique_id="50494853",
+        catalog_md5="0" * 32,
+    )
+    package = validator.acquire_ai_package.audit_archive(package_set, package_archive, catalog)
+    source = json.loads((project_root / "config/v1/openttd-source-profile.json").read_text(encoding="utf-8"))["upstream"]
     package_lock = {
+        "$schema": "../../docs/project/schema/v2-ai-package-lock.schema.json",
+        "schema_version": "openttd-rl-v2-ai-package-lock-1",
+        "schema_sha256": _sha256(project_root / validator.acquire_ai_package.SCHEMA_RELATIVE),
+        "engine_source": {key: source[key] for key in ("release", "commit", "tree")},
+        "executable": {**executable_identity, "reported_version": "15.3-test"},
         "request": {
             "catalog_url": "https://bananas.openttd.org/package/ai/53484950",
             "content_unique_id": "53484950",
             "name": "ShipAI",
             "version": 10,
         },
-        "packages": [{
-            "name": "ShipAI",
-            "local_unique_id": "53484950",
-            "version": 10,
-            "archive_path": package_archive.relative_to(package_set).as_posix(),
-            "archive_size": package_record["archive_bytes"],
-            "archive_sha256": config["package"]["archive_sha256"],
-        }],
+        "catalog_primary": catalog.manifest_dict(),
+        "packages": [package],
     }
     package_lock_path = package_set / package_record["evidence_file"]
-    package_lock_path.write_text(json.dumps(package_lock) + "\n", encoding="utf-8")
+    _write_json(package_lock_path, package_lock)
+    validator.acquire_ai_package.validate_lock(project_root, package_lock_path, openttd=executable)
+    package_record.update({
+        "archive_bytes": package["archive_size"],
+        "closure_sha256": validator.qualify_ai_runtime.closure_sha256([package]),
+        "evidence_sha256": _sha256(package_lock_path),
+        "license_files": len(package["licenses"]),
+        "package_count": 1,
+    })
+    evidence["package"]["archive_sha256"] = package["archive_sha256"]
 
     scenario_path = artifact_root / "v2-m18-shipai-scenario-c/report.json.sav"
     scenario_path.parent.mkdir()
-    with scenario_path.open("wb") as stream:
-        stream.truncate(config["scenario"]["bytes"])
+    scenario_path.write_bytes(b"byte-real relocated ShipAI scenario fixture\n")
+    evidence["scenario"].update({"bytes": scenario_path.stat().st_size, "sha256": _sha256(scenario_path)})
 
     runtime_set = artifact_root / "v2-m18-shipai-runtime-b"
     runtime_set.mkdir()
     runtime_archive = runtime_set / "content_download/53484950-ShipAI-v10.tar"
     runtime_archive.parent.mkdir()
-    runtime_archive.write_bytes(b"runtime ShipAI archive fixture\n")
-    runtime_archive_sha = hashlib.sha256(runtime_archive.read_bytes()).hexdigest()
-    copied_lock = {
-        "packages": [{
-            "archive_path": runtime_archive.relative_to(runtime_set).as_posix(),
-            "archive_sha256": runtime_archive_sha,
-        }],
-    }
+    shutil.copyfile(package_archive, runtime_archive)
+    copied_lock = copy.deepcopy(package_lock)
     copied_lock_path = runtime_set / "ai-package-lock.json"
-    copied_lock_path.write_text(json.dumps(copied_lock) + "\n", encoding="utf-8")
+    _write_json(copied_lock_path, copied_lock)
     transcript = runtime_set / "openttd-runtime-console.log"
     transcript.write_text("ShipAI runtime transcript fixture\n", encoding="utf-8")
     save = runtime_set / "v2-qualification.sav"
     save.write_bytes(b"ShipAI save fixture\n")
     company = {
+        "company_id": 1,
+        "loan": 0,
+        "money": 100000,
         "trains": 0,
         "road_vehicles": 0,
         "aircraft": 0,
         "ships": 2,
+        "value": 100000,
     }
     manifest = {
+        "$schema": "../../docs/project/schema/v2-ai-runtime-qualification.schema.json",
+        "schema_version": "openttd-rl-v2-ai-runtime-qualification-1",
+        "schema_sha256": _sha256(project_root / validator.qualify_ai_runtime.SCHEMA_RELATIVE),
+        "engine_source": {key: source[key] for key in ("release", "commit", "tree")},
+        "executable": {**executable_identity, "reported_version": "15.3-test"},
         "package_lock": {
-            "sha256": hashlib.sha256(copied_lock_path.read_bytes()).hexdigest(),
+            "api_version": package["declared_info"].get("api_version"),
+            "catalog_name": "ShipAI",
+            "catalog_unique_id": "53484950",
+            "catalog_version": 10,
+            "closure_sha256": validator.qualify_ai_runtime.closure_sha256([package]),
+            "declared_name": package["declared_info"]["name"],
+            "declared_version": package["declared_info"]["version"],
+            "package_count": 1,
+            "sha256": _sha256(copied_lock_path),
+        },
+        "sandbox": {
+            "kind": "test-none",
+            "new_session": True,
+            "private_network": False,
+            "read_only_root": False,
+            "resource_limits": validator.qualify_ai_runtime.LIMITS,
         },
         "resources": {
-            "console_transcript_sha256": hashlib.sha256(transcript.read_bytes()).hexdigest(),
+            "console_transcript_sha256": _sha256(transcript),
+            "max_rss_kib": 1,
+            "process_returncode": 0,
+            "wall_seconds": 0.1,
         },
         "observations": {
+            "list_line": "ShipAI (v10)",
+            "start_date": "1950-01-01",
+            "pre_save_date": "1950-02-01",
+            "post_load_date": "1950-02-01",
             "company_before_load": company,
             "company_after_load": company,
             "save": {
                 "path": save.name,
                 "size": save.stat().st_size,
-                "sha256": hashlib.sha256(save.read_bytes()).hexdigest(),
+                "sha256": _sha256(save),
             },
         },
-        "scenario": {"minimum_elapsed_days": 30},
-        "checks": {"fixture": True},
+        "scenario": {"generation_seed": 1, "map_height": 128, "map_width": 128, "minimum_elapsed_days": 30, "start_year": 1950},
+        "checks": {
+            "company_started": True,
+            "company_survived_load": True,
+            "declared_identity_listed": True,
+            "minimum_days_elapsed": True,
+            "no_script_crash": True,
+            "resource_limits_respected": True,
+            "save_created": True,
+        },
         "outcome": "QUALIFIED_ACTIVE",
+        "error_details": [],
     }
     manifest_path = runtime_set / "ai-runtime-qualification.json"
-    _write_padded_json(manifest_path, manifest, config["qualification_manifest"]["bytes"])
+    _write_json(manifest_path, manifest)
+    validator.qualify_ai_runtime.validate_manifest(project_root, manifest_path, openttd=executable)
+    evidence["qualification_manifest"].update({"bytes": manifest_path.stat().st_size, "sha256": _sha256(manifest_path)})
+    ship_evidence_value["baselines"]["qualification_manifest_sha256"] = evidence["qualification_manifest"]["sha256"]
 
-    expected_digests = {
-        executable: executable_identity["sha256"],
-        package_lock_path: package_record["evidence_sha256"],
-        package_archive: config["package"]["archive_sha256"],
-        scenario_path: config["scenario"]["sha256"],
-        manifest_path: config["qualification_manifest"]["sha256"],
-    }
-
-    def fixture_digest(path: pathlib.Path) -> str:
-        if path in expected_digests:
-            return expected_digests[path]
-        return hashlib.sha256(path.read_bytes()).hexdigest()
+    _write_json(project_root / validator.PACKAGE_INDEX, package_index_value)
+    _write_json(project_root / validator.RUNTIME_INDEX, runtime_index_value)
+    _write_json(project_root / validator.SHIP_EVIDENCE, ship_evidence_value)
+    config_path = project_root / validator.CONFIG
+    _write_json(config_path, evidence)
 
     return {
+        "project_root": project_root,
+        "config_path": config_path,
+        "evidence": evidence,
+        "package_index": package_index_value,
         "artifact_root": artifact_root,
         "executable": executable,
         "package_lock": package_lock,
@@ -143,7 +241,11 @@ def make_live_shipai_fixture(
         "manifest_path": manifest_path,
         "runtime_archive": runtime_archive,
         "runtime_transcript": transcript,
-        "fixture_digest": fixture_digest,
+        "live_inputs": LiveInputManifest(
+            ValidationMode.LIVE,
+            artifact_root.resolve(),
+            MappingProxyType({"m14-openttd-executable": executable.resolve()}),
+        ),
     }
 
 
@@ -156,6 +258,8 @@ class M18ShipAIEvidenceTests(unittest.TestCase):
         package_index = validator.load(cls.root / validator.PACKAGE_INDEX)
         cls.package_index = package_index
         cls.package_record = next(item for item in package_index["results"] if item["name"] == "ShipAI")
+        cls.runtime_index = validator.load(cls.root / validator.RUNTIME_INDEX)
+        cls.ship_evidence = validator.load(cls.root / validator.SHIP_EVIDENCE)
 
     def validate_mutation(self, value: object) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -227,89 +331,177 @@ class M18ShipAIEvidenceTests(unittest.TestCase):
         )
 
     def test_relocated_live_package_scenario_and_runtime_pass(self) -> None:
+        retained_config = copy.deepcopy(self.config)
+        retained_package_index = copy.deepcopy(self.package_index)
         with tempfile.TemporaryDirectory() as raw:
             fixture = make_live_shipai_fixture(
+                self.root,
                 pathlib.Path(raw),
                 self.config,
-                self.package_record,
-                self.package_index["executable"],
+                self.package_index,
+                self.runtime_index,
+                self.ship_evidence,
             )
             context = ArtifactContext.live(fixture["artifact_root"])
-            with mock.patch.object(
-                artifact_context,
-                "_sha256_file",
-                side_effect=fixture["fixture_digest"],
-            ), mock.patch.object(
-                validator,
-                "sha256",
-                side_effect=fixture["fixture_digest"],
-            ):
-                live_inputs = LiveInputManifest.bind(
-                    context,
-                    {"m14-openttd-executable": fixture["executable"]},
-                )
-
-                def validate_lock(root: pathlib.Path, path: pathlib.Path, *, openttd: pathlib.Path) -> dict[str, Any]:
-                    self.assertEqual((root, path, openttd), (self.root, fixture["package_lock_path"], fixture["executable"]))
-                    return fixture["package_lock"]
-
-                def validate_manifest(root: pathlib.Path, path: pathlib.Path, *, openttd: pathlib.Path) -> dict[str, Any]:
-                    self.assertEqual((root, path, openttd), (self.root, fixture["manifest_path"], fixture["executable"]))
-                    return fixture["manifest"]
-
-                with mock.patch.object(
-                    validator.acquire_ai_package,
-                    "validate_lock",
-                    side_effect=validate_lock,
-                ) as package_helper, mock.patch.object(
-                    validator.qualify_ai_runtime,
-                    "validate_manifest",
-                    side_effect=validate_manifest,
-                ) as runtime_helper:
-                    summary = validator.validate(
-                        self.root,
-                        artifact_context=context,
-                        live_inputs=live_inputs,
-                    )
+            summary = validator.validate(
+                fixture["project_root"],
+                fixture["config_path"],
+                self.schema,
+                artifact_context=context,
+                live_inputs=fixture["live_inputs"],
+            )
         self.assertTrue(summary["live"])
         self.assertEqual(summary["ships"], 2)
-        package_helper.assert_called_once()
-        runtime_helper.assert_called_once()
+        self.assertEqual(self.config, retained_config)
+        self.assertEqual(self.package_index, retained_package_index)
 
     def test_dynamic_package_closure_is_preflighted_before_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
-            fixture = make_live_shipai_fixture(pathlib.Path(raw), self.config, self.package_record, self.package_index["executable"])
+            fixture = make_live_shipai_fixture(
+                self.root,
+                pathlib.Path(raw),
+                self.config,
+                self.package_index,
+                self.runtime_index,
+                self.ship_evidence,
+            )
             fixture["package_archive"].unlink()
             context = ArtifactContext.live(fixture["artifact_root"])
-            with mock.patch.object(artifact_context, "_sha256_file", side_effect=fixture["fixture_digest"]), mock.patch.object(
-                validator, "sha256", side_effect=fixture["fixture_digest"],
-            ):
-                live_inputs = LiveInputManifest.bind(context, {"m14-openttd-executable": fixture["executable"]})
-                with mock.patch.object(validator.acquire_ai_package, "validate_lock", side_effect=AssertionError("preflight did not run")) as package_helper, mock.patch.object(
-                    validator.qualify_ai_runtime, "validate_manifest", side_effect=AssertionError("preflight did not run"),
-                ) as runtime_helper:
-                    with self.assertRaisesRegex(ArtifactContextError, "missing"):
-                        validator.validate(self.root, artifact_context=context, live_inputs=live_inputs)
+            with mock.patch.object(validator.acquire_ai_package, "validate_lock", side_effect=AssertionError("preflight did not run")) as package_helper, mock.patch.object(
+                validator.qualify_ai_runtime, "validate_manifest", side_effect=AssertionError("preflight did not run"),
+            ) as runtime_helper:
+                with self.assertRaisesRegex(ArtifactContextError, "missing"):
+                    validator.validate(
+                        fixture["project_root"],
+                        fixture["config_path"],
+                        self.schema,
+                        artifact_context=context,
+                        live_inputs=fixture["live_inputs"],
+                    )
             package_helper.assert_not_called()
             runtime_helper.assert_not_called()
 
+    def test_malformed_matching_digest_qualification_inputs_fail_before_helpers(self) -> None:
+        delete = object()
+        cases = (
+            ("package_lock missing", ("package_lock",), delete, "package_lock"),
+            ("package_lock wrong type", ("package_lock",), [], "package_lock"),
+            ("package_lock sha256 missing", ("package_lock", "sha256"), delete, "package_lock.sha256"),
+            ("package_lock sha256 wrong type", ("package_lock", "sha256"), 7, "package_lock.sha256"),
+            ("package_lock sha256 uppercase", ("package_lock", "sha256"), "A" * 64, "package_lock.sha256"),
+            ("resources missing", ("resources",), delete, "resources"),
+            ("resources wrong type", ("resources",), [], "resources"),
+            ("transcript sha256 missing", ("resources", "console_transcript_sha256"), delete, "resources.console_transcript_sha256"),
+            ("transcript sha256 wrong type", ("resources", "console_transcript_sha256"), 7, "resources.console_transcript_sha256"),
+            ("transcript sha256 uppercase", ("resources", "console_transcript_sha256"), "A" * 64, "resources.console_transcript_sha256"),
+            ("observations missing", ("observations",), delete, "observations"),
+            ("observations wrong type", ("observations",), [], "observations"),
+            ("save missing", ("observations", "save"), delete, "observations.save"),
+            ("save wrong type", ("observations", "save"), [], "observations.save"),
+            ("save path missing", ("observations", "save", "path"), delete, "observations.save.path"),
+            ("save path wrong type", ("observations", "save", "path"), 7, "observations.save.path"),
+            ("save path empty", ("observations", "save", "path"), "", "observations.save.path"),
+            ("save path absolute", ("observations", "save", "path"), "/tmp/save.sav", "observations.save.path"),
+            ("save path parent", ("observations", "save", "path"), "../save.sav", "observations.save.path"),
+            ("save path normalized parent", ("observations", "save", "path"), "nested/../save.sav", "observations.save.path"),
+            ("save path repeated separator", ("observations", "save", "path"), "nested//save.sav", "observations.save.path"),
+            ("save path dot component", ("observations", "save", "path"), "nested/./save.sav", "observations.save.path"),
+            ("save path backslash", ("observations", "save", "path"), "nested\\save.sav", "observations.save.path"),
+            ("save path nul", ("observations", "save", "path"), "nested/\0save.sav", "observations.save.path"),
+            ("save sha256 missing", ("observations", "save", "sha256"), delete, "observations.save.sha256"),
+            ("save sha256 wrong type", ("observations", "save", "sha256"), 7, "observations.save.sha256"),
+            ("save sha256 uppercase", ("observations", "save", "sha256"), "A" * 64, "observations.save.sha256"),
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = make_live_shipai_fixture(
+                self.root,
+                pathlib.Path(raw),
+                self.config,
+                self.package_index,
+                self.runtime_index,
+                self.ship_evidence,
+            )
+            original_manifest = copy.deepcopy(fixture["manifest"])
+            original_evidence = copy.deepcopy(fixture["evidence"])
+            original_ship_evidence = validator.load(fixture["project_root"] / validator.SHIP_EVIDENCE)
+            context = ArtifactContext.live(fixture["artifact_root"])
+            for label, keys, replacement, pattern in cases:
+                with self.subTest(label=label):
+                    manifest = copy.deepcopy(original_manifest)
+                    target = manifest
+                    for key in keys[:-1]:
+                        target = target[key]
+                    if replacement is delete:
+                        target.pop(keys[-1], None)
+                    else:
+                        target[keys[-1]] = replacement
+                    _write_json(fixture["manifest_path"], manifest)
+                    evidence = copy.deepcopy(original_evidence)
+                    evidence["qualification_manifest"].update({
+                        "bytes": fixture["manifest_path"].stat().st_size,
+                        "sha256": _sha256(fixture["manifest_path"]),
+                    })
+                    _write_json(fixture["config_path"], evidence)
+                    ship_evidence = copy.deepcopy(original_ship_evidence)
+                    ship_evidence["baselines"]["qualification_manifest_sha256"] = evidence["qualification_manifest"]["sha256"]
+                    _write_json(fixture["project_root"] / validator.SHIP_EVIDENCE, ship_evidence)
+                    with mock.patch.object(
+                        validator.acquire_ai_package,
+                        "validate_lock",
+                        side_effect=AssertionError("qualification preflight did not run"),
+                    ) as package_helper, mock.patch.object(
+                        validator.qualify_ai_runtime,
+                        "validate_manifest",
+                        side_effect=AssertionError("qualification preflight did not run"),
+                    ) as runtime_helper:
+                        with self.assertRaisesRegex(validator.M18ShipAIError, pattern):
+                            validator.validate(
+                                fixture["project_root"],
+                                fixture["config_path"],
+                                self.schema,
+                                artifact_context=context,
+                                live_inputs=fixture["live_inputs"],
+                            )
+                    package_helper.assert_not_called()
+                    runtime_helper.assert_not_called()
+
     def test_live_preflight_requires_same_root_role_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as raw, tempfile.TemporaryDirectory() as other_raw:
-            fixture = make_live_shipai_fixture(pathlib.Path(raw), self.config, self.package_record, self.package_index["executable"])
+            fixture = make_live_shipai_fixture(
+                self.root,
+                pathlib.Path(raw),
+                self.config,
+                self.package_index,
+                self.runtime_index,
+                self.ship_evidence,
+            )
             context = ArtifactContext.live(fixture["artifact_root"])
             other_root = pathlib.Path(other_raw).resolve()
             other_executable = other_root / "m14-openttd"
             other_executable.write_bytes(b"x")
-            with mock.patch.object(artifact_context, "_sha256_file", return_value=self.package_index["executable"]["sha256"]):
-                live_inputs = LiveInputManifest.bind(ArtifactContext.live(other_root), {"m14-openttd-executable": other_executable})
+            live_inputs = LiveInputManifest(
+                ValidationMode.LIVE,
+                other_root,
+                MappingProxyType({"m14-openttd-executable": other_executable}),
+            )
             with self.assertRaisesRegex(validator.M18ShipAIError, "one exact artifact root"):
-                validator.validate(self.root, artifact_context=context, live_inputs=live_inputs)
+                validator.validate(
+                    fixture["project_root"],
+                    fixture["config_path"],
+                    self.schema,
+                    artifact_context=context,
+                    live_inputs=live_inputs,
+                )
 
     def test_scenario_digest_mutation_fails(self) -> None:
         value = copy.deepcopy(self.config)
         value["scenario"]["sha256"] = "0" * 64
-        with self.assertRaisesRegex(validator.M18ShipAIError, "scenario identity"):
-            self.validate_mutation(value)
+        with tempfile.TemporaryDirectory() as raw:
+            path = pathlib.Path(raw) / "shipai.json"
+            _write_json(path, value)
+            with mock.patch.object(validator, "CONFIG", path):
+                with self.assertRaisesRegex(validator.M18ShipAIError, "scenario identity"):
+                    validator.validate(self.root, schema_path=self.schema, artifact_context=ArtifactContext.offline())
 
     def test_m14_disposition_mutation_fails(self) -> None:
         value = copy.deepcopy(self.config)

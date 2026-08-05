@@ -16,45 +16,272 @@ from artifact_context import ArtifactContext, ArtifactContextError, resolve_arti
 import validate_m16_cargo_evidence as validator
 
 
+def _m16_probe(record: dict[str, Any]) -> dict[str, Any]:
+    metrics = record["metrics"]
+    if record["probe"] == "catalog":
+        return {"status": "CATALOG_ONLY"}
+    if record["probe"] in ("single-leg", "subsidy"):
+        multiplier = 2 if record["probe"] == "subsidy" else 1
+        return {
+            "accounting": {
+                "company_income_delta": metrics["income"],
+                "delivered_delta": metrics["delivered"],
+                "payment_events": [{
+                    "base_income": metrics["income"] // multiplier,
+                    "cargo": record["cargo"],
+                    "final_income": metrics["income"],
+                    "transfer": False,
+                }],
+            },
+            "ticks": metrics["ticks"],
+            "vehicle": {"cargo": record["cargo"], "refit_capacity": 8},
+        }
+    if record["probe"] == "coordination":
+        passenger_income = metrics["income"] // 2
+        return {
+            "accounting": {
+                "company_income_delta": metrics["income"],
+                "delivered_mail": 8,
+                "delivered_passengers": metrics["delivered"] - 8,
+                "payment_events": [
+                    {"cargo": "PASS", "final_income": passenger_income},
+                    {"cargo": "MAIL", "final_income": metrics["income"] - passenger_income},
+                ],
+            },
+            "shared_stations": True,
+            "ticks": metrics["ticks"],
+        }
+    return {
+        "final": {
+            "company_income_delta": metrics["income"],
+            "delivered_delta": metrics["delivered"],
+            "ticks": metrics["ticks"] - 1,
+        },
+        "first_leg": {"company_income_delta": 0, "ticks": 1, "transfer_waiting": 8},
+        "payment_events": [
+            {"final_income": 0, "transfer": True},
+            {"final_income": metrics["income"], "transfer": False},
+        ],
+        "single_final_payment": True,
+    }
+
+
+def _m17_probe(record: dict[str, Any]) -> dict[str, Any]:
+    probe, metrics = record["probe"], record["metrics"]
+    if probe == "catalog":
+        return {"status": "CATALOG_ONLY"}
+    if probe == "construction":
+        return {
+            "commands": [
+                {"command": "CMD_BUILD_RAIL_INVALID_TYPE", "status": "REJECTED"},
+                {"command": "CMD_REMOVE_RAIL_FOREIGN_OWNER", "status": "REJECTED"},
+                {"command": "CMD_REMOVE_FROM_RAIL_STATION", "status": "SUCCESS"},
+            ],
+            "crossing": True,
+            "foreign_owner_rejected": True,
+            "junction": True,
+            "observations": {"junction_track_bits": 37, "level_crossing": True, "rail_crossing_track_bits": 3, "slope": 8},
+            "orientations": [{"name": name, "removed": True} for name in ("x", "y", "upper", "lower", "left", "right")],
+            "station": {"catchment_radius": 4, "footprint": {"height": 1, "tile": 2056, "width": 2}, "platform_length": 2, "removed_roundtrip": True},
+            "waypoint_roundtrip": True,
+        }
+    if probe == "signals":
+        names = ("block", "entry", "exit", "combo", "path", "path-one-way")
+        signals = [
+            {"name": name, "present_bits": (4, 8, 12)[(index + variant) % 3], "type": index, "variant": variant}
+            for index, name in enumerate(names)
+            for variant in (0, 1)
+        ]
+        return {
+            "commands": [{"command": "CMD_REMOVE_SIGNAL", "status": "SUCCESS"} for _ in signals],
+            "reservation": {"duplicate_rejected": True, "released": True, "reserved": True},
+            "signals": signals,
+        }
+    if probe == "lifecycle":
+        names = ("CMD_CLONE_VEHICLE", "CMD_SET_AUTOREPLACE", "CMD_AUTOREPLACE_VEHICLE", "CMD_CLEAR_AUTOREPLACE", "CMD_SELL_VEHICLE")
+        return {
+            "clone_and_sale": True,
+            "commands": [{"command": name, "status": "SUCCESS"} for name in names],
+            "consist_capacity": 30,
+            "order_flags": {"invalid_rejected": True, "load": True, "non_stop": True, "stop_location": True, "unload": True},
+            "orders": 2,
+            "replacement": {"configured": True, "executed": True, "from_engine": 1, "to_engine": 2},
+            "safety_fixture": {"collision_negative": True, "collision_positive": True, "lost_negative": True, "lost_positive": True},
+            "save_load": {"bytes": 64, "restored": True},
+            "service_interval": 120,
+            "timetable": {"speed": 96, "travel": 256, "wait": 64},
+        }
+    if probe in ("passenger", "freight"):
+        return {
+            "accounting": {"delivered": metrics["delivered"], "income": metrics["income"]},
+            "safety": {"crashed": False, "maximum_wait": 1, "stuck": False},
+            "ticks": metrics["ticks"],
+        }
+    return {
+        "delivered": metrics["delivered"],
+        "income": metrics["income"],
+        "junction_connectors": 1,
+        "maximum_wait": 1,
+        "shared_destination": True,
+        "shared_physical_network": True,
+        "shared_station": False,
+        "signals": 2,
+        "terminal_stations": 3,
+        "ticks": metrics["ticks"],
+        "trains": 2,
+        "unexplained_collision": False,
+        "unresolved_deadlock": False,
+    }
+
+
+def _m18_probe(record: dict[str, Any]) -> dict[str, Any]:
+    probe, metrics = record["probe"], record["metrics"]
+    if probe == "catalog":
+        return {"status": "CATALOG_ONLY"}
+    if probe == "construction":
+        commands = ("CMD_BUILD_LOCK", "CMD_BUILD_AQUEDUCT", "CMD_BUILD_DOCK", "CMD_BUILD_SHIP_DEPOT", "CMD_BUILD_BUOY")
+        return {
+            "commands": [
+                *({"command": name, "status": "SUCCESS"} for name in commands),
+                {"command": "CMD_BUILD_CANAL_INVALID_CLASS", "status": "REJECTED"},
+                {"command": "CMD_REMOVE_FOREIGN_CANAL", "status": "REJECTED"},
+            ],
+            "distant_dock_join": True,
+            "invalid_class_rejected": True,
+            "removal_roundtrip": {"aqueduct": True, "buoy": True, "canal": True, "depot": True, "dock": True, "lock": True},
+            "water_classes": ["canal", "river", "sea"],
+        }
+    if probe == "connectivity":
+        return {
+            "after_cut": {"engine": False, "independent": False},
+            "before_cut": {"engine": True, "independent": True},
+            "reconnected": True,
+            "start_patch": {"label": 1},
+            "start_region": {"x": 0, "y": 2},
+        }
+    if probe == "lifecycle":
+        return {
+            "clone_and_sale": True,
+            "order_flags": {"invalid_rejected": True, "load": True, "unload": True},
+            "replacement": {"configured": True, "executed": True, "from_engine": 1, "to_engine": 2},
+            "safety_fixture": {"crashed": False, "lost_cleared": True, "lost_positive": True},
+            "save_load": {"bytes": 64, "restored": True},
+            "service_interval": 120,
+            "timetable": {"speed": 48, "travel": 256, "wait": 64},
+        }
+    if probe in ("natural", "constructed"):
+        route = {"aqueduct_traversed": False, "constructed": False, "lock_traversed": False, "water_class": "sea" if record["cargo"] == "PASS" else "river"}
+        if probe == "constructed":
+            route = {"aqueduct_traversed": True, "constructed": True, "lock_traversed": True, "water_class": "canal"}
+        return {
+            "accounting": {"delivered": metrics["delivered"], "income": metrics["income"], "payment_events": [{"transfer": False}]},
+            "route": route,
+            "ship": {"lost": False},
+            "ticks": metrics["ticks"],
+        }
+    if probe == "transfer":
+        return {
+            "final": {"company_income_delta": metrics["income"], "delivered": metrics["delivered"], "payment_count": 1, "ticks": metrics["ticks"]},
+            "first_leg": {"cash_delta": 0, "transferred": metrics["delivered"]},
+            "payment_events": [{"transfer": True}, {"transfer": False}],
+            "shared_road_dock_station": True,
+        }
+    return {
+        "delivery": {"delivered": metrics["delivered"], "income": metrics["income"]},
+        "disconnected": True,
+        "lost_detected": True,
+        "reconnected": True,
+        "recovery_ticks": metrics["ticks"],
+        "safe_stopped": True,
+    }
+
+
+def _report_fixture(
+    record: dict[str, Any],
+    twin_name: str,
+    evidence: dict[str, Any],
+    logical_set: str,
+    contract: dict[str, Any],
+) -> dict[str, Any]:
+    run_id = f"{record['case_id']}-{twin_name}"
+    if logical_set == "v2-m16-cargo-matrix-a":
+        actual_classes = evidence["aggregate"]["actual_cargo_classes"]
+        return {
+            "cargo_catalog": [
+                {"classes": actual_classes if index == 0 else [], "label": label}
+                for index, label in enumerate(contract["climates"][record["climate"]])
+            ],
+            "climate": record["climate"],
+            "executable_sha256": evidence["executable_sha256"],
+            "industry_graph": {
+                "industries": [{"id": 0}],
+                "production_transitions": [
+                    {"accepted": f"A{index}", "industry_id": index, "produced": f"P{index}"}
+                    for index in range(6)
+                ],
+            },
+            "lifecycle_and_economy": {
+                "cargo_distribution": {"manual": True},
+                "economy": {"normal": True},
+                "industry_closure": {"exact_pool_roundtrip": True},
+            },
+            "probe": _m16_probe(record),
+            "request": {"run_id": run_id},
+            "run_id": run_id,
+            "schema_version": "openttd-rl-v2-m16-cargo-report-1",
+            "status": "PASS",
+        }
+    if logical_set == "v2-m17-rail-matrix-a":
+        return {
+            "catalog": {
+                "engines": [{"id": index} for index in range(116)],
+                "railtypes": [{"id": index} for index in range(4)],
+                "signal_types": contract["semantics"]["signal_types"],
+                "track_orientations": contract["semantics"]["track_orientations"],
+            },
+            "executable_sha256": evidence["executable_sha256"],
+            "map": {"height": 64, "width": 64},
+            "probe": _m17_probe(record),
+            "request": {"cargo_label": record["cargo"], "probe": record["probe"], "run_id": run_id, "seed": record["seed"]},
+            "run_id": run_id,
+            "schema_version": "openttd-rl-v2-m17-rail-report-1",
+            "status": "PASS",
+        }
+    return {
+        "catalog": {
+            "engines": [{"id": index} for index in range(11)],
+            "water_classes": [{"id": 0, "name": "sea"}, {"id": 1, "name": "canal"}, {"id": 2, "name": "river"}],
+            "water_region_edge_length": 16,
+        },
+        "executable_sha256": evidence["executable_sha256"],
+        "map": {"height": 64, "width": 64},
+        "probe": _m18_probe(record),
+        "request": {"cargo_label": record["cargo"], "probe": record["probe"], "run_id": run_id, "seed": record["seed"]},
+        "run_id": run_id,
+        "schema_version": "openttd-rl-v2-m18-ship-report-1",
+        "status": "PASS",
+    }
+
+
 def make_live_evidence_fixture(
     directory: pathlib.Path,
     evidence: dict[str, Any],
     *,
     logical_set: str,
-    cargo_contract: dict[str, Any] | None = None,
+    matrix: Any,
+    contract: dict[str, Any],
 ) -> tuple[dict[str, Any], pathlib.Path, pathlib.Path]:
     value = copy.deepcopy(evidence)
     artifact_set = directory / logical_set
     artifact_set.mkdir(parents=True)
-    actual_classes = value["aggregate"].get("actual_cargo_classes", [])
     for record in value["cases"]:
-        normalized = f"normalized:{record['case_id']}\n".encode("utf-8")
-        normalized_sha = hashlib.sha256(normalized).hexdigest()
         for twin in record["twins"]:
             path = artifact_set / twin["report_path"]
             path.parent.mkdir(parents=True, exist_ok=True)
-            report: dict[str, Any] = {
-                "case_id": record["case_id"],
-                "normalized_fixture": normalized.decode("utf-8"),
-                "twin": twin["name"],
-            }
-            if cargo_contract is not None:
-                report["cargo_catalog"] = [
-                    {
-                        "label": label,
-                        "classes": actual_classes if index == 0 else [],
-                    }
-                    for index, label in enumerate(cargo_contract["climates"][record["climate"]])
-                ]
-                report["industry_graph"] = {
-                    "production_transitions": [
-                        {"industry_id": index, "accepted": f"A{index}", "produced": f"P{index}"}
-                        for index in range(6)
-                    ],
-                }
+            report = _report_fixture(record, twin["name"], value, logical_set, contract)
             path.write_text(json.dumps(report, sort_keys=True) + "\n", encoding="utf-8")
             twin["report_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
-            twin["normalized_sha256"] = normalized_sha
+            twin["normalized_sha256"] = hashlib.sha256(matrix.normalized(report)).hexdigest()
     config_path = directory / "evidence.json"
     config_path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
     return value, config_path, artifact_set
@@ -125,37 +352,24 @@ class M16CargoEvidenceTests(unittest.TestCase):
         self.assertEqual({item.consumer for item in requirements}, {"m16-cargo-evidence"})
 
     def test_relocated_live_reports_pass(self) -> None:
+        retained = copy.deepcopy(self.config)
         with tempfile.TemporaryDirectory() as raw:
             base = pathlib.Path(raw).resolve()
-            value, config_path, _ = make_live_evidence_fixture(
+            _, config_path, _ = make_live_evidence_fixture(
                 base,
                 self.config,
                 logical_set="v2-m16-cargo-matrix-a",
-                cargo_contract=self.contract,
+                matrix=validator.matrix,
+                contract=self.contract,
             )
-
-            def validate_common(report: dict[str, Any], case: Any, *_args: Any) -> None:
-                self.assertEqual(report["case_id"], case.case_id)
-
-            metrics = {record["case_id"]: record["metrics"] for record in value["cases"]}
-            with mock.patch.object(validator.matrix, "validate_common", side_effect=validate_common) as common, mock.patch.object(
-                validator.matrix,
-                "normalized",
-                side_effect=lambda report: report["normalized_fixture"].encode("utf-8"),
-            ), mock.patch.object(
-                validator.matrix,
-                "validate_probe",
-                side_effect=lambda _report, case: metrics[case.case_id],
-            ) as probe:
-                summary = validator.validate(
-                    self.root,
-                    config_path,
-                    self.schema,
-                    artifact_context=ArtifactContext.live(base),
-                )
+            summary = validator.validate(
+                self.root,
+                config_path,
+                self.schema,
+                artifact_context=ArtifactContext.live(base),
+            )
         self.assertTrue(summary["live"])
-        self.assertEqual(common.call_count, 204)
-        self.assertEqual(probe.call_count, 102)
+        self.assertEqual(self.config, retained)
 
     def test_relocated_live_report_digest_mutation_fails(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -164,7 +378,8 @@ class M16CargoEvidenceTests(unittest.TestCase):
                 base,
                 self.config,
                 logical_set="v2-m16-cargo-matrix-a",
-                cargo_contract=self.contract,
+                matrix=validator.matrix,
+                contract=self.contract,
             )
             report = artifact_set / self.config["cases"][0]["twins"][0]["report_path"]
             report.write_bytes(report.read_bytes() + b"tamper\n")

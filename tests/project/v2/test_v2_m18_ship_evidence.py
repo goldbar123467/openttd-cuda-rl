@@ -8,10 +8,9 @@ import json
 import pathlib
 import tempfile
 import unittest
-from typing import Any
 from unittest import mock
 
-from artifact_context import ArtifactContext, resolve_artifact_root
+from artifact_context import ArtifactContext, ArtifactContextError, resolve_artifact_root
 from tests.project.v2.test_v2_m16_cargo_evidence import make_live_evidence_fixture
 import validate_m18_ship_evidence as validator
 
@@ -21,6 +20,7 @@ class M18ShipEvidenceTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.root = pathlib.Path(__file__).resolve().parents[3]
         cls.config = validator.load(cls.root / validator.CONFIG)
+        cls.contract = validator.load(cls.root / validator.matrix.CONTRACT)
         cls.schema = cls.root / validator.SCHEMA
 
     @staticmethod
@@ -65,23 +65,36 @@ class M18ShipEvidenceTests(unittest.TestCase):
         self.assertEqual({item.consumer for item in requirements}, {"m18-ship-evidence"})
 
     def test_relocated_live_reports_pass(self) -> None:
+        retained = copy.deepcopy(self.config)
         with tempfile.TemporaryDirectory() as raw:
             base = pathlib.Path(raw).resolve()
-            value, config_path, _ = make_live_evidence_fixture(base, self.config, logical_set="v2-m18-ship-matrix-c")
-            metrics = {record["case_id"]: record["metrics"] for record in value["cases"]}
-
-            def validate_common(report: dict[str, Any], case: Any, *_args: Any) -> None:
-                self.assertEqual(report["case_id"], case.case_id)
-
-            with mock.patch.object(validator.matrix, "validate_common", side_effect=validate_common) as common, mock.patch.object(
-                validator.matrix, "normalized", side_effect=lambda report: report["normalized_fixture"].encode("utf-8")
-            ), mock.patch.object(
-                validator.matrix, "validate_probe", side_effect=lambda _report, case: metrics[case.case_id]
-            ) as probe:
-                summary = validator.validate(self.root, config_path, self.schema, artifact_context=ArtifactContext.live(base))
+            _, config_path, _ = make_live_evidence_fixture(
+                base,
+                self.config,
+                logical_set="v2-m18-ship-matrix-c",
+                matrix=validator.matrix,
+                contract=self.contract,
+            )
+            summary = validator.validate(self.root, config_path, self.schema, artifact_context=ArtifactContext.live(base))
         self.assertTrue(summary["live"])
-        self.assertEqual(common.call_count, 32)
-        self.assertEqual(probe.call_count, 16)
+        self.assertEqual(self.config, retained)
+
+    def test_relocated_live_report_tamper_fails_before_helpers(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            _, config_path, artifact_set = make_live_evidence_fixture(
+                base,
+                self.config,
+                logical_set="v2-m18-ship-matrix-c",
+                matrix=validator.matrix,
+                contract=self.contract,
+            )
+            report = artifact_set / self.config["cases"][0]["twins"][0]["report_path"]
+            report.write_bytes(report.read_bytes() + b"tamper\n")
+            with mock.patch.object(validator.matrix, "validate_common", side_effect=AssertionError("preflight did not run first")) as common:
+                with self.assertRaisesRegex(ArtifactContextError, "SHA-256 mismatch"):
+                    validator.validate(self.root, config_path, self.schema, artifact_context=ArtifactContext.live(base))
+            common.assert_not_called()
 
     def test_case_omission_fails(self) -> None:
         value = copy.deepcopy(self.config); value["cases"].pop()

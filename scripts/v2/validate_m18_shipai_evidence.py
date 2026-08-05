@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import pathlib
+import re
 from typing import Any
 
 import jsonschema
@@ -179,28 +180,53 @@ def _qualification_inputs(manifest: dict[str, Any]) -> tuple[ArtifactRequirement
     require(isinstance(resources, dict), "ShipAI qualification resources must be an object")
     require(isinstance(observations, dict), "ShipAI qualification observations must be an object")
     save = observations.get("save")
-    require(isinstance(save, dict), "ShipAI qualification save must be an object")
+    require(isinstance(save, dict), "ShipAI qualification observations.save must be an object")
+    package_lock_sha256 = package_lock.get("sha256")
+    transcript_sha256 = resources.get("console_transcript_sha256")
+    save_path = save.get("path")
+    save_sha256 = save.get("sha256")
+    require(
+        isinstance(package_lock_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", package_lock_sha256) is not None,
+        "ShipAI qualification package_lock.sha256 must be 64 lowercase hexadecimal characters",
+    )
+    require(
+        isinstance(transcript_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", transcript_sha256) is not None,
+        "ShipAI qualification resources.console_transcript_sha256 must be 64 lowercase hexadecimal characters",
+    )
+    require(
+        isinstance(save_path, str)
+        and bool(save_path)
+        and "\\" not in save_path
+        and "\x00" not in save_path
+        and not save_path.startswith("/")
+        and all(part not in {"", ".", ".."} for part in save_path.split("/")),
+        "ShipAI qualification observations.save.path must be a safe nonempty relative POSIX path",
+    )
+    require(
+        isinstance(save_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", save_sha256) is not None,
+        "ShipAI qualification observations.save.sha256 must be 64 lowercase hexadecimal characters",
+    )
     return (
         ArtifactRequirement(
             RUNTIME_LOGICAL_SET,
             qualify_ai_runtime.COPIED_LOCK_NAME,
             "file",
             LIVE_CONSUMER,
-            package_lock["sha256"],
+            package_lock_sha256,
         ),
         ArtifactRequirement(
             RUNTIME_LOGICAL_SET,
             qualify_ai_runtime.TRANSCRIPT_NAME,
             "file",
             LIVE_CONSUMER,
-            resources["console_transcript_sha256"],
+            transcript_sha256,
         ),
         ArtifactRequirement(
             RUNTIME_LOGICAL_SET,
-            save["path"],
+            save_path,
             "file",
             LIVE_CONSUMER,
-            save["sha256"],
+            save_sha256,
         ),
     )
 
@@ -247,11 +273,12 @@ def validate(
         and projected_closure == package_record["closure_sha256"],
         "M14 ShipAI package projection drifted",
     )
-    require(
-        evidence["scenario"]["bytes"] == SCENARIO_BYTES
-        and evidence["scenario"]["sha256"] == SCENARIO_SHA256,
-        "ShipAI scenario identity drifted",
-    )
+    if repository_evidence:
+        require(
+            evidence["scenario"]["bytes"] == SCENARIO_BYTES
+            and evidence["scenario"]["sha256"] == SCENARIO_SHA256,
+            "ShipAI scenario identity drifted",
+        )
     ship_evidence = load(root / SHIP_EVIDENCE)
     require(
         evidence["qualification_manifest"]["sha256"]

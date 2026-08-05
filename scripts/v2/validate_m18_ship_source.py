@@ -115,6 +115,7 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema
         "RlV2SetQualificationAcceptance", "BuildShipAIScenario",
     ):
         require(token in text, f"patch lost required token: {token}")
+    require(config["build"]["upstream_ctest"] == {"passed": 98, "total": 98}, "upstream CTest result drifted")
     requirements = _requirements(config)
     if context.is_live:
         requirements = required_live_inputs(root) if repository_config else requirements
@@ -142,7 +143,6 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema
         require(git(result_source, "rev-parse", "HEAD^{tree}") == config["source"]["tree"], "retained source tree drifted")
         require(executable.stat().st_size == config["executable"]["bytes"] and sha256(executable) == config["executable"]["sha256"], "executable identity drifted")
         require(sha256(opengfx) == config["build"]["open_gfx"]["sha256"], "OpenGFX identity drifted")
-        require(config["build"]["upstream_ctest"] == {"passed": 98, "total": 98}, "upstream CTest result drifted")
     return {"files": len(touched), "tree": config["source"]["tree"], "live": context.is_live}
 
 
