@@ -100,7 +100,7 @@ class SourceContext:
         }
         try:
             return subprocess.run(
-                ("git", "-C", str(repository), *arguments),
+                ("git", "--no-replace-objects", "-C", str(repository), *arguments),
                 env=environment,
                 capture_output=True,
                 check=False,

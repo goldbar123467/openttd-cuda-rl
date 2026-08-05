@@ -214,6 +214,21 @@ class V2ArtifactContextTests(unittest.TestCase):
                         self.assertRaises(ArtifactContextError):
                     constructor("safe-name", relative, "file", "consumer")
 
+    def test_requirement_rejects_ambiguous_lexical_relative_paths(self) -> None:
+        ambiguous = (
+            ".",
+            "./inputs/x",
+            "inputs//x",
+            "inputs/./x",
+            "inputs/x/",
+            "inputs\\x",
+        )
+        for constructor in (ArtifactRequirement, RoleRequirement):
+            for relative in ambiguous:
+                with self.subTest(constructor=constructor.__name__, relative=relative), \
+                        self.assertRaises(ArtifactContextError):
+                    constructor("safe-name", relative, "file", "consumer")
+
     def test_role_requirement_preflights_nested_checkpoint_and_log_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
@@ -273,17 +288,17 @@ class V2ArtifactContextTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             temporary_root = pathlib.Path(temporary)
             real_base = temporary_root / "real-base"
-            (real_base / "artifact-root/set-a").mkdir(parents=True)
+            (real_base / "artifact-root/set-a/nested").mkdir(parents=True)
             linked_base = temporary_root / "linked-base"
             linked_base.symlink_to(real_base, target_is_directory=True)
             linked_root = linked_base / "artifact-root"
-            requirement = ArtifactRequirement("set-a", ".", "directory", "consumer")
+            requirement = ArtifactRequirement("set-a", "nested", "directory", "consumer")
             with self.assertRaisesRegex(ArtifactContextError, "symlink"):
                 ArtifactContext.live(linked_root).preflight((requirement,))
 
             plain_root = temporary_root / "plain-root"
             plain_root.mkdir()
-            (plain_root / "real-set").mkdir()
+            (plain_root / "real-set/nested").mkdir(parents=True)
             (plain_root / "set-a").symlink_to(plain_root / "real-set", target_is_directory=True)
             with self.assertRaisesRegex(ArtifactContextError, "symlink"):
                 ArtifactContext.live(plain_root).preflight((requirement,))
@@ -322,6 +337,48 @@ class V2ArtifactContextTests(unittest.TestCase):
             positions = [rendered.index(role) for role in expected]
             self.assertEqual(positions, sorted(positions))
 
+    def test_live_input_manifest_rejects_ambiguous_lexical_role_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            self.make_live_inputs(root)
+            original = json.loads(
+                (root / "v2-live-inputs.json").read_text(encoding="utf-8")
+            )["roles"]
+            ambiguous = (
+                "./inputs/training-artifacts",
+                "inputs//training-artifacts",
+                "inputs/./training-artifacts",
+                "inputs/training-artifacts/",
+                "inputs\\training-artifacts",
+                str(root),
+                f"//{str(root).lstrip('/')}/inputs/training-artifacts",
+                f"{root}//inputs/training-artifacts",
+                f"{root}/inputs/./training-artifacts",
+                f"{root}/inputs/training-artifacts/",
+            )
+
+            def frozen_digest(path: pathlib.Path) -> str:
+                return FROZEN_FILE_DIGESTS[path.name]
+
+            for value in ambiguous:
+                with self.subTest(value=value):
+                    roles = dict(original)
+                    roles["training-artifacts"] = value
+                    self.make_live_inputs(root, roles=roles)
+                    with mock.patch.object(
+                        artifact_context, "_sha256_file", side_effect=frozen_digest,
+                    ), self.assertRaises(ArtifactContextError):
+                        LiveInputManifest.load(root)
+
+    def test_live_input_manifest_exposes_role_names_without_raw_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = self.load_valid_manifest(pathlib.Path(temporary))
+            self.assertEqual(
+                manifest.roles,
+                frozenset((*DIRECTORY_ROLES, *FROZEN_FILE_DIGESTS)),
+            )
+            self.assertTrue(all(isinstance(role, str) for role in manifest.roles))
+
     def test_live_input_manifest_rejects_each_wrong_frozen_executable_or_corpus_digest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
@@ -355,6 +412,11 @@ class V2ArtifactContextTests(unittest.TestCase):
             "^offline validation attempted live artifact access$",
         ):
             manifest.resolve(requirement)
+        with self.assertRaisesRegex(
+            ArtifactContextError,
+            "^offline validation attempted live artifact access$",
+        ):
+            _ = manifest.roles
 
 
 if __name__ == "__main__":

@@ -95,6 +95,23 @@ class V2SourceContextTests(unittest.TestCase):
                 finally:
                     os.chdir(previous)
 
+    def test_live_context_ignores_repository_replacement_refs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            repository, pinned = self.repository(root, "source", "original pinned bytes\n")
+            (repository / "tracked.txt").write_text("replacement bytes\n", encoding="utf-8")
+            self.git(repository, "add", "tracked.txt")
+            self.git(repository, "commit", "-qm", "replacement source")
+            replacement = self.git(repository, "rev-parse", "HEAD")
+            self.git(repository, "replace", pinned, replacement)
+
+            context = SourceContext.live(repository, pinned)
+
+            self.assertEqual(
+                context.git_bytes("show", f"{pinned}:tracked.txt"),
+                b"original pinned bytes\n",
+            )
+
     def test_preflight_rejects_missing_or_wrong_pinned_commit(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)

@@ -53,15 +53,28 @@ def _validate_component(value: str, *, label: str) -> None:
         raise ArtifactContextError(f"{label} must be one nonempty POSIX path component: {value!r}")
 
 
-def _relative_parts(value: str, *, label: str, allow_current: bool = True) -> tuple[str, ...]:
+def _relative_parts(value: str, *, label: str) -> tuple[str, ...]:
     if not isinstance(value, str) or not value or "\\" in value or "\x00" in value:
         raise ArtifactContextError(f"{label} must be a safe nonempty relative POSIX path: {value!r}")
-    path = pathlib.PurePosixPath(value)
-    if path.is_absolute() or any(part == ".." for part in path.parts):
+    parts = value.split("/")
+    if value.startswith("/") or any(part in {"", ".", ".."} for part in parts):
         raise ArtifactContextError(f"{label} must be a safe nonempty relative POSIX path: {value!r}")
-    if path == pathlib.PurePosixPath(".") and not allow_current:
-        raise ArtifactContextError(f"{label} must be below the configured root: {value!r}")
-    return () if path == pathlib.PurePosixPath(".") else path.parts
+    return tuple(parts)
+
+
+def _absolute_parts(value: str, *, label: str) -> tuple[str, ...]:
+    if (
+        not isinstance(value, str)
+        or not value.startswith("/")
+        or value.startswith("//")
+        or "\\" in value
+        or "\x00" in value
+    ):
+        raise ArtifactContextError(f"{label} must be an unambiguous absolute POSIX path: {value!r}")
+    parts = value[1:].split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        raise ArtifactContextError(f"{label} must be an unambiguous absolute POSIX path: {value!r}")
+    return tuple(parts)
 
 
 def _validate_kind_and_digest(kind: str, expected_sha256: str | None) -> None:
@@ -323,17 +336,18 @@ def _duplicate_issues(pairs: _ObjectPairs, *, label: str) -> list[str]:
 
 
 def _manifest_role_path(root: pathlib.Path, value: str) -> pathlib.Path:
-    candidate = pathlib.Path(value)
-    if candidate.is_absolute():
+    if value.startswith("/"):
+        candidate = pathlib.Path("/").joinpath(*_absolute_parts(value, label="live-input path"))
         try:
             relative = candidate.relative_to(root)
         except ValueError as exc:
             raise ArtifactContextError(
                 f"live-input path is outside artifact root: {value}"
             ) from exc
-        parts = _relative_parts(relative.as_posix(), label="live-input path", allow_current=False)
-        return root.joinpath(*parts)
-    parts = _relative_parts(value, label="live-input path", allow_current=False)
+        if relative == pathlib.Path("."):
+            raise ArtifactContextError(f"live-input path must be below artifact root: {value}")
+        return candidate
+    parts = _relative_parts(value, label="live-input path")
     return root.joinpath(*parts)
 
 
@@ -425,8 +439,9 @@ class LiveInputManifest:
         return self.mode is ValidationMode.LIVE
 
     @property
-    def roles(self) -> Mapping[str, pathlib.Path]:
-        return self._roles
+    def roles(self) -> frozenset[str]:
+        self._require_live()
+        return frozenset(self._roles)
 
     def _require_live(self) -> None:
         if not self.is_live or self.artifact_root is None:
