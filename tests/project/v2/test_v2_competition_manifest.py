@@ -8,7 +8,9 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
+from artifact_context import ArtifactContext
 import validate_competition_manifest
 
 
@@ -33,6 +35,17 @@ class CompetitionManifestTests(unittest.TestCase):
         self.assertEqual(summary.audit_pool, 10)
         self.assertEqual(summary.seeds, 36)
         self.assertEqual(summary.paired_legs, 4)
+
+    def test_nested_runtime_authority_is_explicitly_offline(self) -> None:
+        with mock.patch.object(
+            validate_competition_manifest.validate_opponent_runtime_evidence,
+            "validate",
+        ) as nested:
+            validate_competition_manifest.validate(self.root)
+        nested.assert_called_once_with(
+            self.root,
+            artifact_context=ArtifactContext.offline(),
+        )
 
     def test_schema_hash_drift_fails(self) -> None:
         manifest = copy.deepcopy(self.manifest)

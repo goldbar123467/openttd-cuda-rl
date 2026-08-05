@@ -17,6 +17,19 @@ import jsonschema
 
 import qualify_ai_runtime
 import validate_opponent_package_evidence
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    LiveInputManifest,
+    RoleRequirement,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
+
+
+EVIDENCE_RELATIVE = pathlib.Path("config/v2/opponent-runtime-evidence.json")
+LIVE_CONSUMER = "m14-opponent-runtime-evidence"
 
 
 class OpponentRuntimeEvidenceError(ValueError):
@@ -74,16 +87,62 @@ def elapsed_days(manifest: dict[str, Any]) -> int | None:
     return (dt.date.fromisoformat(end) - dt.date.fromisoformat(start)).days
 
 
+def _requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    return tuple(
+        ArtifactRequirement(
+            result["artifact_dir"],
+            result["evidence_file"],
+            "file",
+            LIVE_CONSUMER,
+            result["evidence_sha256"],
+        )
+        for result in evidence["results"]
+        if result["phase"] != "PACKAGE"
+    )
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    evidence = load_json(root / EVIDENCE_RELATIVE)
+    return (
+        *validate_opponent_package_evidence.required_live_inputs(root),
+        *_requirements(evidence),
+    )
+
+
+def _role_requirements(evidence: dict[str, Any]) -> tuple[RoleRequirement, ...]:
+    return (
+        RoleRequirement(
+            "m14-openttd-executable",
+            ".",
+            "file",
+            LIVE_CONSUMER,
+            evidence["executable"]["sha256"],
+        ),
+    )
+
+
+def required_live_roles(root: pathlib.Path) -> tuple[RoleRequirement, ...]:
+    root = root.resolve()
+    return _role_requirements(load_json(root / EVIDENCE_RELATIVE))
+
+
+def _adjacent_relative_path(evidence_file: str, relative: str) -> str:
+    return (pathlib.PurePosixPath(evidence_file).parent / relative).as_posix()
+
+
 def validate(
     root: pathlib.Path,
     evidence_path: pathlib.Path | None = None,
     schema_path: pathlib.Path | None = None,
     *,
-    artifact_base: pathlib.Path | None = None,
-    openttd: pathlib.Path | None = None,
+    artifact_context: ArtifactContext | None = None,
+    live_inputs: LiveInputManifest | None = None,
 ) -> RuntimeEvidenceSummary:
+    context = artifact_context or ArtifactContext.offline()
+    repository_evidence = evidence_path is None
     root = root.resolve()
-    evidence_path = evidence_path or root / "config/v2/opponent-runtime-evidence.json"
+    evidence_path = evidence_path or root / EVIDENCE_RELATIVE
     schema_path = schema_path or root / "docs/project/schema/v2-opponent-runtime-evidence.schema.json"
     evidence = load_json(evidence_path)
     schema = load_json(schema_path)
@@ -138,24 +197,127 @@ def validate(
     require(counts == {"PACKAGE_REJECTED": 2, "QUALIFIED_ACTIVE": 2, "QUALIFIED_HEALTHY_INACTIVE": 3, "REJECTED": 2, "QUALIFIED_CONTROL": 1}, f"runtime outcome inventory drifted: {dict(counts)}")
     require(admissions == {"EXCLUDED": 4, "TOURNAMENT": 2, "SCENARIO_REQUIRED": 3, "CONTROL": 1}, f"runtime admission inventory drifted: {dict(admissions)}")
 
-    if artifact_base is not None:
-        artifact_base = artifact_base.resolve()
+    if context.is_live:
+        require(
+            live_inputs is not None and live_inputs.is_live,
+            "live-input manifest is required for live opponent runtime validation",
+        )
+        assert live_inputs is not None
+        require(
+            live_inputs.artifact_root == context.artifact_root,
+            "live-input manifest and artifact context must share one exact artifact root",
+        )
+        requirements = (
+            required_live_inputs(root)
+            if repository_evidence
+            else (
+                *validate_opponent_package_evidence.required_live_inputs(root),
+                *_requirements(evidence),
+            )
+        )
+        roles = (
+            required_live_roles(root)
+            if repository_evidence
+            else _role_requirements(evidence)
+        )
         try:
-            validate_opponent_package_evidence.validate(root, artifact_base=artifact_base, openttd=openttd)
+            context.preflight(requirements)
+            live_inputs.preflight(roles)
+            openttd = live_inputs.resolve(roles[0])
+            require(
+                openttd.stat().st_size == evidence["executable"]["size"],
+                "runtime evidence executable size mismatch",
+            )
+        except ArtifactContextError as exc:
+            raise OpponentRuntimeEvidenceError(f"live artifact preflight failed: {exc}") from exc
+        runtime_requirements = requirements[-len(_requirements(evidence)):]
+        retained: list[tuple[dict[str, Any], pathlib.Path, dict[str, Any]]] = []
+        manifest_inputs: list[ArtifactRequirement] = []
+        for result, requirement in zip(
+            (item for item in results if item["phase"] != "PACKAGE"),
+            runtime_requirements,
+            strict=True,
+        ):
+            evidence_file = context.resolve(requirement)
+            manifest = load_json(evidence_file)
+            retained.append((result, evidence_file, manifest))
+            manifest_inputs.extend([
+                ArtifactRequirement(
+                    result["artifact_dir"],
+                    _adjacent_relative_path(
+                        result["evidence_file"],
+                        qualify_ai_runtime.COPIED_LOCK_NAME,
+                    ),
+                    "file",
+                    LIVE_CONSUMER,
+                    manifest["package_lock"]["sha256"],
+                ),
+                ArtifactRequirement(
+                    result["artifact_dir"],
+                    _adjacent_relative_path(
+                        result["evidence_file"],
+                        qualify_ai_runtime.TRANSCRIPT_NAME,
+                    ),
+                    "file",
+                    LIVE_CONSUMER,
+                    manifest["resources"]["console_transcript_sha256"],
+                ),
+            ])
+            save = manifest["observations"]["save"]
+            if save is not None:
+                manifest_inputs.append(ArtifactRequirement(
+                    result["artifact_dir"],
+                    _adjacent_relative_path(result["evidence_file"], save["path"]),
+                    "file",
+                    LIVE_CONSUMER,
+                    save["sha256"],
+                ))
+        try:
+            context.preflight(tuple(manifest_inputs))
+            archive_inputs: list[ArtifactRequirement] = []
+            for result, _evidence_file, manifest in retained:
+                lock_relative = _adjacent_relative_path(
+                    result["evidence_file"],
+                    qualify_ai_runtime.COPIED_LOCK_NAME,
+                )
+                lock = load_json(context.resolve(ArtifactRequirement(
+                    result["artifact_dir"],
+                    lock_relative,
+                    "file",
+                    LIVE_CONSUMER,
+                    manifest["package_lock"]["sha256"],
+                )))
+                for package in lock["packages"]:
+                    archive_inputs.append(ArtifactRequirement(
+                        result["artifact_dir"],
+                        _adjacent_relative_path(
+                            result["evidence_file"],
+                            package["archive_path"],
+                        ),
+                        "file",
+                        LIVE_CONSUMER,
+                        package["archive_sha256"],
+                    ))
+            context.preflight(tuple(archive_inputs))
+        except ArtifactContextError as exc:
+            raise OpponentRuntimeEvidenceError(f"live artifact preflight failed: {exc}") from exc
+
+        try:
+            validate_opponent_package_evidence.validate(
+                root,
+                artifact_context=context,
+                live_inputs=live_inputs,
+            )
         except validate_opponent_package_evidence.OpponentEvidenceError as exc:
             raise OpponentRuntimeEvidenceError(f"live package evidence failed: {exc}") from exc
-        if openttd is not None:
-            openttd = openttd.resolve()
-            require(sha256_file(openttd) == evidence["executable"]["sha256"], "runtime evidence executable SHA-256 mismatch")
-            require(openttd.stat().st_size == evidence["executable"]["size"], "runtime evidence executable size mismatch")
-        for result in results:
-            evidence_file = artifact_base / result["artifact_dir"] / result["evidence_file"]
-            require(evidence_file.is_file() and not evidence_file.is_symlink(), f"runtime evidence file is missing or a symlink: {evidence_file}")
-            require(sha256_file(evidence_file) == result["evidence_sha256"], f"{result['name']} runtime evidence SHA-256 mismatch")
-            if result["phase"] == "PACKAGE":
-                continue
+
+        for result, evidence_file, _record in retained:
             try:
-                manifest = qualify_ai_runtime.validate_manifest(root, evidence_file, openttd=openttd)
+                manifest = qualify_ai_runtime.validate_manifest(
+                    root,
+                    evidence_file,
+                    openttd=openttd,
+                )
             except qualify_ai_runtime.AIRuntimeError as exc:
                 raise OpponentRuntimeEvidenceError(f"{result['name']} runtime manifest failed: {exc}") from exc
             require(manifest["package_lock"]["catalog_name"] == result["name"], f"{result['name']} manifest name mismatch")
@@ -179,7 +341,7 @@ def validate(
         tournament=admissions["TOURNAMENT"],
         control=admissions["CONTROL"],
         scenario_required=admissions["SCENARIO_REQUIRED"],
-        live_artifacts=artifact_base is not None,
+        live_artifacts=context.is_live,
     )
 
 
@@ -188,22 +350,34 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--evidence", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--artifact-base", type=pathlib.Path)
-    parser.add_argument("--openttd", type=pathlib.Path)
+    add_artifact_root_argument(parser)
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
-        summary = validate(args.root, args.evidence, args.schema, artifact_base=args.artifact_base, openttd=args.openttd)
+        configured_root = resolve_artifact_root(args.artifact_root)
+        if configured_root is None:
+            context = ArtifactContext.offline()
+            live_inputs = LiveInputManifest.offline()
+        else:
+            context = ArtifactContext.live(configured_root)
+            live_inputs = LiveInputManifest.load(configured_root)
+        summary = validate(
+            args.root,
+            args.evidence,
+            args.schema,
+            artifact_context=context,
+            live_inputs=live_inputs,
+        )
         print(
             f"V2_OPPONENT_RUNTIME=PASS opponents={summary.opponents} package_rejected={summary.package_rejected} "
             f"runtime_rejected={summary.runtime_rejected} tournament={summary.tournament} control={summary.control} "
             f"scenario_required={summary.scenario_required} live={str(summary.live_artifacts).lower()}"
         )
         return 0
-    except (OpponentRuntimeEvidenceError, OSError) as exc:
+    except (OpponentRuntimeEvidenceError, ArtifactContextError, OSError) as exc:
         print(f"V2_OPPONENT_RUNTIME=FAIL {exc}", file=sys.stderr)
         return 1
 

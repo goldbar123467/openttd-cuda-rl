@@ -14,6 +14,19 @@ from typing import Any
 import jsonschema
 
 import acquire_ai_package
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    LiveInputManifest,
+    RoleRequirement,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
+
+
+EVIDENCE_RELATIVE = pathlib.Path("config/v2/opponent-package-evidence.json")
+LIVE_CONSUMER = "m14-opponent-package-evidence"
 
 
 class OpponentEvidenceError(ValueError):
@@ -64,6 +77,45 @@ def closure_sha256(packages: list[dict[str, Any]]) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    return tuple(
+        ArtifactRequirement(
+            result["artifact_dir"],
+            result["evidence_file"],
+            "file",
+            LIVE_CONSUMER,
+            result["evidence_sha256"],
+        )
+        for result in evidence["results"]
+    )
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    return _requirements(load_json(root / EVIDENCE_RELATIVE))
+
+
+def _role_requirements(evidence: dict[str, Any]) -> tuple[RoleRequirement, ...]:
+    return (
+        RoleRequirement(
+            "m14-openttd-executable",
+            ".",
+            "file",
+            LIVE_CONSUMER,
+            evidence["executable"]["sha256"],
+        ),
+    )
+
+
+def required_live_roles(root: pathlib.Path) -> tuple[RoleRequirement, ...]:
+    root = root.resolve()
+    return _role_requirements(load_json(root / EVIDENCE_RELATIVE))
+
+
+def _adjacent_relative_path(evidence_file: str, relative: str) -> str:
+    return (pathlib.PurePosixPath(evidence_file).parent / relative).as_posix()
+
+
 def validate_rejection(
     root: pathlib.Path,
     rejection_path: pathlib.Path,
@@ -96,11 +148,13 @@ def validate(
     evidence_path: pathlib.Path | None = None,
     schema_path: pathlib.Path | None = None,
     *,
-    artifact_base: pathlib.Path | None = None,
-    openttd: pathlib.Path | None = None,
+    artifact_context: ArtifactContext | None = None,
+    live_inputs: LiveInputManifest | None = None,
 ) -> OpponentEvidenceSummary:
+    context = artifact_context or ArtifactContext.offline()
+    repository_evidence = evidence_path is None
     root = root.resolve()
-    evidence_path = evidence_path or root / "config/v2/opponent-package-evidence.json"
+    evidence_path = evidence_path or root / EVIDENCE_RELATIVE
     schema_path = schema_path or root / "docs/project/schema/v2-opponent-package-evidence.schema.json"
     evidence = load_json(evidence_path)
     schema = load_json(schema_path)
@@ -132,22 +186,76 @@ def validate(
     require(len(locked) >= 6, "opponent acquisition locked fewer than six audit-pool AIs")
     require(rejected, "opponent evidence must retain truthful rejection coverage")
 
-    if artifact_base is not None:
-        artifact_base = artifact_base.resolve()
-        require(artifact_base.is_dir(), f"artifact base does not exist: {artifact_base}")
-        if openttd is not None:
-            openttd = openttd.resolve()
-            require(sha256_file(openttd) == evidence["executable"]["sha256"], "evidence executable SHA-256 mismatch")
-            require(openttd.stat().st_size == evidence["executable"]["size"], "evidence executable size mismatch")
-        for result in results:
-            artifact_dir = artifact_base / result["artifact_dir"]
-            require(artifact_dir.is_dir() and not artifact_dir.is_symlink(), f"opponent artifact directory is missing or a symlink: {artifact_dir}")
-            evidence_file = artifact_dir / result["evidence_file"]
-            require(evidence_file.is_file() and not evidence_file.is_symlink(), f"opponent evidence file is missing or a symlink: {evidence_file}")
-            require(sha256_file(evidence_file) == result["evidence_sha256"], f"{result['name']} evidence SHA-256 mismatch")
+    if context.is_live:
+        require(
+            live_inputs is not None and live_inputs.is_live,
+            "live-input manifest is required for live opponent package validation",
+        )
+        assert live_inputs is not None
+        require(
+            live_inputs.artifact_root == context.artifact_root,
+            "live-input manifest and artifact context must share one exact artifact root",
+        )
+        requirements = (
+            required_live_inputs(root)
+            if repository_evidence
+            else _requirements(evidence)
+        )
+        roles = (
+            required_live_roles(root)
+            if repository_evidence
+            else _role_requirements(evidence)
+        )
+        try:
+            context.preflight(requirements)
+            live_inputs.preflight(roles)
+            openttd = live_inputs.resolve(roles[0])
+            require(
+                openttd.stat().st_size == evidence["executable"]["size"],
+                "evidence executable size mismatch",
+            )
+            retained: list[tuple[dict[str, Any], pathlib.Path, dict[str, Any]]] = []
+            derived: list[ArtifactRequirement] = []
+            for result, requirement in zip(results, requirements, strict=True):
+                evidence_file = context.resolve(requirement)
+                record = load_json(evidence_file)
+                retained.append((result, evidence_file, record))
+                if result["outcome"] == "LOCKED":
+                    for package in record["packages"]:
+                        derived.append(ArtifactRequirement(
+                            result["artifact_dir"],
+                            _adjacent_relative_path(
+                                result["evidence_file"],
+                                package["archive_path"],
+                            ),
+                            "file",
+                            LIVE_CONSUMER,
+                            package["archive_sha256"],
+                        ))
+                else:
+                    transcript = record["console_transcript"]
+                    derived.append(ArtifactRequirement(
+                        result["artifact_dir"],
+                        _adjacent_relative_path(
+                            result["evidence_file"],
+                            transcript["path"],
+                        ),
+                        "file",
+                        LIVE_CONSUMER,
+                        transcript["sha256"],
+                    ))
+            context.preflight(tuple(derived))
+        except ArtifactContextError as exc:
+            raise OpponentEvidenceError(f"live artifact preflight failed: {exc}") from exc
+
+        for result, evidence_file, _record in retained:
             if result["outcome"] == "LOCKED":
                 try:
-                    lock = acquire_ai_package.validate_lock(root, evidence_file, openttd=openttd)
+                    lock = acquire_ai_package.validate_lock(
+                        root,
+                        evidence_file,
+                        openttd=openttd,
+                    )
                 except acquire_ai_package.AIPackageError as exc:
                     raise OpponentEvidenceError(f"{result['name']} live lock failed: {exc}") from exc
                 packages = lock["packages"]
@@ -165,7 +273,7 @@ def validate(
         packages=sum(result.get("package_count", 0) for result in results),
         archive_bytes=sum(result.get("archive_bytes", 0) for result in results),
         license_files=sum(result.get("license_files", 0) for result in results),
-        live_artifacts=artifact_base is not None,
+        live_artifacts=context.is_live,
     )
 
 
@@ -174,20 +282,26 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--evidence", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--artifact-base", type=pathlib.Path)
-    parser.add_argument("--openttd", type=pathlib.Path)
+    add_artifact_root_argument(parser)
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
+        configured_root = resolve_artifact_root(args.artifact_root)
+        if configured_root is None:
+            context = ArtifactContext.offline()
+            live_inputs = LiveInputManifest.offline()
+        else:
+            context = ArtifactContext.live(configured_root)
+            live_inputs = LiveInputManifest.load(configured_root)
         summary = validate(
             args.root,
             args.evidence,
             args.schema,
-            artifact_base=args.artifact_base,
-            openttd=args.openttd,
+            artifact_context=context,
+            live_inputs=live_inputs,
         )
         print(
             f"V2_OPPONENT_EVIDENCE=PASS opponents={summary.opponents} locked={summary.locked} "
@@ -196,7 +310,7 @@ def main(argv: list[str] | None = None) -> int:
             f"live={str(summary.live_artifacts).lower()}"
         )
         return 0
-    except (OpponentEvidenceError, OSError) as exc:
+    except (OpponentEvidenceError, ArtifactContextError, OSError) as exc:
         print(f"V2_OPPONENT_EVIDENCE=FAIL {exc}", file=sys.stderr)
         return 1
 

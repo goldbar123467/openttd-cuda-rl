@@ -14,6 +14,7 @@ from typing import Any
 import jsonschema
 
 import validate_opponent_runtime_evidence
+from artifact_context import ArtifactContext
 
 
 class CompetitionManifestError(ValueError):
@@ -80,7 +81,10 @@ def validate(
     require(manifest["identity"]["setting_inventory_sha256"] == sha256_file(setting_path), "competition/setting inventory SHA-256 mismatch")
     require(manifest["identity"]["runtime_evidence_sha256"] == sha256_file(runtime_path), "competition/runtime evidence SHA-256 mismatch")
     try:
-        validate_opponent_runtime_evidence.validate(root)
+        validate_opponent_runtime_evidence.validate(
+            root,
+            artifact_context=ArtifactContext.offline(),
+        )
     except validate_opponent_runtime_evidence.OpponentRuntimeEvidenceError as exc:
         raise CompetitionManifestError(f"competition runtime authority failed: {exc}") from exc
 

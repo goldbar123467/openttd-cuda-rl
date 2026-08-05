@@ -9,9 +9,14 @@ import hashlib
 import json
 import pathlib
 import re
-import subprocess
 import sys
 from typing import Any
+
+from source_context import (
+    SourceContext,
+    SourceContextError,
+    add_object_repository_argument,
+)
 
 
 class SettingInventoryError(ValueError):
@@ -49,19 +54,6 @@ FILE_POLICIES = {
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise SettingInventoryError(message)
-
-
-def run_git(repository: pathlib.Path, *args: str) -> bytes:
-    try:
-        return subprocess.run(
-            ["git", "-C", str(repository), *args],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        ).stdout
-    except (OSError, subprocess.CalledProcessError) as exc:
-        detail = exc.stderr.decode("utf-8", errors="replace").strip() if isinstance(exc, subprocess.CalledProcessError) else str(exc)
-        raise SettingInventoryError(f"git {' '.join(args)} failed: {detail}") from exc
 
 
 def load_json(path: pathlib.Path) -> dict[str, Any]:
@@ -144,22 +136,88 @@ def parse_definitions(path: str, content: bytes) -> list[dict[str, Any]]:
     return result
 
 
-def build_inventory(root: pathlib.Path, object_repository: pathlib.Path, snapshot_date: str = "2026-08-02") -> dict[str, Any]:
+def _tree_entries(context: SourceContext, tree: str) -> list[tuple[str, str, str]]:
+    try:
+        text = context.git_bytes("cat-file", "-p", tree).decode("utf-8")
+    except (SourceContextError, UnicodeDecodeError) as exc:
+        raise SettingInventoryError(f"cannot read pinned Git tree {tree}: {exc}") from exc
+    entries: list[tuple[str, str, str]] = []
+    for line in text.splitlines():
+        metadata, separator, name = line.partition("\t")
+        parts = metadata.split()
+        require(separator == "\t" and len(parts) == 3, f"malformed pinned Git tree entry: {line!r}")
+        _mode, kind, object_id = parts
+        entries.append((kind, object_id, name))
+    return entries
+
+
+def _source_paths(
+    context: SourceContext,
+    root_tree: str,
+) -> list[str]:
+    tree = root_tree
+    prefix: list[str] = []
+    for component in SOURCE_ROOT.split("/"):
+        match = next(
+            (
+                (kind, object_id)
+                for kind, object_id, name in _tree_entries(context, tree)
+                if name == component
+            ),
+            None,
+        )
+        require(match is not None and match[0] == "tree", f"missing pinned source directory: {'/'.join((*prefix, component))}")
+        tree = match[1]
+        prefix.append(component)
+
+    discovered: list[str] = []
+
+    def walk(tree_id: str, relative: tuple[str, ...]) -> None:
+        for kind, object_id, name in _tree_entries(context, tree_id):
+            current = (*relative, name)
+            if kind == "tree":
+                walk(object_id, current)
+            elif kind == "blob" and name.endswith("_settings.ini"):
+                discovered.append("/".join((*SOURCE_ROOT.split("/"), *current)))
+
+    walk(tree, ())
+    return sorted(discovered)
+
+
+def build_inventory(
+    root: pathlib.Path,
+    source_context: SourceContext,
+    snapshot_date: str = "2026-08-02",
+) -> dict[str, Any]:
     root = root.resolve()
-    object_repository = object_repository.resolve()
     source_profile = load_json(root / "config/v1/openttd-source-profile.json")["upstream"]
     commit = source_profile["commit"]
-    actual_tree = run_git(object_repository, "rev-parse", f"{commit}^{{tree}}").decode("ascii").strip()
+    require(source_context.is_live, "setting inventory generation requires live source context")
+    require(source_context.pinned_commit == commit, "live source context pin differs from source profile")
+    try:
+        source_context.preflight()
+        actual_tree = source_context.git("rev-parse", f"{commit}^{{tree}}")
+    except SourceContextError as exc:
+        raise SettingInventoryError(f"live source preflight failed: {exc}") from exc
     require(actual_tree == source_profile["tree"], "pinned OpenTTD source tree does not match source profile")
-    listed = run_git(object_repository, "ls-tree", "-r", "--name-only", commit, "--", SOURCE_ROOT).decode("utf-8").splitlines()
-    source_paths = sorted(path for path in listed if path.endswith("_settings.ini"))
+    source_paths = _source_paths(source_context, actual_tree)
     basenames = {pathlib.PurePosixPath(path).name for path in source_paths}
-    require(basenames == set(FILE_POLICIES), f"setting source-file policy is incomplete: expected={sorted(FILE_POLICIES)} actual={sorted(basenames)}")
+    require(
+        len(source_paths) == len(FILE_POLICIES)
+        and len(basenames) == len(source_paths)
+        and basenames == set(FILE_POLICIES),
+        "setting source-file policy is incomplete: "
+        f"expected={sorted(FILE_POLICIES)} actual={sorted(basenames)} "
+        f"paths={source_paths}",
+    )
 
     source_files: list[dict[str, Any]] = []
     definitions: list[dict[str, Any]] = []
     for path in source_paths:
-        content = run_git(object_repository, "show", f"{commit}:{path}")
+        try:
+            content = source_context.git_bytes("show", f"{commit}:{path}")
+        except SourceContextError as exc:
+            raise SettingInventoryError(f"cannot read pinned setting source {path}: {exc}") from exc
         parsed = parse_definitions(path, content)
         require(parsed, f"setting source has no definitions: {path}")
         disposition, rationale = FILE_POLICIES[pathlib.PurePosixPath(path).name]
@@ -215,7 +273,7 @@ def build_inventory(root: pathlib.Path, object_repository: pathlib.Path, snapsho
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
-    parser.add_argument("--object-repo", type=pathlib.Path)
+    add_object_repository_argument(parser)
     parser.add_argument("--output", type=pathlib.Path)
     parser.add_argument("--snapshot-date", default="2026-08-02")
     return parser.parse_args(argv)
@@ -224,10 +282,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     root = args.root.resolve()
-    object_repository = (args.object_repo or root / load_json(root / "config/v1/openttd-source-profile.json")["object_repository"]).resolve()
     output = (args.output or root / "config/v2/setting-inventory.json").resolve()
     try:
-        inventory = build_inventory(root, object_repository, args.snapshot_date)
+        require(args.object_repository is not None, "--object-repo is required for setting inventory generation")
+        commit = load_json(root / "config/v1/openttd-source-profile.json")["upstream"]["commit"]
+        context = SourceContext.live(args.object_repository.resolve(), commit)
+        inventory = build_inventory(root, context, args.snapshot_date)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8")
         print(
@@ -236,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
             f"output={output}"
         )
         return 0
-    except (SettingInventoryError, OSError) as exc:
+    except (SettingInventoryError, SourceContextError, OSError) as exc:
         print(f"V2_SETTING_INVENTORY_GENERATION=FAIL {exc}", file=sys.stderr)
         return 1
 

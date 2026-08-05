@@ -15,6 +15,11 @@ from typing import Any
 import jsonschema
 
 import generate_setting_inventory
+from source_context import (
+    SourceContext,
+    SourceContextError,
+    add_object_repository_argument,
+)
 
 
 class SettingInventoryValidationError(ValueError):
@@ -56,8 +61,9 @@ def validate(
     inventory_path: pathlib.Path | None = None,
     schema_path: pathlib.Path | None = None,
     *,
-    object_repository: pathlib.Path | None = None,
+    source_context: SourceContext | None = None,
 ) -> SettingInventorySummary:
+    context = source_context or SourceContext.offline()
     root = root.resolve()
     inventory_path = inventory_path or root / "config/v2/setting-inventory.json"
     schema_path = schema_path or root / "docs/project/schema/v2-setting-inventory.schema.json"
@@ -116,19 +122,22 @@ def validate(
     require(expected_counts["definitions"] == 435, "pinned OpenTTD 15.3 setting definition count drifted")
     require(by_disposition["SECRET_FORBIDDEN"] == 7, "network secret setting disposition drifted")
 
-    if object_repository is not None:
+    if context.is_live:
         try:
-            generated = generate_setting_inventory.build_inventory(root, object_repository, inventory["snapshot_date"])
+            generated = generate_setting_inventory.build_inventory(root, context, inventory["snapshot_date"])
         except generate_setting_inventory.SettingInventoryError as exc:
             raise SettingInventoryValidationError(f"live setting source extraction failed: {exc}") from exc
-        require(inventory == generated, "checked-in setting inventory differs from live pinned-source extraction")
+        require(
+            inventory == generated,
+            "live pinned-source extraction differs from checked-in setting inventory",
+        )
 
     return SettingInventorySummary(
         source_files=expected_counts["source_files"],
         definitions=expected_counts["definitions"],
         unique_keys=expected_counts["unique_setting_keys"],
         duplicates=expected_counts["duplicate_key_definitions"],
-        live_source=object_repository is not None,
+        live_source=context.is_live,
     )
 
 
@@ -137,20 +146,32 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--inventory", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--object-repo", type=pathlib.Path)
+    add_object_repository_argument(parser)
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
-        summary = validate(args.root, args.inventory, args.schema, object_repository=args.object_repo)
+        if args.object_repository is None:
+            context = SourceContext.offline()
+        else:
+            inventory_path = args.inventory or args.root / "config/v2/setting-inventory.json"
+            pinned_commit = load_json(inventory_path)["engine_source"]["commit"]
+            context = SourceContext.live(args.object_repository.resolve(), pinned_commit)
+        summary = validate(
+            args.root,
+            args.inventory,
+            args.schema,
+            source_context=context,
+        )
         print(
             f"V2_SETTING_INVENTORY=PASS files={summary.source_files} definitions={summary.definitions} "
-            f"unique_keys={summary.unique_keys} duplicates={summary.duplicates} live={str(summary.live_source).lower()}"
+            f"unique_keys={summary.unique_keys} duplicates={summary.duplicates} "
+            f"live_source={str(summary.live_source).lower()}"
         )
         return 0
-    except (SettingInventoryValidationError, OSError) as exc:
+    except (SettingInventoryValidationError, SourceContextError, OSError) as exc:
         print(f"V2_SETTING_INVENTORY=FAIL {exc}", file=sys.stderr)
         return 1
 

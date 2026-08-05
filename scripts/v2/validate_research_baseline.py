@@ -8,12 +8,17 @@ import hashlib
 import json
 import pathlib
 import re
-import subprocess
 import sys
 from dataclasses import dataclass
 from typing import Any
 
 import jsonschema
+
+from source_context import (
+    SourceContext,
+    SourceContextError,
+    add_object_repository_argument,
+)
 
 
 class V2ResearchError(ValueError):
@@ -27,6 +32,7 @@ class ValidationSummary:
     opponents: int
     sources: int
     native_rectangles: int
+    live_source: bool
 
 
 def load_json(path: pathlib.Path) -> dict[str, Any]:
@@ -48,22 +54,6 @@ def sha256_file(path: pathlib.Path) -> str:
     except OSError as exc:
         raise V2ResearchError(f"cannot hash {path}: {exc}") from exc
     return digest.hexdigest()
-
-
-def git(root: pathlib.Path, *args: str) -> str:
-    command = ["git", "-C", str(root), *args]
-    try:
-        result = subprocess.run(
-            command,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-    except (OSError, subprocess.CalledProcessError) as exc:
-        detail = exc.stderr.strip() if isinstance(exc, subprocess.CalledProcessError) else str(exc)
-        raise V2ResearchError(f"Git command failed ({' '.join(command)}): {detail}") from exc
-    return result.stdout
 
 
 def extract_pinned_commands(source: str) -> tuple[list[str], str]:
@@ -95,9 +85,13 @@ def validate(
     root: pathlib.Path,
     baseline_path: pathlib.Path | None = None,
     schema_path: pathlib.Path | None = None,
+    *,
+    source_context: SourceContext | None = None,
 ) -> ValidationSummary:
+    context = source_context or SourceContext.offline()
     root = root.resolve()
-    baseline_path = baseline_path or root / "config/v2/research-baseline.json"
+    repository_baseline_path = root / "config/v2/research-baseline.json"
+    baseline_path = baseline_path or repository_baseline_path
     schema_path = schema_path or root / "docs/project/schema/v2-research-baseline.schema.json"
     baseline = load_json(baseline_path)
     schema = load_json(schema_path)
@@ -128,21 +122,6 @@ def validate(
                 f"{engine[key]!r} != {expected_engine[key]!r}"
             )
 
-    object_repository = root / engine["object_repository"]
-    if not object_repository.is_dir():
-        raise V2ResearchError(f"missing OpenTTD object repository: {object_repository}")
-    actual_tree = git(object_repository, "show", "-s", "--format=%T", engine["commit"]).strip()
-    if actual_tree != engine["tree"]:
-        raise V2ResearchError(
-            f"pinned OpenTTD commit tree mismatch: {actual_tree!r} != {engine['tree']!r}"
-        )
-    command_source = git(
-        object_repository,
-        "show",
-        f"{engine['commit']}:{engine['command_source']}",
-    )
-    source_commands, source_sentinel = extract_pinned_commands(command_source)
-
     dispositions = baseline["command_dispositions"]
     disposition_ids = [item["id"] for item in dispositions]
     expected_dispositions = ["policy-required", "policy-optional", "benchmark-admin"]
@@ -157,16 +136,52 @@ def validate(
             raise V2ResearchError(f"{disposition['id']} commands are not bytewise sorted")
         inventoried.extend(commands)
     require_unique(inventoried, "inventoried engine command")
-    source_set = set(source_commands)
-    inventory_set = set(inventoried)
-    missing = sorted(source_set - inventory_set)
-    unknown = sorted(inventory_set - source_set)
+    accepted_baseline = (
+        baseline
+        if baseline_path.resolve() == repository_baseline_path.resolve()
+        else load_json(repository_baseline_path)
+    )
+    accepted_commands = {
+        command
+        for disposition in accepted_baseline["command_dispositions"]
+        for command in disposition["commands"]
+    }
+    missing = sorted(accepted_commands - set(inventoried))
+    unknown = sorted(set(inventoried) - accepted_commands)
     if missing or unknown:
         raise V2ResearchError(
             f"engine command coverage mismatch: missing={missing} unknown={unknown}"
         )
-    if baseline["command_sentinel"] != source_sentinel:
-        raise V2ResearchError("command sentinel drifted from pinned source")
+    if baseline["command_sentinel"] != "CMD_END":
+        raise V2ResearchError("command sentinel drifted from accepted baseline")
+
+    if context.is_live:
+        if context.pinned_commit != engine["commit"]:
+            raise V2ResearchError(
+                "live source context pin differs from research baseline engine commit"
+            )
+        try:
+            context.preflight()
+            actual_tree = context.git("rev-parse", f"{engine['commit']}^{{tree}}")
+            command_source = context.git(
+                "show",
+                f"{engine['commit']}:{engine['command_source']}",
+            )
+        except SourceContextError as exc:
+            raise V2ResearchError(f"live source preflight failed: {exc}") from exc
+        if actual_tree != engine["tree"]:
+            raise V2ResearchError(
+                f"pinned OpenTTD commit tree mismatch: {actual_tree!r} != {engine['tree']!r}"
+            )
+        source_commands, source_sentinel = extract_pinned_commands(command_source)
+        missing = sorted(set(source_commands) - set(inventoried))
+        unknown = sorted(set(inventoried) - set(source_commands))
+        if missing or unknown:
+            raise V2ResearchError(
+                f"engine command coverage mismatch: missing={missing} unknown={unknown}"
+            )
+        if baseline["command_sentinel"] != source_sentinel:
+            raise V2ResearchError("command sentinel drifted from pinned source")
 
     maps = baseline["maps"]
     sides = maps["native_side_lengths"]
@@ -262,6 +277,7 @@ def validate(
         opponents=len(opponents),
         sources=len(sources),
         native_rectangles=maps["native_rectangle_count"],
+        live_source=context.is_live,
     )
 
 
@@ -270,10 +286,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", required=True, type=pathlib.Path)
     parser.add_argument("--baseline", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
+    add_object_repository_argument(parser)
     args = parser.parse_args(argv)
     try:
-        summary = validate(args.root, args.baseline, args.schema)
-    except (V2ResearchError, OSError) as exc:
+        if args.object_repository is None:
+            context = SourceContext.offline()
+        else:
+            baseline_path = args.baseline or args.root / "config/v2/research-baseline.json"
+            pinned_commit = load_json(baseline_path)["engine"]["commit"]
+            context = SourceContext.live(args.object_repository.resolve(), pinned_commit)
+        summary = validate(
+            args.root,
+            args.baseline,
+            args.schema,
+            source_context=context,
+        )
+    except (V2ResearchError, SourceContextError, OSError) as exc:
         print(f"V2_RESEARCH=FAIL {exc}", file=sys.stderr)
         return 1
     print(
@@ -282,7 +310,8 @@ def main(argv: list[str] | None = None) -> int:
         f"feature_domains={summary.feature_domains} "
         f"opponents={summary.opponents} "
         f"sources={summary.sources} "
-        f"native_rectangles={summary.native_rectangles}"
+        f"native_rectangles={summary.native_rectangles} "
+        f"live_source={str(summary.live_source).lower()}"
     )
     return 0
 

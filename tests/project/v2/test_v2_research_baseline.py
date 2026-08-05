@@ -5,13 +5,18 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import pathlib
+import shutil
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 import jsonschema
 
 import validate_research_baseline
+from source_context import SourceContext
 
 
 class V2ResearchBaselineTests(unittest.TestCase):
@@ -42,6 +47,124 @@ class V2ResearchBaselineTests(unittest.TestCase):
             for item in baseline["command_dispositions"]  # type: ignore[index]
             if item["id"] == identifier
         )
+
+    @staticmethod
+    def git(repository: pathlib.Path, *arguments: str) -> str:
+        observed = subprocess.run(
+            ("git", "-C", str(repository), *arguments),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if observed.returncode != 0:
+            raise AssertionError(observed.stderr)
+        return observed.stdout.strip()
+
+    def make_live_project(
+        self,
+        directory: pathlib.Path,
+    ) -> tuple[pathlib.Path, pathlib.Path, str]:
+        project = directory / "project"
+        repository = directory / "explicit-source"
+        repository.mkdir()
+        self.git(repository, "init", "-q")
+        self.git(repository, "config", "user.email", "task4a@example.invalid")
+        self.git(repository, "config", "user.name", "Task 4A")
+        commands = [
+            command
+            for disposition in self.baseline["command_dispositions"]
+            for command in disposition["commands"]
+        ]
+        source = repository / self.baseline["engine"]["command_source"]
+        source.parent.mkdir(parents=True)
+        source.write_text(
+            "enum Commands : uint8_t {\n"
+            + "".join(f"    {command},\n" for command in commands)
+            + "    CMD_END,\n};\n",
+            encoding="utf-8",
+        )
+        self.git(repository, "add", ".")
+        self.git(repository, "commit", "-qm", "pinned OpenTTD fixture")
+        commit = self.git(repository, "rev-parse", "HEAD")
+        tree = self.git(repository, "rev-parse", f"{commit}^{{tree}}")
+
+        (project / "config/v1").mkdir(parents=True)
+        (project / "config/v2").mkdir(parents=True)
+        (project / "docs/project/schema").mkdir(parents=True)
+        profile = validate_research_baseline.load_json(
+            self.root / "config/v1/openttd-source-profile.json"
+        )
+        profile["upstream"] = {"release": "15.3", "commit": commit, "tree": tree}
+        (project / "config/v1/openttd-source-profile.json").write_text(
+            json.dumps(profile, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        baseline = copy.deepcopy(self.baseline)
+        baseline["engine"]["commit"] = commit
+        baseline["engine"]["tree"] = tree
+        (project / "config/v2/research-baseline.json").write_text(
+            json.dumps(baseline, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        shutil.copyfile(
+            self.schema_path,
+            project / "docs/project/schema/v2-research-baseline.schema.json",
+        )
+        (project / "docs/project/V2_RESEARCH.md").write_text(
+            "145 executable commands 4096 KrakenAI2 WmDOT Minimax\n",
+            encoding="utf-8",
+        )
+        (project / "docs/project/V2_PLAN.md").write_text("fixture plan\n", encoding="utf-8")
+        return project, repository, commit
+
+    def test_offline_validation_does_not_invoke_git_on_object_repository(self) -> None:
+        with mock.patch(
+            "source_context.run_git",
+            side_effect=AssertionError("unexpected source access"),
+        ):
+            summary = validate_research_baseline.validate(
+                self.root,
+                source_context=SourceContext.offline(),
+            )
+        self.assertFalse(summary.live_source)
+
+    def test_live_validation_uses_explicit_object_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw)
+            project, repository, commit = self.make_live_project(directory)
+            replacement_source = repository / self.baseline["engine"]["command_source"]
+            replacement_source.write_text(
+                "enum Commands : uint8_t { CMD_END, };\n",
+                encoding="utf-8",
+            )
+            self.git(repository, "add", ".")
+            self.git(repository, "commit", "-qm", "hostile replacement")
+            replacement = self.git(repository, "rev-parse", "HEAD")
+            self.git(repository, "replace", commit, replacement)
+            hostile = directory / "hostile"
+            hostile.mkdir()
+            self.git(hostile, "init", "-q")
+            with mock.patch.dict(
+                os.environ,
+                {"GIT_DIR": str(hostile / ".git"), "GIT_WORK_TREE": str(hostile)},
+                clear=False,
+            ):
+                summary = validate_research_baseline.validate(
+                    project,
+                    source_context=SourceContext.live(repository, commit),
+                )
+            self.assertTrue(summary.live_source)
+            self.assertEqual(summary.commands, 145)
+
+    def test_missing_live_object_repository_is_a_preflight_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            missing = pathlib.Path(raw) / "missing-object-repository"
+            with mock.patch.object(validate_research_baseline, "validate") as validator:
+                status = validate_research_baseline.main(
+                    ["--root", str(self.root), "--object-repo", str(missing)]
+                )
+            self.assertEqual(status, 1)
+            validator.assert_not_called()
 
     def test_repository_baseline_passes(self) -> None:
         summary = validate_research_baseline.validate(self.root)
