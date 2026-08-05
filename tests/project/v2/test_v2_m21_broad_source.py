@@ -21,6 +21,7 @@ import jsonschema
 from artifact_context import ArtifactContext, ArtifactContextError, resolve_artifact_root
 import run_m21_broad_matrix as matrix
 from tests.project.v2.test_v2_m15_native_source import _write_patch_preimage
+from tests.project.v2.test_v2_m21_broad_evidence import _probe_result
 import validate_m21_broad_source as validator
 
 
@@ -95,6 +96,39 @@ def make_live_source_fixture(
     return value, config_path
 
 
+def producer_report(
+    case: dict[str, Any],
+    replicate: str,
+    contract: dict[str, Any],
+    source: dict[str, Any],
+    contract_hash: str,
+    content_hash: str,
+) -> dict[str, Any]:
+    run_id = f"{case['case_id']}-{replicate}"
+    return {
+        "active_content": [
+            {"id": item["id"], "md5": item["md5"]}
+            for item in contract["newgrfs"]
+        ] if case["probe"] == "content" else [],
+        "engine_source_tree": source["source"]["tree"],
+        "executable_sha256": source["executable"]["sha256"],
+        "identity": {
+            "content_lock_sha256": content_hash,
+            "contract_sha256": contract_hash,
+        },
+        "request": {
+            "landscape": case["landscape"],
+            "probe": case["probe"],
+            "run_id": run_id,
+            "seed": case["seed"],
+        },
+        "result": _probe_result(case, contract),
+        "run_id": run_id,
+        "schema_version": "openttd-rl-v2-m21-broad-report-1",
+        "status": "PASS",
+    }
+
+
 class M21BroadSourceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -122,6 +156,47 @@ class M21BroadSourceTests(unittest.TestCase):
         if base is None:
             self.skipTest("live artifact validation is outside offline mode")
         return base
+
+    def assert_run_one_rejects_save_artifact(
+        self,
+        case: dict[str, Any],
+        create_save: Any,
+        pattern: str,
+    ) -> None:
+        contract_hash = "1" * 64
+        content_hash = "2" * 64
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            artifact_root = base / "evidence"
+            artifact_root.mkdir()
+
+            def fake_run_command(
+                runtime_root: pathlib.Path,
+                runtime_paths: dict[str, pathlib.Path],
+                config_name: str,
+                request: pathlib.Path,
+                report: pathlib.Path,
+            ) -> subprocess.CompletedProcess[str]:
+                report.write_text(json.dumps(producer_report(
+                    case, "a", self.contract, self.source, contract_hash, content_hash,
+                )) + "\n", encoding="utf-8")
+                create_save(pathlib.Path(f"{report}.sav"))
+                return subprocess.CompletedProcess([], 0, "")
+
+            with mock.patch.object(matrix, "run_command", side_effect=fake_run_command):
+                with self.assertRaisesRegex(matrix.M21MatrixError, pattern):
+                    matrix.run_one(
+                        base,
+                        {},
+                        "content" if case["probe"] == "content" else "base",
+                        artifact_root,
+                        case,
+                        "a",
+                        self.contract,
+                        self.source,
+                        contract_hash,
+                        content_hash,
+                    )
 
     def test_repository_contract_coverage_content_and_source_pass(self) -> None:
         with mock.patch.object(validator, "git", side_effect=AssertionError("unexpected live access")) as reader:
@@ -300,6 +375,60 @@ class M21BroadSourceTests(unittest.TestCase):
             )
             self.assertEqual(paths["gamescript:info.nut"], discovery_root / "game/m21coverage/info.nut")
             self.assertEqual(paths["gamescript:main.nut"], discovery_root / "game/m21coverage/main.nut")
+
+    def test_run_negative_rejects_broken_report_symlink(self) -> None:
+        diagnostics = {item["case_id"]: item["diagnostic"] for item in self.contract["negative_cases"]}
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            artifact_root = base / "evidence"
+            artifact_root.mkdir()
+            calls = 0
+
+            def fake_run_command(
+                runtime_root: pathlib.Path,
+                runtime_paths: dict[str, pathlib.Path],
+                config_name: str,
+                request: pathlib.Path,
+                report: pathlib.Path,
+            ) -> subprocess.CompletedProcess[str]:
+                nonlocal calls
+                calls += 1
+                run_id = json.loads(request.read_text(encoding="utf-8"))["run_id"]
+                if calls == 1:
+                    report.symlink_to(report.parent / "missing-report-target")
+                return subprocess.CompletedProcess([], 1, diagnostics[run_id])
+
+            with mock.patch.object(matrix, "run_command", side_effect=fake_run_command):
+                with self.assertRaisesRegex(matrix.M21MatrixError, "report/world"):
+                    matrix.run_negative(
+                        base, {}, artifact_root, self.contract, self.source, "1" * 64, "2" * 64,
+                    )
+
+    def test_run_one_rejects_regular_content_save(self) -> None:
+        case = next(item for item in self.contract["cases"] if item["probe"] == "content")
+        self.assert_run_one_rejects_save_artifact(
+            case,
+            lambda save: save.write_bytes(b"unexpected-content-save\n"),
+            "content case unexpectedly retained a save",
+        )
+
+    def test_run_one_rejects_broken_content_save_symlink(self) -> None:
+        case = next(item for item in self.contract["cases"] if item["probe"] == "content")
+        self.assert_run_one_rejects_save_artifact(
+            case,
+            lambda save: save.symlink_to(save.parent / "missing-save-target"),
+            "content case unexpectedly retained a save",
+        )
+
+    def test_run_one_rejects_symlinked_expected_save(self) -> None:
+        case = next(item for item in self.contract["cases"] if item["probe"] == "calendar")
+
+        def create_symlinked_save(save: pathlib.Path) -> None:
+            target = save.parent / "save-payload"
+            target.write_bytes(b"expected-save-through-symlink\n")
+            save.symlink_to(target)
+
+        self.assert_run_one_rejects_save_artifact(case, create_symlinked_save, "save file absent or unsafe")
 
     def test_live_preflight_fails_before_git_or_runtime_helper(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

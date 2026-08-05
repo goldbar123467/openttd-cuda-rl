@@ -41,6 +41,7 @@ CONTENT_RELATIVE_PATHS = (
     "content_download/ai/library/51554248-Queue.BinaryHeap-1.tar",
     "content_download/ai/library/5350524c-SuperLib-40.tar",
 )
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 class M20SourceError(ValueError):
@@ -112,6 +113,24 @@ def _recorded_result_set(config: dict[str, Any]) -> str:
     return path.name
 
 
+def _validate_content_record(
+    record: dict[str, Any],
+    *,
+    label: str,
+    expected_keys: set[str],
+    string_fields: tuple[str, ...] = (),
+    positive_integer_fields: tuple[str, ...] = (),
+) -> None:
+    well_formed = (
+        set(record) == expected_keys
+        and isinstance(record.get("path"), str) and bool(record["path"])
+        and isinstance(record.get("sha256"), str) and SHA256_PATTERN.fullmatch(record["sha256"]) is not None
+        and all(isinstance(record.get(field), str) and bool(record[field]) for field in string_fields)
+        and all(type(record.get(field)) is int and record[field] > 0 for field in positive_integer_fields)
+    )
+    require(well_formed, f"content {label} record malformed")
+
+
 def _content_records(root: pathlib.Path, config: dict[str, Any], *, repository_config: bool) -> list[dict[str, Any]]:
     require(config["runtime"]["content_manifest"] == CONTENT_MANIFEST.as_posix(), "content manifest path drifted")
     content_path = root / CONTENT_MANIFEST
@@ -133,6 +152,31 @@ def _content_records(root: pathlib.Path, config: dict[str, Any], *, repository_c
             and all(isinstance(record, dict) for record in [*content["ai_archives"], *content["libraries"]]),
             "content inventory/structure drifted")
     base_graphics = content["base_graphics"]
+    _validate_content_record(
+        base_graphics,
+        label="base_graphics",
+        expected_keys={"name", "path", "sha256", "version"},
+        string_fields=("name", "version"),
+    )
+    for index, record in enumerate(content["ai_archives"]):
+        expected_keys = {"catalog_package_version", "declared_runtime_version", "name", "path", "sha256"}
+        string_fields = ("name",)
+        if index == 2:
+            expected_keys.add("identity_note")
+            string_fields += ("identity_note",)
+        _validate_content_record(
+            record,
+            label=f"ai_archives[{index}]",
+            expected_keys=expected_keys,
+            string_fields=string_fields,
+            positive_integer_fields=("catalog_package_version", "declared_runtime_version"),
+        )
+    for index, record in enumerate(content["libraries"]):
+        _validate_content_record(
+            record,
+            label=f"libraries[{index}]",
+            expected_keys={"path", "sha256"},
+        )
     require(base_graphics.get("name") == "OpenGFX" and base_graphics.get("version") == "8.0"
             and base_graphics.get("path") == config["build"]["open_gfx"]["path"]
             and base_graphics.get("sha256") == config["build"]["open_gfx"]["sha256"],
@@ -143,6 +187,9 @@ def _content_records(root: pathlib.Path, config: dict[str, Any], *, repository_c
         == (("AAAHogEx", 115, 115), ("KrakenAI2", 3, 3), ("NoOpAI", 4, 3)),
         "content inventory/structure drifted",
     )
+    require(content["ai_archives"][2]["identity_note"] ==
+            "The catalog/archive revision is 4 while info.nut truthfully declares runtime API version 3.",
+            "content inventory/structure drifted")
     extras = [*content["ai_archives"], *content["libraries"]]
     relative_paths = tuple(_recorded_relative(config["retained_artifact"], record["path"], label="content")
                            for record in extras)

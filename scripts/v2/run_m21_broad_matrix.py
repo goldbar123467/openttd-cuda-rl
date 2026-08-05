@@ -375,7 +375,8 @@ def run_negative(runtime_root: pathlib.Path, runtime_paths: dict[str, pathlib.Pa
         write_new(request_path, request)
         completed = run_command(runtime_root, runtime_paths, config_name, request_path, report_path)
         (root / "openttd.log").write_text(completed.stdout, encoding="utf-8")
-        require(completed.returncode != 0 and negative["diagnostic"] in completed.stdout and not report_path.exists(),
+        require(completed.returncode != 0 and negative["diagnostic"] in completed.stdout and
+                not report_path.exists() and not report_path.is_symlink(),
                 f"negative case did not fail closed before report/world: {negative['case_id']}")
         records.append({"case_id": negative["case_id"], "diagnostic": negative["diagnostic"], "exit_code": completed.returncode,
                         "log_path": str((root / "openttd.log").relative_to(artifact_root)), "report_absent": True})
@@ -398,8 +399,12 @@ def run_one(runtime_root: pathlib.Path, runtime_paths: dict[str, pathlib.Path], 
     validate_report(report, case, replicate, contract, source, contract_hash, content_hash)
     save = pathlib.Path(str(report_path) + ".sav")
     save_record = None
-    if case["probe"] != "content":
-        require(save.is_file(), f"save file absent: {case['case_id']}-{replicate}")
+    if case["probe"] == "content":
+        require(not save.exists() and not save.is_symlink(),
+                f"content case unexpectedly retained a save: {case['case_id']}-{replicate}")
+    else:
+        require(save.is_file() and not save.is_symlink(),
+                f"save file absent or unsafe: {case['case_id']}-{replicate}")
         save_record = {"bytes": save.stat().st_size, "sha256": sha256(save)}
     return {"normalized_sha256": hashlib.sha256(normalized(report)).hexdigest(),
             "report_path": str(report_path.relative_to(artifact_root)), "report_sha256": sha256(report_path),

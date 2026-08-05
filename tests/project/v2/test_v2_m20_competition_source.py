@@ -10,6 +10,8 @@ import io
 import json
 import pathlib
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from typing import Any
@@ -218,6 +220,65 @@ class M20CompetitionSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.M20SourceError, "duplicate physical content"):
                 validator.validate(project_root, config_path, self.schema,
                                    artifact_context=ArtifactContext.offline())
+
+    def test_custom_nested_content_records_fail_closed_for_malformed_fields(self) -> None:
+        targets = (
+            ("base_graphics", lambda content: content["base_graphics"]),
+            ("ai_archives[0]", lambda content: content["ai_archives"][0]),
+            ("ai_archives[1]", lambda content: content["ai_archives"][1]),
+            ("ai_archives[2]", lambda content: content["ai_archives"][2]),
+            ("libraries[0]", lambda content: content["libraries"][0]),
+            ("libraries[1]", lambda content: content["libraries"][1]),
+            ("libraries[2]", lambda content: content["libraries"][2]),
+            ("libraries[3]", lambda content: content["libraries"][3]),
+        )
+        mutations = (
+            ("extra", lambda record: record.__setitem__("unexpected", "accepted")),
+            ("missing", lambda record: record.pop("sha256")),
+            ("wrong-type", lambda record: record.__setitem__("path", 7)),
+        )
+        for label, select in targets:
+            for mutation, mutate in mutations:
+                with self.subTest(record=label, mutation=mutation), tempfile.TemporaryDirectory() as raw:
+                    project_root, config_path, content_path = make_custom_record_fixture(
+                        self.root, pathlib.Path(raw), self.config,
+                    )
+                    content = validator.load(content_path)
+                    mutate(select(content))
+                    content_path.write_text(json.dumps(content) + "\n", encoding="utf-8")
+                    try:
+                        validator.validate(project_root, config_path, self.schema,
+                                           artifact_context=ArtifactContext.offline())
+                    except Exception as exc:  # The public boundary must convert malformed records to its domain error.
+                        self.assertIsInstance(exc, validator.M20SourceError)
+                        self.assertRegex(str(exc), rf"content {label.replace('[', r'\[').replace(']', r'\]')} record malformed")
+                    else:
+                        self.fail(f"malformed content {label} record was accepted: {mutation}")
+
+    def test_malformed_custom_manifest_cli_exits_one_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            project_root, config_path, content_path = make_custom_record_fixture(
+                self.root, pathlib.Path(raw), self.config,
+            )
+            content = validator.load(content_path)
+            del content["libraries"][0]["sha256"]
+            content_path.write_text(json.dumps(content) + "\n", encoding="utf-8")
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(self.root / "scripts/v2/validate_m20_competition_source.py"),
+                    "--root", str(project_root),
+                    "--config", str(config_path),
+                    "--schema", str(self.schema),
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("V2_M20_COMPETITION_SOURCE=FAIL content libraries[0] record malformed", completed.stdout)
+        self.assertNotIn("Traceback", completed.stderr)
 
     def test_repository_content_manifest_digest_mutation_fails_offline(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
