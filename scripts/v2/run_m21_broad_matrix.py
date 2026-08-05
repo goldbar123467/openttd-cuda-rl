@@ -13,6 +13,13 @@ import subprocess
 import time
 from typing import Any
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    resolve_artifact_root,
+)
+
 
 CONTRACT = pathlib.Path("config/v2/m21-broad-contract.json")
 COVERAGE = pathlib.Path("config/v2/m21-broad-coverage.json")
@@ -23,6 +30,8 @@ CONTENT_REQUEST = pathlib.Path("config/v2/m21-content-request.json")
 GAMESCRIPT_INFO = pathlib.Path("config/v2/m21-gamescript/info.nut")
 GAMESCRIPT_MAIN = pathlib.Path("config/v2/m21-gamescript/main.nut")
 REPLICATES = ("a", "b")
+RUNTIME_LOGICAL_SET = "v2-m21-broad-a"
+RUNTIME_CONSUMER = "m21-broad-runtime"
 
 
 class M21MatrixError(ValueError):
@@ -117,25 +126,92 @@ def validate_coverage(root: pathlib.Path, contract: dict[str, Any], coverage: di
     return {"commands": len(expected_commands), "features": len(feature_expected)}
 
 
-def validate_runtime(root: pathlib.Path, source: dict[str, Any]) -> tuple[pathlib.Path, dict[str, pathlib.Path]]:
-    executable = pathlib.Path(source["executable"]["path"])
+def _recorded_runtime_relative(source: dict[str, Any], recorded_path: str, *, label: str) -> str:
+    recorded_root = source["retained_artifact"]
+    root = pathlib.PurePosixPath(recorded_root)
+    path = pathlib.PurePosixPath(recorded_path)
+    require(isinstance(recorded_path, str) and recorded_path.startswith("/") and not recorded_path.startswith("//") and
+            str(path) == recorded_path and all(part not in {"", ".", ".."} for part in path.parts[1:]),
+            f"recorded M21 {label} path is not an absolute normalized POSIX path")
+    require(root.name == RUNTIME_LOGICAL_SET, "M21 retained artifact logical set drifted")
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise M21MatrixError(f"recorded M21 {label} path escaped retained artifact") from exc
+    require(str(relative) != ".", f"recorded M21 {label} path must be below retained artifact")
+    return str(relative)
+
+
+def required_runtime_inputs(root: pathlib.Path, source: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    recorded_root = source["retained_artifact"]
+    require(pathlib.PurePosixPath(recorded_root).name == RUNTIME_LOGICAL_SET, "M21 retained artifact logical set drifted")
+    requirements = [
+        ArtifactRequirement(RUNTIME_LOGICAL_SET, _recorded_runtime_relative(source, source["executable"]["path"], label="executable"),
+                            "file", RUNTIME_CONSUMER, source["executable"]["sha256"]),
+        ArtifactRequirement(RUNTIME_LOGICAL_SET, _recorded_runtime_relative(source, source["build"]["open_gfx"]["path"], label="OpenGFX"),
+                            "file", RUNTIME_CONSUMER, source["build"]["open_gfx"]["sha256"]),
+    ]
+    for name, record in source["runtime"]["configs"].items():
+        requirements.append(ArtifactRequirement(
+            RUNTIME_LOGICAL_SET,
+            _recorded_runtime_relative(source, record["path"], label=f"{name} config"),
+            "file",
+            RUNTIME_CONSUMER,
+            record["sha256"],
+        ))
+    content_root = _recorded_runtime_relative(source, source["runtime"]["content_root"], label="content root")
+    for record in source["runtime"]["content_files"]:
+        requirements.append(ArtifactRequirement(
+            RUNTIME_LOGICAL_SET,
+            f"{content_root}/{record['name']}",
+            "file",
+            RUNTIME_CONSUMER,
+            record["sha256"],
+        ))
+    gamescript_root = _recorded_runtime_relative(source, source["runtime"]["gamescript_root"], label="Game Script root")
+    requirements.extend((
+        ArtifactRequirement(RUNTIME_LOGICAL_SET, f"{gamescript_root}/info.nut", "file", RUNTIME_CONSUMER, sha256(root / GAMESCRIPT_INFO)),
+        ArtifactRequirement(RUNTIME_LOGICAL_SET, f"{gamescript_root}/main.nut", "file", RUNTIME_CONSUMER, sha256(root / GAMESCRIPT_MAIN)),
+    ))
+    require(len(requirements) == len(set(requirements)), "M21 runtime input inventory contains duplicates")
+    return tuple(requirements)
+
+
+def validate_runtime(root: pathlib.Path, source: dict[str, Any], artifact_context: ArtifactContext) -> tuple[pathlib.Path, dict[str, pathlib.Path]]:
+    requirements = required_runtime_inputs(root, source)
+    artifact_context.preflight(requirements)
+    paths = {item.relative_path: artifact_context.resolve(item) for item in requirements}
+    runtime_root = artifact_context.artifact_set(RUNTIME_LOGICAL_SET)
+    executable_relative = _recorded_runtime_relative(source, source["executable"]["path"], label="executable")
+    executable = paths[executable_relative]
     require(executable.is_file() and os.access(executable, os.X_OK), "M21 executable is unavailable")
     require(executable.stat().st_size == source["executable"]["bytes"] and sha256(executable) == source["executable"]["sha256"],
             "M21 executable identity drifted")
-    configs: dict[str, pathlib.Path] = {}
+    named_paths: dict[str, pathlib.Path] = {"executable": executable}
+    open_gfx_relative = _recorded_runtime_relative(source, source["build"]["open_gfx"]["path"], label="OpenGFX")
+    open_gfx = paths[open_gfx_relative]
+    require(open_gfx.stat().st_size == source["build"]["open_gfx"]["bytes"] and sha256(open_gfx) == source["build"]["open_gfx"]["sha256"],
+            "M21 OpenGFX identity drifted")
+    named_paths["open_gfx"] = open_gfx
     for name, record in source["runtime"]["configs"].items():
-        path = pathlib.Path(record["path"])
+        path = paths[_recorded_runtime_relative(source, record["path"], label=f"{name} config")]
         require(path.is_file() and sha256(path) == record["sha256"], f"M21 {name} config identity drifted")
-        configs[name] = path
-    content_root = pathlib.Path(source["runtime"]["content_root"])
+        named_paths[f"config:{name}"] = path
+    content_root = _recorded_runtime_relative(source, source["runtime"]["content_root"], label="content root")
     for record in source["runtime"]["content_files"]:
-        path = content_root / record["name"]
+        path = paths[f"{content_root}/{record['name']}"]
         require(path.is_file() and path.stat().st_size == record["bytes"] and sha256(path) == record["sha256"],
                 f"staged NewGRF identity drifted: {record['name']}")
-    gamescript_root = pathlib.Path(source["runtime"]["gamescript_root"])
-    require(sha256(gamescript_root / "info.nut") == sha256(root / GAMESCRIPT_INFO) and
-            sha256(gamescript_root / "main.nut") == sha256(root / GAMESCRIPT_MAIN), "staged Game Script identity drifted")
-    return executable, configs
+        named_paths[f"content:{record['name']}"] = path
+    gamescript_root = _recorded_runtime_relative(source, source["runtime"]["gamescript_root"], label="Game Script root")
+    info = paths[f"{gamescript_root}/info.nut"]
+    main = paths[f"{gamescript_root}/main.nut"]
+    require(sha256(info) == sha256(root / GAMESCRIPT_INFO) and sha256(main) == sha256(root / GAMESCRIPT_MAIN),
+            "staged Game Script identity drifted")
+    named_paths["gamescript:info.nut"] = info
+    named_paths["gamescript:main.nut"] = main
+    return runtime_root, named_paths
 
 
 def manifest(case: dict[str, Any], replicate: str, contract: dict[str, Any], source: dict[str, Any],
@@ -270,14 +346,17 @@ def run_one(executable: pathlib.Path, config: pathlib.Path, artifact_root: pathl
             "save": save_record, "wall_seconds": wall}
 
 
-def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.Path) -> dict[str, Any]:
+def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.Path, *,
+        artifact_context: ArtifactContext) -> dict[str, Any]:
     root, artifact_root, evidence_path = root.resolve(), artifact_root.resolve(), evidence_path.resolve()
     require(not artifact_root.exists() and not artifact_root.is_symlink(), "artifact root must be new")
     require(not evidence_path.exists() and not evidence_path.is_symlink(), "evidence output must be new")
     contract, coverage, source = load(root / CONTRACT), load(root / COVERAGE), load(root / SOURCE)
     identity = identities(root, contract)
     coverage_summary = validate_coverage(root, contract, coverage)
-    executable, configs = validate_runtime(root, source)
+    _, runtime_paths = validate_runtime(root, source, artifact_context)
+    executable = runtime_paths["executable"]
+    configs = {name: runtime_paths[f"config:{name}"] for name in source["runtime"]["configs"]}
     contract_hash, content_hash = sha256(root / CONTRACT), identity["content_lock_sha256"]
     artifact_root.mkdir(mode=0o700)
     negatives = run_negative(executable, configs, artifact_root, contract, source, contract_hash, content_hash)
@@ -314,12 +393,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--artifact-root", type=pathlib.Path, required=True)
+    parser.add_argument("--runtime-artifact-root", type=pathlib.Path)
     parser.add_argument("--evidence", type=pathlib.Path, required=True)
     args = parser.parse_args()
     try:
-        run(args.root, args.artifact_root, args.evidence)
+        runtime_root = resolve_artifact_root(args.runtime_artifact_root)
+        if runtime_root is None:
+            parser.error("M21 runtime artifact root is required via --runtime-artifact-root or OPENTTD_RL_ARTIFACT_ROOT")
+        run(args.root, args.artifact_root, args.evidence, artifact_context=ArtifactContext.live(runtime_root))
         return 0
-    except (M21MatrixError, OSError, json.JSONDecodeError, KeyError, TypeError, ValueError, subprocess.SubprocessError) as exc:
+    except (M21MatrixError, ArtifactContextError, OSError, json.JSONDecodeError, KeyError, TypeError, ValueError, subprocess.SubprocessError) as exc:
         print(f"V2_M21_BROAD_MATRIX=FAIL {exc}")
         return 1
 

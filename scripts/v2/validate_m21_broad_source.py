@@ -8,12 +8,20 @@ import hashlib
 import json
 import pathlib
 import re
-import subprocess
+import tempfile
 from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
 import run_m21_broad_matrix as matrix
+from source_context import SourceContextError, run_git
 
 
 CONFIG = pathlib.Path("config/v2/m21-broad-source.json")
@@ -21,6 +29,9 @@ SOURCE_SCHEMA = pathlib.Path("docs/project/schema/v2-m21-broad-source.schema.jso
 CONTRACT_SCHEMA = pathlib.Path("docs/project/schema/v2-m21-broad-contract.schema.json")
 COVERAGE_SCHEMA = pathlib.Path("docs/project/schema/v2-m21-broad-coverage.schema.json")
 TOUCHED = ["src/CMakeLists.txt", "src/openttd.cpp", "src/rl_v2_broad.cpp", "src/rl_v2_broad.h"]
+BASE_LOGICAL_SET = "v2-m20-competition-a"
+RESULT_LOGICAL_SET = "v2-m21-broad-a"
+LIVE_CONSUMER = "m21-broad-source"
 
 
 class M21SourceError(ValueError):
@@ -50,10 +61,47 @@ def schema_validate(value: dict[str, Any], schema: dict[str, Any], label: str) -
         raise M21SourceError(f"{label} schema failed at {where}: {exc.message}") from exc
 
 
-def git(repository: pathlib.Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(repository), *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    require(result.returncode == 0, f"git {' '.join(args)} failed: {(result.stderr or result.stdout).strip()}")
-    return result.stdout.strip()
+def invoke_git(*arguments: str, repository: pathlib.Path | None = None):
+    try:
+        return run_git(*arguments, repository=repository)
+    except SourceContextError as exc:
+        raise M21SourceError(f"git {' '.join(arguments)} failed: {exc}") from exc
+
+
+def git(repository: pathlib.Path, *arguments: str) -> str:
+    result = invoke_git(*arguments, repository=repository)
+    detail = (result.stderr or result.stdout).decode("utf-8", errors="replace").strip()
+    require(result.returncode == 0, f"git {' '.join(arguments)} failed: {detail}")
+    return result.stdout.decode("utf-8", errors="replace").strip()
+
+
+def _recorded_result_set(source: dict[str, Any]) -> str:
+    recorded = source["retained_artifact"]
+    path = pathlib.PurePosixPath(recorded)
+    require(isinstance(recorded, str) and recorded.startswith("/") and not recorded.startswith("//") and
+            str(path) == recorded and all(part not in {"", ".", ".."} for part in path.parts[1:]),
+            "recorded retained artifact is not an absolute normalized POSIX path")
+    require(path.name == RESULT_LOGICAL_SET, "retained artifact logical set drifted")
+    require(source["source"]["path"] == f"{recorded}/source", "recorded source path drifted")
+    return path.name
+
+
+def _requirements(root: pathlib.Path, source: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    result_set = _recorded_result_set(source)
+    requirements = (
+        ArtifactRequirement(BASE_LOGICAL_SET, "source", "directory", LIVE_CONSUMER),
+        ArtifactRequirement(BASE_LOGICAL_SET, "source/.git", "directory", LIVE_CONSUMER),
+        ArtifactRequirement(result_set, "source", "directory", LIVE_CONSUMER),
+        ArtifactRequirement(result_set, "source/.git", "directory", LIVE_CONSUMER),
+        *matrix.required_runtime_inputs(root, source),
+    )
+    require(len(requirements) == len(set(requirements)), "source/runtime inventory contains duplicates")
+    return requirements
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    return _requirements(root, load(root / CONFIG))
 
 
 def validate_content(root: pathlib.Path, contract: dict[str, Any]) -> None:
@@ -77,8 +125,10 @@ def validate_content(root: pathlib.Path, contract: dict[str, Any]) -> None:
                 f"content bytes/license evidence is vacuous: {identifier}")
 
 
-def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, *, artifact_root: pathlib.Path | None = None,
-             base_source: pathlib.Path | None = None) -> dict[str, Any]:
+def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, *,
+             artifact_context: ArtifactContext | None = None) -> dict[str, Any]:
+    context = artifact_context or ArtifactContext.offline()
+    repository_config = config_path is None
     root = root.resolve()
     source = load(config_path or root / CONFIG)
     contract, coverage = load(root / matrix.CONTRACT), load(root / matrix.COVERAGE)
@@ -103,41 +153,49 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, *, art
         require(token in text, f"source patch lost required token: {token}")
     for forbidden in ("std::system(", "popen(", "fork(", "execve(", "mock_result", "fake_content"):
         require(forbidden not in text, f"source patch contains forbidden path: {forbidden}")
-    if base_source is not None:
-        base_source = base_source.resolve()
+    require(source["build"]["upstream_ctest"] == {"passed": 98, "total": 98}, "upstream CTest claim drifted")
+    requirements = _requirements(root, source)
+    if context.is_live:
+        requirements = required_live_inputs(root) if repository_config else requirements
+        context.preflight(requirements)
+        live_paths = {(item.logical_set, item.relative_path): context.resolve(item) for item in requirements}
+        base_source = live_paths[(BASE_LOGICAL_SET, "source")]
+        result_source = live_paths[(RESULT_LOGICAL_SET, "source")]
         require(git(base_source, "status", "--porcelain") == "", "base source is dirty")
         require(git(base_source, "rev-parse", "HEAD") == source["base"]["commit"] and
                 git(base_source, "rev-parse", "HEAD^{tree}") == source["base"]["tree"], "base source identity drifted")
-        checked = subprocess.run(["git", "-C", str(base_source), "apply", "--check", "--whitespace=error-all", str(patch)],
-                                 text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        require(checked.returncode == 0 and not re.search(r"\b(?:offset|fuzz|warning)\b", checked.stdout + checked.stderr, re.I),
-                "M21 patch does not apply exactly to the base")
-    live = artifact_root is not None
-    if live:
-        artifact_root = artifact_root.resolve()
-        require(str(artifact_root) == source["retained_artifact"], "retained artifact root drifted")
-        repository = pathlib.Path(source["source"]["path"])
-        require(repository == artifact_root / "source" and git(repository, "status", "--porcelain") == "", "retained source is missing or dirty")
-        require(git(repository, "rev-parse", "HEAD") == source["source"]["commit"] and
-                git(repository, "rev-parse", "HEAD^{tree}") == source["source"]["tree"], "retained source identity drifted")
-        matrix.validate_runtime(root, source)
-    require(source["build"]["upstream_ctest"] == {"passed": 98, "total": 98}, "upstream CTest claim drifted")
+        with tempfile.TemporaryDirectory(prefix="openttd-rl-v2-m21-source-") as raw:
+            target = pathlib.Path(raw) / "source"
+            cloned = invoke_git("clone", "-q", "--no-hardlinks", str(base_source), str(target))
+            require(cloned.returncode == 0, f"cannot clone base source: {cloned.stderr.decode('utf-8', errors='replace').strip()}")
+            checked = invoke_git("apply", "--check", "--whitespace=error-all", str(patch), repository=target)
+            check_output = (checked.stdout + checked.stderr).decode("utf-8", errors="replace")
+            require(checked.returncode == 0 and not re.search(r"\b(?:offset|fuzz|warning)\b", check_output, re.I), "M21 patch does not apply exactly to the base")
+            applied = invoke_git("apply", "--index", "--whitespace=error-all", str(patch), repository=target)
+            require(applied.returncode == 0, f"cannot apply patch: {applied.stderr.decode('utf-8', errors='replace').strip()}")
+            require(git(target, "write-tree") == source["source"]["tree"], "composed source identity/tree drifted")
+        require(git(result_source, "status", "--porcelain") == "", "retained source is dirty")
+        require(git(result_source, "rev-parse", "HEAD") == source["source"]["commit"] and
+                git(result_source, "rev-parse", "HEAD^{tree}") == source["source"]["tree"], "retained source identity drifted")
+        matrix.validate_runtime(root, source, context)
     return {"commands": summary["commands"], "features": summary["features"], "files": len(touched),
-            "live": live, "tree": source["source"]["tree"]}
+            "live": context.is_live, "tree": source["source"]["tree"]}
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
-    parser.add_argument("--artifact-root", type=pathlib.Path)
-    parser.add_argument("--base-source", type=pathlib.Path)
-    args = parser.parse_args()
+    parser.add_argument("--config", type=pathlib.Path)
+    add_artifact_root_argument(parser)
+    args = parser.parse_args(argv)
     try:
-        result = validate(args.root, artifact_root=args.artifact_root, base_source=args.base_source)
+        artifact_root = resolve_artifact_root(args.artifact_root)
+        context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
+        result = validate(args.root, args.config, artifact_context=context)
         print(f"V2_M21_BROAD_SOURCE=PASS files={result['files']} tree={result['tree']} features={result['features']} "
               f"commands={result['commands']} live={str(result['live']).lower()}")
         return 0
-    except (M21SourceError, matrix.M21MatrixError, OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+    except (M21SourceError, matrix.M21MatrixError, SourceContextError, ArtifactContextError, OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         print(f"V2_M21_BROAD_SOURCE=FAIL {exc}")
         return 1
 
