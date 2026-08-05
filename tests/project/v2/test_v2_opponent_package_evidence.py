@@ -327,12 +327,70 @@ class OpponentPackageEvidenceTests(unittest.TestCase):
 
     def test_documented_live_package_command_uses_supported_interface(self) -> None:
         arguments = self.documented_command_arguments("The live re-audit command is:")
-        parsed = validate_opponent_package_evidence.parse_args(arguments)
-        self.assertEqual(parsed.artifact_root, pathlib.Path("<common-root>"))
+        expected_root = pathlib.Path("/absolute/path/to/openttd-rl-artifacts")
+        loaded_roots: list[pathlib.Path] = []
+        validated_contexts: list[ArtifactContext] = []
+        expected_live_inputs = LiveInputManifest.offline()
+
+        def load_manifest(artifact_root: pathlib.Path) -> LiveInputManifest:
+            loaded_roots.append(artifact_root)
+            return expected_live_inputs
+
+        def validate_documented_command(
+            root: pathlib.Path,
+            evidence_path: pathlib.Path | None = None,
+            schema_path: pathlib.Path | None = None,
+            *,
+            artifact_context: ArtifactContext | None = None,
+            live_inputs: LiveInputManifest | None = None,
+        ) -> validate_opponent_package_evidence.OpponentEvidenceSummary:
+            self.assertIs(live_inputs, expected_live_inputs)
+            self.assertIsNotNone(artifact_context)
+            assert artifact_context is not None
+            validated_contexts.append(artifact_context)
+            return validate_opponent_package_evidence.OpponentEvidenceSummary(
+                opponents=10,
+                locked=8,
+                rejected=2,
+                packages=18,
+                archive_bytes=4_341_760,
+                license_files=18,
+                live_artifacts=artifact_context.is_live,
+            )
+
+        stderr = io.StringIO()
+        with mock.patch.object(
+            validate_opponent_package_evidence.LiveInputManifest,
+            "load",
+            side_effect=load_manifest,
+        ), mock.patch.object(
+            validate_opponent_package_evidence,
+            "validate",
+            side_effect=validate_documented_command,
+        ), mock.patch("sys.stdout", new=io.StringIO()), mock.patch(
+            "sys.stderr",
+            new=stderr,
+        ):
+            exit_code = validate_opponent_package_evidence.main(arguments)
+        self.assertEqual(exit_code, 0, stderr.getvalue())
+        self.assertEqual(loaded_roots, [expected_root])
+        self.assertEqual(
+            validated_contexts,
+            [ArtifactContext.live(expected_root)],
+        )
+
+        relative_arguments = list(arguments)
+        relative_arguments[relative_arguments.index("--artifact-root") + 1] = "relative/artifacts"
+        stderr = io.StringIO()
+        with mock.patch("sys.stderr", new=stderr):
+            exit_code = validate_opponent_package_evidence.main(relative_arguments)
+        self.assertEqual(exit_code, 1)
+        self.assertIn("artifact root must be an absolute path", stderr.getvalue())
+
         document = (
             self.root / "docs/project/M14_OPPONENT_ACQUISITION.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("<common-root>/v2-live-inputs.json", document)
+        self.assertIn(f"{expected_root}/v2-live-inputs.json", document)
         self.assertIn("m14-openttd-executable", document)
         self.assertIn("no raw executable-path bypass", " ".join(document.split()))
         with self.assertRaises(SystemExit) as raised, mock.patch(

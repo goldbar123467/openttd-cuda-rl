@@ -505,8 +505,66 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
 
     def test_documented_live_runtime_command_uses_supported_interface(self) -> None:
         arguments = self.documented_command_arguments("The full live matrix re-audit is:")
-        parsed = validate_opponent_runtime_evidence.parse_args(arguments)
-        self.assertEqual(parsed.artifact_root, pathlib.Path("<common-root>"))
+        expected_root = pathlib.Path("/absolute/path/to/openttd-rl-artifacts")
+        loaded_roots: list[pathlib.Path] = []
+        validated_contexts: list[ArtifactContext] = []
+        expected_live_inputs = LiveInputManifest.offline()
+
+        def load_manifest(artifact_root: pathlib.Path) -> LiveInputManifest:
+            loaded_roots.append(artifact_root)
+            return expected_live_inputs
+
+        def validate_documented_command(
+            root: pathlib.Path,
+            evidence_path: pathlib.Path | None = None,
+            schema_path: pathlib.Path | None = None,
+            *,
+            artifact_context: ArtifactContext | None = None,
+            live_inputs: LiveInputManifest | None = None,
+        ) -> validate_opponent_runtime_evidence.RuntimeEvidenceSummary:
+            self.assertIs(live_inputs, expected_live_inputs)
+            self.assertIsNotNone(artifact_context)
+            assert artifact_context is not None
+            validated_contexts.append(artifact_context)
+            return validate_opponent_runtime_evidence.RuntimeEvidenceSummary(
+                opponents=10,
+                package_rejected=2,
+                runtime_rejected=2,
+                tournament=2,
+                control=1,
+                scenario_required=3,
+                live_artifacts=artifact_context.is_live,
+            )
+
+        stderr = io.StringIO()
+        with mock.patch.object(
+            validate_opponent_runtime_evidence.LiveInputManifest,
+            "load",
+            side_effect=load_manifest,
+        ), mock.patch.object(
+            validate_opponent_runtime_evidence,
+            "validate",
+            side_effect=validate_documented_command,
+        ), mock.patch("sys.stdout", new=io.StringIO()), mock.patch(
+            "sys.stderr",
+            new=stderr,
+        ):
+            exit_code = validate_opponent_runtime_evidence.main(arguments)
+        self.assertEqual(exit_code, 0, stderr.getvalue())
+        self.assertEqual(loaded_roots, [expected_root])
+        self.assertEqual(
+            validated_contexts,
+            [ArtifactContext.live(expected_root)],
+        )
+
+        relative_arguments = list(arguments)
+        relative_arguments[relative_arguments.index("--artifact-root") + 1] = "relative/artifacts"
+        stderr = io.StringIO()
+        with mock.patch("sys.stderr", new=stderr):
+            exit_code = validate_opponent_runtime_evidence.main(relative_arguments)
+        self.assertEqual(exit_code, 1)
+        self.assertIn("artifact root must be an absolute path", stderr.getvalue())
+
         with self.assertRaises(SystemExit) as raised, mock.patch(
             "sys.stderr",
             new=io.StringIO(),
