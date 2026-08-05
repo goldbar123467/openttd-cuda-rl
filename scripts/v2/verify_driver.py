@@ -125,7 +125,6 @@ def resolve_config(
     if artifact_root is not None:
         if not artifact_root.is_absolute():
             raise ValueError("artifact root must be an absolute path")
-        artifact_root = artifact_root.resolve()
 
     return VerificationConfig(
         repository_root=pathlib.Path(args.root).resolve(),
@@ -338,7 +337,7 @@ def _openttd_source_issue(repository_root: pathlib.Path) -> PreflightIssue | Non
 
     top = _git(source, "rev-parse", "--show-toplevel")
     head = _git(source, "rev-parse", "HEAD")
-    status = _git(source, "status", "--porcelain", "--untracked-files=no")
+    status = _git(source, "status", "--porcelain", "--untracked-files=all")
     if (
         top.returncode != 0
         or pathlib.Path(top.stdout.strip()).resolve() != source.resolve()
@@ -354,7 +353,8 @@ def _openttd_source_issue(repository_root: pathlib.Path) -> PreflightIssue | Non
 def _artifact_root_issue(artifact_root: pathlib.Path | None) -> PreflightIssue | None:
     if artifact_root is None:
         return PreflightIssue(Requirement.ARTIFACT_ROOT, "full verification requires an absolute artifact root")
-    if not artifact_root.is_absolute() or not artifact_root.is_dir() or artifact_root.is_symlink():
+    has_symlink = any(path.is_symlink() for path in (artifact_root, *artifact_root.parents))
+    if not artifact_root.is_absolute() or has_symlink or not artifact_root.is_dir():
         return PreflightIssue(
             Requirement.ARTIFACT_ROOT,
             f"artifact root must be an existing nonsymlink directory: {artifact_root}",

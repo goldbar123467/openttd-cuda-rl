@@ -34,6 +34,51 @@ class V2VerifyDriverTests(unittest.TestCase):
             environment=(),
         )
 
+    def git(self, root: pathlib.Path, *arguments: str) -> str:
+        observed = subprocess.run(
+            ("git", "-C", str(root), *arguments),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(observed.returncode, 0, observed.stderr)
+        return observed.stdout.strip()
+
+    def initialized_submodule(
+        self, temporary_root: pathlib.Path,
+    ) -> tuple[pathlib.Path, pathlib.Path, str]:
+        origin = temporary_root / "source-origin"
+        origin.mkdir()
+        self.git(origin, "init", "-q")
+        self.git(origin, "config", "user.email", "task1@example.invalid")
+        self.git(origin, "config", "user.name", "Task 1")
+        (origin / "tracked.txt").write_text("pinned\n", encoding="utf-8")
+        self.git(origin, "add", "tracked.txt")
+        self.git(origin, "commit", "-qm", "pinned source")
+        pin = self.git(origin, "rev-parse", "HEAD")
+
+        outer = temporary_root / "outer"
+        outer.mkdir()
+        self.git(outer, "init", "-q")
+        self.git(outer, "config", "user.email", "task1@example.invalid")
+        self.git(outer, "config", "user.name", "Task 1")
+        source = outer / "openttd-upstream"
+        self.git(temporary_root, "clone", "-q", str(origin), str(source))
+        self.git(outer, "add", "openttd-upstream")
+        self.git(outer, "commit", "-qm", "pin source")
+        return outer, source, pin
+
+    def source_commands(self) -> tuple[driver.CommandSpec, ...]:
+        return (
+            driver.CommandSpec(
+                "source-check",
+                driver.Tier.CONTRACT,
+                driver.CommandCategory.VALIDATOR,
+                ("true",),
+                requirements=frozenset({driver.Requirement.OPENTTD_SOURCE}),
+            ),
+        )
+
     def test_default_tier_is_full(self) -> None:
         args = driver.parse_args([
             "--root", str(self.root), "--tools-python", str(self.python),
@@ -196,6 +241,43 @@ class V2VerifyDriverTests(unittest.TestCase):
             self.assertEqual([issue.requirement for issue in issues], [driver.Requirement.OPENTTD_SOURCE])
             self.assertIn("29f808ef0022064e6d9a83c8476d1e0f4686af86", issues[0].detail)
 
+    def test_contract_preflight_accepts_exact_clean_submodule(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            outer, _, pin = self.initialized_submodule(pathlib.Path(temporary))
+            config = driver.VerificationConfig(outer, self.python, driver.Tier.CONTRACT)
+            with mock.patch.object(driver, "OPENTTD_PIN", pin):
+                self.assertEqual(driver.preflight(config, self.source_commands()), ())
+
+    def test_contract_preflight_rejects_wrong_submodule_pin(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            outer, source, pin = self.initialized_submodule(pathlib.Path(temporary))
+            (source / "tracked.txt").write_text("different commit\n", encoding="utf-8")
+            self.git(source, "add", "tracked.txt")
+            self.git(source, "commit", "-qm", "wrong source")
+            config = driver.VerificationConfig(outer, self.python, driver.Tier.CONTRACT)
+            with mock.patch.object(driver, "OPENTTD_PIN", pin):
+                issues = driver.preflight(config, self.source_commands())
+            self.assertEqual([issue.requirement for issue in issues], [driver.Requirement.OPENTTD_SOURCE])
+
+    def test_contract_preflight_rejects_tracked_submodule_change(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            outer, source, pin = self.initialized_submodule(pathlib.Path(temporary))
+            (source / "tracked.txt").write_text("dirty\n", encoding="utf-8")
+            config = driver.VerificationConfig(outer, self.python, driver.Tier.CONTRACT)
+            with mock.patch.object(driver, "OPENTTD_PIN", pin):
+                issues = driver.preflight(config, self.source_commands())
+            self.assertEqual([issue.requirement for issue in issues], [driver.Requirement.OPENTTD_SOURCE])
+
+    def test_contract_preflight_rejects_untracked_submodule_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            outer, source, pin = self.initialized_submodule(pathlib.Path(temporary))
+            self.git(source, "config", "status.showUntrackedFiles", "no")
+            (source / "untracked.txt").write_text("dirty\n", encoding="utf-8")
+            config = driver.VerificationConfig(outer, self.python, driver.Tier.CONTRACT)
+            with mock.patch.object(driver, "OPENTTD_PIN", pin):
+                issues = driver.preflight(config, self.source_commands())
+            self.assertEqual([issue.requirement for issue in issues], [driver.Requirement.OPENTTD_SOURCE])
+
     def test_full_preflight_requires_artifact_root_before_execution(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
@@ -250,6 +332,46 @@ class V2VerifyDriverTests(unittest.TestCase):
         ])
         with self.assertRaisesRegex(ValueError, "artifact root must be an absolute path"):
             driver.resolve_config(args, {"OPENTTD_RL_ARTIFACT_ROOT": "relative/artifacts"})
+
+    def test_artifact_symlink_root_is_preserved_and_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            target = root / "artifacts"
+            target.mkdir()
+            supplied = root / "artifact-link"
+            supplied.symlink_to(target, target_is_directory=True)
+            args = driver.parse_args([
+                "--root", str(root), "--tools-python", str(self.python),
+                "--tier", "full", "--artifact-root", str(supplied),
+            ])
+            config = driver.resolve_config(args, {})
+            command = driver.CommandSpec(
+                "artifact-check", driver.Tier.FULL, driver.CommandCategory.TEST, ("true",),
+            )
+            self.assertEqual(config.artifact_root, supplied)
+            issues = driver.preflight(config, (command,))
+            self.assertEqual([issue.requirement for issue in issues], [driver.Requirement.ARTIFACT_ROOT])
+
+    def test_artifact_root_below_symlink_base_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            real_base = root / "real-base"
+            artifact_root = real_base / "artifacts"
+            artifact_root.mkdir(parents=True)
+            linked_base = root / "linked-base"
+            linked_base.symlink_to(real_base, target_is_directory=True)
+            supplied = linked_base / "artifacts"
+            args = driver.parse_args([
+                "--root", str(root), "--tools-python", str(self.python),
+                "--tier", "full", "--artifact-root", str(supplied),
+            ])
+            config = driver.resolve_config(args, {})
+            command = driver.CommandSpec(
+                "artifact-check", driver.Tier.FULL, driver.CommandCategory.TEST, ("true",),
+            )
+            self.assertEqual(config.artifact_root, supplied)
+            issues = driver.preflight(config, (command,))
+            self.assertEqual([issue.requirement for issue in issues], [driver.Requirement.ARTIFACT_ROOT])
 
     def test_spawn_and_timeout_failures_are_classified(self) -> None:
         spawn = driver.CommandSpec(
