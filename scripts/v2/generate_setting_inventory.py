@@ -201,14 +201,14 @@ def build_inventory(
         raise SettingInventoryError(f"live source preflight failed: {exc}") from exc
     require(actual_tree == source_profile["tree"], "pinned OpenTTD source tree does not match source profile")
     source_paths = _source_paths(source_context, actual_tree)
-    basenames = {pathlib.PurePosixPath(path).name for path in source_paths}
+    expected_paths = sorted(f"{SOURCE_ROOT}/{name}" for name in FILE_POLICIES)
+    missing_paths = sorted(set(expected_paths) - set(source_paths))
+    unexpected_paths = sorted(set(source_paths) - set(expected_paths))
     require(
-        len(source_paths) == len(FILE_POLICIES)
-        and len(basenames) == len(source_paths)
-        and basenames == set(FILE_POLICIES),
+        source_paths == expected_paths,
         "setting source-file policy is incomplete: "
-        f"expected={sorted(FILE_POLICIES)} actual={sorted(basenames)} "
-        f"paths={source_paths}",
+        "setting source paths differ from exact policy: "
+        f"missing={missing_paths} unexpected={unexpected_paths}",
     )
 
     source_files: list[dict[str, Any]] = []

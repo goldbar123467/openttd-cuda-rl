@@ -8,6 +8,7 @@ import datetime as dt
 import hashlib
 import json
 import pathlib
+import re
 import sys
 from collections import Counter
 from dataclasses import dataclass
@@ -30,6 +31,7 @@ from artifact_context import (
 
 EVIDENCE_RELATIVE = pathlib.Path("config/v2/opponent-runtime-evidence.json")
 LIVE_CONSUMER = "m14-opponent-runtime-evidence"
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 class OpponentRuntimeEvidenceError(ValueError):
@@ -131,6 +133,62 @@ def _adjacent_relative_path(evidence_file: str, relative: str) -> str:
     return (pathlib.PurePosixPath(evidence_file).parent / relative).as_posix()
 
 
+def _retained_manifest_inputs(
+    manifest: dict[str, Any],
+    name: str,
+) -> tuple[str, str, dict[str, Any] | None]:
+    prefix = f"{name} retained runtime evidence structure invalid"
+    package_lock = manifest.get("package_lock")
+    require(isinstance(package_lock, dict), f"{prefix}: package_lock must be an object")
+    package_lock_sha256 = package_lock.get("sha256")
+    require(
+        isinstance(package_lock_sha256, str)
+        and SHA256.fullmatch(package_lock_sha256) is not None,
+        f"{prefix}: package_lock.sha256 must be a SHA-256 digest",
+    )
+    resources = manifest.get("resources")
+    require(isinstance(resources, dict), f"{prefix}: resources must be an object")
+    transcript_sha256 = resources.get("console_transcript_sha256")
+    require(
+        isinstance(transcript_sha256, str)
+        and SHA256.fullmatch(transcript_sha256) is not None,
+        f"{prefix}: resources.console_transcript_sha256 must be a SHA-256 digest",
+    )
+    observations = manifest.get("observations")
+    require(isinstance(observations, dict), f"{prefix}: observations must be an object")
+    save = observations.get("save")
+    require(save is None or isinstance(save, dict), f"{prefix}: observations.save must be null or an object")
+    if save is not None:
+        require(
+            isinstance(save.get("path"), str) and bool(save["path"]),
+            f"{prefix}: observations.save.path must be a nonempty string",
+        )
+        require(
+            isinstance(save.get("sha256"), str)
+            and SHA256.fullmatch(save["sha256"]) is not None,
+            f"{prefix}: observations.save.sha256 must be a SHA-256 digest",
+        )
+    return package_lock_sha256, transcript_sha256, save
+
+
+def _retained_lock_packages(lock: dict[str, Any], name: str) -> list[dict[str, Any]]:
+    prefix = f"{name} retained runtime package-lock structure invalid"
+    packages = lock.get("packages")
+    require(isinstance(packages, list) and bool(packages), f"{prefix}: packages must be a nonempty list")
+    for index, package in enumerate(packages):
+        require(isinstance(package, dict), f"{prefix}: packages[{index}] must be an object")
+        require(
+            isinstance(package.get("archive_path"), str) and bool(package["archive_path"]),
+            f"{prefix}: packages[{index}].archive_path must be a nonempty string",
+        )
+        require(
+            isinstance(package.get("archive_sha256"), str)
+            and SHA256.fullmatch(package["archive_sha256"]) is not None,
+            f"{prefix}: packages[{index}].archive_sha256 must be a SHA-256 digest",
+        )
+    return packages
+
+
 def validate(
     root: pathlib.Path,
     evidence_path: pathlib.Path | None = None,
@@ -167,6 +225,15 @@ def validate(
     require(len(names) == len(set(names)), "runtime evidence has duplicate opponents")
     require(set(names) == set(baseline_by_name), "runtime evidence does not cover the ten-AI audit pool exactly")
     require(len({item["artifact_dir"] for item in results}) == len(results), "runtime evidence has duplicate artifact directories")
+    package_artifact_dirs = {item["artifact_dir"] for item in package_evidence["results"]}
+    runtime_artifact_dirs = {
+        item["artifact_dir"] for item in results if item["phase"] != "PACKAGE"
+    }
+    overlapping_artifact_dirs = sorted(package_artifact_dirs & runtime_artifact_dirs)
+    require(
+        not overlapping_artifact_dirs,
+        f"runtime/package artifact directories overlap: {overlapping_artifact_dirs}",
+    )
 
     for result in results:
         name = result["name"]
@@ -241,6 +308,10 @@ def validate(
             evidence_file = context.resolve(requirement)
             manifest = load_json(evidence_file)
             retained.append((result, evidence_file, manifest))
+            package_lock_sha256, transcript_sha256, save = _retained_manifest_inputs(
+                manifest,
+                result["name"],
+            )
             manifest_inputs.extend([
                 ArtifactRequirement(
                     result["artifact_dir"],
@@ -250,7 +321,7 @@ def validate(
                     ),
                     "file",
                     LIVE_CONSUMER,
-                    manifest["package_lock"]["sha256"],
+                    package_lock_sha256,
                 ),
                 ArtifactRequirement(
                     result["artifact_dir"],
@@ -260,10 +331,9 @@ def validate(
                     ),
                     "file",
                     LIVE_CONSUMER,
-                    manifest["resources"]["console_transcript_sha256"],
+                    transcript_sha256,
                 ),
             ])
-            save = manifest["observations"]["save"]
             if save is not None:
                 manifest_inputs.append(ArtifactRequirement(
                     result["artifact_dir"],
@@ -285,9 +355,9 @@ def validate(
                     lock_relative,
                     "file",
                     LIVE_CONSUMER,
-                    manifest["package_lock"]["sha256"],
+                    _retained_manifest_inputs(manifest, result["name"])[0],
                 )))
-                for package in lock["packages"]:
+                for package in _retained_lock_packages(lock, result["name"]):
                     archive_inputs.append(ArtifactRequirement(
                         result["artifact_dir"],
                         _adjacent_relative_path(

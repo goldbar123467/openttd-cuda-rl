@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import pathlib
+import re
 import sys
 from dataclasses import dataclass
 from typing import Any
@@ -27,6 +28,7 @@ from artifact_context import (
 
 EVIDENCE_RELATIVE = pathlib.Path("config/v2/opponent-package-evidence.json")
 LIVE_CONSUMER = "m14-opponent-package-evidence"
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 class OpponentEvidenceError(ValueError):
@@ -114,6 +116,47 @@ def required_live_roles(root: pathlib.Path) -> tuple[RoleRequirement, ...]:
 
 def _adjacent_relative_path(evidence_file: str, relative: str) -> str:
     return (pathlib.PurePosixPath(evidence_file).parent / relative).as_posix()
+
+
+def _retained_packages(record: dict[str, Any], name: str) -> list[dict[str, Any]]:
+    packages = record.get("packages")
+    require(
+        isinstance(packages, list) and bool(packages),
+        f"{name} retained package evidence structure invalid: packages must be a nonempty list",
+    )
+    for index, package in enumerate(packages):
+        require(
+            isinstance(package, dict),
+            f"{name} retained package evidence structure invalid: packages[{index}] must be an object",
+        )
+        require(
+            isinstance(package.get("archive_path"), str) and bool(package["archive_path"]),
+            f"{name} retained package evidence structure invalid: packages[{index}].archive_path must be a nonempty string",
+        )
+        require(
+            isinstance(package.get("archive_sha256"), str)
+            and SHA256.fullmatch(package["archive_sha256"]) is not None,
+            f"{name} retained package evidence structure invalid: packages[{index}].archive_sha256 must be a SHA-256 digest",
+        )
+    return packages
+
+
+def _retained_transcript(record: dict[str, Any], name: str) -> dict[str, Any]:
+    transcript = record.get("console_transcript")
+    require(
+        isinstance(transcript, dict),
+        f"{name} retained package evidence structure invalid: console_transcript must be an object",
+    )
+    require(
+        isinstance(transcript.get("path"), str) and bool(transcript["path"]),
+        f"{name} retained package evidence structure invalid: console_transcript.path must be a nonempty string",
+    )
+    require(
+        isinstance(transcript.get("sha256"), str)
+        and SHA256.fullmatch(transcript["sha256"]) is not None,
+        f"{name} retained package evidence structure invalid: console_transcript.sha256 must be a SHA-256 digest",
+    )
+    return transcript
 
 
 def validate_rejection(
@@ -221,7 +264,7 @@ def validate(
                 record = load_json(evidence_file)
                 retained.append((result, evidence_file, record))
                 if result["outcome"] == "LOCKED":
-                    for package in record["packages"]:
+                    for package in _retained_packages(record, result["name"]):
                         derived.append(ArtifactRequirement(
                             result["artifact_dir"],
                             _adjacent_relative_path(
@@ -233,7 +276,7 @@ def validate(
                             package["archive_sha256"],
                         ))
                 else:
-                    transcript = record["console_transcript"]
+                    transcript = _retained_transcript(record, result["name"])
                     derived.append(ArtifactRequirement(
                         result["artifact_dir"],
                         _adjacent_relative_path(

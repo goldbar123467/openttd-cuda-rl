@@ -4,10 +4,14 @@
 from __future__ import annotations
 
 import copy
+import datetime as dt
 import hashlib
+import io
 import json
 import pathlib
+import re
 import shutil
+import shlex
 import tempfile
 import unittest
 from unittest import mock
@@ -46,6 +50,214 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
     @staticmethod
     def result(evidence: dict[str, object], name: str) -> dict[str, object]:
         return next(item for item in evidence["results"] if item["name"] == name)  # type: ignore[index]
+
+    def make_live_fixture(self, directory: pathlib.Path) -> dict[str, object]:
+        project = directory / "project"
+        artifact_root = directory / "relocated-artifacts"
+        for relative in ("config/v1", "config/v2", "docs/project/schema"):
+            (project / relative).mkdir(parents=True, exist_ok=True)
+        for relative in (
+            "config/v1/openttd-source-profile.json",
+            "config/v2/research-baseline.json",
+            "docs/project/schema/v2-opponent-package-evidence.schema.json",
+            "docs/project/schema/v2-opponent-runtime-evidence.schema.json",
+        ):
+            shutil.copyfile(self.root / relative, project / relative)
+        artifact_root.mkdir()
+        executable = artifact_root / "m14-openttd"
+        with executable.open("wb") as stream:
+            stream.truncate(self.evidence["executable"]["size"])
+
+        package = validate_opponent_runtime_evidence.validate_opponent_package_evidence.load_json(
+            self.root / "config/v2/opponent-package-evidence.json"
+        )
+        package_records: dict[pathlib.Path, dict[str, object]] = {}
+        package_lock_paths: list[pathlib.Path] = []
+        package_rejection_paths: list[pathlib.Path] = []
+        for result in package["results"]:
+            artifact_set = artifact_root / result["artifact_dir"]
+            artifact_set.mkdir(exist_ok=True)
+            evidence_file = artifact_set / result["evidence_file"]
+            if result["outcome"] == "LOCKED":
+                archive_relative = f"content_download/{result['content_unique_id']}.tar"
+                archive = artifact_set / archive_relative
+                archive.parent.mkdir()
+                archive.write_bytes(f"package:{result['name']}\n".encode("utf-8"))
+                package_row = {
+                    "local_unique_id": result["content_unique_id"],
+                    "archive_path": archive_relative,
+                    "archive_size": archive.stat().st_size,
+                    "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                    "licenses": ["COPYING"],
+                }
+                record = {"packages": [package_row]}
+                result["package_count"] = 1
+                result["archive_bytes"] = package_row["archive_size"]
+                result["license_files"] = 1
+                result["closure_sha256"] = (
+                    validate_opponent_runtime_evidence.validate_opponent_package_evidence.closure_sha256(
+                        [package_row]
+                    )
+                )
+                package_lock_paths.append(evidence_file)
+            else:
+                transcript = artifact_set / "openttd-content-console.log"
+                transcript.write_text(f"rejected:{result['name']}\n", encoding="utf-8")
+                transcript_sha256 = hashlib.sha256(transcript.read_bytes()).hexdigest()
+                record = {
+                    "console_transcript": {
+                        "path": transcript.name,
+                        "size": transcript.stat().st_size,
+                        "sha256": transcript_sha256,
+                    },
+                }
+                result["transcript_sha256"] = transcript_sha256
+                package_rejection_paths.append(evidence_file)
+            evidence_file.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            result["evidence_sha256"] = hashlib.sha256(
+                evidence_file.read_bytes()
+            ).hexdigest()
+            package_records[evidence_file] = copy.deepcopy(record)
+        package_path = project / "config/v2/opponent-package-evidence.json"
+        package_path.write_text(json.dumps(package, indent=2) + "\n", encoding="utf-8")
+
+        runtime = copy.deepcopy(self.evidence)
+        runtime["package_evidence_sha256"] = hashlib.sha256(
+            package_path.read_bytes()
+        ).hexdigest()
+        package_by_name = {item["name"]: item for item in package["results"]}
+        runtime_records: dict[pathlib.Path, dict[str, object]] = {}
+        runtime_paths: list[pathlib.Path] = []
+        for result in runtime["results"]:
+            if result["phase"] == "PACKAGE":
+                result["evidence_sha256"] = package_by_name[result["name"]][
+                    "evidence_sha256"
+                ]
+                continue
+            artifact_set = artifact_root / result["artifact_dir"]
+            artifact_set.mkdir()
+            copied_archive = artifact_set / "content_download/runtime-package.tar"
+            copied_archive.parent.mkdir()
+            copied_archive.write_bytes(f"runtime-package:{result['name']}\n".encode("utf-8"))
+            copied_lock_record = {
+                "packages": [{
+                    "archive_path": "content_download/runtime-package.tar",
+                    "archive_sha256": hashlib.sha256(
+                        copied_archive.read_bytes()
+                    ).hexdigest(),
+                }],
+            }
+            copied_lock = artifact_set / "ai-package-lock.json"
+            copied_lock.write_text(
+                json.dumps(copied_lock_record) + "\n",
+                encoding="utf-8",
+            )
+            transcript = artifact_set / "openttd-runtime-console.log"
+            if result["reason_code"] == "declared-identity-not-listed":
+                transcript.write_text("Compile error\n", encoding="utf-8")
+            elif result["reason_code"] == "script-crash-missing-library":
+                transcript.write_text("couldn't find library\n", encoding="utf-8")
+            else:
+                transcript.write_text(f"runtime:{result['name']}\n", encoding="utf-8")
+            save = None
+            if result["save_sha256"] is not None:
+                save_path = artifact_set / "runtime.sav"
+                save_path.write_bytes(f"save:{result['name']}\n".encode("utf-8"))
+                result["save_sha256"] = hashlib.sha256(save_path.read_bytes()).hexdigest()
+                save = {
+                    "path": save_path.name,
+                    "size": save_path.stat().st_size,
+                    "sha256": result["save_sha256"],
+                }
+            start_date = None
+            post_load_date = None
+            if result["elapsed_days"] is not None:
+                start = dt.date(2000, 1, 1)
+                start_date = start.isoformat()
+                post_load_date = (
+                    start + dt.timedelta(days=result["elapsed_days"])
+                ).isoformat()
+            vehicles = result["vehicles"]
+            company = None if vehicles is None else {
+                "trains": vehicles["train"],
+                "road_vehicles": vehicles["road"],
+                "aircraft": vehicles["air"],
+                "ships": vehicles["ship"],
+            }
+            checks = {
+                "declared_identity_listed": result["reason_code"] != "declared-identity-not-listed",
+                "no_script_crash": result["reason_code"] != "script-crash-missing-library",
+            }
+            record = {
+                "package_lock": {
+                    "sha256": hashlib.sha256(copied_lock.read_bytes()).hexdigest(),
+                    "catalog_name": result["name"],
+                    "catalog_unique_id": result["content_unique_id"],
+                },
+                "resources": {
+                    "console_transcript_sha256": hashlib.sha256(
+                        transcript.read_bytes()
+                    ).hexdigest(),
+                    "max_rss_kib": result["max_rss_kib"],
+                },
+                "observations": {
+                    "start_date": start_date,
+                    "post_load_date": post_load_date,
+                    "company_after_load": company,
+                    "save": save,
+                },
+                "checks": checks,
+                "outcome": result["outcome"],
+            }
+            evidence_file = artifact_set / result["evidence_file"]
+            evidence_file.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            result["evidence_sha256"] = hashlib.sha256(
+                evidence_file.read_bytes()
+            ).hexdigest()
+            runtime_records[evidence_file] = copy.deepcopy(record)
+            runtime_paths.append(evidence_file)
+        runtime_path = project / "config/v2/opponent-runtime-evidence.json"
+        runtime_path.write_text(json.dumps(runtime, indent=2) + "\n", encoding="utf-8")
+
+        def fixture_digest(path: pathlib.Path) -> str:
+            if path == executable:
+                return self.evidence["executable"]["sha256"]
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+
+        return {
+            "project": project,
+            "artifact_root": artifact_root,
+            "executable": executable,
+            "package": package,
+            "package_path": package_path,
+            "package_records": package_records,
+            "package_lock_paths": package_lock_paths,
+            "package_rejection_paths": package_rejection_paths,
+            "runtime": runtime,
+            "runtime_path": runtime_path,
+            "runtime_records": runtime_records,
+            "runtime_paths": runtime_paths,
+            "fixture_digest": fixture_digest,
+        }
+
+    def documented_command_arguments(self, marker: str) -> list[str]:
+        document = (
+            self.root / "docs/project/M14_OPPONENT_ACQUISITION.md"
+        ).read_text(encoding="utf-8")
+        match = re.search(
+            rf"{re.escape(marker)}.*?```text\n(?P<command>.*?)\n```",
+            document,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(match)
+        command = match.group("command").replace("\\\n", " ")  # type: ignore[union-attr]
+        tokens = shlex.split(command)
+        self.assertEqual(tokens[0:2], ["PYTHONPATH=scripts/v2", "python3"])
+        self.assertEqual(
+            tokens[2],
+            "scripts/v2/validate_opponent_runtime_evidence.py",
+        )
+        return tokens[3:]
 
     def test_repository_runtime_matrix_passes(self) -> None:
         summary = validate_opponent_runtime_evidence.validate(self.root)
@@ -94,6 +306,7 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
             if result["phase"] != "PACKAGE"
         ]
         self.assertEqual(len(requirements), 18)
+        self.assertEqual(len({item.logical_set for item in requirements}), 18)
         self.assertEqual(
             [
                 (
@@ -105,6 +318,15 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
             ],
             expected,
         )
+        custom = copy.deepcopy(self.evidence)
+        custom_requirements = (
+            *validate_opponent_runtime_evidence.validate_opponent_package_evidence.required_live_inputs(
+                self.root
+            ),
+            *validate_opponent_runtime_evidence._requirements(custom),
+        )
+        self.assertEqual(len(custom_requirements), 18)
+        self.assertEqual(len({item.logical_set for item in custom_requirements}), 18)
 
     def test_required_live_role_is_the_frozen_m14_executable(self) -> None:
         self.assertEqual(
@@ -119,6 +341,180 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
                 ),
             ),
         )
+
+    def test_runtime_artifact_directories_are_disjoint_from_package_authority(self) -> None:
+        evidence = copy.deepcopy(self.evidence)
+        package = validate_opponent_runtime_evidence.validate_opponent_package_evidence.load_json(
+            self.root / "config/v2/opponent-package-evidence.json"
+        )
+        self.result(evidence, "AAAHogEx")["artifact_dir"] = next(
+            item["artifact_dir"] for item in package["results"] if item["name"] == "AAAHogEx"
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            with self.assertRaisesRegex(
+                validate_opponent_runtime_evidence.OpponentRuntimeEvidenceError,
+                "runtime/package artifact directories overlap: .*v2-m14-ai-aaahogex-a",
+            ):
+                self.validate_mutation(pathlib.Path(raw), evidence)
+
+    def test_relocated_live_runtime_and_package_closures_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_live_fixture(pathlib.Path(raw))
+            context = ArtifactContext.live(fixture["artifact_root"])
+
+            def validate_lock(
+                root: pathlib.Path,
+                path: pathlib.Path,
+                *,
+                openttd: pathlib.Path,
+            ) -> dict[str, object]:
+                self.assertEqual(root, fixture["project"])
+                self.assertEqual(openttd, fixture["executable"])
+                return validate_opponent_runtime_evidence.load_json(path)
+
+            def validate_rejection(
+                root: pathlib.Path,
+                path: pathlib.Path,
+                result: dict[str, object],
+                executable: dict[str, object],
+            ) -> None:
+                self.assertEqual(root, fixture["project"])
+                self.assertEqual(
+                    validate_opponent_runtime_evidence.load_json(path),
+                    fixture["package_records"][path],
+                )
+
+            def validate_manifest(
+                root: pathlib.Path,
+                path: pathlib.Path,
+                *,
+                openttd: pathlib.Path,
+            ) -> dict[str, object]:
+                self.assertEqual(root, fixture["project"])
+                self.assertEqual(openttd, fixture["executable"])
+                return validate_opponent_runtime_evidence.load_json(path)
+
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                side_effect=fixture["fixture_digest"],
+            ):
+                live_inputs = LiveInputManifest.bind(
+                    context,
+                    {"m14-openttd-executable": fixture["executable"]},
+                )
+                package_module = (
+                    validate_opponent_runtime_evidence.validate_opponent_package_evidence
+                )
+                with mock.patch.object(
+                    package_module.acquire_ai_package,
+                    "validate_lock",
+                    side_effect=validate_lock,
+                ) as lock_reader, mock.patch.object(
+                    package_module,
+                    "validate_rejection",
+                    side_effect=validate_rejection,
+                ) as rejection_reader, mock.patch.object(
+                    validate_opponent_runtime_evidence.qualify_ai_runtime,
+                    "validate_manifest",
+                    side_effect=validate_manifest,
+                ) as manifest_reader:
+                    summary = validate_opponent_runtime_evidence.validate(
+                        fixture["project"],
+                        artifact_context=context,
+                        live_inputs=live_inputs,
+                    )
+            self.assertTrue(summary.live_artifacts)
+            self.assertEqual(
+                [call.args[1] for call in lock_reader.call_args_list],
+                fixture["package_lock_paths"],
+            )
+            self.assertEqual(
+                [call.args[1] for call in rejection_reader.call_args_list],
+                fixture["package_rejection_paths"],
+            )
+            self.assertEqual(
+                [call.args[1] for call in manifest_reader.call_args_list],
+                fixture["runtime_paths"],
+            )
+            for path, expected in {
+                **fixture["package_records"],
+                **fixture["runtime_records"],
+            }.items():
+                self.assertEqual(validate_opponent_runtime_evidence.load_json(path), expected)
+
+    def test_matching_digest_empty_retained_runtime_json_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_live_fixture(pathlib.Path(raw))
+            runtime = fixture["runtime"]
+            result = next(item for item in runtime["results"] if item["phase"] == "RUNTIME")
+            path = fixture["artifact_root"] / result["artifact_dir"] / result["evidence_file"]
+            path.write_text("{}\n", encoding="utf-8")
+            result["evidence_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+            fixture["runtime_path"].write_text(json.dumps(runtime, indent=2) + "\n", encoding="utf-8")
+            context = ArtifactContext.live(fixture["artifact_root"])
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                side_effect=fixture["fixture_digest"],
+            ):
+                live_inputs = LiveInputManifest.bind(
+                    context,
+                    {"m14-openttd-executable": fixture["executable"]},
+                )
+                with self.assertRaisesRegex(
+                    validate_opponent_runtime_evidence.OpponentRuntimeEvidenceError,
+                    "AAAHogEx retained runtime evidence structure invalid: package_lock must be an object",
+                ):
+                    validate_opponent_runtime_evidence.validate(
+                        fixture["project"],
+                        artifact_context=context,
+                        live_inputs=live_inputs,
+                    )
+
+    def test_matching_digest_malformed_runtime_object_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_live_fixture(pathlib.Path(raw))
+            runtime = fixture["runtime"]
+            result = next(item for item in runtime["results"] if item["phase"] == "RUNTIME")
+            path = fixture["artifact_root"] / result["artifact_dir"] / result["evidence_file"]
+            malformed = copy.deepcopy(fixture["runtime_records"][path])
+            malformed["package_lock"] = []
+            path.write_text(json.dumps(malformed) + "\n", encoding="utf-8")
+            result["evidence_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+            fixture["runtime_path"].write_text(json.dumps(runtime, indent=2) + "\n", encoding="utf-8")
+            context = ArtifactContext.live(fixture["artifact_root"])
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                side_effect=fixture["fixture_digest"],
+            ):
+                live_inputs = LiveInputManifest.bind(
+                    context,
+                    {"m14-openttd-executable": fixture["executable"]},
+                )
+                with self.assertRaisesRegex(
+                    validate_opponent_runtime_evidence.OpponentRuntimeEvidenceError,
+                    "AAAHogEx retained runtime evidence structure invalid: package_lock must be an object",
+                ):
+                    validate_opponent_runtime_evidence.validate(
+                        fixture["project"],
+                        artifact_context=context,
+                        live_inputs=live_inputs,
+                    )
+
+    def test_documented_live_runtime_command_uses_supported_interface(self) -> None:
+        arguments = self.documented_command_arguments("The full live matrix re-audit is:")
+        parsed = validate_opponent_runtime_evidence.parse_args(arguments)
+        self.assertEqual(parsed.artifact_root, pathlib.Path("<common-root>"))
+        with self.assertRaises(SystemExit) as raised, mock.patch(
+            "sys.stderr",
+            new=io.StringIO(),
+        ):
+            validate_opponent_runtime_evidence.parse_args([
+                "--artifact-base", "/tmp/artifacts", "--openttd", "/tmp/openttd",
+            ])
+        self.assertEqual(raised.exception.code, 2)
 
     def test_runtime_derived_inputs_preflight_before_nested_helper_readers(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

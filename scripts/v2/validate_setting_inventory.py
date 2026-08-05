@@ -82,8 +82,14 @@ def validate(
     paths = [item["path"] for item in source_files]
     require(paths == sorted(paths), "setting inventory source files are not bytewise sorted")
     require(len(paths) == len(set(paths)), "setting inventory has duplicate source files")
-    basenames = {pathlib.PurePosixPath(path).name for path in paths}
-    require(basenames == set(generate_setting_inventory.FILE_POLICIES), "setting inventory source-file policy is incomplete")
+    expected_paths = sorted(
+        f"{generate_setting_inventory.SOURCE_ROOT}/{name}"
+        for name in generate_setting_inventory.FILE_POLICIES
+    )
+    require(
+        paths == expected_paths,
+        "setting inventory source-file policy is incomplete: exact source paths drifted",
+    )
     for item in source_files:
         expected_policy = generate_setting_inventory.FILE_POLICIES[pathlib.PurePosixPath(item["path"]).name]
         require((item["disposition"], item["rationale_code"]) == expected_policy, f"{item['path']} setting disposition policy drifted")

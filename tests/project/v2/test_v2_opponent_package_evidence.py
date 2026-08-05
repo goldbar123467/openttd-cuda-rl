@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import io
 import json
 import pathlib
+import re
+import shlex
 import tempfile
 import unittest
 from unittest import mock
@@ -41,6 +44,95 @@ class OpponentPackageEvidenceTests(unittest.TestCase):
             self.write_json(directory, value),
             self.schema_path,
         )
+
+    def make_live_fixture(self, directory: pathlib.Path) -> dict[str, object]:
+        artifact_root = directory / "relocated-artifacts"
+        artifact_root.mkdir()
+        executable = artifact_root / "m14-openttd"
+        with executable.open("wb") as stream:
+            stream.truncate(self.evidence["executable"]["size"])
+        evidence = copy.deepcopy(self.evidence)
+        records: dict[pathlib.Path, dict[str, object]] = {}
+        locked_paths: list[pathlib.Path] = []
+        rejection_paths: list[pathlib.Path] = []
+        for result in evidence["results"]:
+            artifact_set = artifact_root / result["artifact_dir"]
+            artifact_set.mkdir()
+            evidence_file = artifact_set / result["evidence_file"]
+            if result["outcome"] == "LOCKED":
+                archive_relative = f"content_download/{result['content_unique_id']}.tar"
+                archive = artifact_set / archive_relative
+                archive.parent.mkdir()
+                archive.write_bytes(f"archive:{result['name']}\n".encode("utf-8"))
+                package = {
+                    "local_unique_id": result["content_unique_id"],
+                    "archive_path": archive_relative,
+                    "archive_size": archive.stat().st_size,
+                    "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                    "licenses": ["COPYING"],
+                }
+                record = {"packages": [package]}
+                result["package_count"] = 1
+                result["archive_bytes"] = package["archive_size"]
+                result["license_files"] = 1
+                result["closure_sha256"] = (
+                    validate_opponent_package_evidence.closure_sha256([package])
+                )
+                locked_paths.append(evidence_file)
+            else:
+                transcript = artifact_set / "openttd-content-console.log"
+                transcript.write_text(f"rejected:{result['name']}\n", encoding="utf-8")
+                transcript_sha256 = hashlib.sha256(transcript.read_bytes()).hexdigest()
+                record = {
+                    "console_transcript": {
+                        "path": transcript.name,
+                        "size": transcript.stat().st_size,
+                        "sha256": transcript_sha256,
+                    },
+                }
+                result["transcript_sha256"] = transcript_sha256
+                rejection_paths.append(evidence_file)
+            evidence_file.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            result["evidence_sha256"] = hashlib.sha256(
+                evidence_file.read_bytes()
+            ).hexdigest()
+            records[evidence_file] = copy.deepcopy(record)
+        evidence_path = self.write_json(directory, evidence)
+
+        def fixture_digest(path: pathlib.Path) -> str:
+            if path == executable:
+                return self.evidence["executable"]["sha256"]
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+
+        return {
+            "artifact_root": artifact_root,
+            "executable": executable,
+            "evidence": evidence,
+            "evidence_path": evidence_path,
+            "records": records,
+            "locked_paths": locked_paths,
+            "rejection_paths": rejection_paths,
+            "fixture_digest": fixture_digest,
+        }
+
+    def documented_command_arguments(self, marker: str) -> list[str]:
+        document = (
+            self.root / "docs/project/M14_OPPONENT_ACQUISITION.md"
+        ).read_text(encoding="utf-8")
+        match = re.search(
+            rf"{re.escape(marker)}.*?```text\n(?P<command>.*?)\n```",
+            document,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(match)
+        command = match.group("command").replace("\\\n", " ")  # type: ignore[union-attr]
+        tokens = shlex.split(command)
+        self.assertEqual(tokens[0:2], ["PYTHONPATH=scripts/v2", "python3"])
+        self.assertEqual(
+            tokens[2],
+            "scripts/v2/validate_opponent_package_evidence.py",
+        )
+        return tokens[3:]
 
     def test_repository_evidence_index_passes(self) -> None:
         summary = validate_opponent_package_evidence.validate(self.root)
@@ -102,6 +194,155 @@ class OpponentPackageEvidenceTests(unittest.TestCase):
                 ),
             ),
         )
+
+    def test_relocated_live_package_closure_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_live_fixture(pathlib.Path(raw))
+            context = ArtifactContext.live(fixture["artifact_root"])
+
+            def validate_lock(
+                root: pathlib.Path,
+                path: pathlib.Path,
+                *,
+                openttd: pathlib.Path,
+            ) -> dict[str, object]:
+                self.assertEqual(root, self.root)
+                self.assertEqual(openttd, fixture["executable"])
+                return validate_opponent_package_evidence.load_json(path)
+
+            def validate_rejection(
+                root: pathlib.Path,
+                path: pathlib.Path,
+                result: dict[str, object],
+                executable: dict[str, object],
+            ) -> None:
+                self.assertEqual(root, self.root)
+                self.assertEqual(
+                    validate_opponent_package_evidence.load_json(path),
+                    fixture["records"][path],
+                )
+                self.assertEqual(executable, self.evidence["executable"])
+
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                side_effect=fixture["fixture_digest"],
+            ):
+                live_inputs = LiveInputManifest.bind(
+                    context,
+                    {"m14-openttd-executable": fixture["executable"]},
+                )
+                with mock.patch.object(
+                    validate_opponent_package_evidence.acquire_ai_package,
+                    "validate_lock",
+                    side_effect=validate_lock,
+                ) as lock_reader, mock.patch.object(
+                    validate_opponent_package_evidence,
+                    "validate_rejection",
+                    side_effect=validate_rejection,
+                ) as rejection_reader:
+                    summary = validate_opponent_package_evidence.validate(
+                        self.root,
+                        fixture["evidence_path"],
+                        self.schema_path,
+                        artifact_context=context,
+                        live_inputs=live_inputs,
+                    )
+            self.assertTrue(summary.live_artifacts)
+            self.assertEqual(
+                [call.args[1] for call in lock_reader.call_args_list],
+                fixture["locked_paths"],
+            )
+            self.assertEqual(
+                [call.args[1] for call in rejection_reader.call_args_list],
+                fixture["rejection_paths"],
+            )
+            for path, expected in fixture["records"].items():
+                self.assertEqual(
+                    validate_opponent_package_evidence.load_json(path),
+                    expected,
+                )
+
+    def test_matching_digest_empty_retained_package_json_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_live_fixture(pathlib.Path(raw))
+            evidence = fixture["evidence"]
+            result = next(item for item in evidence["results"] if item["outcome"] == "LOCKED")
+            path = fixture["artifact_root"] / result["artifact_dir"] / result["evidence_file"]
+            path.write_text("{}\n", encoding="utf-8")
+            result["evidence_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+            fixture["evidence_path"].write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+            context = ArtifactContext.live(fixture["artifact_root"])
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                side_effect=fixture["fixture_digest"],
+            ):
+                live_inputs = LiveInputManifest.bind(
+                    context,
+                    {"m14-openttd-executable": fixture["executable"]},
+                )
+                with self.assertRaisesRegex(
+                    validate_opponent_package_evidence.OpponentEvidenceError,
+                    "AAAHogEx retained package evidence structure invalid: packages must be a nonempty list",
+                ):
+                    validate_opponent_package_evidence.validate(
+                        self.root,
+                        fixture["evidence_path"],
+                        self.schema_path,
+                        artifact_context=context,
+                        live_inputs=live_inputs,
+                    )
+
+    def test_matching_digest_malformed_package_list_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_live_fixture(pathlib.Path(raw))
+            evidence = fixture["evidence"]
+            result = next(item for item in evidence["results"] if item["outcome"] == "LOCKED")
+            path = fixture["artifact_root"] / result["artifact_dir"] / result["evidence_file"]
+            path.write_text('{"packages": {}}\n', encoding="utf-8")
+            result["evidence_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+            fixture["evidence_path"].write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+            context = ArtifactContext.live(fixture["artifact_root"])
+            with mock.patch.object(
+                artifact_context,
+                "_sha256_file",
+                side_effect=fixture["fixture_digest"],
+            ):
+                live_inputs = LiveInputManifest.bind(
+                    context,
+                    {"m14-openttd-executable": fixture["executable"]},
+                )
+                with self.assertRaisesRegex(
+                    validate_opponent_package_evidence.OpponentEvidenceError,
+                    "AAAHogEx retained package evidence structure invalid: packages must be a nonempty list",
+                ):
+                    validate_opponent_package_evidence.validate(
+                        self.root,
+                        fixture["evidence_path"],
+                        self.schema_path,
+                        artifact_context=context,
+                        live_inputs=live_inputs,
+                    )
+
+    def test_documented_live_package_command_uses_supported_interface(self) -> None:
+        arguments = self.documented_command_arguments("The live re-audit command is:")
+        parsed = validate_opponent_package_evidence.parse_args(arguments)
+        self.assertEqual(parsed.artifact_root, pathlib.Path("<common-root>"))
+        document = (
+            self.root / "docs/project/M14_OPPONENT_ACQUISITION.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("<common-root>/v2-live-inputs.json", document)
+        self.assertIn("m14-openttd-executable", document)
+        self.assertIn("no raw executable-path bypass", " ".join(document.split()))
+        with self.assertRaises(SystemExit) as raised, mock.patch(
+            "sys.stderr",
+            new=io.StringIO(),
+        ):
+            validate_opponent_package_evidence.parse_args([
+                "--artifact-base", "/tmp/artifacts", "--openttd", "/tmp/openttd",
+            ])
+        self.assertEqual(raised.exception.code, 2)
 
     def test_derived_artifacts_are_preflighted_before_helper_readers(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

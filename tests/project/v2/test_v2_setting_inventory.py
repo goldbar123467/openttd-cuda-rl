@@ -181,6 +181,40 @@ class SettingInventoryTests(unittest.TestCase):
                     SourceContext.live(repository, commit),
                 )
 
+    def test_live_generation_rejects_moved_setting_file(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            project, repository, _commit, _inventory_path = self.make_live_project(
+                pathlib.Path(raw)
+            )
+            source = (
+                repository
+                / generate_setting_inventory.SOURCE_ROOT
+                / "company_settings.ini"
+            )
+            moved = source.parent / "nested" / source.name
+            moved.parent.mkdir()
+            source.rename(moved)
+            self.git(repository, "add", ".")
+            self.git(repository, "commit", "-qm", "move setting source")
+            commit = self.git(repository, "rev-parse", "HEAD")
+            tree = self.git(repository, "rev-parse", f"{commit}^{{tree}}")
+            profile_path = project / "config/v1/openttd-source-profile.json"
+            profile = validate_setting_inventory.load_json(profile_path)
+            profile["upstream"]["commit"] = commit
+            profile["upstream"]["tree"] = tree
+            profile_path.write_text(
+                json.dumps(profile, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                generate_setting_inventory.SettingInventoryError,
+                "setting source paths differ from exact policy",
+            ):
+                generate_setting_inventory.build_inventory(
+                    project,
+                    SourceContext.live(repository, commit),
+                )
+
     def test_repository_inventory_passes_offline(self) -> None:
         static = validate_setting_inventory.validate(self.root)
         self.assertEqual(static.source_files, 20)

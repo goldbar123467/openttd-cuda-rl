@@ -56,17 +56,22 @@ packages, 4,341,760 archive bytes and 18 license files.
 | Trans AI 200626 | `LOCKED` | 1 package | `v2-m14-ai-trans-ai-c` |
 | WmDOT 16 | `LOCKED` | 7 packages | `v2-m14-ai-wmdot-b` |
 
-All artifact directories are below the evidence-base hint
-`/home/thecl/.codex/artifacts/openttd-rl`. Failed development attempts are not
-accepted evidence and are not referenced by the index.
+All artifact directories are logical sets below the caller-provided
+`<common-root>`. A frozen `artifact_base_hint` is historical identity only and is
+never dereferenced. Failed development attempts are not accepted evidence and are
+not referenced by the index.
+
+For live validation, `<common-root>/v2-live-inputs.json` binds the exact
+`m14-openttd-executable` role under that same common root. The validators check
+that binding, its frozen digest and every indexed artifact closure; there is no
+raw executable-path bypass.
 
 The live re-audit command is:
 
 ```text
 PYTHONPATH=scripts/v2 python3 scripts/v2/validate_opponent_package_evidence.py \
   --root . \
-  --artifact-base /home/thecl/.codex/artifacts/openttd-rl \
-  --openttd /home/thecl/.codex/artifacts/openttd-rl/m12-release-final-a/build/openttd-headless/openttd
+  --artifact-root <common-root>
 ```
 
 ## Runtime qualification
@@ -104,8 +109,7 @@ The full live matrix re-audit is:
 ```text
 PYTHONPATH=scripts/v2 python3 scripts/v2/validate_opponent_runtime_evidence.py \
   --root . \
-  --artifact-base /home/thecl/.codex/artifacts/openttd-rl \
-  --openttd /home/thecl/.codex/artifacts/openttd-rl/m12-release-final-a/build/openttd-headless/openttd
+  --artifact-root <common-root>
 ```
 
 ## Rejections

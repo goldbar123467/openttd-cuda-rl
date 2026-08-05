@@ -15,6 +15,7 @@ from unittest import mock
 
 import jsonschema
 
+import source_context
 import validate_research_baseline
 from source_context import SourceContext
 
@@ -144,17 +145,42 @@ class V2ResearchBaselineTests(unittest.TestCase):
             hostile = directory / "hostile"
             hostile.mkdir()
             self.git(hostile, "init", "-q")
-            with mock.patch.dict(
+            calls: list[tuple[tuple[str, ...], pathlib.Path | None]] = []
+            run_git = source_context.run_git
+
+            def recording_run_git(
+                *arguments: str,
+                repository: pathlib.Path | str | None = None,
+            ) -> subprocess.CompletedProcess[bytes]:
+                calls.append((arguments, None if repository is None else pathlib.Path(repository)))
+                return run_git(*arguments, repository=repository)
+
+            with mock.patch.object(
+                source_context,
+                "run_git",
+                side_effect=recording_run_git,
+            ), mock.patch.dict(
                 os.environ,
                 {"GIT_DIR": str(hostile / ".git"), "GIT_WORK_TREE": str(hostile)},
                 clear=False,
             ):
+                context = SourceContext.live(repository, commit)
                 summary = validate_research_baseline.validate(
                     project,
-                    source_context=SourceContext.live(repository, commit),
+                    source_context=context,
                 )
             self.assertTrue(summary.live_source)
             self.assertEqual(summary.commands, 145)
+            operations = [arguments for arguments, _repository in calls]
+            self.assertIn(("cat-file", "-e", f"{commit}^{{commit}}"), operations)
+            self.assertIn(("rev-parse", f"{commit}^{{tree}}"), operations)
+            self.assertIn(
+                ("show", f"{commit}:{self.baseline['engine']['command_source']}"),
+                operations,
+            )
+            self.assertTrue(
+                all(invocation_repository == repository for _, invocation_repository in calls)
+            )
 
     def test_missing_live_object_repository_is_a_preflight_failure(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
