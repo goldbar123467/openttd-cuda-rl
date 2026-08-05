@@ -4,247 +4,72 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 repository_root="$(cd -- "$script_dir/../.." && pwd -P)"
 tools_python="$(command -v python3)"
+tier="full"
+artifact_root=""
+tier_seen=0
+python_seen=0
+artifact_seen=0
 
-if (($#)); then
-    if (($# != 2)) || [[ "$1" != "--tools-python" ]]; then
-        echo "usage: $0 [--tools-python /absolute/path/to/python]" >&2
-        exit 2
-    fi
-    tools_python="$2"
-fi
+usage() {
+    cat <<EOF
+usage: scripts/v2/verify.sh [--tier fast|contract|full]
+                            [--tools-python /absolute/python]
+                            [--artifact-root /absolute/openttd-rl-artifacts]
+EOF
+}
 
-[[ "$tools_python" = /* && -x "$tools_python" ]] || {
-    echo "v2 verify: Python must be an executable absolute path" >&2
+argument_error() {
+    echo "v2 verify: $1" >&2
+    usage >&2
     exit 2
 }
 
-"$tools_python" "$repository_root/scripts/v2/validate_research_baseline.py" \
-    --root "$repository_root"
+while (($#)); do
+    case "$1" in
+        --help)
+            usage
+            exit 0
+            ;;
+        --tier)
+            ((tier_seen == 0)) || argument_error "duplicate --tier"
+            (($# >= 2)) || argument_error "missing value for --tier"
+            case "$2" in
+                fast|contract|full) tier="$2" ;;
+                *) argument_error "tier must be one of: fast, contract, full" ;;
+            esac
+            tier_seen=1
+            shift 2
+            ;;
+        --tools-python)
+            ((python_seen == 0)) || argument_error "duplicate --tools-python"
+            (($# >= 2)) || argument_error "missing value for --tools-python"
+            tools_python="$2"
+            python_seen=1
+            shift 2
+            ;;
+        --artifact-root)
+            ((artifact_seen == 0)) || argument_error "duplicate --artifact-root"
+            (($# >= 2)) || argument_error "missing value for --artifact-root"
+            artifact_root="$2"
+            artifact_seen=1
+            shift 2
+            ;;
+        *)
+            argument_error "unknown argument: $1"
+            ;;
+    esac
+done
 
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_setting_inventory.py" \
-    --root "$repository_root" \
-    --object-repo "$repository_root/openttd-upstream"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_opponent_package_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_opponent_runtime_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_competition_manifest.py" \
-    --root "$repository_root"
-
-"$tools_python" "$repository_root/scripts/v2/validate_m15_scalable_contract.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_policy_contract.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_policy_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/run_m15_map_matrix.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_native_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_native_reset_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/run_m15_native_reset_matrix.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_observation_contract.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_observation_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/freeze_m15_observation_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_action_contract.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_action_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/freeze_m15_action_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_episode_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/freeze_m15_episode_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_cross_scale_replay_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_competence_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m15_competence_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m16_cargo_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m16_cargo_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m17_rail_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m17_rail_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m18_ship_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m18_shipai_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m18_ship_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m19_air_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m19_air_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m20_competition_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m20_competition_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m21_broad_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m21_broad_evidence.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_learning_contract.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_native_corpus.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" -c \
-    'import pathlib,sys; import encode_m22_native_corpus as e; root=pathlib.Path(sys.argv[1]); data=e.encode(root); decoded=e.decode(data); print(f"V2_M22_CORPUS_BINARY=PASS entries={len(decoded.entries)} bytes={len(data)}")' \
-    "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_recovery_evidence.py" \
-    --root "$repository_root" \
-    --report "$repository_root/config/v2/m22-recovery-evidence.json"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_recovery_evidence.py" \
-    --root "$repository_root" \
-    --report "$repository_root/config/v2/m22-recovery-evidence-v2.json"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_training_evidence.py" \
-    --root "$repository_root" \
-    --report "$repository_root/config/v2/m22-training-evidence.json"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_qualification_evidence.py" \
-    --root "$repository_root" \
-    --report "$repository_root/config/v2/m22-qualification-evidence.json"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_final_runtime_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_followup_runtime_source.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/build_m22_followup_manifest.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_followup_manifest.py" \
-    --root "$repository_root"
-
-if PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_followup_evaluation.py" \
-    --root "$repository_root"; then
-    echo "Expected retained M22 follow-up-v1 evidence to remain FAIL" >&2
-    exit 1
+[[ "$tools_python" = /* && -f "$tools_python" && -x "$tools_python" ]] || \
+    argument_error "Python must be an executable absolute path"
+if ((artifact_seen)); then
+    [[ "$artifact_root" = /* ]] || argument_error "artifact root must be an absolute path"
+    artifact_args=(--artifact-root "$artifact_root")
 else
-    followup_evidence_status=$?
-    if [[ "$followup_evidence_status" -ne 2 ]]; then
-        exit "$followup_evidence_status"
-    fi
+    artifact_args=()
 fi
 
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/build_m22_followup_v2_manifest.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_followup_v2_manifest.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m22_followup_v2_evaluation.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" "$repository_root/scripts/v2/validate_m23_release_contract.py" \
-    --root "$repository_root"
-
-"$tools_python" "$repository_root/scripts/v2/validate_traceability.py" \
-    --root "$repository_root"
-
-PYTHONPATH="$repository_root/scripts/v2" \
-    "$tools_python" -m unittest discover \
-    -s "$repository_root/tests/project/v2" \
-    -p 'test_*.py' \
-    -v
-
-"$repository_root/scripts/v1/traceability.sh" --tools-python "$tools_python"
+PYTHONPATH="$repository_root/scripts/v2" exec "$tools_python" \
+    "$repository_root/scripts/v2/verify_driver.py" \
+    --root "$repository_root" --tier "$tier" \
+    --tools-python "$tools_python" "${artifact_args[@]}"
