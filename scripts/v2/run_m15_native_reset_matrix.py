@@ -17,6 +17,7 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import ArtifactContext, ArtifactContextError, ArtifactRequirement
 import qualify_m15_native_reset
 
 
@@ -24,6 +25,7 @@ SCHEMA = pathlib.Path("docs/project/schema/v2-m15-native-reset-matrix.schema.jso
 EVIDENCE = pathlib.Path("config/v2/m15-native-reset-matrix.json")
 EVIDENCE_NAME = "m15-native-reset-matrix.json"
 REPEAT_DIR = "repeat-0064x0064"
+LIVE_CONSUMER = "m15-native-reset-matrix"
 
 
 class M15NativeResetMatrixError(ValueError):
@@ -122,6 +124,69 @@ def summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _recorded_artifact_set(evidence: dict[str, Any]) -> str:
+    recorded_base = evidence["artifact_base_hint"]
+    base = pathlib.PurePosixPath(recorded_base)
+    require(
+        isinstance(recorded_base, str)
+        and recorded_base.startswith("/")
+        and not recorded_base.startswith("//")
+        and str(base) == recorded_base
+        and all(part not in {"", ".", ".."} for part in base.parts[1:]),
+        "M15 native reset matrix recorded artifact base is not an absolute normalized POSIX path",
+    )
+    logical_set = evidence["artifact_root"]
+    require(
+        isinstance(logical_set, str)
+        and logical_set not in {"", ".", ".."}
+        and "/" not in logical_set
+        and "\\" not in logical_set,
+        "M15 native reset matrix logical artifact set is invalid",
+    )
+    return logical_set
+
+
+def _requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    logical_set = _recorded_artifact_set(evidence)
+    requirements: list[ArtifactRequirement] = []
+    for item in evidence["results"]:
+        if item["outcome"] != "GENERATED":
+            continue
+        for filename, digest in (
+            (qualify_m15_native_reset.EVIDENCE_NAME, item["evidence_sha256"]),
+            (qualify_m15_native_reset.MANIFEST_NAME, item["manifest_sha256"]),
+            (qualify_m15_native_reset.PROJECTION_NAME, item["projection_sha256"]),
+            (qualify_m15_native_reset.TRANSCRIPT_NAME, item["transcript_sha256"]),
+        ):
+            requirements.append(ArtifactRequirement(
+                logical_set,
+                f"{item['artifact_dir']}/{filename}",
+                "file",
+                LIVE_CONSUMER,
+                digest,
+            ))
+    repeat = evidence["determinism"]
+    for filename, field in (
+        (qualify_m15_native_reset.EVIDENCE_NAME, "evidence_sha256"),
+        (qualify_m15_native_reset.MANIFEST_NAME, "manifest_sha256"),
+        (qualify_m15_native_reset.PROJECTION_NAME, "projection_sha256"),
+        (qualify_m15_native_reset.TRANSCRIPT_NAME, "transcript_sha256"),
+    ):
+        requirements.append(ArtifactRequirement(
+            logical_set,
+            f"{repeat['artifact_dir']}/{filename}",
+            "file",
+            LIVE_CONSUMER,
+            repeat[field],
+        ))
+    return tuple(requirements)
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    return _requirements(load_json(root / EVIDENCE))
+
+
 def run_matrix(root: pathlib.Path, openttd: pathlib.Path, opengfx: pathlib.Path, matrix_root: pathlib.Path, seed: int, *, workers: int = 2, sandbox: str = "bubblewrap") -> pathlib.Path:
     root = root.resolve()
     openttd = openttd.resolve()
@@ -164,11 +229,19 @@ def run_matrix(root: pathlib.Path, openttd: pathlib.Path, opengfx: pathlib.Path,
     }
     path = matrix_root / EVIDENCE_NAME
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-    validate(root, path, artifact_base=matrix_root.parent)
+    validate(root, path, artifact_context=ArtifactContext.live(matrix_root.parent))
     return path
 
 
-def validate(root: pathlib.Path, evidence_path: pathlib.Path | None = None, schema_path: pathlib.Path | None = None, *, artifact_base: pathlib.Path | None = None) -> M15NativeResetMatrixSummary:
+def validate(
+    root: pathlib.Path,
+    evidence_path: pathlib.Path | None = None,
+    schema_path: pathlib.Path | None = None,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> M15NativeResetMatrixSummary:
+    context = artifact_context or ArtifactContext.offline()
+    repository_evidence = evidence_path is None
     root = root.resolve()
     evidence_path = evidence_path or root / EVIDENCE
     schema_path = schema_path or root / SCHEMA
@@ -203,11 +276,16 @@ def validate(root: pathlib.Path, evidence_path: pathlib.Path | None = None, sche
     first = results[0]
     determinism = evidence["determinism"]
     require(determinism["manifest_sha256"] == first["manifest_sha256"] and determinism["projection_sha256"] == first["projection_sha256"], "M15 native reset deterministic repeat drifted")
+    logical_set = _recorded_artifact_set(evidence)
 
-    if artifact_base is not None:
-        artifact_base = artifact_base.resolve()
-        require(str(artifact_base) == evidence["artifact_base_hint"], "M15 native reset matrix artifact base drifted")
-        matrix_root = artifact_base / evidence["artifact_root"]
+    if context.is_live:
+        requirements = (
+            required_live_inputs(root)
+            if repository_evidence
+            else _requirements(evidence)
+        )
+        context.preflight(requirements)
+        matrix_root = context.artifact_set(logical_set)
         require(matrix_root.is_dir() and not matrix_root.is_symlink(), "M15 native reset matrix artifact root is missing or a symlink")
         for item in results:
             if item["outcome"] != "GENERATED":
@@ -220,7 +298,7 @@ def validate(root: pathlib.Path, evidence_path: pathlib.Path | None = None, sche
         repeat = generated_result(matrix_root, 64, 64, REPEAT_DIR)
         require({key: repeat[key] for key in ("width", "height", "artifact_dir", "manifest_sha256", "projection_sha256", "evidence_sha256", "transcript_sha256")} | {"byte_identical": True} == determinism, "M15 native reset live deterministic artifact drifted")
 
-    return M15NativeResetMatrixSummary(len(results), evidence["summary"]["generated"], evidence["summary"]["preflight_rejected"], evidence["summary"]["maximum_rss_kib"], artifact_base is not None)
+    return M15NativeResetMatrixSummary(len(results), evidence["summary"]["generated"], evidence["summary"]["preflight_rejected"], evidence["summary"]["maximum_rss_kib"], context.is_live)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -230,21 +308,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--opengfx", type=pathlib.Path)
     parser.add_argument("--artifact-root", type=pathlib.Path)
     parser.add_argument("--evidence", type=pathlib.Path)
-    parser.add_argument("--artifact-base", type=pathlib.Path)
     parser.add_argument("--seed", type=int, default=1110312784)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--sandbox", choices=("bubblewrap", "test-none"), default="bubblewrap")
-    args = parser.parse_args(argv or sys.argv[1:])
+    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    creation_options = (args.openttd, args.opengfx, args.artifact_root)
+    if any(value is not None for value in creation_options) and args.evidence is not None:
+        parser.error("creation options cannot be mixed with validation options")
     try:
         if args.artifact_root is not None:
-            require(args.openttd is not None and args.opengfx is not None and args.evidence is None and args.artifact_base is None, "matrix run requires --openttd/--opengfx and forbids validation-only options")
+            require(args.openttd is not None and args.opengfx is not None, "creation requires --openttd and --opengfx")
             path = run_matrix(args.root, args.openttd, args.opengfx, args.artifact_root, args.seed, workers=args.workers, sandbox=args.sandbox)
             print(f"V2_M15_NATIVE_RESET_MATRIX=GENERATED evidence={path} sha256={sha256_file(path)}")
             return 0
-        summary_value = validate(args.root, args.evidence, artifact_base=args.artifact_base)
+        require(args.openttd is None and args.opengfx is None, "creation requires --artifact-root")
+        summary_value = validate(
+            args.root,
+            args.evidence,
+            artifact_context=ArtifactContext.offline(),
+        )
         print(f"V2_M15_NATIVE_RESET_MATRIX=PASS rectangles={summary_value.rectangles} generated={summary_value.generated} preflight_rejected={summary_value.preflight_rejected} max_rss_kib={summary_value.maximum_rss_kib} live={str(summary_value.live).lower()}")
         return 0
-    except (M15NativeResetMatrixError, qualify_m15_native_reset.M15NativeResetError, OSError) as exc:
+    except (
+        M15NativeResetMatrixError,
+        qualify_m15_native_reset.M15NativeResetError,
+        ArtifactContextError,
+        OSError,
+    ) as exc:
         print(f"V2_M15_NATIVE_RESET_MATRIX=FAIL {exc}", file=sys.stderr)
         return 1
 

@@ -13,11 +13,19 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    add_artifact_root_argument,
+)
 import run_m15_cross_scale_replay
 
 
 CONFIG = pathlib.Path("config/v2/m15-cross-scale-replay-evidence.json")
 SCHEMA = pathlib.Path("docs/project/schema/v2-m15-cross-scale-replay-evidence.schema.json")
+LOGICAL_ARTIFACT_SET = "v2-m15-cross-scale-replay-a"
+LIVE_CONSUMER = "m15-cross-scale-replay"
 
 
 class M15CrossScaleReplayEvidenceError(ValueError):
@@ -54,13 +62,76 @@ def sha256_file(path: pathlib.Path) -> str:
         raise M15CrossScaleReplayEvidenceError(f"cannot hash {path}: {exc}") from exc
 
 
+def _recorded_artifact_set(config: dict[str, Any]) -> str:
+    recorded = config["artifact_root"]
+    path = pathlib.PurePosixPath(recorded)
+    require(
+        isinstance(recorded, str)
+        and recorded.startswith("/")
+        and not recorded.startswith("//")
+        and str(path) == recorded
+        and all(part not in {"", ".", ".."} for part in path.parts[1:]),
+        "cross-scale replay recorded artifact root is not an absolute normalized POSIX path",
+    )
+    require(path.name == LOGICAL_ARTIFACT_SET, "cross-scale replay logical artifact set drifted")
+    return path.name
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    config = load_json(root / CONFIG)
+    logical_set = _recorded_artifact_set(config)
+    requirements: list[ArtifactRequirement] = [
+        ArtifactRequirement(
+            logical_set,
+            "matrix-run.json",
+            "file",
+            LIVE_CONSUMER,
+            config["matrix_run_sha256"],
+        ),
+    ]
+    for case in config["cases"]:
+        for run in run_m15_cross_scale_replay.RUNS:
+            prefix = f"{case['case_id']}/{run}"
+            requirements.extend([
+                ArtifactRequirement(logical_set, f"{prefix}/episode-trace.json", "file", LIVE_CONSUMER, case["trace_sha256"]),
+                ArtifactRequirement(logical_set, f"{prefix}/reset-projection.json", "file", LIVE_CONSUMER, case["projection_sha256"]),
+                ArtifactRequirement(logical_set, f"{prefix}/resource.txt", "file", LIVE_CONSUMER),
+                ArtifactRequirement(logical_set, f"{prefix}/artifacts/reset-ready.sav", "file", LIVE_CONSUMER, case["checkpoint_sha256"]),
+            ])
+            for label in ("capture-branch-a", "capture-branch-b"):
+                requirements.extend([
+                    ArtifactRequirement(logical_set, f"{prefix}/artifacts/{label}.sav", "file", LIVE_CONSUMER, case["save_sha256"]),
+                    ArtifactRequirement(logical_set, f"{prefix}/artifacts/{label}-observation.json", "file", LIVE_CONSUMER),
+                    ArtifactRequirement(logical_set, f"{prefix}/artifacts/{label}-observation.bin", "file", LIVE_CONSUMER, case["observation_sha256"]),
+                    ArtifactRequirement(logical_set, f"{prefix}/artifacts/{label}-candidates.json", "file", LIVE_CONSUMER),
+                    ArtifactRequirement(logical_set, f"{prefix}/artifacts/{label}-candidates.bin", "file", LIVE_CONSUMER, case["candidate_sha256"]),
+                ])
+    return tuple(requirements)
+
+
+def expected_summary(cases: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "cases": len(cases),
+        "runs": len(cases) * len(run_m15_cross_scale_replay.RUNS),
+        "curriculum_cases": sum(item["tier"] == "curriculum" for item in cases),
+        "generalization_cases": sum(item["tier"] == "generalization" for item in cases),
+        "twin_process_exact": sum(item["twin_process_exact"] is True for item in cases),
+        "save_load_exact": sum(item["save_load_exact"] is True for item in cases),
+        "maximum_rss_kib": max(item["maximum_rss_kib"] for item in cases),
+        "maximum_wall_seconds": max(item["maximum_wall_seconds"] for item in cases),
+        "status": "PASS",
+    }
+
+
 def validate(
     root: pathlib.Path,
     config_path: pathlib.Path | None = None,
     schema_path: pathlib.Path | None = None,
     *,
-    artifact_root: pathlib.Path | None = None,
+    artifact_context: ArtifactContext | None = None,
 ) -> M15CrossScaleReplayEvidenceSummary:
+    context = artifact_context or ArtifactContext.offline()
     root = root.resolve()
     config_path, schema_path = config_path or root / CONFIG, schema_path or root / SCHEMA
     config, schema = load_json(config_path), load_json(schema_path)
@@ -92,12 +163,16 @@ def validate(
     digest_fields = ["projection_sha256", "trace_sha256", "checkpoint_sha256", "state_sha256", "save_sha256", "observation_sha256", "candidate_sha256", "candidate_semantic_sha256"]
     for case in config["cases"]:
         require(all(case[field] != "0" * 64 for field in digest_fields), f"cross-scale replay contains a zero digest: {case['case_id']}")
+    require(config["summary"] == expected_summary(config["cases"]), "cross-scale replay summary drifted")
+    logical_set = _recorded_artifact_set(config)
 
-    if artifact_root is not None:
-        artifact_root = artifact_root.resolve()
-        require(str(artifact_root) == config["artifact_root"], "cross-scale replay artifact root drifted")
-        require(sha256_file(artifact_root / "matrix-run.json") == config["matrix_run_sha256"], "cross-scale matrix-run digest drifted")
-        matrix = load_json(artifact_root / "matrix-run.json")
+    if context.is_live:
+        requirements = required_live_inputs(root)
+        context.preflight(requirements)
+        artifact_root = context.artifact_set(logical_set)
+        matrix_path = context.resolve(requirements[0])
+        require(sha256_file(matrix_path) == config["matrix_run_sha256"], "cross-scale matrix-run digest drifted")
+        matrix = load_json(matrix_path)
         require(matrix["outcome"] == "PASS" and matrix["program_sha256"] == config["program_sha256"] and len(matrix["cases"]) == 9, "cross-scale matrix-run summary drifted")
         for frozen, live_case in zip(config["cases"], matrix["cases"], strict=True):
             for field in ("case_id", "width", "height", "seed", "split", "tier"):
@@ -111,7 +186,7 @@ def validate(
             require(max(item["wall_seconds"] for item in projected) == frozen["maximum_wall_seconds"], f"cross-scale live wall time drifted: {frozen['case_id']}")
     return M15CrossScaleReplayEvidenceSummary(
         config["summary"]["cases"], config["summary"]["runs"], config["summary"]["maximum_rss_kib"],
-        config["summary"]["maximum_wall_seconds"], artifact_root is not None,
+        config["summary"]["maximum_wall_seconds"], context.is_live,
     )
 
 
@@ -120,13 +195,29 @@ def main() -> int:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--config", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--artifact-root", type=pathlib.Path)
+    add_artifact_root_argument(parser)
     args = parser.parse_args()
     try:
-        summary = validate(args.root, args.config, args.schema, artifact_root=args.artifact_root)
+        context = (
+            ArtifactContext.offline()
+            if args.artifact_root is None
+            else ArtifactContext.live(args.artifact_root)
+        )
+        summary = validate(
+            args.root,
+            args.config,
+            args.schema,
+            artifact_context=context,
+        )
         print(f"V2_M15_CROSS_SCALE_REPLAY_EVIDENCE=PASS cases={summary.cases} runs={summary.runs} max_rss_kib={summary.maximum_rss_kib} max_wall_seconds={summary.maximum_wall_seconds} live={str(summary.live).lower()}")
         return 0
-    except (M15CrossScaleReplayEvidenceError, run_m15_cross_scale_replay.M15CrossScaleReplayError, OSError, ValueError) as exc:
+    except (
+        M15CrossScaleReplayEvidenceError,
+        run_m15_cross_scale_replay.M15CrossScaleReplayError,
+        ArtifactContextError,
+        OSError,
+        ValueError,
+    ) as exc:
         print(f"V2_M15_CROSS_SCALE_REPLAY_EVIDENCE=FAIL {exc}", file=sys.stderr)
         return 1
 

@@ -13,6 +13,12 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    add_artifact_root_argument,
+)
 import qualify_m15_native_reset
 
 
@@ -26,6 +32,8 @@ EXPECTED = [
     ("512x128-a", "qualified-512x128-a", 512, 128),
     ("1024-a", "qualified-1024-a", 1024, 1024),
 ]
+LOGICAL_ARTIFACT_SET = "v2-m15-native-a"
+LIVE_CONSUMER = "m15-native-reset-evidence"
 
 
 class M15NativeResetEvidenceError(ValueError):
@@ -94,7 +102,52 @@ def expected_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def validate(root: pathlib.Path, evidence_path: pathlib.Path | None = None, schema_path: pathlib.Path | None = None, *, artifact_base: pathlib.Path | None = None) -> M15NativeResetEvidenceSummary:
+def _recorded_artifact_set(evidence: dict[str, Any]) -> str:
+    recorded = evidence["artifact_base_hint"]
+    path = pathlib.PurePosixPath(recorded)
+    require(
+        isinstance(recorded, str)
+        and recorded.startswith("/")
+        and not recorded.startswith("//")
+        and str(path) == recorded
+        and all(part not in {"", ".", ".."} for part in path.parts[1:]),
+        "M15 native reset recorded artifact base is not an absolute normalized POSIX path",
+    )
+    require(path.name == LOGICAL_ARTIFACT_SET, "M15 native reset logical artifact set drifted")
+    return path.name
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    evidence = load_json(root / EVIDENCE)
+    logical_set = _recorded_artifact_set(evidence)
+    requirements: list[ArtifactRequirement] = []
+    for result in evidence["results"]:
+        directory = result["artifact_dir"]
+        for filename, digest in (
+            (qualify_m15_native_reset.EVIDENCE_NAME, result["evidence_sha256"]),
+            (qualify_m15_native_reset.MANIFEST_NAME, result["manifest_sha256"]),
+            (qualify_m15_native_reset.PROJECTION_NAME, result["projection_sha256"]),
+            (qualify_m15_native_reset.TRANSCRIPT_NAME, result["transcript_sha256"]),
+        ):
+            requirements.append(ArtifactRequirement(
+                logical_set,
+                f"{directory}/{filename}",
+                "file",
+                LIVE_CONSUMER,
+                digest,
+            ))
+    return tuple(requirements)
+
+
+def validate(
+    root: pathlib.Path,
+    evidence_path: pathlib.Path | None = None,
+    schema_path: pathlib.Path | None = None,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> M15NativeResetEvidenceSummary:
+    context = artifact_context or ArtifactContext.offline()
     root = root.resolve()
     evidence_path = evidence_path or root / EVIDENCE
     schema_path = schema_path or root / SCHEMA
@@ -115,10 +168,11 @@ def validate(root: pathlib.Path, evidence_path: pathlib.Path | None = None, sche
     require(all(item["towns"] == max(2, min(128, item["width"] * item["height"] // 4096)) for item in results), "M15 native reset town target drifted")
     require(results[0]["projection_sha256"] == results[1]["projection_sha256"], "same-manifest native reset projections differ")
     require(evidence["summary"] == expected_summary(results), "M15 native reset summary drifted")
+    logical_set = _recorded_artifact_set(evidence)
 
-    if artifact_base is not None:
-        artifact_base = artifact_base.resolve()
-        require(str(artifact_base) == evidence["artifact_base_hint"], "M15 native reset artifact base drifted")
+    if context.is_live:
+        context.preflight(required_live_inputs(root))
+        artifact_base = context.artifact_set(logical_set)
         for expected, result in zip(EXPECTED, results, strict=True):
             run, artifact_dir, width, height = expected
             artifact = artifact_base / artifact_dir
@@ -136,21 +190,36 @@ def validate(root: pathlib.Path, evidence_path: pathlib.Path | None = None, sche
             projection = qualify_m15_native_reset.validate_projection(root, manifest, projection_path)
             require(projection["state"]["counts"]["towns"] == result["towns"], f"M15 reset town count drifted: {artifact_dir}")
 
-    return M15NativeResetEvidenceSummary(len(results), evidence["summary"]["distinct_rectangles"], evidence["summary"]["maximum_rss_kib"], artifact_base is not None)
+    return M15NativeResetEvidenceSummary(len(results), evidence["summary"]["distinct_rectangles"], evidence["summary"]["maximum_rss_kib"], context.is_live)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--evidence", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--artifact-base", type=pathlib.Path)
-    args = parser.parse_args()
+    add_artifact_root_argument(parser)
+    args = parser.parse_args(argv)
     try:
-        summary = validate(args.root, args.evidence, args.schema, artifact_base=args.artifact_base)
+        context = (
+            ArtifactContext.offline()
+            if args.artifact_root is None
+            else ArtifactContext.live(args.artifact_root)
+        )
+        summary = validate(
+            args.root,
+            args.evidence,
+            args.schema,
+            artifact_context=context,
+        )
         print(f"V2_M15_NATIVE_RESET_EVIDENCE=PASS runs={summary.runs} rectangles={summary.rectangles} max_rss_kib={summary.maximum_rss_kib} live={str(summary.live).lower()}")
         return 0
-    except (M15NativeResetEvidenceError, qualify_m15_native_reset.M15NativeResetError, OSError) as exc:
+    except (
+        M15NativeResetEvidenceError,
+        qualify_m15_native_reset.M15NativeResetError,
+        ArtifactContextError,
+        OSError,
+    ) as exc:
         print(f"V2_M15_NATIVE_RESET_EVIDENCE=FAIL {exc}")
         return 1
 
