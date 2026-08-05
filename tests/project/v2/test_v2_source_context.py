@@ -212,6 +212,118 @@ class V2SourceContextTests(unittest.TestCase):
             self.assertEqual((target / "tracked.txt").read_bytes(), b"patched\n")
             self.assertRegex(tree.stdout, rb"^[0-9a-f]{40}\n$")
 
+    def test_run_git_rejects_repository_mutation_and_unsupported_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            repository, pinned = self.repository(root, "source", "source\n")
+            isolated_home = root / "isolated-home"
+            isolated_home.mkdir()
+            rejected = (
+                ("config", "--global", "task2.escape", "written"),
+                ("config", "--system", "--get", "task2.escape"),
+                ("config", "--local", "task2.escape", "written"),
+                ("branch", "escape"),
+                ("status", "--porcelain", "extra"),
+                ("rev-parse", "HEAD", "extra"),
+                ("show", "HEAD:tracked.txt", "extra"),
+                ("cat-file", "-p", pinned, "extra"),
+                ("write-tree", "extra"),
+                ("status", "--global", "--porcelain"),
+            )
+
+            with mock.patch.dict(os.environ, {"HOME": str(isolated_home)}, clear=False):
+                for arguments in rejected:
+                    with self.subTest(arguments=arguments), self.assertRaisesRegex(
+                        SourceContextError,
+                        "unsupported Git command shape",
+                    ):
+                        source_context.run_git(*arguments, repository=repository)
+
+            self.assertFalse((isolated_home / ".gitconfig").exists())
+            self.assertNotIn("task2.escape", (repository / ".git/config").read_text())
+
+    def test_run_git_apply_requires_exact_options_and_safe_patch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            repository, _ = self.repository(root, "source", "base\n")
+            patch = root / "change.patch"
+            patch.write_text(
+                "diff --git a/tracked.txt b/tracked.txt\n"
+                "--- a/tracked.txt\n"
+                "+++ b/tracked.txt\n"
+                "@@ -1 +1 @@\n"
+                "-base\n"
+                "+patched\n",
+                encoding="utf-8",
+            )
+            linked_patch = root / "linked.patch"
+            linked_patch.symlink_to(patch)
+            patch_directory = root / "patch-directory"
+            patch_directory.mkdir()
+            rejected = (
+                ("apply", "--unsafe-paths", "--check", "--whitespace=error-all", str(patch)),
+                ("apply", "--check", "--directory=../escape", "--whitespace=error-all", str(patch)),
+                ("apply", "--check", "--whitespace=error-all", "relative.patch"),
+                ("apply", "--check", "--whitespace=error-all", str(linked_patch)),
+                ("apply", "--check", "--whitespace=error-all", str(patch_directory)),
+                ("apply", "--check", "--whitespace=error-all", f"{root}/./change.patch"),
+                ("apply", "--check", "--whitespace=error-all", str(patch), str(patch)),
+                ("apply", "--check", str(patch)),
+            )
+
+            for arguments in rejected:
+                with self.subTest(arguments=arguments), self.assertRaisesRegex(
+                    SourceContextError,
+                    "unsupported Git command shape|patch",
+                ):
+                    source_context.run_git(*arguments, repository=repository)
+
+    def test_run_git_clone_requires_exact_absolute_source_and_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            source, _ = self.repository(root, "source", "source\n")
+            source_child = source / "ordinary-child"
+            source_child.mkdir()
+            linked_source = root / "linked-source"
+            linked_source.symlink_to(source, target_is_directory=True)
+            nonrepository = root / "nonrepository"
+            nonrepository.mkdir()
+            existing_destination = root / "existing-destination"
+            existing_destination.mkdir()
+            linked_destination = root / "linked-destination"
+            linked_destination.symlink_to(root / "missing-destination")
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            rejected = (
+                ("clone", ".", str(root / "ambient-target")),
+                ("clone", str(source_child), str(root / "child-target")),
+                ("clone", str(linked_source), str(root / "linked-source-target")),
+                ("clone", str(nonrepository), str(root / "nonrepository-target")),
+                ("clone", f"{source}/.", str(root / "ambiguous-source-target")),
+                ("clone", str(source), "relative-target"),
+                ("clone", str(source), str(existing_destination)),
+                ("clone", str(source), str(linked_destination)),
+                ("clone", str(source), str(linked_parent / "target")),
+                ("clone", str(source), str(root / "missing-parent/target")),
+                ("clone", str(source), f"{root}/./ambiguous-target"),
+                ("clone", "--shared", str(source), str(root / "shared-target")),
+                ("clone", str(source), str(root / "extra-target"), "extra"),
+            )
+
+            previous = pathlib.Path.cwd()
+            try:
+                os.chdir(source)
+                for arguments in rejected:
+                    with self.subTest(arguments=arguments), self.assertRaisesRegex(
+                        SourceContextError,
+                        "controlled clone",
+                    ):
+                        source_context.run_git(*arguments)
+            finally:
+                os.chdir(previous)
+
     def test_run_git_rejects_scope_overrides_and_ambient_commands(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
