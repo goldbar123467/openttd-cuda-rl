@@ -13,6 +13,7 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import ArtifactContext, ArtifactRequirement
 import qualify_m15_native_reset
 import qualify_m15_observation
 
@@ -24,6 +25,8 @@ SOURCE = pathlib.Path("config/v2/m15-observation-source.json")
 METADATA_SCHEMA = pathlib.Path("docs/project/schema/v2-m15-observation-metadata.schema.json")
 CASE_DIRS = ["reset-0064x0064", "reset-0064x0256", "reset-0512x0128", "reset-1024x1024"]
 REPEAT_DIR = "repeat-0064x0064"
+LOGICAL_ARTIFACT_SET = "v2-m15-observation-evidence-c"
+LIVE_CONSUMER = "m15-observation-evidence"
 
 
 class M15ObservationEvidenceError(ValueError):
@@ -97,6 +100,51 @@ def summarize(cases: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _recorded_artifact_set(config: dict[str, Any]) -> str:
+    recorded_base = config["artifact_base_hint"]
+    parts = recorded_base.split("/")
+    require(
+        recorded_base.startswith("/")
+        and not recorded_base.startswith("//")
+        and all(part not in {"", ".", ".."} for part in parts[1:]),
+        "M15 observation recorded artifact base is not an absolute normalized POSIX path",
+    )
+    require(
+        config["artifact_root"] == LOGICAL_ARTIFACT_SET,
+        "M15 observation logical artifact set drifted",
+    )
+    return config["artifact_root"]
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    config = load_json(root / CONFIG)
+    logical_set = _recorded_artifact_set(config)
+    requirements: list[ArtifactRequirement] = []
+    case_records = {item["artifact_dir"]: item for item in config["cases"]}
+    for directory in (*CASE_DIRS, REPEAT_DIR):
+        record = case_records.get(directory)
+        if record is None:
+            record = config["determinism"]
+        digests = {
+            "observation-evidence.json": record.get("evidence_sha256"),
+            "reset-manifest.json": record["manifest_sha256"],
+            "reset-projection.json": record["projection_sha256"],
+            "observation-metadata.json": record["metadata_sha256"],
+            "observation-metadata.bin": record["binary_sha256"],
+            "openttd-observation.log": record.get("transcript_sha256"),
+        }
+        for filename, digest in digests.items():
+            requirements.append(ArtifactRequirement(
+                logical_set,
+                f"{directory}/{filename}",
+                "file",
+                LIVE_CONSUMER,
+                digest,
+            ))
+    return tuple(requirements)
+
+
 def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path) -> pathlib.Path:
     root, artifact_root, output = root.resolve(), artifact_root.resolve(), output.resolve()
     require(artifact_root.is_dir() and not artifact_root.is_symlink(), "observation artifact root is missing or a symlink")
@@ -126,11 +174,22 @@ def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-    validate(root, output, artifact_base=artifact_root.parent)
+    validate(
+        root,
+        output,
+        artifact_context=ArtifactContext.live(artifact_root.parent),
+    )
     return output
 
 
-def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema_path: pathlib.Path | None = None, *, artifact_base: pathlib.Path | None = None) -> M15ObservationEvidenceSummary:
+def validate(
+    root: pathlib.Path,
+    config_path: pathlib.Path | None = None,
+    schema_path: pathlib.Path | None = None,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> M15ObservationEvidenceSummary:
+    context = artifact_context or ArtifactContext.offline()
     root = root.resolve()
     config_path, schema_path = config_path or root / CONFIG, schema_path or root / SCHEMA
     config, schema = load_json(config_path), load_json(schema_path)
@@ -152,18 +211,17 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema
     require(config["cases"][-1]["omitted_industries"] > 0, "M15 observation overflow evidence disappeared")
     primary = config["cases"][0]
     require(all(config["determinism"][key] == primary[key] for key in ("manifest_sha256", "projection_sha256", "metadata_sha256", "binary_sha256")), "M15 observation deterministic lock drifted")
+    logical_set = _recorded_artifact_set(config)
 
-    if artifact_base is not None:
-        artifact_base = artifact_base.resolve()
-        require(str(artifact_base) == config["artifact_base_hint"], "M15 observation artifact base drifted")
-        artifact_root = artifact_base / config["artifact_root"]
+    if context.is_live:
+        artifact_root = context.artifact_set(logical_set)
         require(artifact_root.is_dir() and not artifact_root.is_symlink(), "M15 observation live artifact root is missing or a symlink")
         live_cases = [case_from_artifact(root, artifact_root, directory) for directory in CASE_DIRS]
         require(live_cases == config["cases"], "M15 observation live cases drifted")
         repeat = case_from_artifact(root, artifact_root, REPEAT_DIR)
         for key in ("manifest_sha256", "projection_sha256", "metadata_sha256", "binary_sha256"):
             require(repeat[key] == primary[key], f"M15 observation live deterministic repeat {key} drifted")
-    return M15ObservationEvidenceSummary(len(config["cases"]), config["summary"]["passed"], config["summary"]["maximum_rss_kib"], artifact_base is not None)
+    return M15ObservationEvidenceSummary(len(config["cases"]), config["summary"]["passed"], config["summary"]["maximum_rss_kib"], context.is_live)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -171,17 +229,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--artifact-root", type=pathlib.Path)
     parser.add_argument("--output", type=pathlib.Path)
-    parser.add_argument("--config", type=pathlib.Path)
-    parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--artifact-base", type=pathlib.Path)
-    args = parser.parse_args(argv or sys.argv[1:])
+    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     try:
         if args.artifact_root is not None:
-            require(args.output is not None and args.config is None and args.artifact_base is None, "freeze requires --output and forbids validation-only options")
+            require(args.output is not None, "creation requires --output")
             path = freeze(args.root, args.artifact_root, args.output)
             print(f"V2_M15_OBSERVATION_EVIDENCE=FROZEN path={path} sha256={sha256_file(path)}")
             return 0
-        summary = validate(args.root, args.config, args.schema, artifact_base=args.artifact_base)
+        require(args.output is None, "creation requires --artifact-root and --output")
+        summary = validate(args.root, artifact_context=ArtifactContext.offline())
         print(f"V2_M15_OBSERVATION_EVIDENCE=PASS cases={summary.cases} passed={summary.passed} max_rss_kib={summary.maximum_rss_kib} live={str(summary.live).lower()}")
         return 0
     except (M15ObservationEvidenceError, qualify_m15_observation.M15ObservationError, qualify_m15_native_reset.M15NativeResetError, OSError) as exc:

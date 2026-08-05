@@ -15,6 +15,7 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import ArtifactContext, ArtifactRequirement
 
 SCHEMA = pathlib.Path("docs/project/schema/v2-m15-episode-evidence.schema.json")
 CONFIG = pathlib.Path("config/v2/m15-episode-evidence.json")
@@ -28,6 +29,8 @@ TRACE_SCHEMA = pathlib.Path("docs/project/schema/v2-m15-episode-trace.schema.jso
 RUN_DIRS = ["run-a", "run-b"]
 FAMILIES = ["WAIT", "SELECT_TOWN_PAIR", "BUILD_ROAD_PATH", "BUILD_BUS_STOP", "BUILD_ROAD_DEPOT", "BUY_BUS", "SET_ROUTE", "START_VEHICLE", "STOP_VEHICLE", "SEND_TO_DEPOT", "SELL_VEHICLE", "MANAGE_LOAN"]
 COMMANDS = {"WAIT": [], "SELECT_TOWN_PAIR": [], "BUILD_ROAD_PATH": ["CMD_BUILD_ROAD"], "BUILD_BUS_STOP": ["CMD_BUILD_ROAD_STOP"], "BUILD_ROAD_DEPOT": ["CMD_BUILD_ROAD_DEPOT"], "BUY_BUS": ["CMD_BUILD_VEHICLE"], "SET_ROUTE": ["CMD_DELETE_ORDER_ALL", "CMD_INSERT_ORDER", "CMD_INSERT_ORDER"], "START_VEHICLE": ["CMD_START_STOP_VEHICLE"], "STOP_VEHICLE": ["CMD_START_STOP_VEHICLE"], "SEND_TO_DEPOT": ["CMD_SEND_VEHICLE_TO_DEPOT"], "SELL_VEHICLE": ["CMD_SELL_VEHICLE"], "MANAGE_LOAN": ["CMD_INCREASE_LOAN"]}
+LOGICAL_ARTIFACT_SET = "v2-m15-episode-evidence-a"
+LIVE_CONSUMER = "m15-episode-evidence"
 
 
 class M15EpisodeEvidenceError(ValueError):
@@ -178,6 +181,58 @@ def summarize(runs: list[dict[str, Any]]) -> dict[str, Any]:
     return {"runs": len(runs), "passed": sum(item["outcome"] == "PASS" for item in runs), "transitions_per_run": runs[0]["transitions"], "action_steps_per_run": runs[0]["action_steps"], "native_commands_per_run": runs[0]["native_commands"], "maximum_rss_kib": max(item["maximum_rss_kib"] for item in runs), "maximum_wall_seconds": max(item["wall_seconds"] for item in runs)}
 
 
+def _recorded_artifact_set(config: dict[str, Any]) -> str:
+    recorded_base = config["artifact_base_hint"]
+    parts = recorded_base.split("/")
+    require(
+        recorded_base.startswith("/")
+        and not recorded_base.startswith("//")
+        and all(part not in {"", ".", ".."} for part in parts[1:]),
+        "M15 episode recorded artifact base is not an absolute normalized POSIX path",
+    )
+    require(
+        config["artifact_root"] == LOGICAL_ARTIFACT_SET,
+        "M15 episode logical artifact set drifted",
+    )
+    return config["artifact_root"]
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    config = load_json(root / CONFIG)
+    logical_set = _recorded_artifact_set(config)
+    requirements: list[ArtifactRequirement] = []
+    for record in config["runs"]:
+        directory = record["artifact_dir"]
+        fixed_files = (
+            ("episode-trace.json", record["trace_sha256"]),
+            ("reset-projection.json", record["projection_sha256"]),
+            ("resource.txt", None),
+            ("artifacts/route-ready.sav", record["checkpoint"]["save_sha256"]),
+        )
+        replay = record["replay"]
+        capture_files = tuple(
+            (f"artifacts/capture-branch-{branch}{suffix}", digest)
+            for branch in ("a", "b")
+            for suffix, digest in (
+                (".sav", replay["save_sha256"]),
+                ("-observation.json", None),
+                ("-observation.bin", replay["observation_sha256"]),
+                ("-candidates.json", None),
+                ("-candidates.bin", replay["candidate_sha256"]),
+            )
+        )
+        for filename, digest in fixed_files + capture_files:
+            requirements.append(ArtifactRequirement(
+                logical_set,
+                f"{directory}/{filename}",
+                "file",
+                LIVE_CONSUMER,
+                digest,
+            ))
+    return tuple(requirements)
+
+
 def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path) -> pathlib.Path:
     root, artifact_root, output = root.resolve(), artifact_root.resolve(), output.resolve()
     require(artifact_root.is_dir() and not artifact_root.is_symlink(), "episode artifact root is missing or a symlink")
@@ -196,11 +251,22 @@ def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-    validate(root, output, artifact_base=artifact_root.parent)
+    validate(
+        root,
+        output,
+        artifact_context=ArtifactContext.live(artifact_root.parent),
+    )
     return output
 
 
-def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema_path: pathlib.Path | None = None, *, artifact_base: pathlib.Path | None = None) -> M15EpisodeEvidenceSummary:
+def validate(
+    root: pathlib.Path,
+    config_path: pathlib.Path | None = None,
+    schema_path: pathlib.Path | None = None,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> M15EpisodeEvidenceSummary:
+    context = artifact_context or ArtifactContext.offline()
     root = root.resolve()
     config_path, schema_path = config_path or root / CONFIG, schema_path or root / SCHEMA
     config, schema = load_json(config_path), load_json(schema_path)
@@ -213,12 +279,11 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema
     require([item["artifact_dir"] for item in config["runs"]] == RUN_DIRS, "M15 episode run ordering drifted")
     require(config["summary"] == summarize(config["runs"]), "M15 episode evidence summary drifted")
     require(config["runs"][0]["trace_sha256"] == config["runs"][1]["trace_sha256"] == config["determinism"]["trace_sha256"], "M15 episode deterministic trace lock drifted")
-    if artifact_base is not None:
-        artifact_base = artifact_base.resolve()
-        require(str(artifact_base) == config["artifact_base_hint"], "M15 episode artifact base drifted")
-        artifact_root = artifact_base / config["artifact_root"]
+    logical_set = _recorded_artifact_set(config)
+    if context.is_live:
+        artifact_root = context.artifact_set(logical_set)
         require([project_run(root, artifact_root, directory) for directory in RUN_DIRS] == config["runs"], "M15 episode live runs drifted")
-    return M15EpisodeEvidenceSummary(len(config["runs"]), config["summary"]["transitions_per_run"], len(config["runs"][0]["coverage"]), config["summary"]["maximum_rss_kib"], artifact_base is not None)
+    return M15EpisodeEvidenceSummary(len(config["runs"]), config["summary"]["transitions_per_run"], len(config["runs"][0]["coverage"]), config["summary"]["maximum_rss_kib"], context.is_live)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -226,17 +291,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--artifact-root", type=pathlib.Path)
     parser.add_argument("--output", type=pathlib.Path)
-    parser.add_argument("--config", type=pathlib.Path)
-    parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--artifact-base", type=pathlib.Path)
-    args = parser.parse_args(argv or sys.argv[1:])
+    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     try:
         if args.artifact_root is not None:
-            require(args.output is not None and args.config is None and args.artifact_base is None, "freeze requires --output and forbids validation-only options")
+            require(args.output is not None, "creation requires --output")
             path = freeze(args.root, args.artifact_root, args.output)
             print(f"V2_M15_EPISODE_EVIDENCE=FROZEN path={path} sha256={sha256_file(path)}")
             return 0
-        summary = validate(args.root, args.config, args.schema, artifact_base=args.artifact_base)
+        require(args.output is None, "creation requires --artifact-root and --output")
+        summary = validate(args.root, artifact_context=ArtifactContext.offline())
         print(f"V2_M15_EPISODE_EVIDENCE=PASS runs={summary.runs} transitions={summary.transitions} families={summary.families} max_rss_kib={summary.maximum_rss_kib} live={str(summary.live).lower()}")
         return 0
     except (M15EpisodeEvidenceError, OSError, ValueError) as exc:

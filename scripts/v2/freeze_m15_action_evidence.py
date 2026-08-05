@@ -13,6 +13,7 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import ArtifactContext, ArtifactRequirement
 import qualify_m15_action
 import qualify_m15_native_reset
 import qualify_m15_observation
@@ -30,6 +31,8 @@ RESULT_SCHEMA = pathlib.Path("docs/project/schema/v2-m15-action-result.schema.js
 MAP_DIRS = ["reset-0064x0064", "reset-0064x0256", "reset-0512x0128", "reset-1024x1024"]
 REPEAT_DIR = "repeat-0064x0064"
 ACTION_DIRS = [item[0] for item in run_m15_action_evidence.POSITIVE_CASES + run_m15_action_evidence.NEGATIVE_CASES]
+LOGICAL_ARTIFACT_SET = "v2-m15-action-evidence-a"
+LIVE_CONSUMER = "m15-action-evidence"
 
 
 class M15ActionEvidenceError(ValueError):
@@ -116,6 +119,69 @@ def summarize(map_cases: list[dict[str, Any]], action_cases: list[dict[str, Any]
     }
 
 
+def _recorded_artifact_set(config: dict[str, Any]) -> str:
+    recorded_base = config["artifact_base_hint"]
+    parts = recorded_base.split("/")
+    require(
+        recorded_base.startswith("/")
+        and not recorded_base.startswith("//")
+        and all(part not in {"", ".", ".."} for part in parts[1:]),
+        "M15 action recorded artifact base is not an absolute normalized POSIX path",
+    )
+    require(
+        config["artifact_root"] == LOGICAL_ARTIFACT_SET,
+        "M15 action logical artifact set drifted",
+    )
+    return config["artifact_root"]
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    config = load_json(root / CONFIG)
+    logical_set = _recorded_artifact_set(config)
+    requirements: list[ArtifactRequirement] = []
+
+    map_records = {item["artifact_dir"]: item for item in config["map_cases"]}
+    for directory in (*MAP_DIRS, REPEAT_DIR):
+        record = map_records.get(directory)
+        if record is None:
+            record = config["determinism"]
+        digests = {
+            "action-evidence.json": record.get("evidence_sha256"),
+            "reset-manifest.json": record.get("manifest_sha256"),
+            "reset-projection.json": record.get("projection_sha256"),
+            "observation-metadata.json": None,
+            "observation-metadata.bin": record["observation_sha256"],
+            "candidate-metadata.json": record["candidate_metadata_sha256"],
+            "candidate-metadata.bin": record["candidate_binary_sha256"],
+            "openttd-action.log": record.get("transcript_sha256"),
+        }
+        for filename, digest in digests.items():
+            requirements.append(ArtifactRequirement(
+                logical_set,
+                f"{directory}/{filename}",
+                "file",
+                LIVE_CONSUMER,
+                digest,
+            ))
+
+    for record in config["action_cases"]:
+        directory = record["artifact_dir"]
+        for filename, field in (
+            ("action-request.json", "request_sha256"),
+            ("action-result.json", "result_sha256"),
+            ("action-evidence.json", "evidence_sha256"),
+        ):
+            requirements.append(ArtifactRequirement(
+                logical_set,
+                f"{directory}/{filename}",
+                "file",
+                LIVE_CONSUMER,
+                record[field],
+            ))
+    return tuple(requirements)
+
+
 def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path) -> pathlib.Path:
     root, artifact_root, output = root.resolve(), artifact_root.resolve(), output.resolve()
     require(artifact_root.is_dir() and not artifact_root.is_symlink(), "action artifact root is missing or a symlink")
@@ -142,11 +208,22 @@ def freeze(root: pathlib.Path, artifact_root: pathlib.Path, output: pathlib.Path
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-    validate(root, output, artifact_base=artifact_root.parent)
+    validate(
+        root,
+        output,
+        artifact_context=ArtifactContext.live(artifact_root.parent),
+    )
     return output
 
 
-def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema_path: pathlib.Path | None = None, *, artifact_base: pathlib.Path | None = None) -> M15ActionEvidenceSummary:
+def validate(
+    root: pathlib.Path,
+    config_path: pathlib.Path | None = None,
+    schema_path: pathlib.Path | None = None,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> M15ActionEvidenceSummary:
+    context = artifact_context or ArtifactContext.offline()
     root = root.resolve()
     config_path, schema_path = config_path or root / CONFIG, schema_path or root / SCHEMA
     config, schema = load_json(config_path), load_json(schema_path)
@@ -168,17 +245,16 @@ def validate(root: pathlib.Path, config_path: pathlib.Path | None = None, schema
     require(all(not item["mutated"] and item["command_count"] == 0 and item["tick_delta"] == 0 for item in config["action_cases"][-4:]), "M15 negative action invariant drifted")
     primary = config["map_cases"][0]
     require(all(config["determinism"][key] == primary[key] for key in ("observation_sha256", "candidate_metadata_sha256", "candidate_binary_sha256", "snapshot_token")), "M15 action deterministic lock drifted")
-    if artifact_base is not None:
-        artifact_base = artifact_base.resolve()
-        require(str(artifact_base) == config["artifact_base_hint"], "M15 action artifact base drifted")
-        artifact_root = artifact_base / config["artifact_root"]
+    logical_set = _recorded_artifact_set(config)
+    if context.is_live:
+        artifact_root = context.artifact_set(logical_set)
         require(artifact_root.is_dir() and not artifact_root.is_symlink(), "M15 action live artifact root is missing or a symlink")
         require([map_case_from_artifact(root, artifact_root, directory) for directory in MAP_DIRS] == config["map_cases"], "M15 action live map cases drifted")
         require([action_case_from_artifact(root, artifact_root, directory) for directory in ACTION_DIRS] == config["action_cases"], "M15 action live action cases drifted")
         repeat = map_case_from_artifact(root, artifact_root, REPEAT_DIR)
         for key in ("observation_sha256", "candidate_metadata_sha256", "candidate_binary_sha256", "snapshot_token"):
             require(repeat[key] == primary[key], f"M15 action live deterministic repeat {key} drifted")
-    return M15ActionEvidenceSummary(len(config["map_cases"]), len(config["action_cases"]), config["summary"]["passed"], config["summary"]["maximum_rss_kib"], artifact_base is not None)
+    return M15ActionEvidenceSummary(len(config["map_cases"]), len(config["action_cases"]), config["summary"]["passed"], config["summary"]["maximum_rss_kib"], context.is_live)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -186,17 +262,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--artifact-root", type=pathlib.Path)
     parser.add_argument("--output", type=pathlib.Path)
-    parser.add_argument("--config", type=pathlib.Path)
-    parser.add_argument("--schema", type=pathlib.Path)
-    parser.add_argument("--artifact-base", type=pathlib.Path)
-    args = parser.parse_args(argv or sys.argv[1:])
+    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     try:
         if args.artifact_root is not None:
-            require(args.output is not None and args.config is None and args.artifact_base is None, "freeze requires --output and forbids validation-only options")
+            require(args.output is not None, "creation requires --output")
             path = freeze(args.root, args.artifact_root, args.output)
             print(f"V2_M15_ACTION_EVIDENCE=FROZEN path={path} sha256={sha256_file(path)}")
             return 0
-        summary = validate(args.root, args.config, args.schema, artifact_base=args.artifact_base)
+        require(args.output is None, "creation requires --artifact-root and --output")
+        summary = validate(args.root, artifact_context=ArtifactContext.offline())
         print(f"V2_M15_ACTION_EVIDENCE=PASS map_cases={summary.map_cases} action_cases={summary.action_cases} passed={summary.passed} max_rss_kib={summary.maximum_rss_kib} live={str(summary.live).lower()}")
         return 0
     except (M15ActionEvidenceError, qualify_m15_action.M15ActionError, qualify_m15_observation.M15ObservationError, qualify_m15_native_reset.M15NativeResetError, OSError) as exc:
