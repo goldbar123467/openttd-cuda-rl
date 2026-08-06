@@ -127,7 +127,7 @@ def expected_identity(root: pathlib.Path, report: dict[str, Any]) -> dict[str, A
         "bubblewrap_sha256": BWRAP_SHA256,
         "checkpoint_id": qualification["finalized_selection"]["checkpoint_id"],
         "evaluation_manifest_schema_sha256": runner.sha256(root / runner.MANIFEST_SCHEMA),
-        "evaluator_executable_sha256": report["identity"]["evaluator_executable_sha256"],
+        "evaluator_executable_sha256": EVALUATOR_SHA256,
         "evaluator_report_schema_sha256": runner.sha256(root / runner.EVALUATOR_SCHEMA),
         "immutable_final_v1_evidence_sha256": runner.sha256(root / runner.IMMUTABLE_FINAL),
         "immutable_followup_v1_evidence_sha256": runner.sha256(root / runner.IMMUTABLE_FOLLOWUP_V1),
@@ -148,11 +148,15 @@ def _file_requirement(relative: str, digest: str) -> ArtifactRequirement:
 
 def _evaluator_requirements(base: str, evaluator: dict[str, Any]) -> list[ArtifactRequirement]:
     process = evaluator["process"]
+    require(process["stdout_path"] == "evaluator.stdout" and process["stderr_path"] == "evaluator.stderr",
+            "M22 follow-up-v2 evaluator artifact paths drifted")
     result = [
         _file_requirement(f"{base}/evaluator/{process[path_key]}", process[digest_key])
         for path_key, digest_key in (("stdout_path", "stdout_sha256"), ("stderr_path", "stderr_sha256"))
     ]
     if evaluator["status"] == "PASS":
+        require(evaluator["report_path"] == "evaluator-report.json",
+                "M22 follow-up-v2 evaluator report path drifted")
         result.append(_file_requirement(f"{base}/evaluator/{evaluator['report_path']}", evaluator["report_sha256"]))
     return result
 
@@ -166,14 +170,43 @@ def _result_requirements(report: dict[str, Any]) -> tuple[ArtifactRequirement, .
                           runner.sha256_bytes(runner.canonical_bytes(report["preflight"]))),
         *_evaluator_requirements("preflight", report["preflight"]["evaluator"]),
     ]
-    for run in report["runs"]:
+    seen_case_ids: set[str] = set()
+    for ordinal, run in enumerate(report["runs"]):
+        case_id = _safe_relative(run["public_case"]["case_id"], label="M22 follow-up-v2 case id")
+        require("/" not in case_id and case_id not in seen_case_ids, "M22 follow-up-v2 case identity/order drifted")
+        seen_case_ids.add(case_id)
+        expected_base = f"cases/{ordinal:02d}-{case_id}"
+        require(run["ordinal"] == ordinal and run["artifact_path"] == expected_base,
+                "M22 follow-up-v2 case artifact root drifted")
         base = _safe_relative(run["artifact_path"], label="M22 follow-up-v2 case artifact path")
         requirements.append(_file_requirement(
             f"{base}/case-record.json", runner.sha256_bytes(runner.canonical_bytes(run)),
         ))
         requirements.extend(_evaluator_requirements(base, run["evaluator"]))
-        for item in run["native"]["artifact_inventory"]:
-            requirements.append(_file_requirement(f"{base}/native/{item['path']}", item["sha256"]))
+        inventory = run["native"]["artifact_inventory"]
+        require(isinstance(inventory, list), "M22 follow-up-v2 native artifact inventory is malformed")
+        by_path: dict[str, dict[str, Any]] = {}
+        for item in inventory:
+            require(isinstance(item, dict) and set(item) == {"bytes", "path", "sha256"} and
+                    isinstance(item["bytes"], int) and not isinstance(item["bytes"], bool) and item["bytes"] >= 0,
+                    "M22 follow-up-v2 native artifact inventory bytes/shape drifted")
+            path = _safe_relative(item["path"], label="M22 follow-up-v2 native artifact path")
+            require(path not in by_path and re.fullmatch(r"[0-9a-f]{64}", item["sha256"]) is not None,
+                    "M22 follow-up-v2 native artifact inventory path/digest drifted")
+            by_path[path] = item
+            requirements.append(_file_requirement(f"{base}/native/{path}", item["sha256"]))
+        require(tuple(by_path) == runner.native.expected_artifact_paths(run["public_case"], run["native"]["status"]),
+                "M22 follow-up-v2 native artifact inventory drifted")
+        if run["native"]["status"] == "PASS":
+            record = run["native"]["record"]
+            for path_key, digest_key, expected_path in (
+                ("manifest_path", "manifest_sha256", "manifest.json"),
+                ("openttd_log_path", "openttd_log_sha256", "openttd.log"),
+                ("report_path", "report_sha256", "report.json"),
+            ):
+                require(record[path_key] == expected_path and
+                        record[digest_key] == by_path[expected_path]["sha256"],
+                        "M22 follow-up-v2 native record/inventory binding drifted")
     require(len(requirements) == EXPECTED_RESULT_INPUTS and len(set(requirements)) == EXPECTED_RESULT_INPUTS,
             f"M22 follow-up-v2 live-input closure must contain exactly {EXPECTED_RESULT_INPUTS} files")
     return tuple(requirements)
@@ -196,7 +229,7 @@ def _close_tree(path: pathlib.Path, expected: set[str]) -> None:
 def _preflight_live(
     context: ArtifactContext, root: pathlib.Path, report: dict[str, Any],
     live_inputs: LiveInputManifest | None, bwrap_path: pathlib.Path | None,
-) -> pathlib.Path:
+) -> dict[str, pathlib.Path]:
     require(live_inputs is not None and live_inputs.is_live,
             "M22 follow-up-v2 live-input manifest is required")
     require(live_inputs.artifact_root == context.artifact_root,
@@ -206,8 +239,7 @@ def _preflight_live(
     runtime_requirements = runner.runtime_validator.required_live_inputs(root)
     context.preflight((*result_requirements, *runtime_requirements))
     evaluator_requirement = RoleRequirement(
-        "final-v1-evaluator", ".", "file", LIVE_CONSUMER,
-        report["identity"]["evaluator_executable_sha256"],
+        "final-v1-evaluator", ".", "file", LIVE_CONSUMER, EVALUATOR_SHA256,
     )
     live_inputs.preflight((evaluator_requirement,))
     artifact_context.preflight_tools((ToolRequirement(
@@ -225,20 +257,20 @@ def _preflight_live(
         identities[key] = path
     result_root = context.artifact_set(RESULT_LOGICAL_SET)
     _close_tree(result_root, {item.relative_path for item in result_requirements})
-    return result_root
+    return {item.relative_path: context.resolve(item) for item in result_requirements}
 
 
 def validate_live_evaluator(
-    run: dict[str, Any], case_root: pathlib.Path, evaluator_schema: dict[str, Any], checkpoint_id: str,
+    run: dict[str, Any], base: str, files: dict[str, pathlib.Path],
+    evaluator_schema: dict[str, Any], checkpoint_id: str,
 ) -> None:
-    root = case_root / "evaluator"
     process = run["evaluator"]["process"]
     for path_key, digest_key in (("stdout_path", "stdout_sha256"), ("stderr_path", "stderr_sha256")):
-        path = root / process[path_key]
+        path = files[f"{base}/evaluator/{process[path_key]}"]
         require(path.is_file() and not path.is_symlink() and runner.sha256(path) == process[digest_key],
                 f"M22 follow-up evaluator stream identity drifted: {run['public_case']['case_id']}/{path_key}")
     if run["evaluator"]["status"] == "PASS":
-        path = root / run["evaluator"]["report_path"]
+        path = files[f"{base}/evaluator/{run['evaluator']['report_path']}"]
         require(path.is_file() and not path.is_symlink() and runner.sha256(path) == run["evaluator"]["report_sha256"],
                 f"M22 follow-up evaluator report identity drifted: {run['public_case']['case_id']}")
         value = load(path)
@@ -250,27 +282,11 @@ def validate_live_evaluator(
                 f"M22 retained follow-up evaluator semantic drifted: {run['public_case']['case_id']}")
 
 
-def validate_live_native(run: dict[str, Any], case_root: pathlib.Path, identity: dict[str, Any]) -> None:
-    root = case_root / "native"
-    require(runner.artifact_inventory(root) == run["native"]["artifact_inventory"],
-            f"M22 follow-up native artifact inventory drifted: {run['public_case']['case_id']}")
-    if run["native"]["status"] != "PASS":
-        return
-    record = run["native"]["record"]
-    require(record["case"] == run["public_case"] and
-            record["executable_sha256"] == identity["native_executable_sha256"] and
-            record["source_tree"] == identity["native_source_tree"],
-            f"M22 follow-up native public/source identity drifted: {run['public_case']['case_id']}")
-    for path_key, digest_key in (("manifest_path", "manifest_sha256"), ("report_path", "report_sha256"),
-                                 ("openttd_log_path", "openttd_log_sha256")):
-        path = root / record[path_key]
-        require(path.is_file() and not path.is_symlink() and runner.sha256(path) == record[digest_key],
-                f"M22 follow-up native artifact identity drifted: {run['public_case']['case_id']}/{path_key}")
-
-
 def validate_run(
     run: dict[str, Any], case: dict[str, Any], ordinal: int, identity: dict[str, Any],
-    artifact_root: pathlib.Path | None, evaluator_schema: dict[str, Any],
+    live_files: dict[str, pathlib.Path] | None, evaluator_schema: dict[str, Any], *,
+    root: pathlib.Path | None = None, runtime_source: dict[str, Any] | None = None,
+    runtime: runner.native.RuntimePaths | None = None,
 ) -> None:
     require(run["ordinal"] == ordinal and run["private_seed"] == case["seed"] and
             run["required_program"] == case["required_program"] and run["public_case"] == runner.public_case(case),
@@ -293,21 +309,26 @@ def validate_run(
         require(native_result["failure_category"] is None and native_result["failure_detail"] is None and
                 native_result["record"] is not None, f"M22 follow-up native success record drifted: {case['case_id']}")
     else:
-        require(native_result["failure_category"] == "native-execution" and native_result["record"] is None,
+        require(native_result["failure_category"] == "native-execution" and native_result["record"] is None and
+                runner.native.expected_failure_marker(case) in native_result["failure_detail"],
                 f"M22 follow-up native failure record drifted: {case['case_id']}")
     expected_scores = runner.case_scores(case, evaluator, native_result)
     require(run["scores"] == expected_scores, f"M22 follow-up case score drifted: {case['case_id']}")
     require(run["failures"] == runner.failure_categories(case, evaluator, native_result, expected_scores),
             f"M22 follow-up case failure classification drifted: {case['case_id']}")
-    if artifact_root is not None:
-        case_root = artifact_root / expected_artifact
-        require(case_root.is_dir() and not case_root.is_symlink(),
-                f"M22 follow-up case artifact root is absent: {case['case_id']}")
-        record_path = case_root / "case-record.json"
+    if live_files is not None:
+        record_path = live_files[f"{expected_artifact}/case-record.json"]
         require(record_path.is_file() and not record_path.is_symlink() and load(record_path) == run,
                 f"M22 retained follow-up case record drifted: {case['case_id']}")
-        validate_live_evaluator(run, case_root, evaluator_schema, identity["checkpoint_id"])
-        validate_live_native(run, case_root, identity)
+        validate_live_evaluator(run, expected_artifact, live_files, evaluator_schema, identity["checkpoint_id"])
+        require(root is not None and runtime_source is not None and runtime is not None,
+                "M22 follow-up-v2 native semantic context is absent after preflight")
+        try:
+            runner.final_evidence_validator.validate_preflighted_native(
+                root, run, expected_artifact, live_files, identity, runtime_source, runtime,
+            )
+        except runner.final_evidence_validator.M22FinalEvidenceError as exc:
+            raise M22FollowupV2EvidenceError(f"M22 follow-up-v2 native semantic validation failed: {exc}") from exc
 
 
 def validate_value(
@@ -350,26 +371,32 @@ def validate_value(
     require(report["immutable_followup_v1"] ==
             runner.immutable_followup_v1_record(root, immutable_followup_v1),
             "M22 immutable follow-up-v1 boundary drifted in follow-up-v2 evidence")
-    artifact_root: pathlib.Path | None = None
+    live_files: dict[str, pathlib.Path] | None = None
+    runtime_source: dict[str, Any] | None = None
+    runtime: runner.native.RuntimePaths | None = None
     if context.is_live:
-        artifact_root = _preflight_live(context, root, report, live_inputs, bwrap_path)
+        live_files = _preflight_live(context, root, report, live_inputs, bwrap_path)
         runner.runtime_validator.validate(root, artifact_context=context)
+        runtime_source = load(root / runner.RUNTIME_SOURCE)
+        runtime = runner.runtime_paths(runtime_source, context)
     evaluator_schema = load(root / runner.EVALUATOR_SCHEMA)
     preflight = report["preflight"]
     require(preflight["public_case"] == runner.public_case(runner.PREFLIGHT_CASE) and
             preflight["evaluator"]["status"] == "PASS" and
             preflight["evaluator"]["action"] == runner.PREFLIGHT_CASE["required_program"],
             "M22 follow-up-v2 evaluator preflight record drifted")
-    if artifact_root is not None:
-        preflight_root = artifact_root / "preflight"
-        record_path = preflight_root / "preflight-record.json"
+    if live_files is not None:
+        record_path = live_files["preflight/preflight-record.json"]
         require(record_path.is_file() and not record_path.is_symlink() and load(record_path) == preflight,
                 "M22 retained follow-up-v2 evaluator preflight record drifted")
-        validate_live_evaluator(preflight, preflight_root, evaluator_schema, identity["checkpoint_id"])
+        validate_live_evaluator(preflight, "preflight", live_files, evaluator_schema, identity["checkpoint_id"])
     cases = manifest_value["cases"]
     require(len(report["runs"]) == len(cases) == 42, "M22 follow-up-v2 run inventory drifted")
     for ordinal, (run, case) in enumerate(zip(report["runs"], cases, strict=True)):
-        validate_run(run, case, ordinal, identity, artifact_root, evaluator_schema)
+        validate_run(
+            run, case, ordinal, identity, live_files, evaluator_schema,
+            root=root, runtime_source=runtime_source, runtime=runtime,
+        )
     expected_protocol = runner.protocol_record(report["runs"], [case["case_id"] for case in cases])
     require(report["protocol"] == expected_protocol, "M22 follow-up-v2 protocol accounting drifted")
     expected_statistics = runner.aggregate_statistics(report["runs"])

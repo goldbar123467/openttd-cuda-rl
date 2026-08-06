@@ -8,6 +8,7 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 import jsonschema
 
@@ -101,6 +102,45 @@ class M22FollowupEvaluationSourceTests(unittest.TestCase):
         }
         report["report_sha256"] = runner.sha256_bytes(runner.canonical_bytes(report))
         return report
+
+    def test_native_closure_descriptors_reject_unsafe_or_unbound_records_without_reading(self) -> None:
+        original = validator.load(self.root / validator.CONFIG)
+
+        def mutate(report: dict[str, object], kind: str) -> None:
+            run = report["runs"][0]
+            record = run["native"]["record"]
+            inventory = run["native"]["artifact_inventory"]
+            if kind == "absolute":
+                record["manifest_path"] = "/outside/manifest.json"
+            elif kind == "parent":
+                record["report_path"] = "../report.json"
+            elif kind == "alternate":
+                record["report_path"] = "manifest.json"
+                record["report_sha256"] = record["manifest_sha256"]
+            elif kind == "digest":
+                record["report_sha256"] = "0" * 64
+            elif kind == "bytes":
+                inventory[0]["bytes"] = -1
+            elif kind == "duplicate":
+                inventory.append(copy.deepcopy(inventory[0]))
+            else:
+                run["artifact_path"] = "cases/41-wrong-case-root"
+
+        for kind in ("absolute", "parent", "alternate", "digest", "bytes", "duplicate", "case-root"):
+            with self.subTest(kind=kind):
+                report = copy.deepcopy(original)
+                mutate(report, kind)
+                with mock.patch.object(pathlib.Path, "open", side_effect=AssertionError("descriptor read")):
+                    with self.assertRaisesRegex(validator.M22FollowupEvidenceError, "(native|artifact|closure|case)"):
+                        validator._result_requirements(report)
+
+    def test_evaluator_identity_is_the_frozen_role_digest(self) -> None:
+        report = validator.load(self.root / validator.CONFIG)
+        report["identity"]["evaluator_executable_sha256"] = "0" * 64
+        self.assertEqual(
+            validator.expected_identity(self.root, report)["evaluator_executable_sha256"],
+            runner.foundation.EVALUATOR_SHA256,
+        )
 
     def test_aggregate_schema_is_closed_and_accepts_complete_report(self) -> None:
         jsonschema.Draft202012Validator.check_schema(self.schema)

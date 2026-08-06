@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import pathlib
 import tempfile
@@ -202,6 +203,71 @@ class M22FollowupV2EvaluationEvidenceTests(unittest.TestCase):
         self.assertTrue(all(not pathlib.PurePosixPath(item.relative_path).is_absolute()
                             and ".." not in pathlib.PurePosixPath(item.relative_path).parts
                             for item in requirements))
+
+    def test_all_42_native_results_receive_post_preflight_gate_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            project, evidence, _ = make_relocated_evaluation_fixture(
+                self.root, directory, self.report, runner_module=runner,
+                validator_module=validator, logical_set=validator.RESULT_LOGICAL_SET,
+                require_evaluator=False,
+            )
+            report = validator.load(evidence)
+            context = ArtifactContext.live(directory)
+            result_requirements = validator._result_requirements(report)
+            context.preflight((*result_requirements, *runner.runtime_validator.required_live_inputs(project)))
+            files = {item.relative_path: context.resolve(item) for item in result_requirements}
+            runtime_source = validator.load(project / runner.RUNTIME_SOURCE)
+            runtime = runner.runtime_paths(runtime_source, context)
+            for run in report["runs"]:
+                runner.final_evidence_validator.validate_preflighted_native(
+                    project, run, run["artifact_path"], files, report["identity"], runtime_source, runtime,
+                )
+            self.assertEqual(
+                {run["public_case"]["source_gate"] for run in report["runs"]},
+                {f"G{gate}" for gate in range(15, 22)},
+            )
+
+    def test_post_preflight_native_semantics_reject_malformed_json_drift_and_invalid_save(self) -> None:
+        mutations = (("G16", "report.json", b"{"), ("G21", "report.json", None),
+                     ("G20", "report.json.sav", b"not-an-openttd-save"))
+        for gate, relative, replacement in mutations:
+            with self.subTest(gate=gate, relative=relative), tempfile.TemporaryDirectory() as raw:
+                directory = pathlib.Path(raw).resolve()
+                project, evidence, _ = make_relocated_evaluation_fixture(
+                    self.root, directory, self.report, runner_module=runner,
+                    validator_module=validator, logical_set=validator.RESULT_LOGICAL_SET,
+                    require_evaluator=False,
+                )
+                report = validator.load(evidence)
+                run = next(item for item in report["runs"] if item["public_case"]["source_gate"] == gate and
+                           relative in {entry["path"] for entry in item["native"]["artifact_inventory"]})
+                path = directory / validator.RESULT_LOGICAL_SET / run["artifact_path"] / "native" / relative
+                payload = replacement
+                if payload is None:
+                    value = json.loads(path.read_bytes())
+                    value["map"]["width"] += 1
+                    payload = runner.canonical_bytes(value)
+                path.write_bytes(payload)
+                digest = hashlib.sha256(payload).hexdigest()
+                record = next(item for item in run["native"]["artifact_inventory"] if item["path"] == relative)
+                record.update({"bytes": len(payload), "sha256": digest})
+                if relative == "report.json":
+                    run["native"]["record"]["report_sha256"] = digest
+                case_record = directory / validator.RESULT_LOGICAL_SET / run["artifact_path"] / "case-record.json"
+                case_record.write_bytes(runner.canonical_bytes(run))
+                context = ArtifactContext.live(directory)
+                result_requirements = validator._result_requirements(report)
+                context.preflight((*result_requirements, *runner.runtime_validator.required_live_inputs(project)))
+                files = {item.relative_path: context.resolve(item) for item in result_requirements}
+                runtime_source = validator.load(project / runner.RUNTIME_SOURCE)
+                with self.assertRaisesRegex(
+                    runner.final_evidence_validator.M22FinalEvidenceError, "(semantic|malformed|savegame)",
+                ):
+                    runner.final_evidence_validator.validate_preflighted_native(
+                        project, run, run["artifact_path"], files, report["identity"], runtime_source,
+                        runner.runtime_paths(runtime_source, context),
+                    )
 
 
 if __name__ == "__main__":

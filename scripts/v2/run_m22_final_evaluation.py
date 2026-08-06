@@ -396,9 +396,10 @@ def artifact_inventory(path: pathlib.Path) -> list[dict[str, Any]]:
 
 def run_native(
     root: pathlib.Path, runtime: native.RuntimePaths, case_root: pathlib.Path, case: dict[str, Any],
+    *, bwrap_path: pathlib.Path | None = None,
 ) -> dict[str, Any]:
     try:
-        record = native.run_native_case(root, runtime, case_root, case)
+        record = native.run_native_case(root, runtime, case_root, case, bwrap_path=bwrap_path)
         return {
             "artifact_inventory": artifact_inventory(case_root), "attempt": 1, "failure_category": None,
             "failure_detail": None, "record": record, "status": "PASS",
@@ -489,6 +490,8 @@ def _historical_blob(root: pathlib.Path, commit: str, relative: str) -> bytes:
 
 def validate_prior_attempt_record(root: pathlib.Path, contract: dict[str, Any]) -> dict[str, Any]:
     record = load(root / PRIOR_ATTEMPT)
+    qualification = load(root / QUALIFICATION)
+    runtime_source = load(root / RUNTIME_SOURCE)
     schema_validate(record, load(root / PRIOR_ATTEMPT_SCHEMA), "M22 rejected final attempt")
     require(record["schema_sha256"] == sha256(root / PRIOR_ATTEMPT_SCHEMA),
             "M22 rejected-attempt schema identity drifted")
@@ -498,6 +501,13 @@ def validate_prior_attempt_record(root: pathlib.Path, contract: dict[str, Any]) 
     require(record["identity"]["qualification_evidence_sha256"] == sha256(root / QUALIFICATION) and
             record["identity"]["runtime_source_sha256"] == sha256(root / RUNTIME_SOURCE),
             "M22 rejected-attempt prerequisite identity drifted")
+    require(record["identity"]["checkpoint_id"] == qualification["finalized_selection"]["checkpoint_id"] ==
+            qualification["identity"]["checkpoint"]["id"] and
+            record["identity"]["evaluator_executable_sha256"] == EVALUATOR_SHA256 and
+            qualification["identity"]["learning_contract_sha256"] == sha256(root / CONTRACT) and
+            runtime_source["final_boundary"]["expected_manifest_sha256"] ==
+            contract["independent_evaluation"]["manifest_sha256"],
+            "M22 rejected-attempt checkpoint/evaluator identity drifted")
     commit = record["source"]["repository_commit"]
     try:
         exists = run_git("cat-file", "-e", f"{commit}^{{commit}}", repository=root)
@@ -721,7 +731,7 @@ def run(
             root, bwrap, evaluator_executable, checkpoint, selected["checkpoint_id"], case_root / "evaluator",
             case, "cuda:0", evaluator_schema,
         )
-        native_result = run_native(root, runtime, case_root / "native", case)
+        native_result = run_native(root, runtime, case_root / "native", case, bwrap_path=bwrap)
         scores = case_scores(case, evaluator_result, native_result)
         failures = failure_categories(case, evaluator_result, native_result, scores)
         run_record = {
@@ -772,7 +782,7 @@ def run(
     import validate_m22_final_evaluation as validator
     validator.validate_value(
         report, root, artifact_context=context, live_inputs=live_inputs, bwrap_path=bwrap,
-        manifest_value=manifest,
+        manifest_value=manifest, manifest_bytes=manifest_bytes,
     )
     write_new(evidence_path, report)
     return report

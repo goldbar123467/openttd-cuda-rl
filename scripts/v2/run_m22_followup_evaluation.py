@@ -313,7 +313,7 @@ def run(
             root, bwrap, evaluator_executable, checkpoint, selected["checkpoint_id"], case_root / "evaluator",
             case, "cuda:0", evaluator_schema,
         )
-        native_result = run_native(root, runtime, case_root / "native", case)
+        native_result = run_native(root, runtime, case_root / "native", case, bwrap_path=bwrap)
         scores = case_scores(case, evaluator_result, native_result)
         failures = failure_categories(case, evaluator_result, native_result, scores)
         run_record = {

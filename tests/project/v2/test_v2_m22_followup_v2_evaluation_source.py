@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import pathlib
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 import jsonschema
 
@@ -130,6 +132,45 @@ class M22FollowupV2EvaluationSourceTests(unittest.TestCase):
         }
         report["report_sha256"] = runner.sha256_bytes(runner.canonical_bytes(report))
         return report
+
+    def test_native_closure_descriptors_reject_unsafe_or_unbound_records_without_reading(self) -> None:
+        original = validator.load(self.root / validator.CONFIG)
+
+        def mutate(report: dict[str, object], kind: str) -> None:
+            run = report["runs"][0]
+            record = run["native"]["record"]
+            inventory = run["native"]["artifact_inventory"]
+            if kind == "absolute":
+                record["manifest_path"] = "/outside/manifest.json"
+            elif kind == "parent":
+                record["report_path"] = "../report.json"
+            elif kind == "alternate":
+                record["report_path"] = "manifest.json"
+                record["report_sha256"] = record["manifest_sha256"]
+            elif kind == "digest":
+                record["report_sha256"] = "0" * 64
+            elif kind == "bytes":
+                inventory[0]["bytes"] = -1
+            elif kind == "duplicate":
+                inventory.append(copy.deepcopy(inventory[0]))
+            else:
+                run["artifact_path"] = "cases/41-wrong-case-root"
+
+        for kind in ("absolute", "parent", "alternate", "digest", "bytes", "duplicate", "case-root"):
+            with self.subTest(kind=kind):
+                report = copy.deepcopy(original)
+                mutate(report, kind)
+                with mock.patch.object(pathlib.Path, "open", side_effect=AssertionError("descriptor read")):
+                    with self.assertRaisesRegex(validator.M22FollowupV2EvidenceError, "(native|artifact|closure|case)"):
+                        validator._result_requirements(report)
+
+    def test_evaluator_identity_is_the_frozen_role_digest(self) -> None:
+        report = validator.load(self.root / validator.CONFIG)
+        report["identity"]["evaluator_executable_sha256"] = "0" * 64
+        self.assertEqual(
+            validator.expected_identity(self.root, report)["evaluator_executable_sha256"],
+            runner.foundation.EVALUATOR_SHA256,
+        )
 
     def test_aggregate_schema_is_closed_and_accepts_complete_report(self) -> None:
         jsonschema.Draft202012Validator.check_schema(self.schema)
@@ -279,6 +320,85 @@ class M22FollowupV2EvaluationSourceTests(unittest.TestCase):
                 "git", "-C", str(repository), "update-ref", "refs/remotes/origin/main", commit,
             ], check=True)
             self.assertTrue(runner.source_is_synchronized_main(repository, commit))
+
+    def test_source_freeze_rejects_symlinked_ref_parents_and_commondir_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            repository = directory / "repository"
+            subprocess.run(["git", "init", "-q", "-b", "main", str(repository)], check=True)
+            (repository / "tracked").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repository), "add", "tracked"], check=True)
+            subprocess.run([
+                "git", "-C", str(repository), "-c", "user.name=fixture",
+                "-c", "user.email=fixture@example.invalid", "commit", "-q", "-m", "fixture",
+            ], check=True)
+            commit = runner.git(repository, "rev-parse", "HEAD")
+            git_dir = pathlib.Path(runner.git(repository, "rev-parse", "--absolute-git-dir"))
+
+            external = directory / "external"
+            (external / "origin").mkdir(parents=True)
+            (external / "origin/main").write_text(f"{commit}\n", encoding="ascii")
+            (git_dir / "refs/remotes").parent.mkdir(parents=True, exist_ok=True)
+            (git_dir / "refs/remotes").symlink_to(external)
+            self.assertFalse(runner.source_is_synchronized_main(repository, commit))
+            (git_dir / "refs/remotes").unlink()
+
+            escaped = directory / "escaped.git"
+            (escaped / "refs/remotes/origin").mkdir(parents=True)
+            (escaped / "refs/remotes/origin/main").write_text(f"{commit}\n", encoding="ascii")
+            (git_dir / "commondir").write_text("../../escaped.git\n", encoding="ascii")
+            self.assertFalse(runner.source_is_synchronized_main(repository, commit))
+
+    def test_source_freeze_rejects_symlinked_commondir_and_ref_file(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            repository = directory / "repository"
+            subprocess.run(["git", "init", "-q", "-b", "main", str(repository)], check=True)
+            (repository / "tracked").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repository), "add", "tracked"], check=True)
+            subprocess.run([
+                "git", "-C", str(repository), "-c", "user.name=fixture",
+                "-c", "user.email=fixture@example.invalid", "commit", "-q", "-m", "fixture",
+            ], check=True)
+            commit = runner.git(repository, "rev-parse", "HEAD")
+            git_dir = pathlib.Path(runner.git(repository, "rev-parse", "--absolute-git-dir"))
+            subprocess.run(["git", "-C", str(repository), "update-ref", "refs/remotes/origin/main", commit], check=True)
+
+            external = directory / "external-ref"
+            external.write_text(f"{commit}\n", encoding="ascii")
+            origin = git_dir / "refs/remotes/origin/main"
+            origin.unlink()
+            origin.symlink_to(external)
+            self.assertFalse(runner.source_is_synchronized_main(repository, commit))
+            origin.unlink()
+            origin.write_text(f"{commit}\n", encoding="ascii")
+
+            (git_dir / "commondir").symlink_to(directory)
+            self.assertFalse(runner.source_is_synchronized_main(repository, commit))
+
+    def test_source_freeze_supports_linked_worktree_and_ignores_hostile_git_environment(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            repository, linked = directory / "repository", directory / "linked"
+            subprocess.run(["git", "init", "-q", "-b", "main", str(repository)], check=True)
+            (repository / "tracked").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repository), "add", "tracked"], check=True)
+            subprocess.run([
+                "git", "-C", str(repository), "-c", "user.name=fixture",
+                "-c", "user.email=fixture@example.invalid", "commit", "-q", "-m", "fixture",
+            ], check=True)
+            commit = runner.git(repository, "rev-parse", "HEAD")
+            subprocess.run(["git", "-C", str(repository), "update-ref", "refs/remotes/origin/main", commit], check=True)
+            subprocess.run(["git", "-C", str(repository), "switch", "-q", "--detach"], check=True)
+            subprocess.run(["git", "-C", str(repository), "worktree", "add", "-q", str(linked), "main"], check=True)
+
+            hostile = directory / "hostile.git"
+            subprocess.run(["git", "init", "-q", "--bare", str(hostile)], check=True)
+            with mock.patch.dict(os.environ, {
+                **os.environ, "GIT_DIR": str(hostile), "GIT_COMMON_DIR": str(hostile),
+                "GIT_OBJECT_DIRECTORY": str(hostile / "objects"),
+            }, clear=True):
+                self.assertTrue(runner.source_is_synchronized_main(linked, commit))
 
     def test_create_only_writer_never_overwrites(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

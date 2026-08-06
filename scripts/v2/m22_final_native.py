@@ -14,7 +14,6 @@ import json
 import os
 import pathlib
 import resource
-import shutil
 import signal
 import subprocess
 import time
@@ -37,6 +36,45 @@ PUBLIC_FIELDS = (
     "case_id", "task", "transport_mode", "climate", "map_width", "map_height",
     "cargo", "opponent", "native_probe", "source_gate",
 )
+G15_ARTIFACT_PATHS = (
+    "artifacts/capture-service-branch-a-candidates.bin",
+    "artifacts/capture-service-branch-a-candidates.json",
+    "artifacts/capture-service-branch-a-observation.bin",
+    "artifacts/capture-service-branch-a-observation.json",
+    "artifacts/capture-service-branch-a.sav",
+    "artifacts/capture-service-branch-b-candidates.bin",
+    "artifacts/capture-service-branch-b-candidates.json",
+    "artifacts/capture-service-branch-b-observation.bin",
+    "artifacts/capture-service-branch-b-observation.json",
+    "artifacts/capture-service-branch-b.sav",
+    "artifacts/service-ready.sav", "manifest.json", "openttd.log", "report.json", "reset.json",
+)
+
+
+def expected_artifact_paths(case: dict[str, Any], status: str) -> tuple[str, ...]:
+    """Return the closed native file inventory for one frozen gate dispatch."""
+    gate, probe = case["source_gate"], case["native_probe"]
+    if status == "FAIL":
+        if gate == "G21" and probe in {"authority-economy", "events"}:
+            return ("manifest.json", "openttd.log")
+        return ("manifest.json", "openttd.log", "report.json")
+    if gate == "G15":
+        return G15_ARTIFACT_PATHS
+    if gate == "G20" or (gate == "G21" and probe in {
+        "calendar", "authority-economy", "events", "gamescript",
+    }):
+        return ("manifest.json", "openttd.log", "report.json", "report.json.sav")
+    return ("manifest.json", "openttd.log", "report.json")
+
+
+def expected_failure_marker(case: dict[str, Any]) -> str:
+    if case["source_gate"] == "G19" and case["native_probe"] == "multimodal":
+        return "multimodal probe requires freight cargo"
+    if case["source_gate"] == "G20":
+        return "shared map lacks generated towns or industries"
+    if case["source_gate"] == "G21" and case["native_probe"] in {"authority-economy", "events"}:
+        return "Game save failed"
+    return "M22 native process failed"
 
 
 class M22FinalNativeError(ValueError):
@@ -157,10 +195,15 @@ def isolated_environment(run_root: pathlib.Path, case: dict[str, Any]) -> dict[s
     return environment
 
 
-def launch(command: list[str], runtime: RuntimePaths, run_root: pathlib.Path, case: dict[str, Any]) -> tuple[float, str]:
-    require(shutil.which("bwrap") is not None, "bubblewrap is required for M22 final native execution")
+def launch(
+    command: list[str], runtime: RuntimePaths, run_root: pathlib.Path, case: dict[str, Any], *,
+    bwrap_path: pathlib.Path | None = None,
+) -> tuple[float, str]:
+    require(bwrap_path is not None, "an explicit bubblewrap path is required for M22 final native execution")
+    require(bwrap_path.is_absolute() and bwrap_path.is_file() and not bwrap_path.is_symlink() and
+            os.access(bwrap_path, os.X_OK), "the explicit bubblewrap path is not a regular executable")
     wrapped = [
-        "bwrap", "--die-with-parent", "--new-session", "--unshare-user", "--unshare-pid", "--unshare-ipc",
+        str(bwrap_path), "--die-with-parent", "--new-session", "--unshare-user", "--unshare-pid", "--unshare-ipc",
         "--unshare-uts", "--unshare-net", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
         "--tmpfs", "/tmp", "--bind", str(run_root), str(run_root), "--chdir", str(runtime.executable.parent), "--",
         *command,
@@ -180,6 +223,17 @@ def launch(command: list[str], runtime: RuntimePaths, run_root: pathlib.Path, ca
     (run_root / "openttd.log").write_text(output, encoding="utf-8")
     require(process.returncode == 0, f"M22 native process failed ({process.returncode}) {case['case_id']}: {output.strip()}")
     return wall, output
+
+
+def launch_case(
+    command: list[str], runtime: RuntimePaths, run_root: pathlib.Path, case: dict[str, Any],
+    bwrap_path: pathlib.Path | None,
+) -> tuple[float, str]:
+    # Task-level producer tests replace launch with a four-argument process
+    # stub.  Production callers always provide the preflighted executable.
+    if bwrap_path is None:
+        return launch(command, runtime, run_root, case)
+    return launch(command, runtime, run_root, case, bwrap_path=bwrap_path)
 
 
 def base_command(runtime: RuntimePaths) -> list[str]:
@@ -212,7 +266,8 @@ def validate_map(report: dict[str, Any], case: dict[str, Any]) -> None:
 
 
 def run_g15(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
-            case: dict[str, Any], executable_sha: str) -> tuple[pathlib.Path, dict[str, Any]]:
+            case: dict[str, Any], executable_sha: str,
+            bwrap_path: pathlib.Path | None = None) -> tuple[pathlib.Path, dict[str, Any]]:
     manifest = m15_request(root, runtime, case, executable_sha)
     write_new(run_root / "manifest.json", manifest)
     artifacts = run_root / "artifacts"
@@ -220,7 +275,7 @@ def run_g15(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
     command = [*base_command(runtime), "-V", str(run_root / "manifest.json"), "-U", str(run_root / "reset.json"),
                "-E", str(root / "config/v2/m15-competence-program.json"), "-F", str(run_root / "report.json"),
                "-H", str(artifacts)]
-    launch(command, runtime, run_root, case)
+    launch_case(command, runtime, run_root, case, bwrap_path)
     projection, report = load(run_root / "reset.json"), load(run_root / "report.json")
     require(projection["request"]["width"] == case["map_width"] and projection["request"]["height"] == case["map_height"] and
             projection["request"]["climate"] == case["climate"] and projection["request"]["split"] == "final",
@@ -240,12 +295,13 @@ def simple_request(case: dict[str, Any], executable_sha: str, probe: str, schema
 
 
 def run_g16(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
-            case: dict[str, Any], executable_sha: str, probe: str) -> tuple[pathlib.Path, dict[str, Any]]:
+            case: dict[str, Any], executable_sha: str, probe: str,
+            bwrap_path: pathlib.Path | None = None) -> tuple[pathlib.Path, dict[str, Any]]:
     request = {"amount": 8, "climate": case["climate"],
                **simple_request(case, executable_sha, probe, "openttd-rl-v2-m16-cargo-manifest-1")}
     write_new(run_root / "manifest.json", request)
-    launch([*base_command(runtime), "-N", str(run_root / "manifest.json"), "-O", str(run_root / "report.json")],
-           runtime, run_root, case)
+    launch_case([*base_command(runtime), "-N", str(run_root / "manifest.json"), "-O", str(run_root / "report.json")],
+                runtime, run_root, case, bwrap_path)
     report = load(run_root / "report.json")
     native_case = m16.Case(case["case_id"], case["climate"], case["cargo"], probe, case["seed"])
     m16.validate_common(report, native_case, m16.load(root / m16.CONTRACT), executable_sha)
@@ -254,10 +310,11 @@ def run_g16(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
 
 
 def run_g17(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
-            case: dict[str, Any], executable_sha: str, probe: str) -> tuple[pathlib.Path, dict[str, Any]]:
+            case: dict[str, Any], executable_sha: str, probe: str,
+            bwrap_path: pathlib.Path | None = None) -> tuple[pathlib.Path, dict[str, Any]]:
     write_new(run_root / "manifest.json", simple_request(case, executable_sha, probe, "openttd-rl-v2-m17-rail-manifest-1"))
-    launch([*base_command(runtime), "-C", str(run_root / "manifest.json"), "-P", str(run_root / "report.json")],
-           runtime, run_root, case)
+    launch_case([*base_command(runtime), "-C", str(run_root / "manifest.json"), "-P", str(run_root / "report.json")],
+                runtime, run_root, case, bwrap_path)
     report = load(run_root / "report.json")
     native_case = m17.Case(case["case_id"], case["cargo"], probe, case["seed"])
     require(report["status"] == "PASS" and report["executable_sha256"] == executable_sha, "M22 G17 identity/status drifted")
@@ -266,10 +323,11 @@ def run_g17(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
 
 
 def run_g18(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
-            case: dict[str, Any], executable_sha: str, probe: str) -> tuple[pathlib.Path, dict[str, Any]]:
+            case: dict[str, Any], executable_sha: str, probe: str,
+            bwrap_path: pathlib.Path | None = None) -> tuple[pathlib.Path, dict[str, Any]]:
     write_new(run_root / "manifest.json", simple_request(case, executable_sha, probe, "openttd-rl-v2-m18-ship-manifest-1"))
-    launch([*base_command(runtime), "-u", str(run_root / "manifest.json"), "-w", str(run_root / "report.json")],
-           runtime, run_root, case)
+    launch_case([*base_command(runtime), "-u", str(run_root / "manifest.json"), "-w", str(run_root / "report.json")],
+                runtime, run_root, case, bwrap_path)
     report = load(run_root / "report.json")
     native_case = m18.Case(case["case_id"], case["cargo"], probe, case["seed"])
     require(report["status"] == "PASS" and report["executable_sha256"] == executable_sha, "M22 G18 identity/status drifted")
@@ -278,10 +336,11 @@ def run_g18(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
 
 
 def run_g19(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
-            case: dict[str, Any], executable_sha: str, probe: str) -> tuple[pathlib.Path, dict[str, Any]]:
+            case: dict[str, Any], executable_sha: str, probe: str,
+            bwrap_path: pathlib.Path | None = None) -> tuple[pathlib.Path, dict[str, Any]]:
     write_new(run_root / "manifest.json", simple_request(case, executable_sha, probe, "openttd-rl-v2-m19-air-manifest-1"))
-    launch([*base_command(runtime), "-a", str(run_root / "manifest.json"), "-z", str(run_root / "report.json")],
-           runtime, run_root, case)
+    launch_case([*base_command(runtime), "-a", str(run_root / "manifest.json"), "-z", str(run_root / "report.json")],
+                runtime, run_root, case, bwrap_path)
     report = load(run_root / "report.json")
     native_case = m19.Case(case["case_id"], case["cargo"], probe, case["seed"])
     require(report["status"] == "PASS" and report["executable_sha256"] == executable_sha, "M22 G19 identity/status drifted")
@@ -290,7 +349,8 @@ def run_g19(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
 
 
 def run_g20(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
-            case: dict[str, Any], executable_sha: str, probe: str) -> tuple[pathlib.Path, dict[str, Any]]:
+            case: dict[str, Any], executable_sha: str, probe: str,
+            bwrap_path: pathlib.Path | None = None) -> tuple[pathlib.Path, dict[str, Any]]:
     contract = m20.load(root / m20.CONTRACT)
     identities = m20.expected_identities(root, contract)
     roster = next((item for item in contract["roster"] if item["name"] == case["opponent"]), None)
@@ -305,7 +365,7 @@ def run_g20(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
     write_new(run_root / "manifest.json", request)
     command = [str(runtime.executable), "-x", "-X", "-c", str(runtime.base_config), "-I", "OpenGFX", "-m", "null",
                "-s", "null", "-v", "null", "-i", str(run_root / "manifest.json"), "-y", str(run_root / "report.json")]
-    launch(command, runtime, run_root, case)
+    launch_case(command, runtime, run_root, case, bwrap_path)
     report = load(run_root / "report.json")
     require(report["status"] == "PASS" and report["request"]["split"] == "final" and report["identity"] == identities,
             "M22 G20 status/split/identity drifted")
@@ -323,7 +383,8 @@ def run_g20(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
 
 
 def run_g21(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
-            case: dict[str, Any], executable_sha: str, probe: str) -> tuple[pathlib.Path, dict[str, Any]]:
+            case: dict[str, Any], executable_sha: str, probe: str,
+            bwrap_path: pathlib.Path | None = None) -> tuple[pathlib.Path, dict[str, Any]]:
     contract = m21.load(root / m21.CONTRACT)
     native_case = {"case_id": case["case_id"], "landscape": case["climate"], "probe": probe, "seed": case["seed"]}
     source = {"source": {"tree": runtime.source_tree}, "executable": {"sha256": executable_sha}}
@@ -334,7 +395,7 @@ def run_g21(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
     config = runtime.gamescript_config if probe == "gamescript" else runtime.content_config if probe == "content" else runtime.base_config
     command = [str(runtime.executable), "-x", "-X", "-I", "OpenGFX", "-m", "null", "-s", "null", "-v", "null",
                "-c", str(config), "-j", str(run_root / "manifest.json"), "-k", str(run_root / "report.json")]
-    launch(command, runtime, run_root, case)
+    launch_case(command, runtime, run_root, case, bwrap_path)
     report = load(run_root / "report.json")
     validate_map(report, case)
     require(report["status"] == "PASS" and report["request"]["probe"] == probe and
@@ -363,7 +424,7 @@ def run_g21(root: pathlib.Path, runtime: RuntimePaths, run_root: pathlib.Path,
 
 
 def run_native_case(root: pathlib.Path, runtime: RuntimePaths, artifact_root: pathlib.Path,
-                    case: dict[str, Any]) -> dict[str, Any]:
+                    case: dict[str, Any], *, bwrap_path: pathlib.Path | None = None) -> dict[str, Any]:
     root, artifact_root = root.resolve(), artifact_root.resolve()
     require(not artifact_root.exists() and not artifact_root.is_symlink(), "M22 native artifact root must be new")
     require(case["case_id"] and case["source_gate"] in {f"G{gate}" for gate in range(15, 22)}, "M22 native case identity drifted")
@@ -375,19 +436,19 @@ def run_native_case(root: pathlib.Path, runtime: RuntimePaths, artifact_root: pa
     gate = case["source_gate"]
     started = time.monotonic()
     if gate == "G15":
-        report_path, metrics = run_g15(root, runtime, artifact_root, case, executable_sha)
+        report_path, metrics = run_g15(root, runtime, artifact_root, case, executable_sha, bwrap_path)
     elif gate == "G16":
-        report_path, metrics = run_g16(root, runtime, artifact_root, case, executable_sha, probe)
+        report_path, metrics = run_g16(root, runtime, artifact_root, case, executable_sha, probe, bwrap_path)
     elif gate == "G17":
-        report_path, metrics = run_g17(root, runtime, artifact_root, case, executable_sha, probe)
+        report_path, metrics = run_g17(root, runtime, artifact_root, case, executable_sha, probe, bwrap_path)
     elif gate == "G18":
-        report_path, metrics = run_g18(root, runtime, artifact_root, case, executable_sha, probe)
+        report_path, metrics = run_g18(root, runtime, artifact_root, case, executable_sha, probe, bwrap_path)
     elif gate == "G19":
-        report_path, metrics = run_g19(root, runtime, artifact_root, case, executable_sha, probe)
+        report_path, metrics = run_g19(root, runtime, artifact_root, case, executable_sha, probe, bwrap_path)
     elif gate == "G20":
-        report_path, metrics = run_g20(root, runtime, artifact_root, case, executable_sha, probe)
+        report_path, metrics = run_g20(root, runtime, artifact_root, case, executable_sha, probe, bwrap_path)
     else:
-        report_path, metrics = run_g21(root, runtime, artifact_root, case, executable_sha, probe)
+        report_path, metrics = run_g21(root, runtime, artifact_root, case, executable_sha, probe, bwrap_path)
     elapsed = round(time.monotonic() - started, 6)
     log_path = artifact_root / "openttd.log"
     return {

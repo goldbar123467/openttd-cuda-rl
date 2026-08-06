@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import pathlib
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -125,35 +126,67 @@ aggregate_statistics = foundation.aggregate_statistics
 artifact_inventory = foundation.artifact_inventory
 
 
-def source_is_synchronized_main(root: pathlib.Path, commit: str) -> bool:
-    """Check the local/main origin boundary without an unrestricted Git command."""
+def _no_symlink_components(path: pathlib.Path) -> bool:
+    return all(not item.is_symlink() for item in (path, *path.parents))
 
-    git_directory = pathlib.Path(git(root, "rev-parse", "--absolute-git-dir"))
-    head = git_directory / "HEAD"
-    if head.is_symlink() or not head.is_file() or head.read_bytes() != b"ref: refs/heads/main\n":
-        return False
-    common_directory = git_directory
-    commondir = git_directory / "commondir"
-    if commondir.is_file() and not commondir.is_symlink():
-        try:
-            relative = commondir.read_text(encoding="ascii").removesuffix("\n")
-        except (OSError, UnicodeError):
-            return False
-        common_directory = (git_directory / relative).resolve()
-    origin_ref = common_directory / "refs/remotes/origin/main"
-    if origin_ref.is_file() and not origin_ref.is_symlink():
-        try:
-            return origin_ref.read_bytes() == f"{commit}\n".encode("ascii")
-        except OSError:
-            return False
-    packed = common_directory / "packed-refs"
-    if packed.is_symlink() or not packed.is_file():
+
+def _safe_git_file(path: pathlib.Path) -> bool:
+    return _no_symlink_components(path) and path.is_file()
+
+
+def _linked_common_directory(git_directory: pathlib.Path, payload: bytes) -> pathlib.Path | None:
+    try:
+        text = payload.decode("ascii")
+    except UnicodeError:
+        return None
+    if not text.endswith("\n") or text.count("\n") != 1:
+        return None
+    relative = pathlib.PurePosixPath(text[:-1])
+    if relative.is_absolute() or not relative.parts or any(part in {"", "."} for part in relative.parts):
+        return None
+    candidate = git_directory
+    for part in relative.parts:
+        candidate = candidate.parent if part == ".." else candidate / part
+    # Git linked worktrees store their administrative directory exactly at
+    # <common>/worktrees/<name> and use ../.. as commondir.  Accept no more
+    # general filesystem traversal than that documented shape.
+    if git_directory.parent.name != "worktrees" or candidate != git_directory.parent.parent:
+        return None
+    return candidate if _no_symlink_components(candidate) and candidate.is_dir() else None
+
+
+def source_is_synchronized_main(root: pathlib.Path, commit: str) -> bool:
+    """Check main against its exact local origin ref without following symlinks."""
+
+    if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
         return False
     try:
-        records = packed.read_text(encoding="ascii").splitlines()
-    except (OSError, UnicodeError):
+        git_directory = pathlib.Path(git(root, "rev-parse", "--absolute-git-dir"))
+        if not git_directory.is_absolute() or not _no_symlink_components(git_directory) or not git_directory.is_dir():
+            return False
+        head = git_directory / "HEAD"
+        if not _safe_git_file(head) or head.read_bytes() != b"ref: refs/heads/main\n":
+            return False
+        common_directory = git_directory
+        commondir = git_directory / "commondir"
+        if commondir.is_symlink() or commondir.exists():
+            if not _safe_git_file(commondir):
+                return False
+            linked = _linked_common_directory(git_directory, commondir.read_bytes())
+            if linked is None:
+                return False
+            common_directory = linked
+        origin_ref = common_directory / "refs/remotes/origin/main"
+        if _safe_git_file(origin_ref):
+            return origin_ref.read_bytes() == f"{commit}\n".encode("ascii")
+        packed = common_directory / "packed-refs"
+        if not _safe_git_file(packed):
+            return False
+        records = packed.read_bytes().decode("ascii").splitlines()
+        matches = [line for line in records if line.endswith(" refs/remotes/origin/main")]
+        return matches == [f"{commit} refs/remotes/origin/main"]
+    except (foundation.M22FinalEvaluationError, OSError, UnicodeError, ValueError):
         return False
-    return f"{commit} refs/remotes/origin/main" in records
 
 
 def source_identity(root: pathlib.Path) -> dict[str, Any]:
@@ -411,7 +444,7 @@ def run(
             root, bwrap, evaluator_executable, checkpoint, selected["checkpoint_id"], case_root / "evaluator",
             case, "cuda:0", evaluator_schema,
         )
-        native_result = run_native(root, runtime, case_root / "native", case)
+        native_result = run_native(root, runtime, case_root / "native", case, bwrap_path=bwrap)
         scores = case_scores(case, evaluator_result, native_result)
         failures = failure_categories(case, evaluator_result, native_result, scores)
         run_record = {
