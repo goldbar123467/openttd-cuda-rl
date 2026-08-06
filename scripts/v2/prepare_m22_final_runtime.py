@@ -21,7 +21,10 @@ from typing import Any
 
 import jsonschema
 
-from artifact_context import ArtifactContext, ArtifactContextError, resolve_artifact_root
+from artifact_context import (
+    ArtifactContext, ArtifactContextError, ToolRequirement, preflight_tools,
+    resolve_artifact_root,
+)
 import m22_final_native as native
 import validate_m20_competition_source as m20_source
 import validate_m21_broad_source as m21_source
@@ -246,24 +249,37 @@ def stage_runtime(root: pathlib.Path, artifact_root: pathlib.Path, build_path: p
     }
 
 
-def run_smokes(root: pathlib.Path, artifact_root: pathlib.Path, runtime: native.RuntimePaths) -> list[dict[str, Any]]:
+def preflight_bwrap(bwrap_path: pathlib.Path | None) -> pathlib.Path:
+    require(bwrap_path is not None, "an explicit Bubblewrap path is required")
+    bwrap = pathlib.Path(bwrap_path)
+    preflight_tools((ToolRequirement("bwrap", bwrap),))
+    return bwrap
+
+
+def run_smokes(
+    root: pathlib.Path, artifact_root: pathlib.Path, runtime: native.RuntimePaths, *,
+    bwrap_path: pathlib.Path,
+) -> list[dict[str, Any]]:
     records = []
     smoke_root = artifact_root / "smokes"
     smoke_root.mkdir(mode=0o700)
     for ordinal, case in enumerate(SMOKE_CASES, 1):
         case_root = smoke_root / case["case_id"]
-        record = native.run_native_case(root, runtime, case_root, dict(case))
+        record = native.run_native_case(
+            root, runtime, case_root, dict(case), bwrap_path=bwrap_path,
+        )
         records.append({"artifact_root": str(case_root), "private_seed": case["seed"], **record})
         print(f"M22 runtime smoke {ordinal:02d}/{len(SMOKE_CASES)} PASS {case['case_id']}", flush=True)
     return records
 
 
 def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.Path, *, jobs: int,
-        artifact_context: ArtifactContext | None = None) -> dict[str, Any]:
+        bwrap_path: pathlib.Path, artifact_context: ArtifactContext | None = None) -> dict[str, Any]:
     root, artifact_root, evidence_path = root.resolve(), artifact_root.resolve(), evidence_path.resolve()
     context = artifact_context
     require(context is not None and context.is_live, "M22 runtime preparation requires one live artifact context")
     require(jobs >= 1, "build jobs must be positive")
+    bwrap = preflight_bwrap(bwrap_path)
     require(not artifact_root.exists() and not artifact_root.is_symlink(), "retained artifact root must be new")
     require(not evidence_path.exists() and not evidence_path.is_symlink(), "runtime evidence output must be new")
     require(git(root, "status", "--porcelain") == "", "repository must be clean before runtime preparation")
@@ -293,7 +309,7 @@ def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.
         gamescript_config=pathlib.Path(runtime_assets["configs"]["gamescript"]["path"]), source_tree=source["tree"],
     )
     print("M22 runtime representative native smokes", flush=True)
-    smokes = run_smokes(root, artifact_root, runtime)
+    smokes = run_smokes(root, artifact_root, runtime, bwrap_path=bwrap)
     contract = load(root / LEARNING_CONTRACT)
     evidence = {
         "base": {"commit": m21_config["source"]["commit"], "source_record_sha256": sha256(root / M21_SOURCE),
@@ -324,13 +340,18 @@ def main() -> int:
     parser.add_argument("--artifact-root", type=pathlib.Path, required=True)
     parser.add_argument("--evidence", type=pathlib.Path, required=True)
     parser.add_argument("--jobs", type=int, default=max(1, min(8, os.cpu_count() or 1)))
+    parser.add_argument("--bwrap", type=pathlib.Path, required=True,
+                        help="absolute Bubblewrap executable path for native smoke isolation")
     parser.add_argument("--input-artifact-root", type=pathlib.Path,
                         help="absolute common root containing the accepted M20 and M21 logical artifact sets")
     args = parser.parse_args()
     try:
         input_root = resolve_artifact_root(args.input_artifact_root)
         context = None if input_root is None else ArtifactContext.live(input_root)
-        run(args.root, args.artifact_root, args.evidence, jobs=args.jobs, artifact_context=context)
+        run(
+            args.root, args.artifact_root, args.evidence, jobs=args.jobs,
+            bwrap_path=args.bwrap, artifact_context=context,
+        )
         return 0
     except (M22RuntimePreparationError, native.M22FinalNativeError, m20_source.M20SourceError,
             m21_source.M21SourceError, ArtifactContextError, OSError, json.JSONDecodeError, KeyError, TypeError, ValueError,

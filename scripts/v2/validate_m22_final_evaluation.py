@@ -268,6 +268,7 @@ def _preflight_live(
     root: pathlib.Path,
     report: dict[str, Any],
     prior: dict[str, Any],
+    result_requirements: tuple[ArtifactRequirement, ...],
     live_inputs: LiveInputManifest | None,
     bwrap_path: pathlib.Path | None,
 ) -> tuple[pathlib.Path, dict[str, pathlib.Path], LiveInputManifest, pathlib.Path]:
@@ -277,7 +278,6 @@ def _preflight_live(
             "M22 final live-input manifest root differs from artifact context")
     require(bwrap_path is not None, "M22 final bwrap tool path is required")
     prior_requirements = _prior_requirements(prior)
-    result_requirements = _result_requirements(report)
     runtime_requirements = runtime_validator.required_live_inputs(root)
     aggregate = (*prior_requirements, *result_requirements, *runtime_requirements)
     context.preflight(aggregate)
@@ -441,6 +441,7 @@ def validate_value(
     require(report["identity"] == identity, "M22 final identity binding drifted")
     require(identity["bubblewrap_sha256"] == BWRAP_SHA256,
             "M22 final bubblewrap frozen identity drifted")
+    result_requirements = _result_requirements(report)
     manifest_path = root / report["manifest"]["path"]
     if manifest_bytes is None:
         try:
@@ -480,7 +481,7 @@ def validate_value(
     runtime: runner.native.RuntimePaths | None = None
     if context.is_live:
         prior_root, live_files, live_inputs, _ = _preflight_live(
-            context, root, report, prior_attempt, live_inputs, bwrap_path,
+            context, root, report, prior_attempt, result_requirements, live_inputs, bwrap_path,
         )
         runtime_validator.validate(root, artifact_context=context)
         runner.validate_prior_attempt_live(prior_attempt, prior_root)

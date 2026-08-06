@@ -91,25 +91,29 @@ def prepare_source(base_source: pathlib.Path, source_path: pathlib.Path,
 
 
 def run_smokes(root: pathlib.Path, artifact_root: pathlib.Path,
-               runtime: native.RuntimePaths) -> list[dict[str, Any]]:
+               runtime: native.RuntimePaths, *, bwrap_path: pathlib.Path) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     smoke_root = artifact_root / "smokes"
     smoke_root.mkdir(mode=0o700)
     for ordinal, case in enumerate(SMOKE_CASES, 1):
         case_root = smoke_root / case["case_id"]
-        record = native.run_native_case(root, runtime, case_root, dict(case))
+        record = native.run_native_case(
+            root, runtime, case_root, dict(case), bwrap_path=bwrap_path,
+        )
         records.append({"artifact_root": str(case_root), "private_seed": case["seed"], **record})
         print(f"M22 corrected runtime smoke {ordinal:02d}/{len(SMOKE_CASES)} PASS {case['case_id']}", flush=True)
     return records
 
 
 def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.Path, *, jobs: int,
+        bwrap_path: pathlib.Path,
         artifact_context: foundation.ArtifactContext | None = None) -> dict[str, Any]:
     root, artifact_root, evidence_path = root.resolve(), artifact_root.resolve(), evidence_path.resolve()
     context = artifact_context
     foundation.require(context is not None and context.is_live,
                        "corrected M22 runtime preparation requires one live artifact context")
     foundation.require(jobs >= 1, "build jobs must be positive")
+    bwrap = foundation.preflight_bwrap(bwrap_path)
     foundation.require(not artifact_root.exists() and not artifact_root.is_symlink(),
                        "corrected retained artifact root must be new")
     foundation.require(not evidence_path.exists() and not evidence_path.is_symlink(),
@@ -153,7 +157,7 @@ def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.
         source_tree=source["tree"],
     )
     print("M22 corrected runtime fixed synthetic smokes", flush=True)
-    smokes = run_smokes(root, artifact_root, runtime)
+    smokes = run_smokes(root, artifact_root, runtime, bwrap_path=bwrap)
     patch_records = [
         {"path": str(relative), "sha256": foundation.sha256(path), "touched_files": list(touched)}
         for relative, path, touched in zip(PATCHES, patches, PATCH_TOUCHED, strict=True)
@@ -204,13 +208,18 @@ def main() -> int:
     parser.add_argument("--artifact-root", type=pathlib.Path, required=True)
     parser.add_argument("--evidence", type=pathlib.Path, required=True)
     parser.add_argument("--jobs", type=int, default=max(1, min(8, os.cpu_count() or 1)))
+    parser.add_argument("--bwrap", type=pathlib.Path, required=True,
+                        help="absolute Bubblewrap executable path for native smoke isolation")
     parser.add_argument("--input-artifact-root", type=pathlib.Path,
                         help="absolute common root containing the accepted M20 and M21 logical artifact sets")
     args = parser.parse_args()
     try:
         input_root = foundation.resolve_artifact_root(args.input_artifact_root)
         context = None if input_root is None else foundation.ArtifactContext.live(input_root)
-        run(args.root, args.artifact_root, args.evidence, jobs=args.jobs, artifact_context=context)
+        run(
+            args.root, args.artifact_root, args.evidence, jobs=args.jobs,
+            bwrap_path=args.bwrap, artifact_context=context,
+        )
         return 0
     except (foundation.M22RuntimePreparationError, native.M22FinalNativeError,
             foundation.m20_source.M20SourceError, foundation.m21_source.M21SourceError,

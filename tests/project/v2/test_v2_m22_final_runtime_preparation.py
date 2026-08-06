@@ -6,13 +6,15 @@ from __future__ import annotations
 import copy
 import json
 import pathlib
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
 
 import jsonschema
 
-from artifact_context import ArtifactContext, resolve_artifact_root
+from artifact_context import ArtifactContext, ArtifactContextError, resolve_artifact_root
 import m22_final_native as native
 import prepare_m22_final_runtime as preparation
 import validate_m22_final_runtime_source as validator
@@ -112,15 +114,56 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
         runtime = native.RuntimePaths(*(pathlib.Path("/not-used") for _ in range(5)), source_tree="0" * 40)
         with tempfile.TemporaryDirectory() as raw:
             artifact = pathlib.Path(raw)
+            bwrap = artifact / "bwrap"
+            bwrap.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            bwrap.chmod(0o700)
 
             def dispatch(_root: pathlib.Path, _runtime: native.RuntimePaths, case_root: pathlib.Path,
-                         case: dict[str, object]) -> dict[str, object]:
+                         case: dict[str, object], *, bwrap_path: pathlib.Path) -> dict[str, object]:
                 self.assertTrue(case_root.parent.is_dir())
+                self.assertEqual(bwrap_path, bwrap)
                 return {"case": native.public_case(case)}
 
             with mock.patch.object(native, "run_native_case", side_effect=dispatch) as patched:
-                records = preparation.run_smokes(self.root, artifact, runtime)
+                try:
+                    records = preparation.run_smokes(self.root, artifact, runtime, bwrap_path=bwrap)
+                except TypeError as exc:
+                    self.fail(f"run_smokes does not expose the Bubblewrap contract: {exc}")
             self.assertEqual((len(records), patched.call_count), (8, 8))
+
+    def test_run_rejects_unusable_bwrap_before_creating_retained_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            context = ArtifactContext.live(directory / "inputs")
+            non_executable = directory / "non-executable"
+            non_executable.write_text("not executable\n", encoding="utf-8")
+            symlink = directory / "symlink"
+            symlink.symlink_to("/bin/true")
+            for ordinal, (kind, bwrap) in enumerate((
+                ("missing", directory / "missing"),
+                ("symlink", symlink),
+                ("not executable", non_executable),
+            )):
+                with self.subTest(kind=kind):
+                    artifact = directory / f"runtime-output-{ordinal}"
+                    evidence = directory / f"evidence-{ordinal}.json"
+                    try:
+                        with self.assertRaisesRegex(ArtifactContextError, kind):
+                            preparation.run(
+                                self.root, artifact, evidence, jobs=1,
+                                artifact_context=context, bwrap_path=bwrap,
+                            )
+                    except TypeError as exc:
+                        self.fail(f"run does not expose the Bubblewrap contract: {exc}")
+                    self.assertFalse(artifact.exists())
+                    self.assertFalse(evidence.exists())
+
+    def test_cli_help_requires_an_explicit_bwrap_path(self) -> None:
+        completed = subprocess.run(
+            [sys.executable, str(self.root / "scripts/v2/prepare_m22_final_runtime.py"), "--help"],
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True,
+        )
+        self.assertIn("--bwrap BWRAP", completed.stdout)
 
     def test_output_writer_never_overwrites(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -136,6 +179,9 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
             context = ArtifactContext.live(directory / "inputs")
             artifact = directory / "runtime-output"
             evidence = directory / "evidence.json"
+            bwrap = directory / "bwrap"
+            bwrap.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            bwrap.chmod(0o700)
 
             def fake_git(_repository: pathlib.Path, *arguments: str) -> str:
                 if arguments == ("status", "--porcelain"):
@@ -154,9 +200,9 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
                                    return_value=(fake["build"], fake["runtime"]["open_gfx"])), \
                  mock.patch.object(preparation, "stage_runtime", return_value=fake["runtime"]) as stage_runtime, \
                  mock.patch.object(preparation, "file_record", return_value=fake["executable"]), \
-                 mock.patch.object(preparation, "run_smokes", return_value=fake["smokes"]):
+                 mock.patch.object(preparation, "run_smokes", return_value=fake["smokes"]) as run_smokes:
                 result = preparation.run(
-                    self.root, artifact, evidence, jobs=2, artifact_context=context,
+                    self.root, artifact, evidence, jobs=2, artifact_context=context, bwrap_path=bwrap,
                 )
 
         self.assertEqual(result["retained_artifact"], str(artifact))
@@ -164,6 +210,7 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
         m21_validate.assert_called_once_with(self.root.resolve(), artifact_context=context)
         self.assertEqual(prepare_source.call_args.args[0], context.artifact_set("v2-m21-broad-a") / "source")
         self.assertIs(stage_runtime.call_args.args[3], context)
+        run_smokes.assert_called_once_with(self.root.resolve(), artifact, mock.ANY, bwrap_path=bwrap)
 
     def test_cumulative_patch_scope_and_tokens_pass(self) -> None:
         validator.validate_patch(self.root, {"path": str(preparation.PATCH),

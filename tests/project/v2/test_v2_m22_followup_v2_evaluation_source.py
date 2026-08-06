@@ -14,6 +14,7 @@ from unittest import mock
 
 import jsonschema
 
+from artifact_context import ArtifactContext
 import run_m22_followup_v2_evaluation as runner
 import validate_m22_followup_v2_evaluation as validator
 
@@ -133,36 +134,46 @@ class M22FollowupV2EvaluationSourceTests(unittest.TestCase):
         report["report_sha256"] = runner.sha256_bytes(runner.canonical_bytes(report))
         return report
 
-    def test_native_closure_descriptors_reject_unsafe_or_unbound_records_without_reading(self) -> None:
+    def test_public_offline_validation_rejects_malformed_result_descriptors_without_artifact_reads(self) -> None:
         original = validator.load(self.root / validator.CONFIG)
+        manifest_bytes = (self.root / runner.MANIFEST).read_bytes()
+        manifest = json.loads(manifest_bytes)
 
         def mutate(report: dict[str, object], kind: str) -> None:
             run = report["runs"][0]
             record = run["native"]["record"]
             inventory = run["native"]["artifact_inventory"]
-            if kind == "absolute":
-                record["manifest_path"] = "/outside/manifest.json"
-            elif kind == "parent":
-                record["report_path"] = "../report.json"
+            if kind == "root":
+                report["artifact_root"] = "/wrong-logical-set"
+            elif kind == "unsafe":
+                inventory[0]["path"] = "../escape"
             elif kind == "alternate":
                 record["report_path"] = "manifest.json"
                 record["report_sha256"] = record["manifest_sha256"]
-            elif kind == "digest":
+            elif kind == "unbound":
                 record["report_sha256"] = "0" * 64
-            elif kind == "bytes":
-                inventory[0]["bytes"] = -1
-            elif kind == "duplicate":
-                inventory.append(copy.deepcopy(inventory[0]))
             else:
-                run["artifact_path"] = "cases/41-wrong-case-root"
+                inventory.append(copy.deepcopy(inventory[0]))
 
-        for kind in ("absolute", "parent", "alternate", "digest", "bytes", "duplicate", "case-root"):
+        for kind in ("root", "unsafe", "duplicate", "alternate", "unbound"):
             with self.subTest(kind=kind):
                 report = copy.deepcopy(original)
                 mutate(report, kind)
-                with mock.patch.object(pathlib.Path, "open", side_effect=AssertionError("descriptor read")):
-                    with self.assertRaisesRegex(validator.M22FollowupV2EvidenceError, "(native|artifact|closure|case)"):
-                        validator._result_requirements(report)
+                unsigned = copy.deepcopy(report)
+                unsigned.pop("report_sha256")
+                report["report_sha256"] = runner.sha256_bytes(runner.canonical_bytes(unsigned))
+                with mock.patch.object(ArtifactContext, "artifact_set",
+                                       side_effect=AssertionError("offline artifact read")), \
+                     mock.patch.object(ArtifactContext, "preflight",
+                                       side_effect=AssertionError("offline artifact read")), \
+                     mock.patch.object(ArtifactContext, "resolve",
+                                       side_effect=AssertionError("offline artifact read")):
+                    with self.assertRaisesRegex(validator.M22FollowupV2EvidenceError,
+                                                "(native|artifact|closure)"):
+                        validator.validate_value(
+                            report, self.root, artifact_context=ArtifactContext.offline(),
+                            manifest_value=manifest, manifest_bytes=manifest_bytes,
+                        )
 
     def test_evaluator_identity_is_the_frozen_role_digest(self) -> None:
         report = validator.load(self.root / validator.CONFIG)
