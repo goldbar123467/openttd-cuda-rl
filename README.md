@@ -864,12 +864,12 @@ Start with the portable V2 repository check:
 ```
 
 The [`V2 verification guide`](docs/project/V2_VERIFICATION.md) documents the
-fast, contract, and live full workflows and their claim boundaries. A clean
-clone can run the portable tiers, but cannot validate retained live evidence
-without the declared artifact cache and live-input roles. Contract additionally
-requires the initialized pinned `openttd-upstream` submodule. Full is the
-no-argument default and fails closed before commands unless its absolute
-artifact root, manifest roles, tools, source, and nested inputs are complete.
+fast, contract, and live full workflows and their claim boundaries. A clean clone
+can run fast without submodules or artifacts. After
+`git submodule update --init --recursive`, that same clean checkout can run
+contract. Neither tier validates retained live evidence. Full is the no-argument
+default and fails closed before commands unless its absolute artifact root,
+manifest roles, tools, source, and nested inputs are complete.
 
 The contract and full inventories include the M22 validators, which rebuild both
 the JSON and bounded native corpus representations from accepted G15-G21
@@ -882,8 +882,9 @@ follow-up-v2 report is independently recomputed and required to pass, including
 its exact required-program service admission and immutable earlier-suite
 boundaries. At the current M23 foundation boundary, offline V2 discovery retains
 the complete release-contract, 28-label package rejection matrix,
-source-integrated runtime, and visible-controller source coverage. A complete
-live tree remains necessary before full can reach its unchanged 235-test V1
+source-integrated runtime, and visible-controller source coverage. Offline M23
+semantic and package checks are not retained-live validation. A complete live
+tree remains necessary before full can reach its unchanged 235-test V1
 regression. The standalone
 [`training/v2/m22/CMakeLists.txt`](training/v2/m22/CMakeLists.txt) entry point uses
 the pinned LibTorch 2.13.0/CUDA 13 toolchain without changing the hash-frozen M15

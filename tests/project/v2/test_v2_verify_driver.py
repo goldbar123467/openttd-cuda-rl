@@ -153,6 +153,51 @@ class V2VerifyDriverTests(unittest.TestCase):
     ) -> tuple[str, ...]:
         return driver.materialize_command(self.command(command_id), config).argv
 
+    def assert_guide_artifact_root_authority(self, guide: str) -> None:
+        prose = " ".join(guide.split())
+        for required in (
+            "./scripts/v2/verify.sh --artifact-root /absolute/openttd-rl-artifacts",
+            "Artifact-root resolution is explicit CLI > `OPENTTD_RL_ARTIFACT_ROOT` > none.",
+            "Fast and contract ignore both explicit and environment artifact roots.",
+            "Full with no artifact root exits preflight status `2` before any command starts.",
+        ):
+            self.assertIn(required, prose)
+
+    def assert_guide_tier_authority(self, guide: str) -> None:
+        prose = " ".join(guide.split())
+        for required in (
+            "Fast is offline and repository-only.",
+            "It needs no submodule or artifacts and makes no research or setting source-completeness claim.",
+            "Contract requires the initialized pinned submodule and proves research and setting source completeness.",
+            "It uses committed artifact records offline and performs no retained-live reads.",
+        ):
+            self.assertIn(required, prose)
+
+    def assert_readme_tier_authority(self, readme: str) -> None:
+        prose = " ".join(readme.split())
+        for required in (
+            "A clean clone can run fast without submodules or artifacts.",
+            "After `git submodule update --init --recursive`, that same clean checkout can run contract.",
+            "Neither tier validates retained live evidence.",
+            "Offline M23 semantic and package checks are not retained-live validation.",
+        ):
+            self.assertIn(required, prose)
+
+    def assert_deferred_m23_validator_clis_uninvoked(
+        self,
+        inventory: tuple[driver.CommandSpec, ...],
+    ) -> None:
+        invoked = [
+            pathlib.Path(argument).name
+            for command in inventory
+            for argument in command.argv
+        ]
+        for cli in (
+            "validate_m23_ingame_equivalence.py",
+            "validate_m23_packages.py",
+        ):
+            self.assertEqual(invoked.count(cli), 0, cli)
+
     def test_default_tier_is_full(self) -> None:
         args = driver.parse_args([
             "--root", str(self.root), "--tools-python", str(self.python),
@@ -208,18 +253,74 @@ class V2VerifyDriverTests(unittest.TestCase):
         self.assertIn("infrastructure or preflight status `2`", prose)
         self.assertIn("complete relocated live tree", prose)
 
+    def test_verification_guide_locks_artifact_root_resolution_and_tier_authority(
+        self,
+    ) -> None:
+        guide = (self.root / "docs/project/V2_VERIFICATION.md").read_text(encoding="utf-8")
+        self.assert_guide_artifact_root_authority(guide)
+        self.assert_guide_tier_authority(guide)
+
+    def test_document_authority_guards_reject_each_deleted_boundary(self) -> None:
+        guide = (self.root / "docs/project/V2_VERIFICATION.md").read_text(encoding="utf-8")
+        guide_prose = " ".join(guide.split())
+        guide_boundaries = (
+            "./scripts/v2/verify.sh --artifact-root /absolute/openttd-rl-artifacts",
+            "Artifact-root resolution is explicit CLI > `OPENTTD_RL_ARTIFACT_ROOT` > none.",
+            "Fast and contract ignore both explicit and environment artifact roots.",
+            "Full with no artifact root exits preflight status `2` before any command starts.",
+            "Fast is offline and repository-only.",
+            "It needs no submodule or artifacts and makes no research or setting source-completeness claim.",
+            "Contract requires the initialized pinned submodule and proves research and setting source completeness.",
+            "It uses committed artifact records offline and performs no retained-live reads.",
+        )
+        for boundary in guide_boundaries:
+            with self.subTest(boundary=boundary):
+                self.assertIn(boundary, guide_prose)
+                mutated = guide_prose.replace(boundary, "", 1)
+                with self.assertRaises(AssertionError):
+                    self.assert_guide_artifact_root_authority(mutated)
+                    self.assert_guide_tier_authority(mutated)
+
+        readme = (self.root / "README.md").read_text(encoding="utf-8")
+        readme_prose = " ".join(readme.split())
+        readme_boundaries = (
+            "A clean clone can run fast without submodules or artifacts.",
+            "After `git submodule update --init --recursive`, that same clean checkout can run contract.",
+            "Neither tier validates retained live evidence.",
+            "Offline M23 semantic and package checks are not retained-live validation.",
+        )
+        for boundary in readme_boundaries:
+            with self.subTest(boundary=boundary):
+                self.assertIn(boundary, readme_prose)
+                mutated = readme_prose.replace(boundary, "", 1)
+                with self.assertRaises(AssertionError):
+                    self.assert_readme_tier_authority(mutated)
+
+    def test_guide_defers_unmaterialized_m23_output_validator_clis(self) -> None:
+        guide = (self.root / "docs/project/V2_VERIFICATION.md").read_text(encoding="utf-8")
+        prose = " ".join(guide.split())
+        for cli in (
+            "validate_m23_ingame_equivalence.py",
+            "validate_m23_packages.py",
+        ):
+            self.assertEqual(guide.count(f"`{cli}`"), 1, cli)
+        for required in (
+            "executable manual prototype-output validator CLIs",
+            "They consume uncommitted prototype/live outputs.",
+            "They have no committed G23 roots or records, no typed live-input closures, and no role among the exact 11 manifest roles.",
+            "They remain uninvoked by fast, contract, and full.",
+            "Binding them is deferred to a future G23 authority cycle.",
+            "Offline M23 semantic and package checks are not retained-live validation.",
+        ):
+            self.assertIn(required, prose)
+
     def test_readme_links_guide_without_promising_clean_clone_live_validation(self) -> None:
         readme = (self.root / "README.md").read_text(encoding="utf-8")
-        prose = " ".join(readme.split())
         self.assertIn(
             "[`V2 verification guide`](docs/project/V2_VERIFICATION.md)",
             readme,
         )
-        self.assertIn(
-            "A clean clone can run the portable tiers, but cannot validate retained live evidence",
-            prose,
-        )
-        self.assertIn("declared artifact cache and live-input roles", prose)
+        self.assert_readme_tier_authority(readme)
 
     def test_inventory_is_unique_ordered_and_cumulative(self) -> None:
         inventory = driver.build_inventory(self.root, self.python)
@@ -591,12 +692,16 @@ class V2VerifyDriverTests(unittest.TestCase):
         discovered = {
             path.name for path in (self.root / "scripts/v2").glob("validate_*.py")
         }
-        non_authoritative_libraries = {
+        deferred_unmaterialized_output_validator_clis = {
             "validate_m23_ingame_equivalence.py",
             "validate_m23_packages.py",
         }
-        self.assertEqual(set(invoked), discovered - non_authoritative_libraries)
-        self.assertEqual(discovered - set(invoked), non_authoritative_libraries)
+        self.assertEqual(set(invoked), discovered - deferred_unmaterialized_output_validator_clis)
+        self.assertEqual(
+            discovered - set(invoked),
+            deferred_unmaterialized_output_validator_clis,
+        )
+        self.assert_deferred_m23_validator_clis_uninvoked(self.inventory)
         for script in set(invoked):
             expected_count = 2 if script == "validate_m22_recovery_evidence.py" else 1
             self.assertEqual(invoked.count(script), expected_count, script)
@@ -621,6 +726,27 @@ class V2VerifyDriverTests(unittest.TestCase):
             {command.command_id for command in validators if command.expected_status == 2},
             expected_status_two,
         )
+
+    def test_deferred_m23_output_validator_guard_rejects_registration(self) -> None:
+        for cli in (
+            "validate_m23_ingame_equivalence.py",
+            "validate_m23_packages.py",
+        ):
+            with self.subTest(cli=cli):
+                cli_path = str(self.root / "scripts/v2" / cli)
+                for launch in ((cli_path,), (str(self.python), cli_path)):
+                    with self.subTest(launch=launch):
+                        mutated = (
+                            *self.inventory,
+                            driver.CommandSpec(
+                                f"forbidden-{pathlib.Path(cli).stem}",
+                                driver.Tier.FULL,
+                                driver.CommandCategory.VALIDATOR,
+                                launch,
+                            ),
+                        )
+                        with self.assertRaises(AssertionError):
+                            self.assert_deferred_m23_validator_clis_uninvoked(mutated)
 
     def test_fast_and_contract_summaries_make_no_gate_or_g23_claim(self) -> None:
         for tier in (driver.Tier.FAST, driver.Tier.CONTRACT):

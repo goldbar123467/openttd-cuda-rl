@@ -1,10 +1,14 @@
 # V2 verification workflow
 
-The V2 verification driver has three cumulative tiers. Full is the no-argument
-default. Fast and contract are offline, portable tiers: they can validate source
-and committed artifact records, but they cannot make a G23 or V2 release
-acceptance claim. Full is live and fail-closed. It requires every declared live
-input and never converts a missing mandatory input into a skip.
+The V2 verification driver has three cumulative tiers. Fast is offline and
+repository-only. It needs no submodule or artifacts and makes no research or
+setting source-completeness claim. Contract requires the initialized pinned
+submodule and proves research and setting source completeness. It uses committed
+artifact records offline and performs no retained-live reads. Fast and contract
+are offline, portable tiers, but their authorities differ; they cannot make a
+G23 or V2 release acceptance claim. Full is the no-argument default. Full is live
+and fail-closed. It requires every declared live input and never converts a
+missing mandatory input into a skip.
 
 ## Portable developer checks
 
@@ -42,6 +46,16 @@ OPENTTD_RL_ARTIFACT_ROOT=/absolute/openttd-rl-artifacts \
   ./scripts/v2/verify.sh
 ```
 
+The equivalent explicit-CLI form is also full because no tier is supplied:
+
+```bash
+./scripts/v2/verify.sh --artifact-root /absolute/openttd-rl-artifacts
+```
+
+Artifact-root resolution is explicit CLI > `OPENTTD_RL_ARTIFACT_ROOT` > none.
+Fast and contract ignore both explicit and environment artifact roots. Full with
+no artifact root exits preflight status `2` before any command starts.
+
 `OPENTTD_RL_ARTIFACT_ROOT` relocates filesystem reads; it does not weaken or
 rewrite recorded identities. The root must contain `v2-live-inputs.json`. That
 manifest binds every named role to an input below the same root:
@@ -57,6 +71,16 @@ manifest binds every named role to an input below the same root:
 - `qualification-executable`
 - `final-v1-evaluator`
 - `m14-openttd-executable`
+
+## Deferred M23 prototype-output validators
+
+`validate_m23_packages.py` and `validate_m23_ingame_equivalence.py` are
+executable manual prototype-output validator CLIs. They consume uncommitted
+prototype/live outputs. They have no committed G23 roots or records, no typed
+live-input closures, and no role among the exact 11 manifest roles. They remain
+uninvoked by fast, contract, and full. Binding them is deferred to a future G23
+authority cycle. Offline M23 semantic and package checks are not retained-live
+validation.
 
 Before launching commands, full aggregates every missing or invalid source
 repository, live-input role, required tool, artifact set, nested file, and
