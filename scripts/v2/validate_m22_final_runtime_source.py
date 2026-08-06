@@ -32,6 +32,32 @@ BASE_LOGICAL_SET = "v2-m21-broad-a"
 RESULT_LOGICAL_SET = "v2-m22-final-runtime-c"
 LIVE_CONSUMER = "m22-final-runtime-source"
 EXPECTED_LIVE_INPUTS = 67
+G21_GAMESCRIPT_COMMAND_NAMES = (
+    "CMD_CREATE_GOAL",
+    "CMD_SET_GOAL_PROGRESS",
+    "CMD_SET_GOAL_COMPLETED",
+    "CMD_GOAL_QUESTION",
+    "CMD_CREATE_STORY_PAGE",
+    "CMD_CREATE_STORY_PAGE_ELEMENT",
+    "CMD_SET_STORY_PAGE_TITLE",
+    "CMD_SHOW_STORY_PAGE",
+    "CMD_CREATE_LEAGUE_TABLE",
+    "CMD_CREATE_LEAGUE_TABLE_ELEMENT",
+    "CMD_UPDATE_LEAGUE_TABLE_ELEMENT_SCORE",
+    "CMD_GOAL_QUESTION_ANSWER",
+    "CMD_STORY_PAGE_BUTTON",
+)
+G21_CONTENT_ASSET_KEYS = (
+    "aircraft_engines",
+    "cargos",
+    "industries",
+    "objects",
+    "rail_types",
+    "road_engines",
+    "road_types",
+    "ship_engines",
+    "train_engines",
+)
 
 
 class M22RuntimeSourceError(ValueError):
@@ -145,27 +171,59 @@ def _canonical_runtime(root: pathlib.Path, source: dict[str, Any], *, build_name
     """Bind the M22 layout to the committed M20/M21 staging authorities."""
 
     recorded_root = source["retained_artifact"]
-    m20_source = load(root / preparation.M20_SOURCE)
-    m20_contract = load(root / preparation.native.m20.CONTRACT)
-    m21_source = load(root / preparation.M21_SOURCE)
-    m21_contract = load(root / preparation.native.m21.CONTRACT)
-
     try:
+        m20_source = load(root / preparation.M20_SOURCE)
+        m20_contract = load(root / preparation.native.m20.CONTRACT)
+        m21_source = load(root / preparation.M21_SOURCE)
+        m21_contract = load(root / preparation.native.m21.CONTRACT)
         preparation.native.m20.expected_identities(root, m20_contract)
         preparation.native.m21.identities(root, m21_contract)
         preparation.m20_source._content_records(root, m20_source, repository_config=False)
         preparation.m21_source.validate_content(root, m21_contract)
-    except (preparation.native.m20.M20MatrixError, preparation.native.m21.M21MatrixError,
+        m20_content = load(root / preparation.M20_CONTENT)
+        m21_lock = load(root / preparation.M21_CONTENT_LOCK)
+        expected_base = {
+            "commit": m21_source["source"]["commit"],
+            "source_record_sha256": sha256(root / preparation.M21_SOURCE),
+            "tree": m21_source["source"]["tree"],
+        }
+        open_gfx = m21_source["build"]["open_gfx"]
+        expected_open_gfx = (
+            pathlib.PurePosixPath(open_gfx["path"]).name,
+            open_gfx["bytes"],
+            open_gfx["sha256"],
+        )
+        expected_configs = tuple(
+            (name, authority["sha256"])
+            for name, authority in m21_source["runtime"]["configs"].items()
+        )
+        expected_ai = [
+            (authority["name"], f"content_download/ai/{pathlib.PurePosixPath(authority['path']).name}",
+             authority["sha256"])
+            for authority in m20_content["ai_archives"]
+        ]
+        expected_libraries = [
+            (f"content_download/ai/library/{pathlib.PurePosixPath(item['path']).name}", item["sha256"])
+            for item in m20_content["libraries"]
+        ]
+        expected_archives = [
+            (f"{build_name}/{item['archive']['path']}", item["archive"]["bytes"], item["archive"]["sha256"])
+            for item in m21_lock["packages"]
+        ]
+        expected_grfs = [
+            (f"{build_name}/newgrf/m21/{item['name']}", item["bytes"], item["sha256"])
+            for item in m21_source["runtime"]["content_files"]
+        ]
+        expected_scripts = (
+            (f"{build_name}/game/m21coverage/info.nut", m21_contract["identities"]["gamescript_info_sha256"]),
+            (f"{build_name}/game/m21coverage/main.nut", m21_contract["identities"]["gamescript_main_sha256"]),
+        )
+    except (M22RuntimeSourceError, json.JSONDecodeError, UnicodeError, OSError, KeyError, TypeError,
+            preparation.native.m20.M20MatrixError, preparation.native.m21.M21MatrixError,
             preparation.m20_source.M20SourceError, preparation.m21_source.M21SourceError) as exc:
-        raise M22RuntimeSourceError(f"M20/M21 content authority closure drifted: {exc}") from exc
-    m20_content = load(root / preparation.M20_CONTENT)
-    m21_lock = load(root / preparation.M21_CONTENT_LOCK)
+        raise M22RuntimeSourceError("M20/M21 content authority is malformed") from exc
 
-    require(source["base"] == {
-        "commit": m21_source["source"]["commit"],
-        "source_record_sha256": sha256(root / preparation.M21_SOURCE),
-        "tree": m21_source["source"]["tree"],
-    }, "M22 runtime base identity drifted")
+    require(source["base"] == expected_base, "M22 runtime base identity drifted")
     require(tuple(source["build"]["logs"]) == ("build", "configure", "ctest", "junit"),
             "M22 canonical runtime build-log order drifted")
     expected_logs = {"build": "build.log", "configure": "configure.log", "ctest": "ctest.log", "junit": "ctest.xml"}
@@ -176,50 +234,35 @@ def _canonical_runtime(root: pathlib.Path, source: dict[str, Any], *, build_name
     require(_recorded_relative(recorded_root, source["executable"]["path"], label="executable") ==
             f"{build_name}/openttd", "M22 canonical runtime executable path drifted")
 
-    open_gfx = m21_source["build"]["open_gfx"]
     actual_open_gfx = source["runtime"]["open_gfx"]
     require(_recorded_relative(recorded_root, actual_open_gfx["path"], label="OpenGFX") ==
-            f"{build_name}/baseset/{pathlib.PurePosixPath(open_gfx['path']).name}" and
-            actual_open_gfx["bytes"] == open_gfx["bytes"] and actual_open_gfx["sha256"] == open_gfx["sha256"],
+            f"{build_name}/baseset/{expected_open_gfx[0]}" and
+            actual_open_gfx["bytes"] == expected_open_gfx[1] and actual_open_gfx["sha256"] == expected_open_gfx[2],
             "M22 canonical runtime OpenGFX identity drifted")
 
     require(tuple(source["runtime"]["configs"]) == ("base", "content", "gamescript"),
             "M22 canonical runtime config order drifted")
-    for name, authority in m21_source["runtime"]["configs"].items():
+    for name, authority_sha256 in expected_configs:
         actual = source["runtime"]["configs"][name]
         require(_recorded_relative(recorded_root, actual["path"], label=f"{name} config") == f"{name}.cfg" and
-                actual["sha256"] == authority["sha256"], f"M22 canonical runtime {name} config drifted")
+                actual["sha256"] == authority_sha256, f"M22 canonical runtime {name} config drifted")
 
-    expected_ai = []
-    for authority in m20_content["ai_archives"]:
-        expected_ai.append((authority["name"], f"content_download/ai/{pathlib.PurePosixPath(authority['path']).name}",
-                            authority["sha256"]))
     actual_ai = [(record["name"], _recorded_relative(recorded_root, record["path"], label="AI archive"),
                   record["sha256"]) for record in source["runtime"]["ai_archives"]]
     require(actual_ai == expected_ai, "M22 canonical runtime AI archive inventory drifted")
 
-    expected_libraries = [(f"content_download/ai/library/{pathlib.PurePosixPath(item['path']).name}", item["sha256"])
-                          for item in m20_content["libraries"]]
     actual_libraries = [(_recorded_relative(recorded_root, item["path"], label="AI library"), item["sha256"])
                         for item in source["runtime"]["ai_libraries"]]
     require(actual_libraries == expected_libraries, "M22 canonical runtime AI library inventory drifted")
 
-    expected_archives = [(f"{build_name}/{item['archive']['path']}", item["archive"]["bytes"], item["archive"]["sha256"])
-                         for item in m21_lock["packages"]]
     actual_archives = [(_recorded_relative(recorded_root, item["path"], label="NewGRF archive"), item["bytes"], item["sha256"])
                        for item in source["runtime"]["newgrf_archives"]]
     require(actual_archives == expected_archives, "M22 canonical runtime NewGRF archive inventory drifted")
 
-    expected_grfs = [(f"{build_name}/newgrf/m21/{item['name']}", item["bytes"], item["sha256"])
-                     for item in m21_source["runtime"]["content_files"]]
     actual_grfs = [(_recorded_relative(recorded_root, item["path"], label="staged NewGRF"), item["bytes"], item["sha256"])
                    for item in source["runtime"]["newgrf_files"]]
     require(actual_grfs == expected_grfs, "M22 canonical runtime staged NewGRF inventory drifted")
 
-    expected_scripts = (
-        (f"{build_name}/game/m21coverage/info.nut", m21_contract["identities"]["gamescript_info_sha256"]),
-        (f"{build_name}/game/m21coverage/main.nut", m21_contract["identities"]["gamescript_main_sha256"]),
-    )
     actual_scripts = tuple((_recorded_relative(recorded_root, item["path"], label="GameScript"), item["sha256"])
                            for item in source["runtime"]["gamescript_files"])
     require(actual_scripts == expected_scripts, "M22 canonical runtime GameScript inventory drifted")
@@ -476,12 +519,16 @@ def _report_metrics(root: pathlib.Path, source: dict[str, Any], case: dict[str, 
         require(isinstance(responses, dict) and set(responses) == {"goal_question", "story_button"} and
                 all(type(value) is bool and value is True for value in responses.values()),
                 "M22 live G21 GameScript responses drifted")
-        require(result.get("fixture_name") == "M21CoverageFixture" and result.get("save_load_exact") is True and
-                isinstance(commands, list) and len(commands) == 13,
+        expected_commands = [
+            {"command": command, "status": "SUCCESS"}
+            for command in G21_GAMESCRIPT_COMMAND_NAMES
+        ]
+        require(result.get("fixture_name") == "M21CoverageFixture" and result.get("save_load_exact") is True,
                 "M22 live G21 GameScript smoke drifted")
+        require(commands == expected_commands, "M22 live G21 GameScript commands drifted")
         return {"commands": len(commands), "responses": len(responses), "save_load_exact": True}
     assets = result.get("assets") if isinstance(result, dict) else None
-    require(isinstance(assets, dict) and bool(assets) and
+    require(isinstance(assets, dict) and tuple(assets) == G21_CONTENT_ASSET_KEYS and
             all(type(value) is int and value > 0 for value in assets.values()),
             "M22 live G21 content assets drifted")
     require(probe == "content" and result["package_count"] == 10 and result["capability_schema_closed"] and

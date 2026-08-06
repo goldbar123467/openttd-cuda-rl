@@ -26,6 +26,45 @@ from tests.project.v2.test_v2_m15_native_source import _write_patch_preimage
 import validate_m22_final_runtime_source as validator
 
 
+G21_GAMESCRIPT_COMMAND_NAMES = (
+    "CMD_CREATE_GOAL",
+    "CMD_SET_GOAL_PROGRESS",
+    "CMD_SET_GOAL_COMPLETED",
+    "CMD_GOAL_QUESTION",
+    "CMD_CREATE_STORY_PAGE",
+    "CMD_CREATE_STORY_PAGE_ELEMENT",
+    "CMD_SET_STORY_PAGE_TITLE",
+    "CMD_SHOW_STORY_PAGE",
+    "CMD_CREATE_LEAGUE_TABLE",
+    "CMD_CREATE_LEAGUE_TABLE_ELEMENT",
+    "CMD_UPDATE_LEAGUE_TABLE_ELEMENT_SCORE",
+    "CMD_GOAL_QUESTION_ANSWER",
+    "CMD_STORY_PAGE_BUTTON",
+)
+G21_CONTENT_ASSET_KEYS = (
+    "aircraft_engines",
+    "cargos",
+    "industries",
+    "objects",
+    "rail_types",
+    "road_engines",
+    "road_types",
+    "ship_engines",
+    "train_engines",
+)
+AUTHORITY_MALFORMATIONS = (
+    "m20-manifest-json",
+    "m20-manifest-utf8",
+    "m20-contract-missing-identities",
+    "m20-contract-wrong-identities-type",
+    "m21-lock-json",
+    "m21-lock-wrong-acquisition-type",
+    "m21-contract-json",
+    "m21-contract-missing-identities",
+    "m21-contract-wrong-identities-type",
+)
+
+
 def _git(repository: pathlib.Path, *arguments: str) -> str:
     return subprocess.check_output(
         ["git", "-C", str(repository), *arguments], text=True,
@@ -125,6 +164,57 @@ def _write_record_file(
 def _write_json(path: pathlib.Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+
+
+def _update_authority_link(project: pathlib.Path, contract_relative: pathlib.Path,
+                           identity: str, target: pathlib.Path) -> None:
+    contract_path = project / contract_relative
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    contract["identities"][identity] = hashlib.sha256(target.read_bytes()).hexdigest()
+    _write_json(contract_path, contract)
+
+
+def _mutate_authority(project: pathlib.Path, label: str) -> None:
+    m20_manifest = project / preparation.M20_CONTENT
+    m20_contract = project / preparation.native.m20.CONTRACT
+    m21_lock = project / preparation.M21_CONTENT_LOCK
+    m21_contract = project / preparation.native.m21.CONTRACT
+    if label == "m20-manifest-json":
+        m20_manifest.write_bytes(b"{not-json\n")
+        _update_authority_link(project, preparation.native.m20.CONTRACT,
+                               "content_manifest_sha256", m20_manifest)
+    elif label == "m20-manifest-utf8":
+        m20_manifest.write_bytes(b"\xff\xfe")
+        _update_authority_link(project, preparation.native.m20.CONTRACT,
+                               "content_manifest_sha256", m20_manifest)
+    elif label == "m20-contract-missing-identities":
+        contract = json.loads(m20_contract.read_text(encoding="utf-8"))
+        del contract["identities"]
+        _write_json(m20_contract, contract)
+    elif label == "m20-contract-wrong-identities-type":
+        contract = json.loads(m20_contract.read_text(encoding="utf-8"))
+        contract["identities"] = []
+        _write_json(m20_contract, contract)
+    elif label == "m21-lock-json":
+        m21_lock.write_bytes(b"{not-json\n")
+        _update_authority_link(project, preparation.native.m21.CONTRACT, "content_lock_sha256", m21_lock)
+    elif label == "m21-lock-wrong-acquisition-type":
+        lock = json.loads(m21_lock.read_text(encoding="utf-8"))
+        lock["acquisition"] = None
+        _write_json(m21_lock, lock)
+        _update_authority_link(project, preparation.native.m21.CONTRACT, "content_lock_sha256", m21_lock)
+    elif label == "m21-contract-json":
+        m21_contract.write_bytes(b"{not-json\n")
+    elif label == "m21-contract-missing-identities":
+        contract = json.loads(m21_contract.read_text(encoding="utf-8"))
+        del contract["identities"]
+        _write_json(m21_contract, contract)
+    elif label == "m21-contract-wrong-identities-type":
+        contract = json.loads(m21_contract.read_text(encoding="utf-8"))
+        contract["identities"] = None
+        _write_json(m21_contract, contract)
+    else:
+        raise AssertionError(label)
 
 
 def _project_authorities(
@@ -247,7 +337,14 @@ def _smoke_report(root: pathlib.Path, source: dict[str, Any], case: dict[str, An
         }
     contract = native.m21.load(root / native.m21.CONTRACT)
     result = m21_probe({"probe": probe}, contract)
-    if probe == "authority_economy":
+    if probe == "gamescript":
+        result["commands"] = [
+            {"command": command, "status": "SUCCESS"}
+            for command in G21_GAMESCRIPT_COMMAND_NAMES
+        ]
+    elif probe == "content":
+        result["assets"] = {key: 1 for key in G21_CONTENT_ASSET_KEYS}
+    elif probe == "authority_economy":
         result["commands"] = [{"command": f"fixture-{index}", "status": "SUCCESS"}
                               for index in range(metrics["commands"])]
     elif probe == "events":
@@ -271,6 +368,19 @@ def _replace_record_file(
     record["bytes"] = len(payload)
     record["sha256"] = hashlib.sha256(payload).hexdigest()
     return path
+
+
+def _replace_smoke_report(
+    result_root: pathlib.Path,
+    value: dict[str, Any],
+    case_id: str,
+    report: dict[str, Any],
+) -> None:
+    smoke = next(item for item in value["smokes"] if item["case"]["case_id"] == case_id)
+    case_root = result_root.joinpath(*_relative(value["retained_artifact"], smoke["artifact_root"]).parts)
+    payload = preparation.canonical_bytes(report)
+    (case_root / smoke["report_path"]).write_bytes(payload)
+    smoke["report_sha256"] = hashlib.sha256(payload).hexdigest()
 
 
 def _run_producer_smoke(
@@ -626,7 +736,9 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
                 authority = json.loads(authority_path.read_text(encoding="utf-8"))
                 authority["identities"][identity] = "0" * 64
                 _write_json(authority_path, authority)
-                with self.assertRaisesRegex(validator.M22RuntimeSourceError, "identity"):
+                with self.assertRaisesRegex(
+                    validator.M22RuntimeSourceError, "M20/M21 content authority is malformed",
+                ):
                     validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
 
     def test_offline_custom_authorities_reject_wrong_referenced_content_bytes(self) -> None:
@@ -640,8 +752,29 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
                 )
                 authority_path = config_path.parent / relative
                 authority_path.write_bytes(authority_path.read_bytes() + b"\n")
-                with self.assertRaisesRegex(validator.M22RuntimeSourceError, "identity"):
+                with self.assertRaisesRegex(
+                    validator.M22RuntimeSourceError, "M20/M21 content authority is malformed",
+                ):
                     validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+
+    def test_malformed_custom_authorities_are_domain_errors_without_cli_traceback(self) -> None:
+        for label in AUTHORITY_MALFORMATIONS:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                _, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+                )
+                _mutate_authority(config_path.parent, label)
+                with self.assertRaises(Exception) as raised:
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+                self.assertIsInstance(raised.exception, validator.M22RuntimeSourceError)
+                self.assertRegex(str(raised.exception), "M20/M21 content authority is malformed")
+                output = io.StringIO()
+                with mock.patch.dict(os.environ, {}, clear=True), contextlib.redirect_stdout(output):
+                    status = validator.main(["--root", str(config_path.parent), "--config", str(config_path)])
+                self.assertEqual(status, 1)
+                self.assertNotIn("Traceback", output.getvalue())
 
     def test_renamed_base_config_fails_offline(self) -> None:
         value = copy.deepcopy(self.source)
@@ -942,6 +1075,71 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
                 validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
             self.assertIsInstance(raised.exception, validator.M22RuntimeSourceError)
             self.assertRegex(str(raised.exception), "content assets")
+
+    def test_digest_honest_gamescript_command_shapes_are_rejected(self) -> None:
+        expected = [{"command": name, "status": "SUCCESS"} for name in G21_GAMESCRIPT_COMMAND_NAMES]
+        variants: tuple[tuple[str, object], ...] = (
+            ("null", None),
+            ("scalar", 13),
+            ("null-entry", [None, *copy.deepcopy(expected[1:])]),
+            ("extra-command", [*copy.deepcopy(expected), copy.deepcopy(expected[0])]),
+            ("missing-command", copy.deepcopy(expected[:-1])),
+            ("wrong-record-keys", [{"name": G21_GAMESCRIPT_COMMAND_NAMES[0], "status": "SUCCESS"},
+                                   *copy.deepcopy(expected[1:])]),
+            ("extra-record-key", [{**copy.deepcopy(expected[0]), "value": 1}, *copy.deepcopy(expected[1:])]),
+            ("reordered", [copy.deepcopy(expected[1]), copy.deepcopy(expected[0]), *copy.deepcopy(expected[2:])]),
+            ("wrong-command", [{"command": "CMD_SUBSTITUTE", "status": "SUCCESS"}, *copy.deepcopy(expected[1:])]),
+            ("rejected-status", [{"command": G21_GAMESCRIPT_COMMAND_NAMES[0], "status": "REJECTED"},
+                                 *copy.deepcopy(expected[1:])]),
+            ("command-wrong-type", [{"command": 1, "status": "SUCCESS"}, *copy.deepcopy(expected[1:])]),
+            ("status-wrong-type", [{"command": G21_GAMESCRIPT_COMMAND_NAMES[0], "status": True},
+                                   *copy.deepcopy(expected[1:])]),
+        )
+        for label, commands in variants:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                value, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+                )
+                report_path = base / "v2-m22-final-runtime-c/smokes/source-g21-tropic-gamescript/report.json"
+                report = json.loads(report_path.read_text(encoding="utf-8"))
+                report["result"]["commands"] = commands
+                _replace_smoke_report(base / "v2-m22-final-runtime-c", value,
+                                      "source-g21-tropic-gamescript", report)
+                config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+                with self.assertRaisesRegex(validator.M22RuntimeSourceError, "GameScript commands"):
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_honest_content_asset_shapes_are_rejected(self) -> None:
+        expected = {key: 1 for key in G21_CONTENT_ASSET_KEYS}
+        missing = copy.deepcopy(expected)
+        missing.pop("cargos")
+        wrong = copy.deepcopy(expected)
+        wrong["substitute"] = wrong.pop("cargos")
+        variants = (
+            ("wrong-key", wrong),
+            ("missing-key", missing),
+            ("extra-key", {**expected, "substitute": 1}),
+            ("zero", {**expected, "cargos": 0}),
+            ("negative", {**expected, "cargos": -1}),
+            ("bool", {**expected, "cargos": True}),
+            ("string", {**expected, "cargos": "1"}),
+        )
+        for label, assets in variants:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                value, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+                )
+                report_path = base / "v2-m22-final-runtime-c/smokes/source-g21-arctic-content/report.json"
+                report = json.loads(report_path.read_text(encoding="utf-8"))
+                report["result"]["assets"] = assets
+                _replace_smoke_report(base / "v2-m22-final-runtime-c", value, "source-g21-arctic-content", report)
+                config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+                with self.assertRaisesRegex(validator.M22RuntimeSourceError, "content assets"):
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
 
     def test_digest_matched_smoke_log_failure_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

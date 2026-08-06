@@ -19,8 +19,13 @@ import jsonschema
 from artifact_context import ARTIFACT_ROOT_ENV, ArtifactContext, ArtifactContextError
 import prepare_m22_followup_runtime as preparation
 from tests.project.v2.test_v2_m22_final_runtime_source import (
+    AUTHORITY_MALFORMATIONS,
+    G21_CONTENT_ASSET_KEYS,
+    G21_GAMESCRIPT_COMMAND_NAMES,
     _git,
+    _mutate_authority,
     _replace_record_file,
+    _replace_smoke_report,
     _write_json,
     expected_runtime_closure,
     make_live_runtime_fixture,
@@ -213,7 +218,9 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                 authority = json.loads(authority_path.read_text(encoding="utf-8"))
                 authority["identities"][identity] = "0" * 64
                 _write_json(authority_path, authority)
-                with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "identity"):
+                with self.assertRaisesRegex(
+                    validator.M22FollowupRuntimeSourceError, "M20/M21 content authority is malformed",
+                ):
                     validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
 
     def test_offline_custom_authorities_reject_wrong_referenced_content_bytes(self) -> None:
@@ -227,8 +234,29 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                 )
                 authority_path = config_path.parent / relative
                 authority_path.write_bytes(authority_path.read_bytes() + b"\n")
-                with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "identity"):
+                with self.assertRaisesRegex(
+                    validator.M22FollowupRuntimeSourceError, "M20/M21 content authority is malformed",
+                ):
                     validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+
+    def test_malformed_custom_authorities_are_domain_errors_without_cli_traceback(self) -> None:
+        for label in AUTHORITY_MALFORMATIONS:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                _, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+                )
+                _mutate_authority(config_path.parent, label)
+                with self.assertRaises(Exception) as raised:
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+                self.assertIsInstance(raised.exception, validator.M22FollowupRuntimeSourceError)
+                self.assertRegex(str(raised.exception), "M20/M21 content authority is malformed")
+                output = io.StringIO()
+                with mock.patch.dict(os.environ, {}, clear=True), contextlib.redirect_stdout(output):
+                    status = validator.main(["--root", str(config_path.parent), "--config", str(config_path)])
+                self.assertEqual(status, 1)
+                self.assertNotIn("Traceback", output.getvalue())
 
     def test_wrong_ai_name_fails_offline(self) -> None:
         value = copy.deepcopy(self.source)
@@ -410,6 +438,72 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                     ])
                 self.assertEqual(status, 1)
                 self.assertNotIn("Traceback", output.getvalue())
+
+    def test_digest_honest_gamescript_command_shapes_are_rejected(self) -> None:
+        expected = [{"command": name, "status": "SUCCESS"} for name in G21_GAMESCRIPT_COMMAND_NAMES]
+        variants: tuple[tuple[str, object], ...] = (
+            ("null", None),
+            ("scalar", 13),
+            ("null-entry", [None, *copy.deepcopy(expected[1:])]),
+            ("extra-command", [*copy.deepcopy(expected), copy.deepcopy(expected[0])]),
+            ("missing-command", copy.deepcopy(expected[:-1])),
+            ("wrong-record-keys", [{"name": G21_GAMESCRIPT_COMMAND_NAMES[0], "status": "SUCCESS"},
+                                   *copy.deepcopy(expected[1:])]),
+            ("extra-record-key", [{**copy.deepcopy(expected[0]), "value": 1}, *copy.deepcopy(expected[1:])]),
+            ("reordered", [copy.deepcopy(expected[1]), copy.deepcopy(expected[0]), *copy.deepcopy(expected[2:])]),
+            ("wrong-command", [{"command": "CMD_SUBSTITUTE", "status": "SUCCESS"}, *copy.deepcopy(expected[1:])]),
+            ("rejected-status", [{"command": G21_GAMESCRIPT_COMMAND_NAMES[0], "status": "REJECTED"},
+                                 *copy.deepcopy(expected[1:])]),
+            ("command-wrong-type", [{"command": 1, "status": "SUCCESS"}, *copy.deepcopy(expected[1:])]),
+            ("status-wrong-type", [{"command": G21_GAMESCRIPT_COMMAND_NAMES[0], "status": True},
+                                   *copy.deepcopy(expected[1:])]),
+        )
+        for label, commands in variants:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                value, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+                )
+                report_path = base / "v2-m22-followup-runtime-a/smokes/source-g21-tropic-gamescript/report.json"
+                report = json.loads(report_path.read_text(encoding="utf-8"))
+                report["result"]["commands"] = commands
+                _replace_smoke_report(base / "v2-m22-followup-runtime-a", value,
+                                      "source-g21-tropic-gamescript", report)
+                config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+                with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "GameScript commands"):
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_honest_content_asset_shapes_are_rejected(self) -> None:
+        expected = {key: 1 for key in G21_CONTENT_ASSET_KEYS}
+        missing = copy.deepcopy(expected)
+        missing.pop("cargos")
+        wrong = copy.deepcopy(expected)
+        wrong["substitute"] = wrong.pop("cargos")
+        variants = (
+            ("wrong-key", wrong),
+            ("missing-key", missing),
+            ("extra-key", {**expected, "substitute": 1}),
+            ("zero", {**expected, "cargos": 0}),
+            ("negative", {**expected, "cargos": -1}),
+            ("bool", {**expected, "cargos": True}),
+            ("string", {**expected, "cargos": "1"}),
+        )
+        for label, assets in variants:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                value, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+                )
+                report_path = base / "v2-m22-followup-runtime-a/smokes/source-g21-arctic-content/report.json"
+                report = json.loads(report_path.read_text(encoding="utf-8"))
+                report["result"]["assets"] = assets
+                _replace_smoke_report(base / "v2-m22-followup-runtime-a", value,
+                                      "source-g21-arctic-content", report)
+                config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+                with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "content assets"):
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
 
     def test_digest_matched_ctest_inventory_with_nonstring_name_is_domain_error(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
