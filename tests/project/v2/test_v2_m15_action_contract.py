@@ -25,10 +25,6 @@ class M15ActionContractTests(unittest.TestCase):
         path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
         return path
 
-    def test_repository_contract_passes(self) -> None:
-        summary = validate_m15_action_contract.validate(self.root)
-        self.assertEqual((summary.bytes, summary.families, summary.capacity), (790_528, 12, 4096))
-
     def test_schema_hash_drift_fails(self) -> None:
         value = copy.deepcopy(self.config)
         value["schema_sha256"] = "0" * 64

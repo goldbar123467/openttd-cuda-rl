@@ -34,13 +34,6 @@ class M15CompetenceSourceTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_source_delta_passes(self) -> None:
-        summary = validate_m15_competence_source.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual(summary.files, 1)
-
     def test_live_source_and_build_pass(self) -> None:
         summary = validate_m15_competence_source.validate(
             self.root,

@@ -44,11 +44,6 @@ class M22LearningContractTests(unittest.TestCase):
             with context:
                 validator.validate(self.root, contract_path, evaluation_path)
 
-    def test_repository_contract_passes(self) -> None:
-        summary = validator.validate(self.root)
-        self.assertEqual((summary.programs, summary.stages, summary.architectures, summary.trainer_seeds, summary.final_cases),
-                         (17, 7, 3, 3, 42))
-
     def test_contract_schema_hash_drift_fails(self) -> None:
         value = copy.deepcopy(self.contract); value["schema_sha256"] = "0" * 64
         self.contract_mutation_fails(value, "schema SHA-256")

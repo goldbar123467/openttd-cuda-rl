@@ -172,11 +172,6 @@ class M21BroadEvidenceTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_evidence_passes(self) -> None:
-        result = validator.validate(self.root, artifact_context=ArtifactContext.offline())
-        self.assertEqual((result["cases"], result["runs"], result["twins"], result["features"], result["commands"]),
-                         (16, 32, 16, 18, 145))
-
     def test_repository_evidence_passes_offline_without_retained_artifacts(self) -> None:
         real_load = validator.load
 

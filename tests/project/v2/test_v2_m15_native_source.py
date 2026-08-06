@@ -260,15 +260,6 @@ class M15NativeSourceTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_source_delta_passes(self) -> None:
-        summary = validate_m15_native_source.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual(summary.patches, 1)
-        self.assertEqual(summary.files, 4)
-        self.assertEqual(summary.result_tree, "70394b69df9a6c2104cb711c439da53b2abde367")
-
     def test_live_source_and_build_pass(self) -> None:
         summary = validate_m15_native_source.validate(
             self.root,

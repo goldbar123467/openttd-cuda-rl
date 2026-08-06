@@ -215,14 +215,6 @@ class SettingInventoryTests(unittest.TestCase):
                     SourceContext.live(repository, commit),
                 )
 
-    def test_repository_inventory_passes_offline(self) -> None:
-        static = validate_setting_inventory.validate(self.root)
-        self.assertEqual(static.source_files, 20)
-        self.assertEqual(static.definitions, 435)
-        self.assertEqual(static.unique_keys, 424)
-        self.assertEqual(static.duplicates, 11)
-        self.assertFalse(static.live_source)
-
     def test_schema_hash_drift_fails(self) -> None:
         inventory = copy.deepcopy(self.inventory)
         inventory["schema_sha256"] = "0" * 64

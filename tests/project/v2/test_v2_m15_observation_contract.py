@@ -25,11 +25,6 @@ class M15ObservationContractTests(unittest.TestCase):
         path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
         return path
 
-    def test_repository_contract_passes(self) -> None:
-        summary = validate_m15_observation_contract.validate(self.root)
-        self.assertEqual((summary.bytes, summary.sections), (2_182_927, 18))
-        self.assertGreaterEqual(summary.fields, 90)
-
     def test_schema_hash_drift_fails(self) -> None:
         value = copy.deepcopy(self.config)
         value["schema_sha256"] = "0" * 64

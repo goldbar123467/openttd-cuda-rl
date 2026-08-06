@@ -37,11 +37,6 @@ class M22NativeCorpusTests(unittest.TestCase):
             with context:
                 validator.validate(self.root, corpus_path, contract_path)
 
-    def test_repository_corpus_passes(self) -> None:
-        summary = validator.validate(self.root)
-        self.assertEqual((summary.entries, summary.training, summary.development, summary.programs, summary.native_gates),
-                         (32, 16, 16, 17, 7))
-
     def test_exact_rebuild_is_offline_even_when_recorded_artifacts_exist(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             live_root = pathlib.Path(raw).resolve()

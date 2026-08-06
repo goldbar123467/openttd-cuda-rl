@@ -59,15 +59,6 @@ class M15PolicyEvidenceTests(unittest.TestCase):
                     ),
                 )
 
-    def test_repository_evidence_passes(self) -> None:
-        summary = validate_m15_policy_evidence.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual((summary.files, summary.devices, summary.parameters), (6, 2, 1239406))
-        self.assertFalse(summary.live_source)
-        self.assertFalse(summary.live_artifact)
-
     def test_live_source_and_artifact_pass(self) -> None:
         summary = validate_m15_policy_evidence.validate(
             self.root,

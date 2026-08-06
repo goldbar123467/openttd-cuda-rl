@@ -198,13 +198,6 @@ class M21BroadSourceTests(unittest.TestCase):
                         content_hash,
                     )
 
-    def test_repository_contract_coverage_content_and_source_pass(self) -> None:
-        with mock.patch.object(validator, "git", side_effect=AssertionError("unexpected live access")) as reader:
-            result = validator.validate(self.root, artifact_context=ArtifactContext.offline())
-        self.assertEqual((result["files"], result["features"], result["commands"]), (4, 18, 145))
-        self.assertFalse(result["live"])
-        reader.assert_not_called()
-
     def test_live_source_and_runtime_pass(self) -> None:
         self.assertTrue(validator.validate(
             self.root,

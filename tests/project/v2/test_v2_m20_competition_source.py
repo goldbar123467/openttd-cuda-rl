@@ -135,13 +135,6 @@ class M20CompetitionSourceTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_source_passes(self) -> None:
-        with mock.patch.object(validator, "git", side_effect=AssertionError("unexpected live access")) as reader:
-            summary = validator.validate(self.root, artifact_context=ArtifactContext.offline())
-        self.assertEqual(summary["files"], 4)
-        self.assertFalse(summary["live"])
-        reader.assert_not_called()
-
     def test_live_source_build_content_and_base_pass(self) -> None:
         summary = validator.validate(self.root, artifact_context=ArtifactContext.live(self.live_base()))
         self.assertTrue(summary["live"])

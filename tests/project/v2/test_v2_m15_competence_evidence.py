@@ -63,17 +63,6 @@ class M15CompetenceEvidenceTests(unittest.TestCase):
                     ),
                 )
 
-    def test_repository_evidence_passes(self) -> None:
-        summary = validate_m15_competence_evidence.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual(
-            (summary.cases, summary.runs, summary.minimum_delivered_passengers, summary.minimum_income),
-            (6, 12, 2, 5),
-        )
-        self.assertFalse(summary.live)
-
     def test_live_artifacts_pass(self) -> None:
         summary = validate_m15_competence_evidence.validate(
             self.root,

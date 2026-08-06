@@ -284,9 +284,6 @@ class M18ShipAIEvidenceTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_evidence_passes(self) -> None:
-        self.assertEqual(validator.validate(self.root)["ships"], 2)
-
     def test_repository_evidence_passes_offline_without_retained_artifacts(self) -> None:
         summary = validator.validate(self.root, artifact_context=ArtifactContext.offline())
         self.assertFalse(summary["live"])

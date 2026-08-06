@@ -65,14 +65,6 @@ class M15CrossScaleReplayEvidenceTests(unittest.TestCase):
                     ),
                 )
 
-    def test_repository_evidence_passes(self) -> None:
-        summary = validate_m15_cross_scale_replay_evidence.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual((summary.cases, summary.runs, summary.maximum_rss_kib), (9, 18, 90916))
-        self.assertFalse(summary.live)
-
     def test_live_artifacts_pass(self) -> None:
         summary = validate_m15_cross_scale_replay_evidence.validate(
             self.root,

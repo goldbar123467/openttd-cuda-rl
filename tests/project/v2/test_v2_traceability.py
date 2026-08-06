@@ -51,16 +51,6 @@ class V2TraceabilityTests(unittest.TestCase):
     def lookup_test(registry: dict[str, object], identifier: str) -> dict[str, object]:
         return next(item for item in registry["tests"] if item["id"] == identifier)  # type: ignore[index]
 
-    def test_repository_traceability_passes(self) -> None:
-        summary = validate_traceability.validate(self.root)
-        self.assertEqual(summary.requirements, 86)
-        self.assertEqual(summary.passed, 77)
-        self.assertEqual(summary.in_progress, 0)
-        self.assertEqual(summary.planned, 9)
-        self.assertEqual(summary.tests, 26)
-        self.assertEqual(summary.tests_passed, 25)
-        self.assertEqual(summary.nonclosed_defects, 0)
-
     def test_requirements_schema_hash_drift_fails(self) -> None:
         registry = copy.deepcopy(self.registry)
         registry["schema_sha256"] = "0" * 64

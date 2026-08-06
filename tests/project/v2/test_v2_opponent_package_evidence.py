@@ -299,15 +299,6 @@ class OpponentPackageEvidenceTests(unittest.TestCase):
         )
         return tokens[3:]
 
-    def test_repository_evidence_index_passes(self) -> None:
-        summary = validate_opponent_package_evidence.validate(self.root)
-        self.assertEqual(summary.opponents, 10)
-        self.assertEqual(summary.locked, 8)
-        self.assertEqual(summary.rejected, 2)
-        self.assertEqual(summary.packages, 18)
-        self.assertEqual(summary.archive_bytes, 4_341_760)
-        self.assertEqual(summary.license_files, 18)
-
     def test_repository_evidence_passes_offline_without_retained_artifacts(self) -> None:
         with mock.patch.object(
             validate_opponent_package_evidence.acquire_ai_package,

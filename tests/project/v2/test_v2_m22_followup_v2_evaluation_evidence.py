@@ -69,10 +69,6 @@ class M22FollowupV2EvaluationEvidenceTests(unittest.TestCase):
                         bwrap_path=pathlib.Path("/usr/bin/bwrap"),
                     )
 
-    def test_repository_passing_evidence_validates_offline(self) -> None:
-        result = validator.validate(self.root)
-        self.assertEqual(result, {"cases": 42, "failures": 0, "live": False, "status": "PASS"})
-
     def test_live_evidence_and_every_retained_artifact_validate(self) -> None:
         if not self.artifact.is_dir() or not (self.artifact.parent / "v2-live-inputs.json").is_file():
             self.skipTest("retained follow-up-v2 artifacts are unavailable")

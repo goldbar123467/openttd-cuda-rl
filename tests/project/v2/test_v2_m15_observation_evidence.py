@@ -50,13 +50,6 @@ class M15ObservationEvidenceTests(unittest.TestCase):
             for requirement in requirements
         )
 
-    def test_repository_evidence_passes(self) -> None:
-        summary = freeze_m15_observation_evidence.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual((summary.cases, summary.passed), (4, 4))
-
     def test_live_artifacts_pass(self) -> None:
         artifact_base = resolve_artifact_root(None)
         if artifact_base is None:

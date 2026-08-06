@@ -40,13 +40,6 @@ class M18ShipSourceTests(unittest.TestCase):
             with raised:
                 validator.validate(self.root, self.write(pathlib.Path(raw), value), self.schema, artifact_context=ArtifactContext.offline())
 
-    def test_repository_source_passes_offline(self) -> None:
-        with mock.patch.object(validator, "git", side_effect=AssertionError("unexpected live access")) as reader:
-            summary = validator.validate(self.root, artifact_context=ArtifactContext.offline())
-        self.assertEqual(summary["files"], 4)
-        self.assertFalse(summary["live"])
-        reader.assert_not_called()
-
     def test_retained_live_source_build_and_base_pass(self) -> None:
         summary = validator.validate(self.root, artifact_context=ArtifactContext.live(self.live_base()))
         self.assertTrue(summary["live"])

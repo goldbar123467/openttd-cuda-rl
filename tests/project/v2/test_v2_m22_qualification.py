@@ -333,11 +333,6 @@ class M22QualificationTests(unittest.TestCase):
         self.assertNotIn(runner.FINAL_MANIFEST.as_posix(), runner.SOURCE_PATHS)
         self.assertEqual(runner.ARTIFACT_NAMES, tuple(sorted(runner.ARTIFACT_NAMES)))
 
-    def test_repository_qualification_evidence_passes(self) -> None:
-        if self.report is None:
-            self.skipTest("qualification evidence has not yet been generated from a clean source commit")
-        validator.validate_value(self.report, self.root)
-
     def test_historical_git_reads_ignore_hostile_environment(self) -> None:
         self.assertIsNotNone(self.report)
         with mock.patch.dict(

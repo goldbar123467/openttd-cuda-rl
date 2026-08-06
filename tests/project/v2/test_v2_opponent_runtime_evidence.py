@@ -268,15 +268,6 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
         )
         return tokens[3:]
 
-    def test_repository_runtime_matrix_passes(self) -> None:
-        summary = validate_opponent_runtime_evidence.validate(self.root)
-        self.assertEqual(summary.opponents, 10)
-        self.assertEqual(summary.package_rejected, 2)
-        self.assertEqual(summary.runtime_rejected, 2)
-        self.assertEqual(summary.tournament, 2)
-        self.assertEqual(summary.control, 1)
-        self.assertEqual(summary.scenario_required, 3)
-
     def test_repository_evidence_passes_offline_without_retained_artifacts(self) -> None:
         with mock.patch.object(
             validate_opponent_runtime_evidence.qualify_ai_runtime,

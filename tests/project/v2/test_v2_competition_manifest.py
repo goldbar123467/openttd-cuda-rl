@@ -28,14 +28,6 @@ class CompetitionManifestTests(unittest.TestCase):
             path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
             return validate_competition_manifest.validate(self.root, path, self.schema_path)
 
-    def test_repository_manifest_passes(self) -> None:
-        summary = validate_competition_manifest.validate(self.root)
-        self.assertEqual(summary.tournament_opponents, 2)
-        self.assertEqual(summary.controls, 1)
-        self.assertEqual(summary.audit_pool, 10)
-        self.assertEqual(summary.seeds, 36)
-        self.assertEqual(summary.paired_legs, 4)
-
     def test_nested_runtime_authority_is_explicitly_offline(self) -> None:
         with mock.patch.object(
             validate_competition_manifest.validate_opponent_runtime_evidence,

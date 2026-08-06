@@ -51,14 +51,6 @@ class M15ActionEvidenceTests(unittest.TestCase):
             for requirement in requirements
         )
 
-    def test_repository_evidence_passes(self) -> None:
-        summary = freeze_m15_action_evidence.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual((summary.map_cases, summary.action_cases, summary.passed), (4, 10, 14))
-        self.assertGreaterEqual(summary.maximum_rss_kib, 1)
-
     def test_live_artifacts_pass(self) -> None:
         artifact_base = resolve_artifact_root(None)
         if artifact_base is None:

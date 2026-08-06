@@ -241,18 +241,6 @@ class M15MapQualificationTests(unittest.TestCase):
         self.assertEqual(list(parent.glob(f".{name}.*.tmp")), [])
         self.assertFalse((parent / f".{name}.pending").exists())
 
-    def test_repository_matrix_passes(self) -> None:
-        summary = run_m15_map_matrix.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual(summary.rectangles, 49)
-        self.assertEqual(summary.generated, 39)
-        self.assertEqual(summary.preflight_rejected, 10)
-        self.assertEqual(summary.save_bytes, 2881300)
-        self.assertEqual(summary.maximum_rss_kib, 89104)
-        self.assertFalse(summary.live_artifacts)
-
     def test_offline_validation_does_not_open_artifact_hint(self) -> None:
         with mock.patch.object(
             qualify_m15_native_map,

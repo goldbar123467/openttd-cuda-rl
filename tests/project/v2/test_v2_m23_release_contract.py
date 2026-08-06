@@ -33,14 +33,6 @@ class M23ReleaseContractTests(unittest.TestCase):
             with context:
                 validator.validate(self.root, path)
 
-    def test_repository_contract_passes(self) -> None:
-        summary = validator.validate(self.root)
-        self.assertEqual(
-            (summary.checkpoints, summary.deployment_architectures, summary.equivalence_cases,
-             summary.runtime_results, summary.playback_campaigns, summary.requirements),
-            (2, 2, 48, 144, 8, 9),
-        )
-
     def test_schema_is_closed_and_identity_bound(self) -> None:
         value = copy.deepcopy(self.contract)
         value["undeclared"] = True

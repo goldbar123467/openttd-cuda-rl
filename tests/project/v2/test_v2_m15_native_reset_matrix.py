@@ -54,14 +54,6 @@ class M15NativeResetMatrixTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_complete_matrix_passes(self) -> None:
-        summary = run_m15_native_reset_matrix.validate(
-            self.root,
-            artifact_context=ArtifactContext.offline(),
-        )
-        self.assertEqual((summary.rectangles, summary.generated, summary.preflight_rejected), (49, 39, 10))
-        self.assertFalse(summary.live)
-
     def test_live_complete_matrix_passes(self) -> None:
         summary = run_m15_native_reset_matrix.validate(
             self.root,

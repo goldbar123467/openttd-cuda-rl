@@ -146,10 +146,6 @@ class M20CompetitionEvidenceTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_evidence_passes(self) -> None:
-        summary = validator.validate(self.root, artifact_context=ArtifactContext.offline())
-        self.assertEqual((summary["cases"], summary["runs"], summary["replay_exact"]), (32, 64, 32))
-
     def test_repository_evidence_passes_offline_without_retained_artifacts(self) -> None:
         real_load = validator.load
 

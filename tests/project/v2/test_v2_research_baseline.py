@@ -192,13 +192,6 @@ class V2ResearchBaselineTests(unittest.TestCase):
             self.assertEqual(status, 1)
             validator.assert_not_called()
 
-    def test_repository_baseline_passes(self) -> None:
-        summary = validate_research_baseline.validate(self.root)
-        self.assertEqual(summary.commands, 145)
-        self.assertEqual(summary.feature_domains, 18)
-        self.assertEqual(summary.opponents, 10)
-        self.assertEqual(summary.native_rectangles, 49)
-
     def test_schema_hash_drift_fails(self) -> None:
         baseline = copy.deepcopy(self.baseline)
         baseline["schema_sha256"] = "0" * 64

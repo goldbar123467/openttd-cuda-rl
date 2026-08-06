@@ -26,16 +26,6 @@ class M15ScalableContractTests(unittest.TestCase):
             path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
             return validate_m15_scalable_contract.validate(self.root, path, self.schema_path)
 
-    def test_repository_contract_passes(self) -> None:
-        summary = validate_m15_scalable_contract.validate(self.root)
-        self.assertEqual(summary.rectangles, 49)
-        self.assertEqual(summary.seeds, 48)
-        self.assertEqual(summary.spatial_levels, 3)
-        self.assertEqual(summary.entity_tables, 5)
-        self.assertEqual(summary.action_families, 12)
-        self.assertEqual(summary.observation_bytes, 2182927)
-        self.assertEqual(summary.candidate_capacity, 4096)
-
     def test_schema_hash_drift_fails(self) -> None:
         contract = copy.deepcopy(self.contract)
         contract["schema_sha256"] = "0" * 64

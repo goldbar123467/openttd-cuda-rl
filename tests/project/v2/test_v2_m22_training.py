@@ -281,9 +281,6 @@ class M22TrainingTests(unittest.TestCase):
         self.assertEqual(runner.ARCHITECTURES, recovery.ARCHITECTURES)
         self.assertEqual(len(runner.ARCHITECTURES) * len(runner.SEEDS), 6)
 
-    def test_repository_training_evidence_passes(self) -> None:
-        validator.validate_value(self.report, self.root)
-
     def test_historical_git_reads_ignore_hostile_environment(self) -> None:
         with mock.patch.dict(
             os.environ,

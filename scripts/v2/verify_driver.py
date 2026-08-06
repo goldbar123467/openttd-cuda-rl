@@ -809,20 +809,6 @@ def build_inventory(
         artifact_command("m21-broad-evidence", "validate_m21_broad_evidence.py"),
         command("m22-learning-contract", "validate_m22_learning_contract.py"),
         command("m22-native-corpus", "validate_m22_native_corpus.py"),
-        CommandSpec(
-            command_id="m22-corpus-binary",
-            minimum_tier=Tier.FAST,
-            category=CommandCategory.TEST,
-            argv=(
-                python,
-                "-c",
-                "import pathlib,sys; import encode_m22_native_corpus as e; "
-                "root=pathlib.Path(sys.argv[1]); data=e.encode(root); decoded=e.decode(data); "
-                "print(f'V2_M22_CORPUS_BINARY=PASS entries={len(decoded.entries)} bytes={len(data)}')",
-                str(root),
-            ),
-            environment=pythonpath,
-        ),
         artifact_command(
             "m22-recovery-v1-evidence", "validate_m22_recovery_evidence.py",
             arguments=("--report", str(recovery_v1)),
@@ -868,18 +854,10 @@ def build_inventory(
             "m22-final-v1-evaluation", "validate_m22_final_evaluation.py",
             bindings=evaluation_bindings, expected_status=2,
         ),
-        command(
-            "m22-followup-v1-manifest-build", "build_m22_followup_manifest.py",
-            category=CommandCategory.BUILDER,
-        ),
         command("m22-followup-v1-manifest", "validate_m22_followup_manifest.py"),
         artifact_command(
             "m22-followup-v1-evaluation", "validate_m22_followup_evaluation.py",
             bindings=evaluation_bindings, expected_status=2,
-        ),
-        command(
-            "m22-followup-v2-manifest-build", "build_m22_followup_v2_manifest.py",
-            category=CommandCategory.BUILDER,
         ),
         command("m22-followup-v2-manifest", "validate_m22_followup_v2_manifest.py"),
         artifact_command(

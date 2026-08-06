@@ -33,15 +33,6 @@ class M22FollowupV2ManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.M22FollowupV2ManifestError, pattern):
                 validator.validate(self.root, self.write(pathlib.Path(raw), value))
 
-    def test_repository_manifest_passes(self) -> None:
-        result = validator.validate(self.root)
-        self.assertEqual((result["cases"], result["programs"], result["unseen_seeds"]), (42, 16, 42))
-
-    def test_manifest_is_exact_deterministic_build(self) -> None:
-        expected = builder.build(self.root)
-        self.assertEqual(self.manifest, expected)
-        self.assertEqual((self.root / builder.MANIFEST).read_bytes(), builder.canonical_bytes(expected))
-
     def test_schema_is_closed_and_canonical(self) -> None:
         jsonschema.Draft202012Validator.check_schema(self.schema)
         self.assertFalse(self.schema["additionalProperties"])

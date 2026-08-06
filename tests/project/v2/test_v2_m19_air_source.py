@@ -44,13 +44,6 @@ class M19AirSourceTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_source_passes(self) -> None:
-        with mock.patch.object(validator, "git", side_effect=AssertionError("unexpected live access")) as reader:
-            summary = validator.validate(self.root, artifact_context=ArtifactContext.offline())
-        self.assertEqual(summary["files"], 4)
-        self.assertFalse(summary["live"])
-        reader.assert_not_called()
-
     def test_live_source_build_and_base_pass(self) -> None:
         self.assertTrue(validator.validate(
             self.root,

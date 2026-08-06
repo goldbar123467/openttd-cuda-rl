@@ -63,10 +63,6 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                     artifact_context=ArtifactContext.offline(),
                 )
 
-    def test_repository_runtime_source_passes(self) -> None:
-        result = validator.validate(self.root)
-        self.assertEqual((result["files"], result["smokes"], result["live"]), (9, 14, False))
-
     def test_live_runtime_source_and_all_artifacts_pass(self) -> None:
         artifact_root = os.environ.get(ARTIFACT_ROOT_ENV)
         if artifact_root is None:

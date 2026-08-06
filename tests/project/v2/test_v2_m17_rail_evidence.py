@@ -41,10 +41,6 @@ class M17RailEvidenceTests(unittest.TestCase):
             self.skipTest("live artifact validation is outside offline mode")
         return base
 
-    def test_repository_evidence_passes(self) -> None:
-        summary = validator.validate(self.root, artifact_context=ArtifactContext.offline())
-        self.assertEqual((summary["cases"], summary["runs"], summary["twin_exact"]), (14, 28, 14))
-
     def test_repository_evidence_passes_offline_without_retained_artifacts(self) -> None:
         with mock.patch.object(validator.matrix, "validate_common", side_effect=AssertionError("unexpected live read")):
             summary = validator.validate(self.root, artifact_context=ArtifactContext.offline())

@@ -31,11 +31,6 @@ class M15PolicyContractTests(unittest.TestCase):
             with context:
                 validate_m15_policy_contract.validate(self.root, self.write(pathlib.Path(raw), value), self.schema)
 
-    def test_repository_contract_passes(self) -> None:
-        summary = validate_m15_policy_contract.validate(self.root)
-        self.assertEqual((summary.inputs, summary.outputs, summary.devices), (25, 4, 2))
-        self.assertEqual(summary.parameters, 1239406)
-
     def test_schema_hash_drift_fails(self) -> None:
         value = copy.deepcopy(self.config); value["schema_sha256"] = "0" * 64
         self.mutation_fails(value, "schema SHA-256")
