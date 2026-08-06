@@ -18,7 +18,6 @@ from artifact_context import (
     ArtifactContextError,
     ArtifactRequirement,
     add_artifact_root_argument,
-    resolve_artifact_root,
 )
 from source_context import SourceContextError, run_git
 
@@ -153,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
     add_artifact_root_argument(parser)
     args = parser.parse_args(argv)
     try:
-        artifact_root = resolve_artifact_root(args.artifact_root)
+        artifact_root = args.artifact_root
         context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
         summary = validate(args.root, args.config, args.schema, artifact_context=context)
         print(f"V2_M17_RAIL_SOURCE=PASS files={summary['files']} tree={summary['tree']} live={str(summary['live']).lower()}")

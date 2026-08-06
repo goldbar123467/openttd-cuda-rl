@@ -22,7 +22,6 @@ from artifact_context import (
     LiveInputManifest,
     RoleRequirement,
     add_artifact_root_argument,
-    resolve_artifact_root,
 )
 
 
@@ -326,19 +325,26 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--evidence", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
     add_artifact_root_argument(parser)
+    parser.add_argument("--openttd", type=pathlib.Path)
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
-        configured_root = resolve_artifact_root(args.artifact_root)
+        configured_root = args.artifact_root
         if configured_root is None:
             context = ArtifactContext.offline()
             live_inputs = LiveInputManifest.offline()
         else:
             context = ArtifactContext.live(configured_root)
-            live_inputs = LiveInputManifest.load(configured_root)
+            live_inputs = (
+                LiveInputManifest.load(configured_root)
+                if args.openttd is None
+                else LiveInputManifest.bind(
+                    context, {"m14-openttd-executable": args.openttd}
+                )
+            )
         summary = validate(
             args.root,
             args.evidence,

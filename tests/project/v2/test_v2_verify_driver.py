@@ -5,15 +5,27 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import importlib
 import io
+import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from types import MappingProxyType
 from unittest import mock
 
+from artifact_context import (
+    LIVE_INPUT_ROLE_SPECS,
+    ArtifactRequirement,
+    LiveInputManifest,
+    RoleRequirement,
+    ToolRequirement,
+    ValidationMode,
+)
 import verify_driver as driver
 
 
@@ -64,6 +76,8 @@ class V2VerifyDriverTests(unittest.TestCase):
         self.git(outer, "config", "user.name", "Task 1")
         source = outer / "openttd-upstream"
         self.git(temporary_root, "clone", "-q", str(origin), str(source))
+        self.git(source, "config", "user.email", "task1@example.invalid")
+        self.git(source, "config", "user.name", "Task 1")
         self.git(outer, "add", "openttd-upstream")
         self.git(outer, "commit", "-qm", "pin source")
         return outer, source, pin
@@ -79,6 +93,54 @@ class V2VerifyDriverTests(unittest.TestCase):
             ),
         )
 
+    def tools(self, *, git: pathlib.Path | None = None,
+              bwrap: pathlib.Path | None = None) -> tuple[ToolRequirement, ...]:
+        requirements = [ToolRequirement("python", self.python)]
+        requirements.append(ToolRequirement(
+            "git", git or pathlib.Path(shutil.which("git") or "/missing/git"),
+        ))
+        if bwrap is not None:
+            requirements.append(ToolRequirement("bwrap", bwrap))
+        return tuple(requirements)
+
+    def bound_manifest(self, root: pathlib.Path) -> LiveInputManifest:
+        roles = {
+            role: root / "roles" / role
+            for role in LIVE_INPUT_ROLE_SPECS
+        }
+        return LiveInputManifest(
+            ValidationMode.LIVE,
+            root,
+            MappingProxyType(roles),
+        )
+
+    def configured(
+        self,
+        tier: driver.Tier,
+        *,
+        repository_root: pathlib.Path | None = None,
+        artifact_root: pathlib.Path | None = None,
+        live_inputs: LiveInputManifest | None = None,
+        tools: tuple[ToolRequirement, ...] | None = None,
+    ) -> driver.VerificationConfig:
+        root = repository_root or self.root
+        return driver.VerificationConfig(
+            repository_root=root,
+            tools_python=self.python,
+            tier=tier,
+            artifact_root=artifact_root,
+            object_repository=root / driver.OPENTTD_SUBMODULE,
+            live_inputs=live_inputs,
+            tools=self.tools() if tools is None else tools,
+        )
+
+    def materialized_argv(
+        self,
+        command_id: str,
+        config: driver.VerificationConfig,
+    ) -> tuple[str, ...]:
+        return driver.materialize_command(self.command(command_id), config).argv
+
     def test_default_tier_is_full(self) -> None:
         args = driver.parse_args([
             "--root", str(self.root), "--tools-python", str(self.python),
@@ -88,15 +150,15 @@ class V2VerifyDriverTests(unittest.TestCase):
     def test_inventory_is_unique_ordered_and_cumulative(self) -> None:
         inventory = driver.build_inventory(self.root, self.python)
         self.assertIsInstance(inventory, tuple)
-        self.assertEqual(len(inventory), 56)
-        self.assertEqual(len({item.command_id for item in inventory}), 56)
+        self.assertEqual(len(inventory), 58)
+        self.assertEqual(len({item.command_id for item in inventory}), 58)
         fast = driver.select_commands(inventory, driver.Tier.FAST)
         contract = driver.select_commands(inventory, driver.Tier.CONTRACT)
         full = driver.select_commands(inventory, driver.Tier.FULL)
         self.assertIsInstance(fast, tuple)
         self.assertEqual([item.command_id for item in fast],
-                         ["m22-corpus-binary", "v2-unit-tests"])
-        self.assertEqual((len(fast), len(contract), len(full)), (2, 55, 56))
+                         ["m22-corpus-binary", "v2-fast-unit-tests"])
+        self.assertEqual((len(fast), len(contract), len(full)), (2, 55, 58))
         self.assertEqual(full[-1].command_id, "v1-traceability")
         self.assertEqual(
             [item.command_id for item in full],
@@ -155,9 +217,47 @@ class V2VerifyDriverTests(unittest.TestCase):
                 "m22-followup-v2-evaluation",
                 "m23-contract",
                 "v2-traceability",
+                "v2-fast-unit-tests",
                 "v2-unit-tests",
+                "v2-full-unit-tests",
                 "v1-traceability",
             ],
+        )
+
+    def test_unit_module_inventory_is_explicit_disjoint_and_complete(self) -> None:
+        unit_commands = tuple(
+            command for command in self.inventory
+            if command.command_id in {
+                "v2-fast-unit-tests", "v2-unit-tests", "v2-full-unit-tests",
+            }
+        )
+        self.assertEqual(
+            [command.command_id for command in unit_commands],
+            ["v2-fast-unit-tests", "v2-unit-tests", "v2-full-unit-tests"],
+        )
+        assigned = []
+        for command in unit_commands:
+            self.assertNotIn("discover", command.argv)
+            modules = tuple(value for value in command.argv if value.startswith("tests.project.v2.test_v2_"))
+            self.assertTrue(modules)
+            assigned.extend(modules)
+        expected = {
+            f"tests.project.v2.{path.stem}"
+            for path in (self.root / "tests/project/v2").glob("test_v2_*.py")
+        }
+        self.assertEqual(set(assigned), expected)
+        self.assertEqual(len(assigned), len(set(assigned)))
+        self.assertEqual(self.command("m23-contract").minimum_tier, driver.Tier.FULL)
+        self.assertTrue(all("-v" not in command.argv for command in unit_commands))
+        fast = next(command for command in unit_commands if command.minimum_tier is driver.Tier.FAST)
+        self.assertEqual(
+            {value for value in fast.argv if value.startswith("tests.project.v2.test_v2_")},
+            {
+                "tests.project.v2.test_v2_artifact_context",
+                "tests.project.v2.test_v2_m22_native_corpus_binary",
+                "tests.project.v2.test_v2_source_context",
+                "tests.project.v2.test_v2_verify_driver",
+            },
         )
 
     def test_fast_and_contract_summaries_make_no_gate_or_g23_claim(self) -> None:
@@ -178,7 +278,9 @@ class V2VerifyDriverTests(unittest.TestCase):
     def test_final_v1_exit_two_is_expected_success(self) -> None:
         command = self.command("m22-final-v1-evaluation")
         self.assertEqual(command.expected_status, 2)
-        result = driver.execute_command(self.status_command(command, 2), self.root)
+        result = driver.execute_command(
+            self.status_command(command, 2), self.configured(driver.Tier.CONTRACT)
+        )
         self.assertTrue(result.passed)
         self.assertIsNone(result.failure_kind)
 
@@ -186,7 +288,9 @@ class V2VerifyDriverTests(unittest.TestCase):
         command = self.command("m22-final-v1-evaluation")
         for status in (0, 3):
             with self.subTest(status=status):
-                result = driver.execute_command(self.status_command(command, status), self.root)
+                result = driver.execute_command(
+                    self.status_command(command, status), self.configured(driver.Tier.CONTRACT)
+                )
                 self.assertFalse(result.passed)
                 self.assertIs(result.failure_kind, driver.FailureKind.UNEXPECTED_STATUS)
                 self.assertEqual(result.actual_status, status)
@@ -194,7 +298,9 @@ class V2VerifyDriverTests(unittest.TestCase):
     def test_followup_v1_exit_two_is_expected_success(self) -> None:
         command = self.command("m22-followup-v1-evaluation")
         self.assertEqual(command.expected_status, 2)
-        result = driver.execute_command(self.status_command(command, 2), self.root)
+        result = driver.execute_command(
+            self.status_command(command, 2), self.configured(driver.Tier.CONTRACT)
+        )
         self.assertTrue(result.passed)
         self.assertIsNone(result.failure_kind)
 
@@ -202,7 +308,9 @@ class V2VerifyDriverTests(unittest.TestCase):
         command = self.command("m22-followup-v1-evaluation")
         for status in (0, 3):
             with self.subTest(status=status):
-                result = driver.execute_command(self.status_command(command, status), self.root)
+                result = driver.execute_command(
+                    self.status_command(command, status), self.configured(driver.Tier.CONTRACT)
+                )
                 self.assertFalse(result.passed)
                 self.assertIs(result.failure_kind, driver.FailureKind.UNEXPECTED_STATUS)
                 self.assertEqual(result.actual_status, status)
@@ -232,6 +340,430 @@ class V2VerifyDriverTests(unittest.TestCase):
             commands = driver.select_commands(self.inventory, driver.Tier.FAST)
             self.assertEqual(driver.preflight(config, commands), ())
 
+    def test_fast_ignores_configured_artifact_root_and_never_builds_live_context(self) -> None:
+        args = driver.parse_args([
+            "--root", str(self.root),
+            "--tools-python", str(self.python),
+            "--tier", "fast",
+            "--artifact-root", "/configured/but-ignored",
+        ])
+        with mock.patch.object(
+            driver.LiveInputManifest,
+            "load",
+            side_effect=AssertionError("fast tier attempted live context construction"),
+        ) as load:
+            config = driver.resolve_config(
+                args,
+                {driver.ARTIFACT_ROOT_ENV: "/environment/also-ignored"},
+            )
+            summary = driver.run_verification(config, ())
+        self.assertIsNone(config.artifact_root)
+        self.assertEqual(summary.preflight_issues, ())
+        load.assert_not_called()
+
+    def test_contract_ignores_configured_artifact_root_and_runs_artifact_validators_offline(self) -> None:
+        args = driver.parse_args([
+            "--root", str(self.root),
+            "--tools-python", str(self.python),
+            "--tier", "contract",
+            "--artifact-root", "/configured/but-ignored",
+        ])
+        config = driver.resolve_config(
+            args,
+            {driver.ARTIFACT_ROOT_ENV: "/environment/also-ignored"},
+        )
+        materialized = driver.materialize_command(
+            self.command("m15-action-evidence"), config,
+        )
+        self.assertIsNone(config.artifact_root)
+        self.assertNotIn("--artifact-root", materialized.argv)
+        self.assertEqual(
+            dict(materialized.environment)["OPENTTD_RL_VALIDATION_MODE"],
+            "offline",
+        )
+        self.assertNotIn(driver.ARTIFACT_ROOT_ENV, dict(materialized.environment))
+
+    def test_contract_passes_live_source_context_only_to_research_and_setting_inventory(self) -> None:
+        config = self.configured(driver.Tier.CONTRACT)
+        bound = []
+        for command in driver.select_commands(self.inventory, driver.Tier.CONTRACT):
+            argv = driver.materialize_command(command, config).argv
+            if "--object-repo" in argv:
+                bound.append(command.command_id)
+                self.assertEqual(
+                    argv[argv.index("--object-repo") + 1],
+                    str(config.object_repository),
+                )
+        self.assertEqual(bound, ["research-baseline", "setting-inventory"])
+
+    def test_contract_materialization_does_not_resolve_or_bind_bwrap(self) -> None:
+        config = self.configured(
+            driver.Tier.CONTRACT,
+            tools=self.tools(bwrap=pathlib.Path("/missing/contract-bwrap")),
+        )
+        with mock.patch.object(
+            driver.VerificationConfig,
+            "tool_path",
+            side_effect=AssertionError("contract resolved a full-only tool"),
+        ):
+            argv = driver.materialize_command(
+                self.command("m22-followup-v2-evaluation"), config,
+            ).argv
+        self.assertNotIn("--bwrap", argv)
+
+    def test_full_materializes_consumer_specific_m22_binary_roles(self) -> None:
+        artifact_root = pathlib.Path("/artifact-base")
+        manifest = self.bound_manifest(artifact_root)
+        bwrap = pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")
+        config = self.configured(
+            driver.Tier.FULL,
+            artifact_root=artifact_root,
+            live_inputs=manifest,
+            tools=self.tools(bwrap=bwrap),
+        )
+        expected = {
+            "m22-recovery-v1-evidence": {
+                "--artifact-root": "recovery-v1-artifacts",
+                "--executable": "recovery-v1-executable",
+                "--corpus": "recovery-v1-corpus",
+            },
+            "m22-recovery-v2-evidence": {
+                "--artifact-root": "recovery-v2-artifacts",
+                "--executable": "v2-campaign-executable",
+                "--corpus": "v2-corpus-binary",
+            },
+            "m22-training-evidence": {
+                "--artifact-root": "training-artifacts",
+                "--executable": "v2-campaign-executable",
+                "--corpus": "v2-corpus-binary",
+            },
+            "m22-qualification-evidence": {
+                "--artifact-root": "qualification-artifacts",
+                "--training-artifact-root": "training-artifacts",
+                "--executable": "qualification-executable",
+                "--corpus": "v2-corpus-binary",
+            },
+        }
+        for command_id, options in expected.items():
+            with self.subTest(command_id=command_id):
+                argv = self.materialized_argv(command_id, config)
+                for option, role in options.items():
+                    self.assertEqual(
+                        argv[argv.index(option) + 1],
+                        str(artifact_root / "roles" / role),
+                    )
+
+    def test_full_routes_m14_executable_to_every_recorded_consumer(self) -> None:
+        artifact_root = pathlib.Path("/artifact-base")
+        config = self.configured(
+            driver.Tier.FULL,
+            artifact_root=artifact_root,
+            live_inputs=self.bound_manifest(artifact_root),
+            tools=self.tools(bwrap=pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")),
+        )
+        consumers = (
+            "opponent-package-evidence",
+            "opponent-runtime-evidence",
+            "m15-map-matrix",
+            "m18-shipai-evidence",
+        )
+        expected = str(artifact_root / "roles/m14-openttd-executable")
+        for command_id in consumers:
+            with self.subTest(command_id=command_id):
+                argv = self.materialized_argv(command_id, config)
+                self.assertEqual(argv[argv.index("--openttd") + 1], expected)
+
+    def test_full_never_passes_live_base_to_an_m15_generation_cli(self) -> None:
+        expected_modules = {
+            "m15-action-evidence": "validate_m15_action_evidence.py",
+            "m15-observation-evidence": "validate_m15_observation_evidence.py",
+            "m15-episode-evidence": "validate_m15_episode_evidence.py",
+            "m15-native-reset-matrix": "validate_m15_native_reset_matrix.py",
+            "m15-map-matrix": "validate_m15_map_evidence.py",
+        }
+        generators = {
+            "freeze_m15_action_evidence.py",
+            "freeze_m15_observation_evidence.py",
+            "freeze_m15_episode_evidence.py",
+            "run_m15_native_reset_matrix.py",
+            "run_m15_map_matrix.py",
+        }
+        artifact_root = pathlib.Path("/artifact-base")
+        config = self.configured(
+            driver.Tier.FULL,
+            artifact_root=artifact_root,
+            live_inputs=self.bound_manifest(artifact_root),
+            tools=self.tools(bwrap=pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")),
+        )
+        for command_id, module in expected_modules.items():
+            with self.subTest(command_id=command_id):
+                argv = self.materialized_argv(command_id, config)
+                self.assertEqual(pathlib.Path(argv[1]).name, module)
+                self.assertNotIn(pathlib.Path(argv[1]).name, generators)
+
+    def test_full_uses_explicit_artifact_root_before_environment(self) -> None:
+        args = driver.parse_args([
+            "--root", str(self.root), "--tools-python", str(self.python),
+            "--tier", "full", "--artifact-root", "/explicit/artifacts",
+        ])
+        config = driver.resolve_config(
+            args,
+            {driver.ARTIFACT_ROOT_ENV: "/environment/artifacts"},
+        )
+        self.assertEqual(config.artifact_root, pathlib.Path("/explicit/artifacts"))
+        self.assertEqual(config.object_repository, self.root / driver.OPENTTD_SUBMODULE)
+        self.assertIn("bwrap", {tool.name for tool in config.tools})
+
+    def test_full_uses_environment_artifact_root_when_cli_is_absent(self) -> None:
+        args = driver.parse_args([
+            "--root", str(self.root), "--tools-python", str(self.python),
+            "--tier", "full",
+        ])
+        config = driver.resolve_config(
+            args,
+            {driver.ARTIFACT_ROOT_ENV: "/environment/artifacts"},
+        )
+        self.assertEqual(config.artifact_root, pathlib.Path("/environment/artifacts"))
+        self.assertEqual(config.object_repository, self.root / driver.OPENTTD_SUBMODULE)
+        self.assertIn("bwrap", {tool.name for tool in config.tools})
+
+    def test_full_without_artifact_root_fails_preflight_before_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            marker = pathlib.Path(temporary) / "command-ran"
+            command = driver.CommandSpec(
+                "must-not-run", driver.Tier.FULL, driver.CommandCategory.TEST,
+                (str(self.python), "-c", f"import pathlib; pathlib.Path({str(marker)!r}).touch()"),
+            )
+            config = self.configured(driver.Tier.FULL, artifact_root=None)
+            summary = driver.run_verification(config, (command,))
+        self.assertEqual(summary.results, ())
+        self.assertTrue(any(
+            issue.requirement is driver.Requirement.ARTIFACT_ROOT
+            for issue in summary.preflight_issues
+        ))
+        self.assertFalse(marker.exists())
+
+    def test_full_preflight_reports_every_missing_artifact_set(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact_root = pathlib.Path(temporary).resolve()
+            config = self.configured(
+                driver.Tier.FULL,
+                artifact_root=artifact_root,
+                tools=self.tools(bwrap=pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")),
+            )
+            rendered = "\n".join(
+                issue.detail for issue in driver.preflight(config, self.inventory)
+            )
+        for logical_set in (
+            "v2-m14-ai-aaahogex-a",
+            "v2-m15-action-evidence-a",
+            "v2-m22-final-evaluation-b",
+            "v2-m22-followup-runtime-a",
+            "v2-m23-visible-runtime-baseline-a",
+        ):
+            self.assertIn(logical_set, rendered)
+
+    def test_full_preflight_reports_source_repository_and_every_named_live_input_role(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary).resolve()
+            artifact_root = base / "artifacts"
+            artifact_root.mkdir()
+            (artifact_root / "v2-live-inputs.json").write_text(
+                json.dumps({
+                    "schema_version": "openttd-rl-v2-live-inputs-1",
+                    "roles": {},
+                }),
+                encoding="utf-8",
+            )
+            config = self.configured(
+                driver.Tier.FULL,
+                repository_root=base,
+                artifact_root=artifact_root,
+                tools=self.tools(bwrap=pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")),
+            )
+            rendered = "\n".join(
+                issue.detail for issue in driver.preflight(config, self.inventory)
+            )
+        self.assertIn("openttd", rendered.lower())
+        for role in LIVE_INPUT_ROLE_SPECS:
+            self.assertIn(role, rendered)
+
+    def test_full_preflight_reports_missing_nested_files_git_and_bwrap_before_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary).resolve()
+            artifact_root = base / "artifacts"
+            (artifact_root / "set-a").mkdir(parents=True)
+            command = driver.CommandSpec(
+                "nested-live", driver.Tier.FULL, driver.CommandCategory.VALIDATOR,
+                (str(self.python), "-c", "raise SystemExit('must not run')"),
+                requirements=frozenset({driver.Requirement.OPENTTD_SOURCE}),
+                live_inputs=(ArtifactRequirement(
+                    "set-a", "nested/checkpoint.bin", "file", "nested-live",
+                ),),
+                live_input_module="synthetic-live-module",
+                argument_bindings=(driver.ArgumentBinding(
+                    "--artifact-root", "artifact-root",
+                ),),
+            )
+            config = self.configured(
+                driver.Tier.FULL,
+                repository_root=base,
+                artifact_root=artifact_root,
+                tools=self.tools(
+                    git=base / "missing-git",
+                    bwrap=base / "missing-bwrap",
+                ),
+            )
+            summary = driver.run_verification(config, (command,))
+            rendered = "\n".join(issue.detail for issue in summary.preflight_issues)
+        self.assertEqual(summary.results, ())
+        self.assertIn("nested/checkpoint.bin", rendered)
+        self.assertIn("git", rendered.lower())
+        self.assertIn("bwrap", rendered.lower())
+        self.assertIn("openttd", rendered.lower())
+
+    def test_full_preflight_rejects_bwrap_digest_disagreement_or_mismatch(self) -> None:
+        actual_bwrap = pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")
+        records = (
+            "m22-final-evaluation-evidence.json",
+            "m22-followup-evaluation-evidence.json",
+            "m22-followup-v2-evaluation-evidence.json",
+        )
+        for digests in (("0" * 64,) * 3, (driver.BWRAP_SHA256, "1" * 64, driver.BWRAP_SHA256)):
+            with self.subTest(digests=digests), tempfile.TemporaryDirectory() as temporary:
+                base = pathlib.Path(temporary).resolve()
+                config_dir = base / "config/v2"
+                config_dir.mkdir(parents=True)
+                for name, digest in zip(records, digests, strict=True):
+                    (config_dir / name).write_text(
+                        json.dumps({"identity": {"bubblewrap_sha256": digest}}),
+                        encoding="utf-8",
+                    )
+                artifact_root = base / "artifacts"
+                artifact_root.mkdir()
+                command = driver.CommandSpec(
+                    "bwrap-consumer", driver.Tier.FULL, driver.CommandCategory.VALIDATOR,
+                    (str(self.python), "-c", "pass"),
+                    argument_bindings=(driver.ArgumentBinding("--bwrap", "tool", "bwrap"),),
+                )
+                config = self.configured(
+                    driver.Tier.FULL,
+                    repository_root=base,
+                    artifact_root=artifact_root,
+                    tools=self.tools(bwrap=actual_bwrap),
+                )
+                rendered = "\n".join(
+                    issue.detail for issue in driver.preflight(config, (command,))
+                )
+                self.assertIn("bubblewrap", rendered.lower())
+                self.assertTrue("disagree" in rendered.lower() or "mismatch" in rendered.lower())
+
+    def test_full_does_not_convert_missing_live_input_to_skip(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact_root = pathlib.Path(temporary).resolve()
+            command = driver.CommandSpec(
+                "missing-live", driver.Tier.FULL, driver.CommandCategory.TEST,
+                (str(self.python), "-c", "print('skipped: missing live input')"),
+                live_inputs=(ArtifactRequirement(
+                    "missing-set", "report.json", "file", "missing-live",
+                ),),
+                live_input_module="synthetic-live-module",
+                argument_bindings=(driver.ArgumentBinding(
+                    "--artifact-root", "artifact-root",
+                ),),
+            )
+            config = self.configured(
+                driver.Tier.FULL,
+                artifact_root=artifact_root,
+                tools=self.tools(bwrap=pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")),
+            )
+            summary = driver.run_verification(config, (command,))
+        self.assertEqual(summary.results, ())
+        self.assertTrue(summary.preflight_issues)
+        self.assertFalse(summary.passed)
+
+    def test_materialization_is_pure_across_contract_and_full(self) -> None:
+        command = self.command("m15-action-evidence")
+        artifact_root = pathlib.Path("/artifact-base")
+        contract = self.configured(driver.Tier.CONTRACT)
+        full = self.configured(
+            driver.Tier.FULL,
+            artifact_root=artifact_root,
+            live_inputs=self.bound_manifest(artifact_root),
+            tools=self.tools(bwrap=pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")),
+        )
+        before = command
+        offline = driver.materialize_command(command, contract)
+        live = driver.materialize_command(command, full)
+        offline_again = driver.materialize_command(command, contract)
+        self.assertEqual(command, before)
+        self.assertEqual(offline, offline_again)
+        self.assertNotIn("--artifact-root", offline.argv)
+        self.assertEqual(live.argv[-2:], ("--artifact-root", str(artifact_root)))
+
+    def test_every_artifact_backed_command_exports_a_pure_registry(self) -> None:
+        artifact_backed = []
+        for command in self.inventory:
+            if command.live_inputs or any(
+                binding.source in {"artifact-root", "live-role"}
+                for binding in command.argument_bindings
+            ):
+                artifact_backed.append(command.command_id)
+                self.assertIsNotNone(command.live_input_module, command.command_id)
+                module = importlib.import_module(command.live_input_module)
+                self.assertTrue(callable(getattr(module, "required_live_inputs", None)))
+                self.assertEqual(command.live_inputs, tuple(command.live_inputs))
+        self.assertIn("m22-final-v1-evaluation", artifact_backed)
+        self.assertIn("v2-unit-tests", artifact_backed)
+
+    def test_registry_mutation_rejects_an_artifact_binding_without_a_closure(self) -> None:
+        command = driver.CommandSpec(
+            "unregistered-live-read", driver.Tier.FULL, driver.CommandCategory.VALIDATOR,
+            (str(self.python), "-c", "pass"),
+            argument_bindings=(driver.ArgumentBinding("--artifact-root", "artifact-root"),),
+        )
+        issues = driver.validate_live_input_registry((command,))
+        self.assertEqual(len(issues), 1)
+        self.assertIs(issues[0].requirement, driver.Requirement.LIVE_INPUT_REGISTRY)
+
+    def test_m19_evidence_uses_validation_cli_never_generation_runner(self) -> None:
+        command = self.command("m19-air-evidence")
+        self.assertEqual(pathlib.Path(command.argv[1]).name, "validate_m19_air_evidence.py")
+        self.assertNotIn("run_m19_air_matrix.py", command.argv)
+
+    def test_full_unit_preflight_declares_both_exact_m23_source_directories(self) -> None:
+        command = self.command("v2-unit-tests")
+        directories = {
+            (item.logical_set, item.relative_path)
+            for item in command.live_inputs
+            if isinstance(item, ArtifactRequirement) and item.kind == "directory"
+        }
+        self.assertIn(("v2-m22-followup-runtime-a", "source"), directories)
+        self.assertIn(("v2-m23-visible-runtime-baseline-a", "."), directories)
+
+    def test_v1_materialization_scrubs_all_optional_m07_m08_live_variables(self) -> None:
+        forbidden = (
+            "M07_TRAINER_EXECUTABLE",
+            "M07_LIVE_MANIFEST",
+            "M07_RECOVERY_REPORT",
+            "M08_CUDA_REPORT",
+            "M08_CPU_SMOKE_REPORT",
+            "M08_CUDA_SMOKE_REPORT",
+            "M08_LIVE_MANIFEST",
+        )
+        config = self.configured(
+            driver.Tier.FULL,
+            artifact_root=pathlib.Path("/artifact-base"),
+            tools=self.tools(bwrap=pathlib.Path(shutil.which("bwrap") or "/missing/bwrap")),
+        )
+        seeded = {name: str(self.python) for name in forbidden}
+        with mock.patch.dict(os.environ, seeded, clear=False):
+            environment = dict(driver.materialize_command(
+                self.command("v1-traceability"), config,
+            ).environment)
+        for name in forbidden:
+            self.assertNotIn(name, environment)
+
     def test_contract_preflight_requires_exact_pinned_submodule(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
@@ -240,6 +772,26 @@ class V2VerifyDriverTests(unittest.TestCase):
             issues = driver.preflight(config, commands)
             self.assertEqual([issue.requirement for issue in issues], [driver.Requirement.OPENTTD_SOURCE])
             self.assertIn("29f808ef0022064e6d9a83c8476d1e0f4686af86", issues[0].detail)
+
+    def test_source_preflight_with_missing_git_aggregates_the_tool_issue(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary).resolve()
+            source = root / driver.OPENTTD_SUBMODULE
+            source.mkdir()
+            (source / ".git").write_text("gitdir: /missing/gitdir\n", encoding="utf-8")
+            config = self.configured(
+                driver.Tier.CONTRACT,
+                repository_root=root,
+                tools=(
+                    ToolRequirement("python", self.python),
+                    ToolRequirement("git", root / "missing-git"),
+                ),
+            )
+            issues = driver.preflight(config, self.source_commands())
+        self.assertEqual(
+            {issue.requirement for issue in issues},
+            {driver.Requirement.OPENTTD_SOURCE, driver.Requirement.TOOL},
+        )
 
     def test_contract_preflight_accepts_exact_clean_submodule(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -299,7 +851,8 @@ class V2VerifyDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = io.StringIO()
             errors = io.StringIO()
-            with mock.patch.dict(os.environ, {}, clear=True), \
+            with mock.patch.object(driver, "build_inventory", return_value=self.source_commands()), \
+                    mock.patch.dict(os.environ, {}, clear=True), \
                     contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
                 status = driver.main([
                     "--root", temporary,
@@ -382,8 +935,9 @@ class V2VerifyDriverTests(unittest.TestCase):
             "timeout", driver.Tier.FAST, driver.CommandCategory.TEST,
             (str(self.python), "-c", "import time; time.sleep(1)"), timeout_seconds=0.01,
         )
-        spawn_result = driver.execute_command(spawn, self.root)
-        timeout_result = driver.execute_command(timeout, self.root)
+        config = self.configured(driver.Tier.FAST)
+        spawn_result = driver.execute_command(spawn, config)
+        timeout_result = driver.execute_command(timeout, config)
         self.assertIs(spawn_result.failure_kind, driver.FailureKind.SPAWN)
         self.assertIsNone(spawn_result.actual_status)
         self.assertIs(timeout_result.failure_kind, driver.FailureKind.TIMEOUT)

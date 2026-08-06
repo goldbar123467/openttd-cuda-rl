@@ -18,7 +18,6 @@ from artifact_context import (
     ArtifactContextError,
     ArtifactRequirement,
     add_artifact_root_argument,
-    resolve_artifact_root,
 )
 import prepare_m22_followup_runtime as preparation
 import validate_m22_final_runtime_source as foundation_validator
@@ -371,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
     add_artifact_root_argument(parser)
     args = parser.parse_args(argv)
     try:
-        artifact_root = resolve_artifact_root(args.artifact_root)
+        artifact_root = args.artifact_root
         context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
         result = validate(args.root, args.config, artifact_context=context)
         print(f"V2_M22_FOLLOWUP_RUNTIME_SOURCE=PASS files={result['files']} smokes={result['smokes']} "

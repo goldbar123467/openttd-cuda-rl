@@ -24,7 +24,6 @@ from artifact_context import (
     RoleRequirement,
     ToolRequirement,
     add_artifact_root_argument,
-    resolve_artifact_root,
 )
 import run_m22_final_evaluation as runner
 import qualify_m15_native_map as map_validator
@@ -527,10 +526,12 @@ def validate_value(
 def validate(
     root: pathlib.Path, config_path: pathlib.Path | None = None, *,
     artifact_context: ArtifactContext | None = None,
+    live_inputs: LiveInputManifest | None = None,
     bwrap_path: pathlib.Path | None = None,
 ) -> dict[str, Any]:
     context = artifact_context or ArtifactContext.offline()
-    live_inputs = LiveInputManifest.load(context.artifact_root) if context.is_live else None
+    if live_inputs is None:
+        live_inputs = LiveInputManifest.load(context.artifact_root) if context.is_live else None
     return validate_value(
         load(config_path or root / CONFIG), root, artifact_context=context,
         live_inputs=live_inputs, bwrap_path=bwrap_path,
@@ -542,12 +543,19 @@ def main() -> int:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--config", type=pathlib.Path)
     add_artifact_root_argument(parser)
+    parser.add_argument("--evaluator", type=pathlib.Path)
     parser.add_argument("--bwrap", type=pathlib.Path)
     args = parser.parse_args()
     try:
-        common_root = resolve_artifact_root(args.artifact_root)
+        common_root = args.artifact_root
         context = ArtifactContext.offline() if common_root is None else ArtifactContext.live(common_root)
-        result = validate(args.root, args.config, artifact_context=context, bwrap_path=args.bwrap)
+        live_inputs = None if common_root is None else LiveInputManifest.bind(
+            context, {"final-v1-evaluator": args.evaluator}
+        )
+        result = validate(
+            args.root, args.config, artifact_context=context,
+            live_inputs=live_inputs, bwrap_path=args.bwrap,
+        )
     except (M22FinalEvidenceError, runner.M22FinalEvaluationError, runtime_validator.M22RuntimeSourceError,
             ArtifactContextError, SourceContextError, OSError, subprocess.SubprocessError,
             KeyError, TypeError, ValueError) as exc:

@@ -143,12 +143,12 @@ class V2ArtifactContextTests(unittest.TestCase):
         )
 
     def test_live_context_relocates_nested_recorded_path(self) -> None:
-        recorded = "/home/thecl/.codex/artifacts/openttd-rl/v2-m22-followup-runtime-a/source"
+        recorded = "/recorded/openttd-rl/v2-m22-followup-runtime-a/source"
         context = ArtifactContext.live(pathlib.Path("/srv/openttd-rl"))
         self.assertEqual(
             context.relocate(
                 recorded,
-                recorded_root="/home/thecl/.codex/artifacts/openttd-rl/v2-m22-followup-runtime-a",
+                recorded_root="/recorded/openttd-rl/v2-m22-followup-runtime-a",
             ),
             pathlib.Path("/srv/openttd-rl/v2-m22-followup-runtime-a/source"),
         )

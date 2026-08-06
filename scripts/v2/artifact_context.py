@@ -557,6 +557,16 @@ class LiveInputManifest:
         )
         return base.joinpath(*relative)
 
+    def role_path(self, role: str) -> pathlib.Path:
+        """Return one already-bound role root without inventing a nested read."""
+
+        self._require_live()
+        _validate_component(role, label="live-input role")
+        try:
+            return self._roles[role]
+        except KeyError as exc:
+            raise ArtifactContextError(f"live-input role is not declared: {role}") from exc
+
     def preflight(self, requirements: Sequence[RoleRequirement]) -> None:
         self._require_live()
         issues: list[str] = []

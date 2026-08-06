@@ -17,7 +17,6 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     add_artifact_root_argument,
-    resolve_artifact_root,
 )
 import build_m22_native_corpus as builder
 
@@ -127,7 +126,7 @@ def main() -> int:
     add_artifact_root_argument(parser)
     args = parser.parse_args()
     try:
-        artifact_root = resolve_artifact_root(args.artifact_root)
+        artifact_root = args.artifact_root
         context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
         result = validate(args.root, args.corpus, args.contract, artifact_context=context)
         print(f"V2_M22_NATIVE_CORPUS=PASS entries={result.entries} training={result.training} "

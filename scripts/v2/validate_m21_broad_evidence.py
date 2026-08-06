@@ -16,7 +16,6 @@ from artifact_context import (
     ArtifactContextError,
     ArtifactRequirement,
     add_artifact_root_argument,
-    resolve_artifact_root,
 )
 import run_m21_broad_matrix as matrix
 
@@ -167,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     add_artifact_root_argument(parser)
     args = parser.parse_args(argv)
     try:
-        artifact_root = resolve_artifact_root(args.artifact_root)
+        artifact_root = args.artifact_root
         context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
         result = validate(args.root, artifact_context=context)
         print(f"V2_M21_BROAD_EVIDENCE=PASS cases={result['cases']} runs={result['runs']} twins={result['twins']} "

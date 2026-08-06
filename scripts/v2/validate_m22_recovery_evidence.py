@@ -21,7 +21,6 @@ from artifact_context import (
     LiveInputManifest,
     RoleRequirement,
     add_artifact_root_argument,
-    resolve_artifact_root,
 )
 import run_m22_recovery as recovery
 from source_context import SourceContextError, run_git
@@ -514,21 +513,23 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         validate_artifacts(report, artifact_root)
 
 
-def validate(
+def _validate(
     report_path: pathlib.Path,
     root: pathlib.Path,
     *,
     artifact_context: ArtifactContext | None = None,
+    live_inputs: LiveInputManifest | None = None,
 ) -> dict[str, bool]:
     context = artifact_context or ArtifactContext.offline()
     report_path = report_path.resolve()
     report = load(report_path)
     require(report_path.read_bytes() == recovery.canonical_bytes(report) + b"\n", "M22 recovery evidence is not canonical JSON")
-    live_inputs = (
-        LiveInputManifest.load(context.artifact_root)
-        if context.is_live and context.artifact_root is not None
-        else LiveInputManifest.offline()
-    )
+    if live_inputs is None:
+        live_inputs = (
+            LiveInputManifest.load(context.artifact_root)
+            if context.is_live and context.artifact_root is not None
+            else LiveInputManifest.offline()
+        )
     validate_value(
         report, root,
         artifact_context=context,
@@ -537,18 +538,42 @@ def validate(
     return {"live": context.is_live}
 
 
+def validate(
+    report_path: pathlib.Path,
+    root: pathlib.Path,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> dict[str, bool]:
+    return _validate(report_path, root, artifact_context=artifact_context)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--report", type=pathlib.Path, required=True)
     add_artifact_root_argument(parser)
+    parser.add_argument("--executable", type=pathlib.Path)
+    parser.add_argument("--corpus", type=pathlib.Path)
     args = parser.parse_args(argv)
+    if args.artifact_root is None and (args.executable is not None or args.corpus is not None):
+        parser.error("unrecognized arguments: --executable/--corpus require --artifact-root")
     try:
-        artifact_root = resolve_artifact_root(args.artifact_root)
-        context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
-        summary = validate(
+        if args.artifact_root is None:
+            context = ArtifactContext.offline()
+            live_inputs = LiveInputManifest.offline()
+        else:
+            report = load(args.report)
+            artifact_role, executable_role, corpus_role = _live_roles(report)
+            context = ArtifactContext.live(pathlib.Path("/"))
+            live_inputs = LiveInputManifest.bind(context, {
+                artifact_role: args.artifact_root,
+                executable_role: args.executable,
+                corpus_role: args.corpus,
+            })
+        summary = _validate(
             args.report, args.root,
             artifact_context=context,
+            live_inputs=live_inputs,
         )
         report = load(args.report)
     except (M22RecoveryValidationError, recovery.M22RecoveryError, ArtifactContextError,

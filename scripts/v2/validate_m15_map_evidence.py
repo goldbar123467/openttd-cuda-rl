@@ -39,6 +39,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--evidence", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
     add_artifact_root_argument(parser)
+    parser.add_argument("--openttd", type=pathlib.Path)
     return parser.parse_args(argv)
 
 
@@ -50,10 +51,12 @@ def main(argv: list[str] | None = None) -> int:
             if args.artifact_root is None
             else ArtifactContext.live(args.artifact_root)
         )
-        live_inputs = (
-            None
-            if args.artifact_root is None
-            else LiveInputManifest.load(args.artifact_root)
+        live_inputs = None if args.artifact_root is None else (
+            LiveInputManifest.load(args.artifact_root)
+            if args.openttd is None
+            else LiveInputManifest.bind(
+                context, {"m14-openttd-executable": args.openttd}
+            )
         )
         summary = matrix.validate(
             args.root,

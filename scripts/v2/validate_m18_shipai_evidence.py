@@ -20,7 +20,6 @@ from artifact_context import (
     LiveInputManifest,
     RoleRequirement,
     add_artifact_root_argument,
-    resolve_artifact_root,
 )
 import qualify_ai_runtime
 
@@ -362,15 +361,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=pathlib.Path)
     parser.add_argument("--schema", type=pathlib.Path)
     add_artifact_root_argument(parser)
+    parser.add_argument("--openttd", type=pathlib.Path)
     args = parser.parse_args(argv)
     try:
-        artifact_root = resolve_artifact_root(args.artifact_root)
+        artifact_root = args.artifact_root
         if artifact_root is None:
             context = ArtifactContext.offline()
             live_inputs = LiveInputManifest.offline()
         else:
             context = ArtifactContext.live(artifact_root)
-            live_inputs = LiveInputManifest.load(artifact_root)
+            live_inputs = (
+                LiveInputManifest.load(artifact_root)
+                if args.openttd is None
+                else LiveInputManifest.bind(
+                    context, {"m14-openttd-executable": args.openttd}
+                )
+            )
         summary = validate(args.root, args.config, args.schema, artifact_context=context, live_inputs=live_inputs)
         print(f"V2_M18_SHIPAI=PASS ships={summary['ships']} days={summary['days']} save_load=true live={str(summary['live']).lower()}")
         return 0
