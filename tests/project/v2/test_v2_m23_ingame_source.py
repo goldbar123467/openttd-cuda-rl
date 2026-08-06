@@ -5,16 +5,15 @@ from __future__ import annotations
 
 import copy
 import pathlib
-import struct
 import subprocess
 import tempfile
 import unittest
 from unittest import mock
 
 from artifact_context import ArtifactContext, resolve_artifact_root
-import m23_golden
 import m23_ingame
 import m23_package
+from tests.project.v2 import m23_fixture_support as fixtures
 
 
 class M23InGameSourceTests(unittest.TestCase):
@@ -26,96 +25,46 @@ class M23InGameSourceTests(unittest.TestCase):
         cls.main = (cls.root / "training/v2/src/m23_onnx_evaluator_main.cpp").read_text(encoding="utf-8")
         cls.cmake = (cls.root / "training/v2/m23/CMakeLists.txt").read_text(encoding="utf-8")
         cls.runner = (cls.root / "scripts/v2/run_m23_ingame_equivalence.py").read_text(encoding="utf-8")
-
-    @staticmethod
-    def golden_bytes() -> bytes:
-        output = bytearray(m23_golden.MAGIC)
-        output.extend(struct.pack("<II", m23_golden.VERSION, 48))
-        carried: list[list[list[float] | None]] = [[None, None], [None, None]]
-        for architecture in range(2):
-            for local in range(24):
-                definition = m23_golden.generate_definition(architecture, local)
-                output.extend(struct.pack(
-                    "<BBBBBBHII", definition.architecture, definition.case_class, definition.sequence,
-                    definition.step, definition.mask_pattern, definition.hidden_mode, 0,
-                    definition.seed, definition.batch,
-                ))
-                case_id = definition.case_id.encode("ascii")
-                output.extend(struct.pack("<H", len(case_id)))
-                output.extend(case_id)
-                output.extend(struct.pack(f"<{len(definition.public_features)}f", *definition.public_features))
-                output.extend(bytes(definition.program_mask))
-                output.extend(struct.pack(f"<{len(definition.initial_hidden)}f", *definition.initial_hidden))
-                output.extend(bytes(definition.recurrent_reset))
-                hidden = definition.initial_hidden
-                if definition.hidden_mode == 1:
-                    hidden = carried[architecture][definition.sequence] or []
-                output.extend(struct.pack(f"<{len(hidden)}f", *hidden))
-                logits = [0.0] * (definition.batch * m23_golden.PROGRAMS)
-                output.extend(struct.pack(f"<{len(logits)}f", *logits))
-                output.extend(struct.pack(f"<{definition.batch}f", *([0.0] * definition.batch)))
-                next_hidden = [0.0] * (definition.batch * m23_golden.HIDDEN)
-                output.extend(struct.pack(f"<{len(next_hidden)}f", *next_hidden))
-                actions = []
-                for row in range(definition.batch):
-                    mask = definition.program_mask[
-                        row * m23_golden.PROGRAMS:(row + 1) * m23_golden.PROGRAMS
-                    ]
-                    actions.append(mask.index(1))
-                output.extend(struct.pack(f"<{len(actions)}q", *actions))
-                if definition.case_class == 1:
-                    carried[architecture][definition.sequence] = next_hidden
-        return bytes(output)
-
-    @staticmethod
-    def package_report() -> dict[str, object]:
-        return {
+        cls.golden_binary = fixtures.make_golden_binary()
+        cls.golden_sha256 = m23_package.sha256_bytes(cls.golden_binary)
+        cls.records = (
+            *fixtures.make_golden_records(0),
+            *fixtures.make_golden_records(1),
+        )
+        cls.model_shas = {
+            "monolithic_sha256": "1" * 64,
+            "specialist_sha256": "2" * 64,
+        }
+        cls.package_report_value = {
             "deployment_packages": [
                 {"model_sha256": "1" * 64},
                 {"model_sha256": "2" * 64},
             ],
         }
+        cls.base_report = fixtures.make_equivalence_report(
+            cls.records,
+            golden_sha256=cls.golden_sha256,
+            runtime=m23_ingame.INGAME_RUNTIME,
+            model_shas=cls.model_shas,
+        )
+        cls.base_report_snapshot = copy.deepcopy(cls.base_report)
 
-    def report_value(self, golden: pathlib.Path, runtime: str) -> dict[str, object]:
-        records = m23_golden.decode(golden)
-        cases = [{
-            "action_exact": True,
-            "batch": record.definition.batch,
-            "case_id": record.definition.case_id,
-            "hidden_absolute": 0.0,
-            "hidden_input_absolute": 0.0,
-            "hidden_relative": 0.0,
-            "logits_absolute": 0.0,
-            "logits_relative": 0.0,
-            "passed": True,
-            "value_absolute": 0.0,
-            "value_relative": 0.0,
-        } for record in records]
-        return {
-            "cases": cases,
-            "failure_counts": {"action": 0, "float": 0, "total": 0},
-            "golden": {"sha256": m23_package.sha256_file(golden)},
-            "maximum_error": {key: 0.0 for key in m23_ingame.ERROR_KEYS},
-            "models": {"monolithic_sha256": "1" * 64, "specialist_sha256": "2" * 64},
-            "runtime": runtime,
-            "schema_version": m23_ingame.REPORT_SCHEMA,
-            "status": "PASS",
-            "tolerance": {"absolute": 0.00005, "relative": 0.00005},
-        }
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if cls.base_report != cls.base_report_snapshot:
+            raise AssertionError("M23 base equivalence report mutated")
 
     def validate_value(self, mutate: object | None = None) -> dict[str, object]:
-        with tempfile.TemporaryDirectory() as raw:
-            root = pathlib.Path(raw)
-            golden = (root / "golden.bin").resolve()
-            golden.write_bytes(self.golden_bytes())
-            value = self.report_value(golden, m23_ingame.INGAME_RUNTIME)
-            if mutate is not None:
-                mutate(value)  # type: ignore[operator]
-            report = (root / "report.json").resolve()
-            report.write_bytes(m23_package.canonical_json(value, newline=True))
-            return m23_ingame.validate_equivalence_report(
-                report, m23_ingame.INGAME_RUNTIME, golden, self.package_report(),
-            )
+        value = copy.deepcopy(self.base_report)
+        if mutate is not None:
+            mutate(value)  # type: ignore[operator]
+        return m23_ingame.validate_equivalence_value(
+            value,
+            m23_ingame.INGAME_RUNTIME,
+            self.golden_sha256,
+            self.records,
+            self.package_report_value,
+        )
 
     def test_source_patch_has_exact_bounded_scope(self) -> None:
         record = m23_ingame.validate_source_patch(self.root)
@@ -211,21 +160,32 @@ class M23InGameSourceTests(unittest.TestCase):
             self.assertIn(token, self.runner)
 
     def test_valid_source_integrated_report_passes(self) -> None:
-        value = self.validate_value()
+        with tempfile.TemporaryDirectory() as raw:
+            root = pathlib.Path(raw).resolve()
+            golden = root / "golden.bin"
+            report = root / "report.json"
+            golden.write_bytes(self.golden_binary)
+            report.write_bytes(m23_package.canonical_json(self.base_report, newline=True))
+            value = m23_ingame.validate_equivalence_report(
+                report,
+                m23_ingame.INGAME_RUNTIME,
+                golden,
+                self.package_report_value,
+            )
         self.assertEqual(len(value["cases"]), 48)
         self.assertEqual(sum(item["batch"] for item in value["cases"]), 580)
 
     def test_runtime_case_and_status_mutations_fail_closed(self) -> None:
         mutations = (
-            lambda value: value.__setitem__("runtime", m23_ingame.STANDALONE_RUNTIME),
-            lambda value: value.__setitem__("status", "FAIL"),
-            lambda value: value["cases"].pop(),
-            lambda value: value["cases"][0].__setitem__("action_exact", False),
-            lambda value: value["failure_counts"].__setitem__("total", 1),
-            lambda value: value["maximum_error"].__setitem__("value_absolute", 0.1),
+            ("runtime-identity", lambda value: value.__setitem__("runtime", m23_ingame.STANDALONE_RUNTIME)),
+            ("status", lambda value: value.__setitem__("status", "FAIL")),
+            ("case-count", lambda value: value["cases"].pop()),
+            ("action-exact", lambda value: value["cases"][0].__setitem__("action_exact", False)),
+            ("failure-count", lambda value: value["failure_counts"].__setitem__("total", 1)),
+            ("maximum-error", lambda value: value["maximum_error"].__setitem__("value_absolute", 0.1)),
         )
-        for index, mutation in enumerate(mutations):
-            with self.subTest(index=index), self.assertRaises(m23_ingame.M23InGameError):
+        for label, mutation in mutations:
+            with self.subTest(label=label), self.assertRaises(m23_ingame.M23InGameError):
                 self.validate_value(mutation)
 
     def test_reports_may_differ_only_by_runtime_identity(self) -> None:
@@ -239,7 +199,7 @@ class M23InGameSourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             root = pathlib.Path(raw)
             golden = (root / "golden.bin").resolve()
-            golden.write_bytes(self.golden_bytes())
+            golden.write_bytes(self.golden_binary)
             value = {
                 "architectures": list(m23_ingame.ARCHITECTURES), "cases": 48,
                 "file": m23_ingame.file_record(golden), "rows": 580,

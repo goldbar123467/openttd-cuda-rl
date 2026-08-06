@@ -62,7 +62,7 @@ LIVE_PROVIDER_AST_SHA256: Mapping[str, str] = MappingProxyType({
     "validate_m22_training_evidence": "50d1a80a74e9f793894cb7f43ebe68fcba47b4702178658e1a057c7c3cf980ab",
     "validate_opponent_package_evidence": "b1f1fa08b106058b53bf55ba693877c281ee5754516313e024e5b9c6b6d1e804",
     "validate_opponent_runtime_evidence": "ac153e12608c81129005fe64218c7f34f5bd997762ba4abb869bfae9ca754af3",
-    "verify_driver": "f7939fd019dfc7c6f9bec7fda1a1de1f2b9697235d4d2a3e627ce893d3c1c769",
+    "verify_driver": "8277d33d215b6ef1af339d7535c39095a9fd61d6f2feae505f4ff3a494bc8bf6",
 })
 LIVE_COMMAND_REGISTRY_SHA256: Mapping[str, str] = MappingProxyType({
     "opponent-package-evidence": "adf4a34ebaec4d05d95dcaf27aea2ff64b532cc52efebcdc3983dd7113e7cf50",
@@ -103,7 +103,7 @@ LIVE_COMMAND_REGISTRY_SHA256: Mapping[str, str] = MappingProxyType({
     "m22-final-v1-evaluation": "0e17ab2f4fb8ad596649d351b40acfd6860954ff0b2e0ce878303132eef9e28b",
     "m22-followup-v1-evaluation": "6c7e03742152a9cb0eb551578b6e9c4a189017cdc7ab57491c7af8d0fa6cb158",
     "m22-followup-v2-evaluation": "e6f00c27038a29f3fce80a4f792e942941c1b29364d0578a10572243136e2e8e",
-    "v2-unit-tests": "bf889f405dcf586bbb3d2b0b40651f5ab1b44c15d99de6b210e48cf727cb8dd2",
+    "v2-unit-tests": "3e39e7e256eeaa1aeae53470577428f11cebde678b4547a21fb871295d1fbdd3",
 })
 
 

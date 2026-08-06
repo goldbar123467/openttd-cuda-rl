@@ -115,6 +115,7 @@ CONTRACT_UNIT_MODULES = (
     "tests.project.v2.test_v2_m22_recovery",
     "tests.project.v2.test_v2_m22_training",
     "tests.project.v2.test_v2_m23_deployment_source",
+    "tests.project.v2.test_v2_m23_fixture_support",
     "tests.project.v2.test_v2_m23_ingame_source",
     "tests.project.v2.test_v2_m23_packages",
     "tests.project.v2.test_v2_m23_visible_source",

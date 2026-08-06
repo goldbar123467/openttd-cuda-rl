@@ -8,6 +8,7 @@ import math
 import pathlib
 import re
 import subprocess
+from collections.abc import Sequence
 from typing import Any
 
 import m23_golden
@@ -78,16 +79,13 @@ def _finite_nonnegative(value: Any, label: str) -> float:
     return float(value)
 
 
-def validate_equivalence_report(
-    path: pathlib.Path,
+def validate_equivalence_value(
+    value: Any,
     runtime: str,
-    golden_path: pathlib.Path,
+    golden_sha256: str,
+    records: Sequence[m23_golden.GoldenRecord],
     package_report: dict[str, Any],
 ) -> dict[str, Any]:
-    raw = path.read_bytes()
-    require(raw.endswith(b"\n") and not raw.endswith(b"\n\n") and b"\r" not in raw,
-            "M23 equivalence report line ending drifted")
-    value = m23_package.load_json_bytes(raw, path.name)
     require(isinstance(value, dict) and set(value) == REPORT_KEYS,
             "M23 equivalence report field inventory drifted")
     require(value["schema_version"] == REPORT_SCHEMA and value["runtime"] == runtime and
@@ -95,14 +93,13 @@ def validate_equivalence_report(
             "M23 equivalence report compatibility or status drifted")
     require(value["failure_counts"] == {"action": 0, "float": 0, "total": 0},
             "M23 equivalence report contains failures")
-    require(value["golden"] == {"sha256": m23_package.sha256_file(golden_path)},
+    require(value["golden"] == {"sha256": golden_sha256},
             "M23 equivalence golden identity drifted")
     expected_models = {
         "monolithic_sha256": package_report["deployment_packages"][0]["model_sha256"],
         "specialist_sha256": package_report["deployment_packages"][1]["model_sha256"],
     }
     require(value["models"] == expected_models, "M23 equivalence model identities drifted")
-    records = m23_golden.decode(golden_path)
     cases = value["cases"]
     require(isinstance(cases, list) and len(cases) == len(records) == 48,
             "M23 equivalence case count drifted")
@@ -128,6 +125,28 @@ def validate_equivalence_report(
             maximum["hidden_input_absolute"] <= 0.00005,
             "M23 equivalence maximum absolute tolerance failed")
     return value
+
+
+def validate_equivalence_report(
+    path: pathlib.Path,
+    runtime: str,
+    golden_path: pathlib.Path,
+    package_report: dict[str, Any],
+) -> dict[str, Any]:
+    raw = path.read_bytes()
+    require(raw.endswith(b"\n") and not raw.endswith(b"\n\n") and b"\r" not in raw,
+            "M23 equivalence report line ending drifted")
+    value = m23_package.load_json_bytes(raw, path.name)
+    try:
+        canonical = m23_package.canonical_json(value, newline=True)
+    except (TypeError, ValueError) as exc:
+        raise M23InGameError("M23 equivalence report is not canonical") from exc
+    require(raw == canonical, "M23 equivalence report is not canonical")
+    golden_sha256 = m23_package.sha256_file(golden_path)
+    records = m23_golden.decode(golden_path)
+    return validate_equivalence_value(
+        value, runtime, golden_sha256, records, package_report,
+    )
 
 
 def reports_match_except_runtime(standalone: dict[str, Any], ingame: dict[str, Any]) -> bool:
