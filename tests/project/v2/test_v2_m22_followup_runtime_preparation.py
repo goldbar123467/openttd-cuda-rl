@@ -12,6 +12,7 @@ from unittest import mock
 
 import jsonschema
 
+from artifact_context import ArtifactContext, resolve_artifact_root
 import m22_final_native as native
 import prepare_m22_followup_runtime as preparation
 import validate_m22_followup_runtime_source as validator
@@ -126,12 +127,14 @@ class M22FollowupRuntimePreparationTests(unittest.TestCase):
         record = self.fake_record()
         for item, path in zip(record["patches"], preparation.PATCHES, strict=True):
             item["sha256"] = preparation.foundation.sha256(self.root / path)
-        validator.validate_patch_series(self.root, record, None)
+        validator.validate_patch_series(self.root, record)
 
     def test_source_commit_is_reproducible_from_accepted_m21_base(self) -> None:
-        base = pathlib.Path(self.m21["source"]["path"])
-        if not base.is_dir():
-            self.skipTest("retained M21 source is unavailable")
+        artifact_root = resolve_artifact_root(None)
+        if artifact_root is None:
+            self.skipTest("live artifact validation is outside offline mode")
+        context = ArtifactContext.live(artifact_root)
+        base = context.artifact_set("v2-m21-broad-a") / "source"
         patches = tuple((self.root / path).resolve() for path in preparation.PATCHES)
         with tempfile.TemporaryDirectory() as raw:
             directory = pathlib.Path(raw)
@@ -139,6 +142,10 @@ class M22FollowupRuntimePreparationTests(unittest.TestCase):
             second = preparation.prepare_source(base, directory / "second", patches, self.m21["source"]["commit"])
         self.assertEqual((first["commit"], first["tree"]), (second["commit"], second["tree"]))
         self.assertEqual(first["tree"], "f8985045f9ba14bad1e46a81cb58fdbb8037f277")
+
+    def test_source_reproduction_skips_offline_without_probing_recorded_path(self) -> None:
+        with mock.patch.object(pathlib.Path, "is_dir", side_effect=AssertionError("offline path probe")):
+            self.assertIsNone(resolve_artifact_root(None, {}))
 
     def test_smoke_parent_exists_before_first_native_dispatch(self) -> None:
         runtime = native.RuntimePaths(*(pathlib.Path("/not-used") for _ in range(5)), source_tree="0" * 40)

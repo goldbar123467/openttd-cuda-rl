@@ -12,6 +12,7 @@ from unittest import mock
 
 import jsonschema
 
+from artifact_context import ArtifactContext, resolve_artifact_root
 import m22_final_native as native
 import prepare_m22_final_runtime as preparation
 import validate_m22_final_runtime_source as validator
@@ -131,12 +132,14 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
     def test_cumulative_patch_scope_and_tokens_pass(self) -> None:
         validator.validate_patch(self.root, {"path": str(preparation.PATCH),
                                  "sha256": preparation.sha256(self.root / preparation.PATCH),
-                                 "touched_files": list(preparation.TOUCHED)}, None)
+                                 "touched_files": list(preparation.TOUCHED)})
 
     def test_source_commit_is_reproducible_from_accepted_m21_base(self) -> None:
-        base = pathlib.Path(self.m21["source"]["path"])
-        if not base.is_dir():
-            self.skipTest("retained M21 source is unavailable")
+        artifact_root = resolve_artifact_root(None)
+        if artifact_root is None:
+            self.skipTest("live artifact validation is outside offline mode")
+        context = ArtifactContext.live(artifact_root)
+        base = context.artifact_set("v2-m21-broad-a") / "source"
         with tempfile.TemporaryDirectory() as raw:
             directory = pathlib.Path(raw)
             first = preparation.prepare_source(base, directory / "first", self.root / preparation.PATCH,
@@ -144,6 +147,10 @@ class M22FinalRuntimePreparationTests(unittest.TestCase):
             second = preparation.prepare_source(base, directory / "second", self.root / preparation.PATCH,
                                                 self.m21["source"]["commit"])
             self.assertEqual((first["commit"], first["tree"]), (second["commit"], second["tree"]))
+
+    def test_source_reproduction_skips_offline_without_probing_recorded_path(self) -> None:
+        with mock.patch.object(pathlib.Path, "is_dir", side_effect=AssertionError("offline path probe")):
+            self.assertIsNone(resolve_artifact_root(None, {}))
 
     def test_schema_closure_rejects_unknown_top_level_property(self) -> None:
         record = copy.deepcopy(self.fake_record())
