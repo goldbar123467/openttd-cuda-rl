@@ -195,6 +195,55 @@ class M23FixtureSupportTests(unittest.TestCase):
             )
         self.assertEqual(len(summary["cases"]), 48)
 
+    def test_full_file_validation_delegates_every_call_with_exact_semantic_authority(self) -> None:
+        records = self.complete_records()
+        binary = fixtures.make_golden_binary()
+        golden_sha256 = hashlib.sha256(binary).hexdigest()
+        value = fixtures.make_equivalence_report(
+            records,
+            golden_sha256=golden_sha256,
+            runtime=m23_ingame.INGAME_RUNTIME,
+            model_shas=self.model_shas,
+        )
+        package_report = self.package_report()
+        sentinel = object()
+        with tempfile.TemporaryDirectory() as raw:
+            root = pathlib.Path(raw).resolve()
+            golden = root / "golden.bin"
+            report = root / "report.json"
+            golden.write_bytes(binary)
+            report_bytes = m23_package.canonical_json(value, newline=True)
+            report.write_bytes(report_bytes)
+            parsed_report = m23_package.load_json_bytes(report_bytes, report.name)
+            with mock.patch.object(
+                m23_golden, "decode", return_value=records,
+            ) as decode, mock.patch.object(
+                m23_ingame, "validate_equivalence_value", return_value=sentinel,
+            ) as semantic:
+                results = [
+                    m23_ingame.validate_equivalence_report(
+                        report,
+                        m23_ingame.INGAME_RUNTIME,
+                        golden,
+                        package_report,
+                    )
+                    for _ in range(2)
+                ]
+
+        self.assertTrue(all(result is sentinel for result in results))
+        self.assertEqual(decode.call_args_list, [mock.call(golden), mock.call(golden)])
+        expected = mock.call(
+            parsed_report,
+            m23_ingame.INGAME_RUNTIME,
+            golden_sha256,
+            records,
+            package_report,
+        )
+        self.assertEqual(semantic.call_args_list, [expected, expected])
+        for call in semantic.call_args_list:
+            self.assertIs(call.args[3], records)
+            self.assertIs(call.args[4], package_report)
+
     def test_full_file_validation_is_canonical_and_always_decodes(self) -> None:
         mechanics = fixtures
         records = self.complete_records()
