@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import json
 import pathlib
+import subprocess
 import tempfile
 import unittest
 
@@ -252,6 +253,32 @@ class M22FollowupV2EvaluationSourceTests(unittest.TestCase):
         loop = source.index('for ordinal, case in enumerate(manifest["cases"]):', read)
         self.assertGreater(source.index("run_evaluator(", loop), loop)
         self.assertGreater(source.index("run_native(", loop), loop)
+
+    def test_runner_requires_one_typed_live_context_and_explicit_tool(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw)
+            with self.assertRaisesRegex(runner.M22FollowupV2EvaluationError, "one live artifact context"):
+                runner.run(
+                    self.root, self.root / runner.MANIFEST,
+                    directory / "v2-m22-followup-v2-evaluation-a", directory / "evidence.json",
+                    artifact_context=None, bwrap_path=pathlib.Path("/usr/bin/bwrap"),
+                )
+
+    def test_source_freeze_checks_main_against_origin_through_safe_ref_files(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            repository = pathlib.Path(raw).resolve()
+            subprocess.run(["git", "init", "-q", "-b", "main", str(repository)], check=True)
+            (repository / "tracked").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repository), "add", "tracked"], check=True)
+            subprocess.run([
+                "git", "-C", str(repository), "-c", "user.name=fixture",
+                "-c", "user.email=fixture@example.invalid", "commit", "-q", "-m", "fixture",
+            ], check=True)
+            commit = runner.git(repository, "rev-parse", "HEAD")
+            subprocess.run([
+                "git", "-C", str(repository), "update-ref", "refs/remotes/origin/main", commit,
+            ], check=True)
+            self.assertTrue(runner.source_is_synchronized_main(repository, commit))
 
     def test_create_only_writer_never_overwrites(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

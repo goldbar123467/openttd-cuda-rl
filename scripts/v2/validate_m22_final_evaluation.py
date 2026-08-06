@@ -5,20 +5,40 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
-import os
 import pathlib
-import shutil
+import re
 import subprocess
 import sys
 from typing import Any
 
 import jsonschema
 
+import artifact_context
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    LiveInputManifest,
+    RoleRequirement,
+    ToolRequirement,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
 import run_m22_final_evaluation as runner
+import validate_m22_final_runtime_source as runtime_validator
+from source_context import SourceContextError, run_git
 
 
 CONFIG = pathlib.Path("config/v2/m22-final-evaluation-evidence.json")
+PRIOR_LOGICAL_SET = "v2-m22-final-evaluation-a"
+RESULT_LOGICAL_SET = "v2-m22-final-evaluation-b"
+LIVE_CONSUMER = "m22-final-evaluation"
+EXPECTED_RESULT_INPUTS = 351
+EXPECTED_PRIOR_INPUTS = 4
+BWRAP_SHA256 = "52231e1caf55bcbc667b269f49c63599a6f7db4767ae6a039580d0ff853db712"
+EVALUATOR_SHA256 = "bc87f4608643b4664068381fa5136d464c44bd05dad09a66fa088bfa995b92e6"
 
 
 class M22FinalEvidenceError(ValueError):
@@ -48,36 +68,62 @@ def schema_validate(value: dict[str, Any], schema: dict[str, Any], label: str) -
         raise M22FinalEvidenceError(f"{label} schema failed at {where}: {exc.message}") from exc
 
 
-def git(root: pathlib.Path, *arguments: str) -> str:
-    result = subprocess.run(
-        ["git", *arguments], cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    )
-    require(result.returncode == 0, f"git {' '.join(arguments)} failed: {(result.stderr or result.stdout).strip()}")
-    return result.stdout.strip()
+def _safe_relative(value: str, *, label: str) -> str:
+    require(isinstance(value, str) and value and not value.startswith("/") and
+            "\\" not in value and "\x00" not in value and
+            all(part not in {"", ".", ".."} for part in value.split("/")),
+            f"{label} is not a safe relative POSIX path")
+    return value
+
+
+def _historical_blob(root: pathlib.Path, commit: str, relative: str) -> bytes:
+    _safe_relative(relative, label="M22 final historical source path")
+    try:
+        completed = run_git("show", f"{commit}:{relative}", repository=root)
+    except SourceContextError as exc:
+        raise M22FinalEvidenceError(f"M22 final historical source is unavailable: {relative}: {exc}") from exc
+    require(completed.returncode == 0, f"M22 final historical source is unavailable: {relative}")
+    return completed.stdout
+
+
+def _commit_tree(root: pathlib.Path, commit: str) -> str:
+    require(re.fullmatch(r"[0-9a-f]{40}", commit) is not None, "M22 final source commit is malformed")
+    try:
+        exists = run_git("cat-file", "-e", f"{commit}^{{commit}}", repository=root)
+        body = run_git("cat-file", "-p", commit, repository=root)
+    except SourceContextError as exc:
+        raise M22FinalEvidenceError(f"M22 final source repository identity is unavailable: {exc}") from exc
+    require(exists.returncode == 0 and body.returncode == 0,
+            "M22 final source repository identity drifted")
+    first = body.stdout.splitlines()[0] if body.stdout else b""
+    require(first.startswith(b"tree "), "M22 final source commit has no tree")
+    return first.removeprefix(b"tree ").decode("ascii")
 
 
 def validate_source(value: dict[str, Any], root: pathlib.Path) -> None:
-    require([item["path"] for item in value["files"]] == list(runner.SOURCE_PATHS),
+    require(isinstance(value, dict) and isinstance(value.get("files"), list),
+            "M22 final source identity is malformed")
+    require([item.get("path") for item in value["files"] if isinstance(item, dict)] == list(runner.SOURCE_PATHS),
             "M22 final source inventory/order drifted")
+    commit = value.get("repository_commit")
+    require(isinstance(commit, str), "M22 final source commit is malformed")
     for record in value["files"]:
-        path = root / record["path"]
-        require(path.is_file() and not path.is_symlink() and runner.sha256(path) == record["sha256"],
+        require(set(record) == {"path", "sha256"} and isinstance(record["sha256"], str),
+                "M22 final source file record is malformed")
+        require(hashlib.sha256(_historical_blob(root, commit, record["path"])).hexdigest() == record["sha256"],
                 f"M22 final source identity drifted: {record['path']}")
     require(value["tree_sha256"] == runner.sha256_bytes(runner.canonical_bytes(value["files"])),
             "M22 final source inventory digest drifted")
-    require(git(root, "cat-file", "-t", value["repository_commit"]) == "commit" and
-            git(root, "show", "-s", "--format=%T", value["repository_commit"]) == value["repository_tree"],
+    require(_commit_tree(root, commit) == value.get("repository_tree"),
             "M22 final source repository identity drifted")
 
 
 def expected_identity(root: pathlib.Path, report: dict[str, Any]) -> dict[str, Any]:
     qualification = load(root / runner.QUALIFICATION)
     runtime = load(root / runner.RUNTIME_SOURCE)
-    bwrap_raw = shutil.which("bwrap")
-    require(bwrap_raw is not None, "bubblewrap is unavailable for M22 evidence validation")
     return {
         "aggregate_schema_sha256": runner.sha256(root / runner.EVIDENCE_SCHEMA),
-        "bubblewrap_sha256": runner.sha256(pathlib.Path(bwrap_raw).resolve()),
+        "bubblewrap_sha256": BWRAP_SHA256,
         "checkpoint_id": qualification["finalized_selection"]["checkpoint_id"],
         "evaluation_manifest_schema_sha256": runner.sha256(root / runner.MANIFEST_SCHEMA),
         "evaluator_executable_sha256": report["identity"]["evaluator_executable_sha256"],
@@ -89,6 +135,126 @@ def expected_identity(root: pathlib.Path, report: dict[str, Any]) -> dict[str, A
         "qualification_evidence_sha256": runner.sha256(root / runner.QUALIFICATION),
         "runtime_source_sha256": runner.sha256(root / runner.RUNTIME_SOURCE),
     }
+
+
+def _file_requirement(logical_set: str, relative: str, digest: str) -> ArtifactRequirement:
+    return ArtifactRequirement(
+        logical_set, _safe_relative(relative, label="M22 final live-input path"),
+        "file", LIVE_CONSUMER, digest,
+    )
+
+
+def _prior_requirements(prior: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    recorded_root = pathlib.PurePosixPath(prior["artifacts"]["root"])
+    require(recorded_root.is_absolute() and recorded_root.name == PRIOR_LOGICAL_SET,
+            "M22 rejected-attempt artifact root drifted")
+    requirements = tuple(
+        _file_requirement(PRIOR_LOGICAL_SET, prior["artifacts"][name]["path"], prior["artifacts"][name]["sha256"])
+        for name in ("evaluator_report", "preflight_record", "stderr", "stdout")
+    )
+    require(len(requirements) == EXPECTED_PRIOR_INPUTS and len(set(requirements)) == EXPECTED_PRIOR_INPUTS,
+            "M22 rejected-attempt live-input closure drifted")
+    return requirements
+
+
+def _evaluator_requirements(
+    logical_set: str, base: str, evaluator: dict[str, Any],
+) -> list[ArtifactRequirement]:
+    process = evaluator["process"]
+    result = [
+        _file_requirement(logical_set, f"{base}/evaluator/{process[path_key]}", process[digest_key])
+        for path_key, digest_key in (("stdout_path", "stdout_sha256"), ("stderr_path", "stderr_sha256"))
+    ]
+    if evaluator["status"] == "PASS":
+        result.append(_file_requirement(
+            logical_set, f"{base}/evaluator/{evaluator['report_path']}", evaluator["report_sha256"],
+        ))
+    return result
+
+
+def _result_requirements(report: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    recorded_root = pathlib.PurePosixPath(report["artifact_root"])
+    require(recorded_root.is_absolute() and recorded_root.name == RESULT_LOGICAL_SET,
+            "M22 final artifact root drifted")
+    requirements: list[ArtifactRequirement] = [
+        _file_requirement(
+            RESULT_LOGICAL_SET, "preflight/preflight-record.json",
+            runner.sha256_bytes(runner.canonical_bytes(report["preflight"])),
+        ),
+        *_evaluator_requirements(RESULT_LOGICAL_SET, "preflight", report["preflight"]["evaluator"]),
+    ]
+    for run in report["runs"]:
+        base = _safe_relative(run["artifact_path"], label="M22 final case artifact path")
+        requirements.append(_file_requirement(
+            RESULT_LOGICAL_SET, f"{base}/case-record.json",
+            runner.sha256_bytes(runner.canonical_bytes(run)),
+        ))
+        requirements.extend(_evaluator_requirements(RESULT_LOGICAL_SET, base, run["evaluator"]))
+        for item in run["native"]["artifact_inventory"]:
+            requirements.append(_file_requirement(
+                RESULT_LOGICAL_SET, f"{base}/native/{item['path']}", item["sha256"],
+            ))
+    require(len(requirements) == EXPECTED_RESULT_INPUTS and len(set(requirements)) == EXPECTED_RESULT_INPUTS,
+            f"M22 final live-input closure must contain exactly {EXPECTED_RESULT_INPUTS} files")
+    return tuple(requirements)
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+    root = root.resolve()
+    report = load(root / CONFIG)
+    prior = load(root / runner.PRIOR_ATTEMPT)
+    return (*_prior_requirements(prior), *_result_requirements(report),
+            *runtime_validator.required_live_inputs(root))
+
+
+def _close_tree(path: pathlib.Path, expected: set[str], *, label: str) -> None:
+    actual: set[str] = set()
+    for item in path.rglob("*"):
+        require(not item.is_symlink(), f"{label} contains a symlink: {item}")
+        if item.is_file():
+            actual.add(item.relative_to(path).as_posix())
+    require(actual == expected, f"{label} file inventory drifted")
+
+
+def _preflight_live(
+    context: ArtifactContext,
+    root: pathlib.Path,
+    report: dict[str, Any],
+    prior: dict[str, Any],
+    live_inputs: LiveInputManifest | None,
+    bwrap_path: pathlib.Path | None,
+) -> tuple[pathlib.Path, pathlib.Path, LiveInputManifest, pathlib.Path]:
+    require(live_inputs is not None and live_inputs.is_live,
+            "M22 final live-input manifest is required")
+    require(live_inputs.artifact_root == context.artifact_root,
+            "M22 final live-input manifest root differs from artifact context")
+    require(bwrap_path is not None, "M22 final bwrap tool path is required")
+    prior_requirements = _prior_requirements(prior)
+    result_requirements = _result_requirements(report)
+    runtime_requirements = runtime_validator.required_live_inputs(root)
+    aggregate = (*prior_requirements, *result_requirements, *runtime_requirements)
+    context.preflight(aggregate)
+    evaluator_requirement = RoleRequirement(
+        "final-v1-evaluator", ".", "file", LIVE_CONSUMER, report["identity"]["evaluator_executable_sha256"],
+    )
+    live_inputs.preflight((evaluator_requirement,))
+    bwrap = pathlib.Path(bwrap_path)
+    artifact_context.preflight_tools((ToolRequirement("bwrap", bwrap, report["identity"]["bubblewrap_sha256"]),))
+    resolved_files = [context.resolve(item) for item in (*prior_requirements, *result_requirements)
+                      if item.kind == "file"]
+    resolved_files.append(live_inputs.resolve(evaluator_requirement))
+    identities: dict[tuple[int, int], pathlib.Path] = {}
+    for path in resolved_files:
+        stat = path.stat()
+        require(stat.st_nlink == 1, f"M22 final live input is a hard link: {path}")
+        key = (stat.st_dev, stat.st_ino)
+        require(key not in identities, f"M22 final live inputs alias one file: {identities.get(key)} and {path}")
+        identities[key] = path
+    prior_root = context.artifact_set(PRIOR_LOGICAL_SET)
+    result_root = context.artifact_set(RESULT_LOGICAL_SET)
+    _close_tree(prior_root, {item.relative_path for item in prior_requirements}, label="M22 rejected-attempt artifacts")
+    _close_tree(result_root, {item.relative_path for item in result_requirements}, label="M22 final artifacts")
+    return prior_root, result_root, live_inputs, bwrap
 
 
 def validate_live_evaluator(
@@ -172,9 +338,11 @@ def validate_run(
 
 
 def validate_value(
-    report: dict[str, Any], root: pathlib.Path, *, artifact_root: pathlib.Path | None = None,
-    manifest_value: dict[str, Any] | None = None, evaluator_executable: pathlib.Path | None = None,
+    report: dict[str, Any], root: pathlib.Path, *, artifact_context: ArtifactContext | None = None,
+    live_inputs: LiveInputManifest | None = None, bwrap_path: pathlib.Path | None = None,
+    manifest_value: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    context = artifact_context or ArtifactContext.offline()
     root = root.resolve()
     schema_validate(report, load(root / runner.EVIDENCE_SCHEMA), "M22 final evaluation evidence")
     unsigned = copy.deepcopy(report)
@@ -183,17 +351,13 @@ def validate_value(
     validate_source(report["source"], root)
     identity = expected_identity(root, report)
     require(report["identity"] == identity, "M22 final identity binding drifted")
-    if evaluator_executable is not None:
-        evaluator_executable = evaluator_executable.resolve()
-        require(evaluator_executable.is_file() and not evaluator_executable.is_symlink() and
-                os.access(evaluator_executable, os.X_OK) and
-                runner.sha256(evaluator_executable) == identity["evaluator_executable_sha256"],
-                "M22 evaluator executable identity drifted")
+    require(identity["bubblewrap_sha256"] == BWRAP_SHA256,
+            "M22 final bubblewrap frozen identity drifted")
     manifest_path = root / report["manifest"]["path"]
     if manifest_value is None:
         manifest_value = load(manifest_path)
     contract = load(root / runner.CONTRACT)
-    prior_attempt = runner.validate_prior_attempt(root, contract)
+    prior_attempt = runner.validate_prior_attempt_record(root, contract)
     require(report["history"] == {
         "cases_attempted": prior_attempt["execution"]["cases_attempted"],
         "failure_category": prior_attempt["failure"]["category"],
@@ -207,10 +371,13 @@ def validate_value(
         "case_count": 42, "id": manifest_value["manifest_id"], "path": runner.learning.EVALUATION.as_posix(),
         "sha256": runner.sha256(manifest_path),
     }, "M22 final manifest record drifted")
-    if artifact_root is not None:
-        artifact_root = artifact_root.resolve()
-        require(str(artifact_root) == report["artifact_root"] and artifact_root.is_dir() and not artifact_root.is_symlink(),
-                "M22 final artifact root drifted")
+    artifact_root: pathlib.Path | None = None
+    if context.is_live:
+        prior_root, artifact_root, live_inputs, _ = _preflight_live(
+            context, root, report, prior_attempt, live_inputs, bwrap_path,
+        )
+        runtime_validator.validate(root, artifact_context=context)
+        runner.validate_prior_attempt_live(prior_attempt, prior_root)
     evaluator_schema = load(root / runner.EVALUATOR_SCHEMA)
     preflight = report["preflight"]
     require(preflight["public_case"] == runner.public_case(runner.PREFLIGHT_CASE) and
@@ -238,31 +405,40 @@ def validate_value(
     require(report["failure_counts"] == failure_counts, "M22 final failure counts drifted")
     require(report["status"] == ("PASS" if expected_acceptance["overall"] else "FAIL"),
             "M22 final status drifted")
+    require(len(cases) == 42 and report["status"] == "FAIL" and sum(failure_counts.values()) == 10,
+            "M22 final-v1 frozen result drifted")
     return {
         "cases": len(cases), "failures": sum(failure_counts.values()),
-        "live": artifact_root is not None, "status": report["status"],
+        "live": context.is_live, "status": report["status"],
     }
 
 
 def validate(
-    root: pathlib.Path, config_path: pathlib.Path | None = None, *, artifact_root: pathlib.Path | None = None,
-    evaluator_executable: pathlib.Path | None = None,
+    root: pathlib.Path, config_path: pathlib.Path | None = None, *,
+    artifact_context: ArtifactContext | None = None,
+    bwrap_path: pathlib.Path | None = None,
 ) -> dict[str, Any]:
-    return validate_value(load(config_path or root / CONFIG), root, artifact_root=artifact_root,
-                          evaluator_executable=evaluator_executable)
+    context = artifact_context or ArtifactContext.offline()
+    live_inputs = LiveInputManifest.load(context.artifact_root) if context.is_live else None
+    return validate_value(
+        load(config_path or root / CONFIG), root, artifact_context=context,
+        live_inputs=live_inputs, bwrap_path=bwrap_path,
+    )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--config", type=pathlib.Path)
-    parser.add_argument("--artifact-root", type=pathlib.Path)
-    parser.add_argument("--evaluator-executable", type=pathlib.Path)
+    add_artifact_root_argument(parser)
+    parser.add_argument("--bwrap", type=pathlib.Path)
     args = parser.parse_args()
     try:
-        result = validate(args.root, args.config, artifact_root=args.artifact_root,
-                          evaluator_executable=args.evaluator_executable)
-    except (M22FinalEvidenceError, runner.M22FinalEvaluationError, OSError, subprocess.SubprocessError,
+        common_root = resolve_artifact_root(args.artifact_root)
+        context = ArtifactContext.offline() if common_root is None else ArtifactContext.live(common_root)
+        result = validate(args.root, args.config, artifact_context=context, bwrap_path=args.bwrap)
+    except (M22FinalEvidenceError, runner.M22FinalEvaluationError, runtime_validator.M22RuntimeSourceError,
+            ArtifactContextError, SourceContextError, OSError, subprocess.SubprocessError,
             KeyError, TypeError, ValueError) as exc:
         print(f"V2_M22_FINAL_EVIDENCE=FAIL {exc}", file=sys.stderr)
         return 1

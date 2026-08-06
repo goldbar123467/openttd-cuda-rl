@@ -12,15 +12,21 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import pathlib
-import shutil
 import subprocess
 import sys
 from collections import Counter
 from typing import Any
 
 import build_m22_followup_v2_manifest as manifest_builder
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    LiveInputManifest,
+    RoleRequirement,
+    ToolRequirement,
+    preflight_tools,
+)
 import m22_final_native as native
 import run_m22_final_evaluation as foundation
 import validate_m22_final_evaluation as final_evidence_validator
@@ -39,6 +45,8 @@ MANIFEST_SCHEMA = manifest_builder.SCHEMA
 EVALUATOR_SCHEMA = foundation.EVALUATOR_SCHEMA
 EVIDENCE_SCHEMA = pathlib.Path("docs/project/schema/v2-m22-followup-v2-evaluation-evidence.schema.json")
 RANDOM_DOMAIN = "openttd-rl-v2-m22-followup-v2-random-legal-v1"
+BUNDLE_LOGICAL_SET = "v2-m22-followup-v2-evaluation-a"
+LIVE_CONSUMER = "m22-followup-v2-evaluation-producer"
 PROGRAMS = foundation.PROGRAMS
 PROGRAM_INDEX = foundation.PROGRAM_INDEX
 SERVICE_MODES = foundation.SERVICE_MODES
@@ -117,8 +125,39 @@ aggregate_statistics = foundation.aggregate_statistics
 artifact_inventory = foundation.artifact_inventory
 
 
+def source_is_synchronized_main(root: pathlib.Path, commit: str) -> bool:
+    """Check the local/main origin boundary without an unrestricted Git command."""
+
+    git_directory = pathlib.Path(git(root, "rev-parse", "--absolute-git-dir"))
+    head = git_directory / "HEAD"
+    if head.is_symlink() or not head.is_file() or head.read_bytes() != b"ref: refs/heads/main\n":
+        return False
+    common_directory = git_directory
+    commondir = git_directory / "commondir"
+    if commondir.is_file() and not commondir.is_symlink():
+        try:
+            relative = commondir.read_text(encoding="ascii").removesuffix("\n")
+        except (OSError, UnicodeError):
+            return False
+        common_directory = (git_directory / relative).resolve()
+    origin_ref = common_directory / "refs/remotes/origin/main"
+    if origin_ref.is_file() and not origin_ref.is_symlink():
+        try:
+            return origin_ref.read_bytes() == f"{commit}\n".encode("ascii")
+        except OSError:
+            return False
+    packed = common_directory / "packed-refs"
+    if packed.is_symlink() or not packed.is_file():
+        return False
+    try:
+        records = packed.read_text(encoding="ascii").splitlines()
+    except (OSError, UnicodeError):
+        return False
+    return f"{commit} refs/remotes/origin/main" in records
+
+
 def source_identity(root: pathlib.Path) -> dict[str, Any]:
-    require(git(root, "status", "--porcelain=v1", "--untracked-files=all") == "",
+    require(git(root, "status", "--porcelain") == "",
             "M22 follow-up-v2 execution requires a clean source worktree")
     files = []
     for relative in SOURCE_PATHS:
@@ -127,8 +166,7 @@ def source_identity(root: pathlib.Path) -> dict[str, Any]:
                 f"M22 follow-up-v2 source is absent or symlinked: {relative}")
         files.append({"path": relative, "sha256": sha256(path)})
     commit = git(root, "rev-parse", "HEAD")
-    require(git(root, "branch", "--show-current") == "main" and
-            git(root, "rev-parse", "origin/main") == commit,
+    require(source_is_synchronized_main(root, commit),
             "M22 follow-up-v2 execution requires source-frozen main synchronized with origin/main")
     return {
         "clean": True, "files": files, "main_synchronized": True, "repository_commit": commit,
@@ -283,23 +321,26 @@ def immutable_followup_v1_record(root: pathlib.Path, value: dict[str, Any]) -> d
 
 
 def run(
-    root: pathlib.Path, manifest_path: pathlib.Path, evaluator_executable: pathlib.Path,
-    training_artifact_root: pathlib.Path, runtime_artifact_root: pathlib.Path,
-    artifact_root: pathlib.Path, evidence_path: pathlib.Path,
+    root: pathlib.Path, manifest_path: pathlib.Path, artifact_root: pathlib.Path,
+    evidence_path: pathlib.Path, *, artifact_context: ArtifactContext | None,
+    bwrap_path: pathlib.Path, live_inputs: LiveInputManifest | None = None,
 ) -> dict[str, Any]:
-    root, manifest_path, evaluator_executable = root.resolve(), manifest_path.resolve(), evaluator_executable.resolve()
-    training_artifact_root, runtime_artifact_root, artifact_root, evidence_path = (
-        training_artifact_root.resolve(), runtime_artifact_root.resolve(), artifact_root.resolve(), evidence_path.resolve(),
+    root, manifest_path, artifact_root, evidence_path = (
+        root.resolve(), manifest_path.resolve(), artifact_root.resolve(), evidence_path.resolve(),
     )
+    context = artifact_context
+    require(context is not None and context.is_live,
+            "M22 follow-up-v2 evaluation requires one live artifact context")
+    require(artifact_root == context.artifact_set(BUNDLE_LOGICAL_SET),
+            "M22 follow-up-v2 output must be the typed result artifact set")
     require(not artifact_root.exists() and not artifact_root.is_symlink(),
             "M22 follow-up-v2 artifact root must be new")
     require(not evidence_path.exists() and not evidence_path.is_symlink(),
             "M22 follow-up-v2 evidence path must be new")
-    require(evaluator_executable.is_file() and not evaluator_executable.is_symlink() and
-            os.access(evaluator_executable, os.X_OK), "M22 evaluator executable is unavailable")
-    bwrap_raw = shutil.which("bwrap")
-    require(bwrap_raw is not None, "bubblewrap is required for M22 follow-up-v2 evaluation")
-    bwrap = pathlib.Path(bwrap_raw).resolve()
+    live_inputs = live_inputs or LiveInputManifest.load(context.artifact_root)
+    require(live_inputs.artifact_root == context.artifact_root,
+            "M22 follow-up-v2 live-input manifest root differs from artifact context")
+    bwrap = pathlib.Path(bwrap_path)
 
     # This complete preflight intentionally does not read the follow-up-v2 manifest.
     contract = load(root / CONTRACT)
@@ -312,19 +353,27 @@ def run(
     expected_manifest = (root / MANIFEST).resolve()
     require(manifest_path == expected_manifest and manifest_path.is_file() and not manifest_path.is_symlink(),
             "M22 follow-up-v2 manifest path is not the frozen protocol path")
-    checkpoint, selected = checkpoint_preflight(qualification, training_artifact_root)
-    base_source_record = load(root / runtime_validator.preparation.foundation.M21_SOURCE)
-    runtime_validator.validate(
-        root, artifact_root=runtime_artifact_root, base_source=pathlib.Path(base_source_record["source"]["path"]),
+    selected = qualification["finalized_selection"]
+    training_requirement = RoleRequirement(
+        "training-artifacts", selected["checkpoint_path"], "directory", LIVE_CONSUMER,
     )
-    runtime = runtime_paths(runtime_source)
+    evaluator_requirement = RoleRequirement(
+        "final-v1-evaluator", ".", "file", LIVE_CONSUMER, foundation.EVALUATOR_SHA256,
+    )
+    live_inputs.preflight((training_requirement, evaluator_requirement))
+    preflight_tools((ToolRequirement("bwrap", bwrap, foundation.BWRAP_SHA256),))
+    training_artifact_root = live_inputs.resolve(RoleRequirement(
+        "training-artifacts", ".", "directory", LIVE_CONSUMER,
+    ))
+    evaluator_executable = live_inputs.resolve(evaluator_requirement)
+    checkpoint, selected = checkpoint_preflight(qualification, training_artifact_root)
+    runtime_validator.validate(root, artifact_context=context)
+    runtime = runtime_paths(runtime_source, context)
     evaluator_sha = sha256(evaluator_executable)
     native.validate_runtime(runtime)
     final_boundary = immutable_final_record(root, immutable_final)
     followup_v1_boundary = immutable_followup_v1_record(root, immutable_followup_v1)
     require(contract["device"]["production"] == "cuda:0", "M22 production evaluator device drifted")
-    require(runtime_artifact_root == pathlib.Path(runtime_source["retained_artifact"]),
-            "M22 corrected runtime artifact root drifted")
     require(manifest_schema["$id"].endswith("v2-m22-followup-v2-manifest.schema.json"),
             "M22 follow-up-v2 manifest schema identity drifted")
 
@@ -406,8 +455,10 @@ def run(
     report["report_sha256"] = sha256_bytes(canonical_bytes(report))
     schema_validate(report, load(root / EVIDENCE_SCHEMA), "M22 follow-up-v2 evaluation evidence")
     import validate_m22_followup_v2_evaluation as validator
-    validator.validate_value(report, root, artifact_root=artifact_root, manifest_value=manifest,
-                             manifest_bytes=manifest_bytes)
+    validator.validate_value(
+        report, root, artifact_context=context, live_inputs=live_inputs, bwrap_path=bwrap,
+        manifest_value=manifest, manifest_bytes=manifest_bytes,
+    )
     write_new(evidence_path, report)
     return report
 
@@ -416,19 +467,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--manifest", type=pathlib.Path, required=True)
-    parser.add_argument("--evaluator-executable", type=pathlib.Path, required=True)
-    parser.add_argument("--training-artifact-root", type=pathlib.Path, required=True)
-    parser.add_argument("--runtime-artifact-root", type=pathlib.Path, required=True)
+    parser.add_argument("--input-artifact-root", type=pathlib.Path, required=True)
+    parser.add_argument("--bwrap", type=pathlib.Path, required=True)
     parser.add_argument("--artifact-root", type=pathlib.Path, required=True)
     parser.add_argument("--evidence", type=pathlib.Path, required=True)
     args = parser.parse_args()
     try:
-        report = run(
-            args.root, args.manifest, args.evaluator_executable, args.training_artifact_root,
-            args.runtime_artifact_root, args.artifact_root, args.evidence,
-        )
+        context = ArtifactContext.live(args.input_artifact_root)
+        report = run(args.root, args.manifest, args.artifact_root, args.evidence,
+                     artifact_context=context, bwrap_path=args.bwrap)
     except (M22FollowupV2EvaluationError, foundation.M22FinalEvaluationError, native.M22FinalNativeError,
-            runtime_validator.M22FollowupRuntimeSourceError, OSError, subprocess.SubprocessError,
+            runtime_validator.M22FollowupRuntimeSourceError, ArtifactContextError,
+            foundation.SourceContextError, OSError, subprocess.SubprocessError,
             KeyError, TypeError, ValueError) as exc:
         print(f"V2_M22_FOLLOWUP_V2_EVALUATION=FAIL {exc}", file=sys.stderr)
         return 1

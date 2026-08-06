@@ -196,6 +196,16 @@ class M22FollowupEvaluationSourceTests(unittest.TestCase):
         self.assertGreater(source.index("run_evaluator(", loop), loop)
         self.assertGreater(source.index("run_native(", loop), loop)
 
+    def test_runner_requires_one_typed_live_context_and_explicit_tool(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw)
+            with self.assertRaisesRegex(runner.M22FollowupEvaluationError, "one live artifact context"):
+                runner.run(
+                    self.root, self.root / runner.MANIFEST,
+                    directory / "v2-m22-followup-evaluation-a", directory / "evidence.json",
+                    artifact_context=None, bwrap_path=pathlib.Path("/usr/bin/bwrap"),
+                )
+
     def test_create_only_writer_never_overwrites(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             path = pathlib.Path(raw) / "record.json"

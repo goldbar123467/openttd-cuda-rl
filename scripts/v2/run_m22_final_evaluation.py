@@ -17,7 +17,6 @@ import math
 import os
 import pathlib
 import resource
-import shutil
 import signal
 import statistics
 import subprocess
@@ -27,10 +26,19 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    LiveInputManifest,
+    RoleRequirement,
+    ToolRequirement,
+    preflight_tools,
+)
 import m22_final_native as native
 import run_m22_recovery as recovery
 import validate_m22_final_runtime_source as runtime_validator
 import validate_m22_learning_contract as learning
+from source_context import SourceContextError, run_git
 
 
 CONTRACT = pathlib.Path("config/v2/m22-learning-contract.json")
@@ -43,6 +51,8 @@ EVALUATOR_SCHEMA = pathlib.Path("docs/project/schema/v2-m22-evaluator-report.sch
 EVIDENCE_SCHEMA = pathlib.Path("docs/project/schema/v2-m22-final-evaluation-evidence.schema.json")
 RANDOM_DOMAIN = "openttd-rl-v2-m22-final-random-legal-v1"
 EVALUATOR_TIMEOUT_SECONDS = 300
+BUNDLE_LOGICAL_SET = "v2-m22-final-evaluation-b"
+LIVE_CONSUMER = "m22-final-evaluation-producer"
 PROGRAMS = tuple(learning.PROGRAMS)
 PROGRAM_INDEX = {name: index for index, name in enumerate(PROGRAMS)}
 EVALUATOR_PUBLIC_FIELDS = tuple(field for field in native.PUBLIC_FIELDS if field != "case_id")
@@ -74,6 +84,8 @@ PREFLIGHT_CASE = {
     "opponent": "not-applicable", "seed": 220001, "required_program": "road-passenger",
     "native_probe": "passenger-service", "source_gate": "G15",
 }
+BWRAP_SHA256 = "52231e1caf55bcbc667b269f49c63599a6f7db4767ae6a039580d0ff853db712"
+EVALUATOR_SHA256 = "bc87f4608643b4664068381fa5136d464c44bd05dad09a66fa088bfa995b92e6"
 
 # Two-sided 95% Student-t critical values for df=1..41.  The final campaign
 # always has n=42; retaining the complete table also makes subset diagnostics
@@ -148,15 +160,17 @@ def schema_validate(value: dict[str, Any], schema: dict[str, Any], label: str) -
 
 
 def git(root: pathlib.Path, *arguments: str) -> str:
-    result = subprocess.run(
-        ["git", *arguments], cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    )
-    require(result.returncode == 0, f"git {' '.join(arguments)} failed: {(result.stderr or result.stdout).strip()}")
-    return result.stdout.strip()
+    try:
+        result = run_git(*arguments, repository=root)
+    except SourceContextError as exc:
+        raise M22FinalEvaluationError(f"safe Git access failed: {exc}") from exc
+    detail = (result.stderr or result.stdout).decode("utf-8", errors="replace").strip()
+    require(result.returncode == 0, f"git {' '.join(arguments)} failed: {detail}")
+    return result.stdout.decode("utf-8").strip()
 
 
 def source_identity(root: pathlib.Path) -> dict[str, Any]:
-    require(git(root, "status", "--porcelain=v1", "--untracked-files=all") == "",
+    require(git(root, "status", "--porcelain") == "",
             "M22 final execution requires a clean source worktree")
     files = []
     for relative in SOURCE_PATHS:
@@ -464,7 +478,16 @@ def checkpoint_preflight(qualification: dict[str, Any], training_root: pathlib.P
     return checkpoint, selected
 
 
-def validate_prior_attempt(root: pathlib.Path, contract: dict[str, Any]) -> dict[str, Any]:
+def _historical_blob(root: pathlib.Path, commit: str, relative: str) -> bytes:
+    try:
+        completed = run_git("show", f"{commit}:{relative}", repository=root)
+    except SourceContextError as exc:
+        raise M22FinalEvaluationError(f"M22 historical source is unavailable: {relative}: {exc}") from exc
+    require(completed.returncode == 0, f"M22 historical source is unavailable: {relative}")
+    return completed.stdout
+
+
+def validate_prior_attempt_record(root: pathlib.Path, contract: dict[str, Any]) -> dict[str, Any]:
     record = load(root / PRIOR_ATTEMPT)
     schema_validate(record, load(root / PRIOR_ATTEMPT_SCHEMA), "M22 rejected final attempt")
     require(record["schema_sha256"] == sha256(root / PRIOR_ATTEMPT_SCHEMA),
@@ -476,16 +499,28 @@ def validate_prior_attempt(root: pathlib.Path, contract: dict[str, Any]) -> dict
             record["identity"]["runtime_source_sha256"] == sha256(root / RUNTIME_SOURCE),
             "M22 rejected-attempt prerequisite identity drifted")
     commit = record["source"]["repository_commit"]
-    require(git(root, "cat-file", "-t", commit) == "commit" and
-            git(root, "show", "-s", "--format=%T", commit) == record["source"]["repository_tree"],
+    try:
+        exists = run_git("cat-file", "-e", f"{commit}^{{commit}}", repository=root)
+        commit_body = run_git("cat-file", "-p", commit, repository=root)
+    except SourceContextError as exc:
+        raise M22FinalEvaluationError(f"M22 rejected-attempt repository identity is unavailable: {exc}") from exc
+    first = commit_body.stdout.splitlines()[0] if commit_body.stdout else b""
+    require(exists.returncode == 0 and commit_body.returncode == 0 and first ==
+            f"tree {record['source']['repository_tree']}".encode("ascii"),
             "M22 rejected-attempt repository identity drifted")
-    prior_source = subprocess.run(
-        ["git", "show", f"{commit}:scripts/v2/run_m22_final_evaluation.py"], cwd=root,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    )
-    require(prior_source.returncode == 0 and sha256_bytes(prior_source.stdout) == record["source"]["runner_sha256"],
+    prior_source = _historical_blob(root, commit, "scripts/v2/run_m22_final_evaluation.py")
+    require(sha256_bytes(prior_source) == record["source"]["runner_sha256"],
             "M22 rejected-attempt runner identity drifted")
-    artifact_root = pathlib.Path(record["artifacts"]["root"])
+    require(record["execution"] == {
+        "cases_attempted": 0, "final_evaluator_processes": 0, "native_dispatches": 0,
+        "preflight_evaluator_processes": 1, "replacements": 0, "retries": 0,
+    } and record["manifest"]["reads"] == 1 and record["failure"]["category"] == "final-manifest-adapter" and
+            record["status"] == "REJECTED_BEFORE_CASE_EXECUTION",
+            "M22 rejected-attempt frozen execution/failure boundary drifted")
+    return record
+
+
+def validate_prior_attempt_live(record: dict[str, Any], artifact_root: pathlib.Path) -> None:
     require(artifact_root.is_absolute() and artifact_root.is_dir() and not artifact_root.is_symlink(),
             "M22 rejected-attempt artifact root is unavailable")
     for name in ("evaluator_report", "preflight_record", "stderr", "stdout"):
@@ -498,16 +533,34 @@ def validate_prior_attempt(root: pathlib.Path, contract: dict[str, Any]) -> dict
             preflight["evaluator"]["status"] == "PASS" and
             preflight["evaluator"]["action"] == PREFLIGHT_CASE["required_program"],
             "M22 rejected-attempt preflight semantic drifted")
+
+
+def validate_prior_attempt(
+    root: pathlib.Path, contract: dict[str, Any], *, artifact_context: ArtifactContext | None = None,
+) -> dict[str, Any]:
+    context = artifact_context or ArtifactContext.offline()
+    record = validate_prior_attempt_record(root, contract)
+    if context.is_live:
+        validate_prior_attempt_live(record, context.artifact_set("v2-m22-final-evaluation-a"))
     return record
 
 
-def runtime_paths(source: dict[str, Any]) -> native.RuntimePaths:
+def runtime_paths(
+    source: dict[str, Any], artifact_context: ArtifactContext | None = None,
+) -> native.RuntimePaths:
+    context = artifact_context or ArtifactContext.offline()
+    recorded_root = pathlib.Path(source["retained_artifact"])
+
+    def resolved(recorded_path: str) -> pathlib.Path:
+        path = pathlib.Path(recorded_path)
+        return context.relocate(path, recorded_root=recorded_root) if context.is_live else path
+
     return native.RuntimePaths(
-        executable=pathlib.Path(source["executable"]["path"]),
-        opengfx=pathlib.Path(source["runtime"]["open_gfx"]["path"]),
-        base_config=pathlib.Path(source["runtime"]["configs"]["base"]["path"]),
-        content_config=pathlib.Path(source["runtime"]["configs"]["content"]["path"]),
-        gamescript_config=pathlib.Path(source["runtime"]["configs"]["gamescript"]["path"]),
+        executable=resolved(source["executable"]["path"]),
+        opengfx=resolved(source["runtime"]["open_gfx"]["path"]),
+        base_config=resolved(source["runtime"]["configs"]["base"]["path"]),
+        content_config=resolved(source["runtime"]["configs"]["content"]["path"]),
+        gamescript_config=resolved(source["runtime"]["configs"]["gamescript"]["path"]),
         source_tree=source["source"]["tree"],
     )
 
@@ -582,40 +635,55 @@ def protocol_record(runs: list[dict[str, Any]], case_ids: list[str]) -> dict[str
 
 
 def run(
-    root: pathlib.Path, manifest_path: pathlib.Path, evaluator_executable: pathlib.Path,
-    training_artifact_root: pathlib.Path, runtime_artifact_root: pathlib.Path,
-    artifact_root: pathlib.Path, evidence_path: pathlib.Path,
+    root: pathlib.Path, manifest_path: pathlib.Path, artifact_root: pathlib.Path,
+    evidence_path: pathlib.Path, *, artifact_context: ArtifactContext | None,
+    bwrap_path: pathlib.Path, live_inputs: LiveInputManifest | None = None,
 ) -> dict[str, Any]:
-    root, manifest_path, evaluator_executable = root.resolve(), manifest_path.resolve(), evaluator_executable.resolve()
-    training_artifact_root, runtime_artifact_root, artifact_root, evidence_path = (
-        training_artifact_root.resolve(), runtime_artifact_root.resolve(), artifact_root.resolve(), evidence_path.resolve(),
+    root, manifest_path, artifact_root, evidence_path = (
+        root.resolve(), manifest_path.resolve(), artifact_root.resolve(), evidence_path.resolve(),
     )
+    context = artifact_context
+    require(context is not None and context.is_live,
+            "M22 final evaluation requires one live artifact context")
+    require(artifact_root == context.artifact_set(BUNDLE_LOGICAL_SET),
+            "M22 final output must be the typed result artifact set")
     require(not artifact_root.exists() and not artifact_root.is_symlink(), "M22 final artifact root must be new")
     require(not evidence_path.exists() and not evidence_path.is_symlink(), "M22 final evidence path must be new")
-    require(evaluator_executable.is_file() and not evaluator_executable.is_symlink() and
-            os.access(evaluator_executable, os.X_OK), "M22 evaluator executable is unavailable")
-    bwrap_raw = shutil.which("bwrap")
-    require(bwrap_raw is not None, "bubblewrap is required for M22 final evaluation")
-    bwrap = pathlib.Path(bwrap_raw).resolve()
+    live_inputs = live_inputs or LiveInputManifest.load(context.artifact_root)
+    require(live_inputs.artifact_root == context.artifact_root,
+            "M22 final live-input manifest root differs from artifact context")
+    bwrap = pathlib.Path(bwrap_path)
 
     # Complete every check that can be completed without final-manifest access.
     contract = load(root / CONTRACT)
     qualification = load(root / QUALIFICATION)
     runtime_source = load(root / RUNTIME_SOURCE)
-    prior_attempt = validate_prior_attempt(root, contract)
+    prior_attempt = validate_prior_attempt_record(root, contract)
     manifest_schema, evaluator_schema = load(root / MANIFEST_SCHEMA), load(root / EVALUATOR_SCHEMA)
     source = source_identity(root)
     expected_manifest = (root / contract["independent_evaluation"]["manifest"]).resolve()
     require(manifest_path == expected_manifest and manifest_path.is_file() and not manifest_path.is_symlink(),
             "M22 final manifest path is not the frozen contract path")
+    selected = qualification["finalized_selection"]
+    training_requirement = RoleRequirement(
+        "training-artifacts", selected["checkpoint_path"], "directory", LIVE_CONSUMER,
+    )
+    evaluator_requirement = RoleRequirement(
+        "final-v1-evaluator", ".", "file", LIVE_CONSUMER, EVALUATOR_SHA256,
+    )
+    live_inputs.preflight((training_requirement, evaluator_requirement))
+    preflight_tools((ToolRequirement("bwrap", bwrap, BWRAP_SHA256),))
+    training_artifact_root = live_inputs.resolve(RoleRequirement(
+        "training-artifacts", ".", "directory", LIVE_CONSUMER,
+    ))
+    evaluator_executable = live_inputs.resolve(evaluator_requirement)
     checkpoint, selected = checkpoint_preflight(qualification, training_artifact_root)
-    runtime_validator.validate(root, artifact_root=runtime_artifact_root)
-    runtime = runtime_paths(runtime_source)
+    runtime_validator.validate(root, artifact_context=context)
+    validate_prior_attempt_live(prior_attempt, context.artifact_set("v2-m22-final-evaluation-a"))
+    runtime = runtime_paths(runtime_source, context)
     evaluator_sha = sha256(evaluator_executable)
     native.validate_runtime(runtime)
     require(contract["device"]["production"] == "cuda:0", "M22 production evaluator device drifted")
-    require(runtime_artifact_root == pathlib.Path(runtime_source["retained_artifact"]),
-            "M22 runtime artifact root drifted")
 
     # Exercise the exact binary/checkpoint/CUDA/sandbox path on a fixed public
     # source case before consuming final access.  A failed preflight remains as
@@ -702,7 +770,10 @@ def run(
     report["report_sha256"] = sha256_bytes(canonical_bytes(report))
     schema_validate(report, load(root / EVIDENCE_SCHEMA), "M22 final evaluation evidence")
     import validate_m22_final_evaluation as validator
-    validator.validate_value(report, root, artifact_root=artifact_root, manifest_value=manifest)
+    validator.validate_value(
+        report, root, artifact_context=context, live_inputs=live_inputs, bwrap_path=bwrap,
+        manifest_value=manifest,
+    )
     write_new(evidence_path, report)
     return report
 
@@ -711,19 +782,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--manifest", type=pathlib.Path, required=True)
-    parser.add_argument("--evaluator-executable", type=pathlib.Path, required=True)
-    parser.add_argument("--training-artifact-root", type=pathlib.Path, required=True)
-    parser.add_argument("--runtime-artifact-root", type=pathlib.Path, required=True)
+    parser.add_argument("--input-artifact-root", type=pathlib.Path, required=True)
+    parser.add_argument("--bwrap", type=pathlib.Path, required=True)
     parser.add_argument("--artifact-root", type=pathlib.Path, required=True)
     parser.add_argument("--evidence", type=pathlib.Path, required=True)
     args = parser.parse_args()
     try:
-        report = run(
-            args.root, args.manifest, args.evaluator_executable, args.training_artifact_root,
-            args.runtime_artifact_root, args.artifact_root, args.evidence,
-        )
+        context = ArtifactContext.live(args.input_artifact_root)
+        report = run(args.root, args.manifest, args.artifact_root, args.evidence,
+                     artifact_context=context, bwrap_path=args.bwrap)
     except (M22FinalEvaluationError, native.M22FinalNativeError, runtime_validator.M22RuntimeSourceError,
-            OSError, subprocess.SubprocessError, KeyError, TypeError, ValueError) as exc:
+            ArtifactContextError, SourceContextError, OSError, subprocess.SubprocessError,
+            KeyError, TypeError, ValueError) as exc:
         print(f"V2_M22_FINAL_EVALUATION=FAIL {exc}", file=sys.stderr)
         return 1
     print(f"V2_M22_FINAL_EVALUATION={report['status']} cases={len(report['runs'])} "

@@ -4,16 +4,253 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import pathlib
+import shutil
+import subprocess
 import tempfile
 import unittest
+from types import MappingProxyType
+from unittest import mock
 
 import jsonschema
 
+import artifact_context
+from artifact_context import ArtifactContext, LiveInputManifest, ValidationMode
 import m22_final_native as native
 import run_m22_final_evaluation as runner
 import validate_m22_final_evaluation as validator
+
+
+def _evaluation_report(
+    run: dict[str, object], checkpoint_id: str, runner_module: object,
+) -> dict[str, object]:
+    active = run["evaluator"]["legal_active_program"]
+    active_index = runner_module.PROGRAM_INDEX[active]
+    mask = [index in (0, active_index) for index in range(len(runner_module.PROGRAMS))]
+    return {
+        "checkpoint": {"architecture": "monolithic-generalist-v1", "id": checkpoint_id, "run_seed": 1},
+        "execution": {
+            "device": "cuda:0", "greedy_masked": True, "optimizer_constructed": False,
+            "optimizer_deserialized": False, "optimizer_path_opened": False, "recurrent_reset": True,
+        },
+        "policy": {
+            "action": run["evaluator"]["action"], "action_index": run["evaluator"]["action_index"],
+            "legal_active_index": active_index, "legal_active_program": active,
+            "logits": [0.0] * len(runner_module.PROGRAMS), "next_hidden": [0.0] * 256, "value": 0.0,
+        },
+        "public_state": runner_module.evaluator_public_case(run["public_case"]),
+        "schema_version": "openttd-rl-v2-m22-evaluator-report-1", "status": "PASS",
+        "tensor_input": {"program_mask": mask, "public_features": [0.0] * 32},
+    }
+
+
+def _write_payload(path: pathlib.Path, payload: bytes) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(payload)
+    return hashlib.sha256(payload).hexdigest()
+
+
+def stage_evaluation_artifacts(
+    common_root: pathlib.Path,
+    report: dict[str, object],
+    *,
+    logical_set: str,
+    runner_module: object,
+) -> tuple[dict[str, object], LiveInputManifest]:
+    """Stage a byte-real complete evaluation tree and its typed evaluator role."""
+
+    value = copy.deepcopy(report)
+    evaluator_executable = common_root / "typed-inputs/final-v1-evaluator"
+    evaluator_digest = _write_payload(
+        evaluator_executable, b"#!/bin/sh\n# byte-real Task 5C evaluator fixture\nexit 0\n",
+    )
+    evaluator_executable.chmod(0o700)
+    value["identity"]["evaluator_executable_sha256"] = evaluator_digest
+    result_root = common_root / logical_set
+
+    def stage_evaluator(run: dict[str, object], base: pathlib.Path, label: str) -> None:
+        evaluator = run["evaluator"]
+        process = evaluator["process"]
+        evaluator_root = base / "evaluator"
+        process["stdout_sha256"] = _write_payload(
+            evaluator_root / process["stdout_path"], f"{label} evaluator stdout\n".encode(),
+        )
+        process["stderr_sha256"] = _write_payload(
+            evaluator_root / process["stderr_path"], f"{label} evaluator stderr\n".encode(),
+        )
+        payload = runner_module.canonical_bytes(_evaluation_report(
+            run, value["identity"]["checkpoint_id"], runner_module,
+        ))
+        evaluator["report_sha256"] = _write_payload(evaluator_root / evaluator["report_path"], payload)
+
+    preflight = value["preflight"]
+    stage_evaluator(preflight, result_root / "preflight", "preflight")
+    (result_root / "preflight/preflight-record.json").write_bytes(runner_module.canonical_bytes(preflight))
+
+    for run in value["runs"]:
+        case_root = result_root / run["artifact_path"]
+        stage_evaluator(run, case_root, run["public_case"]["case_id"])
+        native_root = case_root / "native"
+        for item in run["native"]["artifact_inventory"]:
+            payload = f"{run['public_case']['case_id']} native {item['path']}\n".encode()
+            item["bytes"] = len(payload)
+            item["sha256"] = _write_payload(native_root / item["path"], payload)
+        if run["native"]["status"] == "PASS":
+            record = run["native"]["record"]
+            record["executable_sha256"] = value["identity"]["native_executable_sha256"]
+            record["source_tree"] = value["identity"]["native_source_tree"]
+            by_path = {item["path"]: item for item in run["native"]["artifact_inventory"]}
+            for path_key, digest_key in (
+                ("manifest_path", "manifest_sha256"), ("report_path", "report_sha256"),
+                ("openttd_log_path", "openttd_log_sha256"),
+            ):
+                record[digest_key] = by_path[record[path_key]]["sha256"]
+        (case_root / "case-record.json").write_bytes(runner_module.canonical_bytes(run))
+
+    unsigned = copy.deepcopy(value)
+    unsigned.pop("report_sha256", None)
+    value["report_sha256"] = runner_module.sha256_bytes(runner_module.canonical_bytes(unsigned))
+    live_inputs = LiveInputManifest(
+        ValidationMode.LIVE,
+        common_root,
+        MappingProxyType({"final-v1-evaluator": evaluator_executable}),
+    )
+    return value, live_inputs
+
+
+def commit_evaluation_project(
+    repository_root: pathlib.Path,
+    project: pathlib.Path,
+    runner_module: object,
+    value: dict[str, object],
+    *,
+    preserve_existing: tuple[str, ...] = (),
+) -> pathlib.Path:
+    """Populate the runtime fixture repository with exact evaluation source blobs."""
+
+    subprocess.run(
+        ["git", "-C", str(project), "fetch", "-q", str(repository_root),
+         "+refs/heads/*:refs/remotes/task5c/*"],
+        check=True,
+    )
+    for relative in runner_module.SOURCE_PATHS:
+        if relative in preserve_existing and (project / relative).is_file():
+            continue
+        source = repository_root / relative
+        destination = project / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+    subprocess.run(["git", "-C", str(project), "add", "."], check=True)
+    subprocess.run([
+        "git", "-C", str(project), "-c", "user.name=Task 5C fixture",
+        "-c", "user.email=task5c@example.invalid", "commit", "-q", "-m", "evaluation fixture",
+    ], check=True)
+    commit = subprocess.run(
+        ["git", "-C", str(project), "rev-parse", "HEAD"], check=True,
+        text=True, stdout=subprocess.PIPE,
+    ).stdout.strip()
+    tree = subprocess.run(
+        ["git", "-C", str(project), "rev-parse", "HEAD^{tree}"], check=True,
+        text=True, stdout=subprocess.PIPE,
+    ).stdout.strip()
+    files = []
+    for relative in runner_module.SOURCE_PATHS:
+        blob = subprocess.run(
+            ["git", "-C", str(project), "show", f"{commit}:{relative}"], check=True,
+            stdout=subprocess.PIPE,
+        ).stdout
+        files.append({"path": relative, "sha256": hashlib.sha256(blob).hexdigest()})
+    value["source"].update({
+        "clean": True, "files": files, "repository_commit": commit,
+        "repository_tree": tree, "tree_sha256": runner_module.sha256_bytes(runner_module.canonical_bytes(files)),
+    })
+    if "main_synchronized" in value["source"]:
+        value["source"]["main_synchronized"] = True
+    return project
+
+
+def make_relocated_evaluation_fixture(
+    repository_root: pathlib.Path,
+    directory: pathlib.Path,
+    report: dict[str, object],
+    *,
+    runner_module: object,
+    validator_module: object,
+    logical_set: str,
+) -> tuple[pathlib.Path, pathlib.Path, LiveInputManifest]:
+    """Build the complete runtime and evaluation closures under one relocated root."""
+
+    import prepare_m22_followup_runtime as runtime_preparation
+    import validate_m22_followup_runtime_source as runtime_validator
+    from tests.project.v2.test_v2_m22_final_runtime_source import make_live_runtime_fixture
+
+    runtime_source = runtime_validator.load(repository_root / runtime_validator.CONFIG)
+    runtime_value, _, _, _ = make_live_runtime_fixture(
+        repository_root,
+        directory,
+        runtime_source,
+        patches=runtime_preparation.PATCHES,
+        logical_set=runtime_validator.RESULT_LOGICAL_SET,
+    )
+    project = directory / "project"
+    runtime_config = project / runtime_validator.CONFIG
+    runtime_config.parent.mkdir(parents=True, exist_ok=True)
+    runtime_config.write_text(json.dumps(runtime_value, indent=2) + "\n", encoding="utf-8")
+
+    if runner_module.MANIFEST.name == "m22-followup-v2-manifest.json":
+        import build_m22_followup_manifest as followup_manifest_builder
+        import run_m22_followup_evaluation as followup_runner
+        import validate_m22_followup_evaluation as followup_validator
+
+        followup_manifest = followup_manifest_builder.build(project)
+        followup_manifest_bytes = followup_manifest_builder.canonical_bytes(followup_manifest)
+        (project / followup_manifest_builder.MANIFEST).write_bytes(followup_manifest_bytes)
+        followup_report = followup_validator.load(repository_root / followup_validator.CONFIG)
+        followup_report["manifest"] = {
+            "case_count": 42,
+            "id": followup_manifest["manifest_id"],
+            "path": followup_runner.MANIFEST.as_posix(),
+            "sha256": hashlib.sha256(followup_manifest_bytes).hexdigest(),
+        }
+        commit_evaluation_project(repository_root, project, followup_runner, followup_report)
+        followup_report["identity"] = followup_validator.expected_identity(project, followup_report)
+        followup_unsigned = copy.deepcopy(followup_report)
+        followup_unsigned.pop("report_sha256", None)
+        followup_report["report_sha256"] = followup_runner.sha256_bytes(
+            followup_runner.canonical_bytes(followup_unsigned)
+        )
+        (project / followup_validator.CONFIG).write_text(
+            json.dumps(followup_report, indent=2) + "\n", encoding="utf-8",
+        )
+    value = copy.deepcopy(report)
+    manifest_value = runner_module.manifest_builder.build(project)
+    manifest_bytes = runner_module.manifest_builder.canonical_bytes(manifest_value)
+    (project / runner_module.MANIFEST).write_bytes(manifest_bytes)
+    value["manifest"] = {
+        "case_count": 42,
+        "id": manifest_value["manifest_id"],
+        "path": runner_module.MANIFEST.as_posix(),
+        "sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+    }
+    preserve = (("config/v2/m22-followup-evaluation-evidence.json",)
+                if runner_module.MANIFEST.name == "m22-followup-v2-manifest.json" else ())
+    commit_evaluation_project(
+        repository_root, project, runner_module, value, preserve_existing=preserve,
+    )
+    if "immutable_followup_v1" in value:
+        immutable_followup = runner_module.load(project / runner_module.IMMUTABLE_FOLLOWUP_V1)
+        value["immutable_followup_v1"] = runner_module.immutable_followup_v1_record(
+            project, immutable_followup,
+        )
+    value["identity"] = validator_module.expected_identity(project, value)
+    value, live_inputs = stage_evaluation_artifacts(
+        directory, value, logical_set=logical_set, runner_module=runner_module,
+    )
+    evidence = directory / "evaluation-evidence.json"
+    evidence.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    return project, evidence, live_inputs
 
 
 class M22FinalEvaluationSourceTests(unittest.TestCase):
@@ -222,6 +459,16 @@ class M22FinalEvaluationSourceTests(unittest.TestCase):
         self.assertGreater(source.index("run_evaluator(", loop), loop)
         self.assertGreater(source.index("run_native(", loop), loop)
 
+    def test_runner_requires_one_typed_live_context_and_explicit_tool(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw)
+            with self.assertRaisesRegex(runner.M22FinalEvaluationError, "one live artifact context"):
+                runner.run(
+                    self.root, self.root / runner.learning.EVALUATION,
+                    directory / "v2-m22-final-evaluation-b", directory / "evidence.json",
+                    artifact_context=None, bwrap_path=pathlib.Path("/usr/bin/bwrap"),
+                )
+
     def test_create_only_writer_never_overwrites(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             path = pathlib.Path(raw) / "record.json"
@@ -238,6 +485,42 @@ class M22FinalEvaluationSourceTests(unittest.TestCase):
         self.assertIn("scripts/v2/m22_final_native.py", runner.SOURCE_PATHS)
         self.assertIn("training/v2/src/m22_evaluator_main.cpp", runner.SOURCE_PATHS)
         self.assertIn("docs/project/schema/v2-m22-final-evaluation-evidence.schema.json", runner.SOURCE_PATHS)
+
+    def test_required_live_input_closure_is_exact_unique_and_path_safe(self) -> None:
+        requirements = validator.required_live_inputs(self.root)
+        self.assertEqual(len(requirements), 4 + 351 + 67)
+        self.assertEqual(len(set(requirements)), len(requirements))
+        self.assertEqual(
+            {item.logical_set for item in requirements},
+            {"v2-m21-broad-a", "v2-m22-final-runtime-c",
+             "v2-m22-final-evaluation-a", "v2-m22-final-evaluation-b"},
+        )
+        self.assertTrue(all(not pathlib.PurePosixPath(item.relative_path).is_absolute()
+                            and ".." not in pathlib.PurePosixPath(item.relative_path).parts
+                            for item in requirements))
+
+    def test_offline_validation_does_not_open_prior_attempt_artifacts(self) -> None:
+        original_is_dir = pathlib.Path.is_dir
+        prior_attempt = runner.load(self.root / runner.PRIOR_ATTEMPT)
+        recorded_root = pathlib.Path(prior_attempt["artifacts"]["root"])
+
+        def poisoned_is_dir(path: pathlib.Path) -> bool:
+            if path == recorded_root or path.is_relative_to(recorded_root):
+                raise AssertionError(f"unexpected prior-attempt live read: {path}")
+            return original_is_dir(path)
+
+        with mock.patch.object(pathlib.Path, "is_dir", poisoned_is_dir):
+            result = validator.validate(self.root, artifact_context=ArtifactContext.offline())
+        self.assertEqual(result, {"cases": 42, "failures": 10, "live": False, "status": "FAIL"})
+
+    def test_offline_validation_does_not_resolve_bwrap(self) -> None:
+        with mock.patch.object(
+            artifact_context,
+            "preflight_tools",
+            side_effect=AssertionError("unexpected bwrap resolution"),
+        ):
+            result = validator.validate(self.root, artifact_context=ArtifactContext.offline())
+        self.assertEqual(result, {"cases": 42, "failures": 10, "live": False, "status": "FAIL"})
 
 
 if __name__ == "__main__":
