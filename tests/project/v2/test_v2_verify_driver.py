@@ -232,179 +232,248 @@ class V2VerifyDriverTests(unittest.TestCase):
             ],
         )
 
-    def test_every_removed_repository_pass_has_one_authoritative_command(self) -> None:
+    def loaded_test_method_names(self, module_name: str) -> set[str]:
+        loaded = unittest.defaultTestLoader.loadTestsFromModule(
+            importlib.import_module(module_name)
+        )
+        pending = list(loaded)
+        method_names: set[str] = set()
+        while pending:
+            test = pending.pop()
+            if isinstance(test, unittest.TestSuite):
+                pending.extend(test)
+            else:
+                method_names.add(test._testMethodName)
+        return method_names
+
+    def assert_removed_repository_pass_authority(
+        self,
+        inventory: tuple[driver.CommandSpec, ...],
+    ) -> None:
         removed = MappingProxyType({
             "tests.project.v2.test_v2_research_baseline": (
-                "research-baseline", ("test_repository_baseline_passes",),
+                "research-baseline", driver.Tier.CONTRACT, ("test_repository_baseline_passes",),
             ),
             "tests.project.v2.test_v2_setting_inventory": (
-                "setting-inventory", ("test_repository_inventory_passes_offline",),
+                "setting-inventory", driver.Tier.CONTRACT, ("test_repository_inventory_passes_offline",),
             ),
             "tests.project.v2.test_v2_opponent_package_evidence": (
-                "opponent-package-evidence", ("test_repository_evidence_index_passes",),
+                "opponent-package-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_index_passes",),
             ),
             "tests.project.v2.test_v2_opponent_runtime_evidence": (
-                "opponent-runtime-evidence", ("test_repository_runtime_matrix_passes",),
+                "opponent-runtime-evidence", driver.Tier.CONTRACT, ("test_repository_runtime_matrix_passes",),
             ),
             "tests.project.v2.test_v2_competition_manifest": (
-                "competition-manifest", ("test_repository_manifest_passes",),
+                "competition-manifest", driver.Tier.CONTRACT, ("test_repository_manifest_passes",),
             ),
             "tests.project.v2.test_v2_m15_scalable_contract": (
-                "m15-scalable-contract", ("test_repository_contract_passes",),
+                "m15-scalable-contract", driver.Tier.CONTRACT, ("test_repository_contract_passes",),
             ),
             "tests.project.v2.test_v2_m15_policy_contract": (
-                "m15-policy-contract", ("test_repository_contract_passes",),
+                "m15-policy-contract", driver.Tier.CONTRACT, ("test_repository_contract_passes",),
             ),
             "tests.project.v2.test_v2_m15_policy_evidence": (
-                "m15-policy-evidence", ("test_repository_evidence_passes",),
+                "m15-policy-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m15_map_qualification": (
-                "m15-map-matrix", ("test_repository_matrix_passes",),
+                "m15-map-matrix", driver.Tier.CONTRACT, ("test_repository_matrix_passes",),
             ),
             "tests.project.v2.test_v2_m15_native_source": (
-                "m15-native-source", ("test_repository_source_delta_passes",),
+                "m15-native-source", driver.Tier.CONTRACT, ("test_repository_source_delta_passes",),
             ),
             "tests.project.v2.test_v2_m15_native_reset": (
-                "m15-native-reset-evidence", ("test_repository_matrix_passes",),
+                "m15-native-reset-evidence", driver.Tier.CONTRACT, ("test_repository_matrix_passes",),
             ),
             "tests.project.v2.test_v2_m15_native_reset_matrix": (
-                "m15-native-reset-matrix", ("test_repository_complete_matrix_passes",),
+                "m15-native-reset-matrix", driver.Tier.CONTRACT, ("test_repository_complete_matrix_passes",),
             ),
             "tests.project.v2.test_v2_m15_observation_contract": (
-                "m15-observation-contract", ("test_repository_contract_passes",),
+                "m15-observation-contract", driver.Tier.CONTRACT, ("test_repository_contract_passes",),
             ),
             "tests.project.v2.test_v2_m15_observation_source": (
-                "m15-observation-source", ("test_repository_source_delta_passes",),
+                "m15-observation-source", driver.Tier.CONTRACT, ("test_repository_source_delta_passes",),
             ),
             "tests.project.v2.test_v2_m15_observation_evidence": (
-                "m15-observation-evidence", ("test_repository_evidence_passes",),
+                "m15-observation-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m15_action_contract": (
-                "m15-action-contract", ("test_repository_contract_passes",),
+                "m15-action-contract", driver.Tier.CONTRACT, ("test_repository_contract_passes",),
             ),
             "tests.project.v2.test_v2_m15_action_source": (
-                "m15-action-source", ("test_repository_source_delta_passes",),
+                "m15-action-source", driver.Tier.CONTRACT, ("test_repository_source_delta_passes",),
             ),
             "tests.project.v2.test_v2_m15_action_evidence": (
-                "m15-action-evidence", ("test_repository_evidence_passes",),
+                "m15-action-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m15_episode_source": (
-                "m15-episode-source", ("test_repository_source_delta_passes",),
+                "m15-episode-source", driver.Tier.CONTRACT, ("test_repository_source_delta_passes",),
             ),
             "tests.project.v2.test_v2_m15_episode_evidence": (
-                "m15-episode-evidence", ("test_repository_evidence_passes",),
+                "m15-episode-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m15_cross_scale_replay_evidence": (
-                "m15-cross-scale-replay-evidence", ("test_repository_evidence_passes",),
+                "m15-cross-scale-replay-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m15_competence_source": (
-                "m15-competence-source", ("test_repository_source_delta_passes",),
+                "m15-competence-source", driver.Tier.CONTRACT, ("test_repository_source_delta_passes",),
             ),
             "tests.project.v2.test_v2_m15_competence_evidence": (
-                "m15-competence-evidence", ("test_repository_evidence_passes",),
+                "m15-competence-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m16_cargo_source": (
-                "m16-cargo-source", ("test_repository_source_passes_offline",),
+                "m16-cargo-source", driver.Tier.CONTRACT, ("test_repository_source_passes_offline",),
             ),
             "tests.project.v2.test_v2_m16_cargo_evidence": (
-                "m16-cargo-evidence", ("test_repository_evidence_passes",),
+                "m16-cargo-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m17_rail_source": (
-                "m17-rail-source", ("test_repository_source_passes_offline",),
+                "m17-rail-source", driver.Tier.CONTRACT, ("test_repository_source_passes_offline",),
             ),
             "tests.project.v2.test_v2_m17_rail_evidence": (
-                "m17-rail-evidence", ("test_repository_evidence_passes",),
+                "m17-rail-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m18_ship_source": (
-                "m18-ship-source", ("test_repository_source_passes_offline",),
+                "m18-ship-source", driver.Tier.CONTRACT, ("test_repository_source_passes_offline",),
             ),
             "tests.project.v2.test_v2_m18_shipai_evidence": (
-                "m18-shipai-evidence", ("test_repository_evidence_passes",),
+                "m18-shipai-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m18_ship_evidence": (
-                "m18-ship-evidence", ("test_repository_evidence_passes",),
+                "m18-ship-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m19_air_source": (
-                "m19-air-source", ("test_repository_source_passes",),
+                "m19-air-source", driver.Tier.CONTRACT, ("test_repository_source_passes",),
             ),
             "tests.project.v2.test_v2_m19_air_evidence": (
-                "m19-air-evidence", ("test_repository_evidence_passes",),
+                "m19-air-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m20_competition_source": (
-                "m20-competition-source", ("test_repository_source_passes",),
+                "m20-competition-source", driver.Tier.CONTRACT, ("test_repository_source_passes",),
             ),
             "tests.project.v2.test_v2_m20_competition_evidence": (
-                "m20-competition-evidence", ("test_repository_evidence_passes",),
+                "m20-competition-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m21_broad_source": (
-                "m21-broad-source",
+                "m21-broad-source", driver.Tier.CONTRACT,
                 ("test_repository_contract_coverage_content_and_source_pass",),
             ),
             "tests.project.v2.test_v2_m21_broad_evidence": (
-                "m21-broad-evidence", ("test_repository_evidence_passes",),
+                "m21-broad-evidence", driver.Tier.CONTRACT, ("test_repository_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m22_learning_contract": (
-                "m22-learning-contract", ("test_repository_contract_passes",),
+                "m22-learning-contract", driver.Tier.CONTRACT, ("test_repository_contract_passes",),
             ),
             "tests.project.v2.test_v2_m22_native_corpus": (
-                "m22-native-corpus", ("test_repository_corpus_passes",),
+                "m22-native-corpus", driver.Tier.CONTRACT, ("test_repository_corpus_passes",),
             ),
             "tests.project.v2.test_v2_m22_recovery": (
-                "m22-recovery-v2-evidence", ("test_repository_recovery_evidence_passes",),
+                "m22-recovery-v2-evidence", driver.Tier.CONTRACT, ("test_repository_recovery_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m22_training": (
-                "m22-training-evidence", ("test_repository_training_evidence_passes",),
+                "m22-training-evidence", driver.Tier.CONTRACT, ("test_repository_training_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m22_qualification": (
-                "m22-qualification-evidence",
+                "m22-qualification-evidence", driver.Tier.CONTRACT,
                 ("test_repository_qualification_evidence_passes",),
             ),
             "tests.project.v2.test_v2_m22_final_runtime_source": (
-                "m22-final-runtime-source", ("test_repository_runtime_source_passes",),
+                "m22-final-runtime-source", driver.Tier.CONTRACT, ("test_repository_runtime_source_passes",),
             ),
             "tests.project.v2.test_v2_m22_followup_runtime_source": (
-                "m22-followup-runtime-source", ("test_repository_runtime_source_passes",),
+                "m22-followup-runtime-source", driver.Tier.CONTRACT, ("test_repository_runtime_source_passes",),
             ),
             "tests.project.v2.test_v2_m22_followup_manifest": (
-                "m22-followup-v1-manifest",
+                "m22-followup-v1-manifest", driver.Tier.CONTRACT,
                 ("test_repository_manifest_passes", "test_manifest_is_exact_deterministic_build"),
             ),
             "tests.project.v2.test_v2_m22_followup_evaluation_evidence": (
-                "m22-followup-v1-evaluation",
+                "m22-followup-v1-evaluation", driver.Tier.CONTRACT,
                 ("test_repository_failed_evidence_validates_offline",),
             ),
             "tests.project.v2.test_v2_m22_followup_v2_manifest": (
-                "m22-followup-v2-manifest",
+                "m22-followup-v2-manifest", driver.Tier.CONTRACT,
                 ("test_repository_manifest_passes", "test_manifest_is_exact_deterministic_build"),
             ),
             "tests.project.v2.test_v2_m22_followup_v2_evaluation_evidence": (
-                "m22-followup-v2-evaluation",
+                "m22-followup-v2-evaluation", driver.Tier.CONTRACT,
                 ("test_repository_passing_evidence_validates_offline",),
             ),
             "tests.project.v2.test_v2_m23_release_contract": (
-                "m23-contract", ("test_repository_contract_passes",),
+                "m23-contract", driver.Tier.FULL, ("test_repository_contract_passes",),
             ),
             "tests.project.v2.test_v2_traceability": (
-                "v2-traceability", ("test_repository_traceability_passes",),
+                "v2-traceability", driver.Tier.CONTRACT, ("test_repository_traceability_passes",),
             ),
         })
-        self.assertEqual((len(removed), sum(len(methods) for _, methods in removed.values())),
-                         (49, 51))
-        command_ids = [command_id for command_id, _ in removed.values()]
+        self.assertEqual(
+            (
+                len(removed),
+                sum(len(methods) for _, _, methods in removed.values()),
+            ),
+            (49, 51),
+        )
+        command_ids = [command_id for command_id, _, _ in removed.values()]
         self.assertEqual(len(command_ids), len(set(command_ids)))
-        inventory_ids = [command.command_id for command in self.inventory]
-        for module, (command_id, methods) in removed.items():
-            with self.subTest(module=module, command_id=command_id, methods=methods):
-                self.assertEqual(inventory_ids.count(command_id), 1)
-                self.assertIs(self.command(command_id).category, driver.CommandCategory.VALIDATOR)
+        inventory_ids = [command.command_id for command in inventory]
+        for module, (command_id, expected_tier, methods) in removed.items():
+            context = f"module={module!r}, command_id={command_id!r}, methods={methods!r}"
+            self.assertEqual(inventory_ids.count(command_id), 1, context)
+            command = next(item for item in inventory if item.command_id == command_id)
+            self.assertIs(command.category, driver.CommandCategory.VALIDATOR, context)
+            self.assertIs(command.minimum_tier, expected_tier, context)
+            loaded_method_names = self.loaded_test_method_names(module)
+            for method in methods:
+                self.assertNotIn(method, loaded_method_names, context)
         for redundant in (
             "m22-corpus-binary",
             "m22-followup-v1-manifest-build",
             "m22-followup-v2-manifest-build",
         ):
             self.assertNotIn(redundant, inventory_ids)
-        self.assertEqual(self.command("m22-final-v1-evaluation").expected_status, 2)
-        self.assertEqual(self.command("m22-followup-v1-evaluation").expected_status, 2)
+        commands = {command.command_id: command for command in inventory}
+        self.assertEqual(commands["m22-final-v1-evaluation"].expected_status, 2)
+        self.assertEqual(commands["m22-followup-v1-evaluation"].expected_status, 2)
+
+    def test_every_removed_repository_pass_has_one_authoritative_command(self) -> None:
+        self.assert_removed_repository_pass_authority(self.inventory)
+
+    def test_authority_mapping_rejects_compensated_retiering(self) -> None:
+        mutated = tuple(
+            dataclasses.replace(
+                command,
+                minimum_tier=(
+                    driver.Tier.FULL
+                    if command.command_id == "research-baseline"
+                    else driver.Tier.CONTRACT
+                    if command.command_id == "v1-traceability"
+                    else command.minimum_tier
+                ),
+            )
+            for command in self.inventory
+        )
+        self.assertEqual(
+            tuple(len(driver.select_commands(mutated, tier)) for tier in driver.Tier),
+            (1, 52, 55),
+        )
+        with self.assertRaises(AssertionError):
+            self.assert_removed_repository_pass_authority(mutated)
+
+    def test_authority_mapping_rejects_restored_repository_pass(self) -> None:
+        module = importlib.import_module("tests.project.v2.test_v2_research_baseline")
+
+        def restored_repository_pass(test_case: unittest.TestCase) -> None:
+            test_case.assertTrue(True)
+
+        with mock.patch.object(
+            module.V2ResearchBaselineTests,
+            "test_repository_baseline_passes",
+            restored_repository_pass,
+            create=True,
+        ):
+            method_names = self.loaded_test_method_names(module.__name__)
+            self.assertIn("test_repository_baseline_passes", method_names)
+            with self.assertRaises(AssertionError):
+                self.assert_removed_repository_pass_authority(self.inventory)
 
     def test_unit_module_inventory_is_explicit_disjoint_and_complete(self) -> None:
         unit_commands = tuple(
