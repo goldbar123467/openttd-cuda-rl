@@ -459,6 +459,14 @@ def _registry_value(value: object, root: pathlib.Path) -> object:
         except ValueError:
             return value.as_posix()
         return f"<root>/{relative.as_posix()}" if relative.parts else "<root>"
+    if isinstance(value, str):
+        root_text = root.as_posix()
+        if value == root_text:
+            return "<root>"
+        root_prefix = root_text if root_text.endswith("/") else f"{root_text}/"
+        if value.startswith(root_prefix):
+            return f"<root>/{value[len(root_prefix):]}"
+        return value
     if isinstance(value, (tuple, list, frozenset, set)):
         items = [_registry_value(item, root) for item in value]
         if isinstance(value, (frozenset, set)):
@@ -1277,6 +1285,50 @@ def _expanded_artifact_issues(
     return issues
 
 
+def _commands_with_authenticated_deferred_authorities(
+    commands: Sequence[CommandSpec],
+    context: ArtifactContext,
+) -> tuple[tuple[CommandSpec, ...], tuple[PreflightIssue, ...]]:
+    """Select expanders whose own direct authorities authenticate.
+
+    The aggregate direct preflight still reports the complete, globally sorted
+    issue set.  This provider-scoped pass only decides which deferred provider
+    may safely read its authenticated authority; a peer provider's failure must
+    not suppress expansion of an unrelated authenticated provider.
+    """
+
+    authenticated: list[CommandSpec] = []
+    issues: list[PreflightIssue] = []
+    outcomes: dict[tuple[ArtifactRequirement, ...], bool] = {}
+    for command in commands:
+        authorities = tuple(sorted({
+            item.authority
+            for item in command.live_inputs
+            if isinstance(item, DeferredArtifactRequirement)
+        }, key=lambda item: (
+            item.logical_set,
+            item.relative_path,
+            item.kind,
+            item.consumer,
+            item.expected_sha256 or "",
+        )))
+        if not authorities:
+            continue
+        passed = outcomes.get(authorities)
+        if passed is None:
+            try:
+                context.preflight(authorities)
+            except ArtifactContextError as exc:
+                passed = False
+                issues.extend(_error_issues(Requirement.ARTIFACT_INPUT, exc))
+            else:
+                passed = True
+            outcomes[authorities] = passed
+        if passed:
+            authenticated.append(command)
+    return tuple(authenticated), tuple(issues)
+
+
 def _git_apply_issues(
     config: VerificationConfig,
     commands: Sequence[CommandSpec],
@@ -1407,15 +1459,22 @@ def _prepare_preflight(
         return prepared, tuple(issues)
 
     context = ArtifactContext.live(config.artifact_root)
-    artifact_phase_failed = False
+    direct_artifact_issues: list[PreflightIssue] = []
     if artifacts:
         try:
             context.preflight(artifacts)
         except ArtifactContextError as exc:
-            artifact_phase_failed = True
-            issues.extend(_error_issues(Requirement.ARTIFACT_INPUT, exc))
-    if not artifact_phase_failed:
-        issues.extend(_expanded_artifact_issues(commands, context))
+            direct_artifact_issues.extend(
+                _error_issues(Requirement.ARTIFACT_INPUT, exc)
+            )
+    issues.extend(direct_artifact_issues)
+    authenticated, authority_issues = (
+        _commands_with_authenticated_deferred_authorities(commands, context)
+    )
+    for issue in authority_issues:
+        if issue not in direct_artifact_issues and issue not in issues:
+            issues.append(issue)
+    issues.extend(_expanded_artifact_issues(authenticated, context))
     issues.extend(_git_apply_issues(config, commands, context))
     if roles:
         try:

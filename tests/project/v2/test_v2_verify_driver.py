@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from types import MappingProxyType
 from unittest import mock
@@ -1238,6 +1239,133 @@ class V2VerifyDriverTests(unittest.TestCase):
         )
         self.assertEqual(driver.validate_live_input_registry(artifact_backed), ())
 
+    def test_registry_canonicalizes_checkout_strings_at_every_nested_surface(self) -> None:
+        root = pathlib.Path("/synthetic/checkouts/project-a")
+        value = {
+            "argv": [str(root), f"{root}/scripts/v2/provider.py"],
+            "environment": (("PYTHONPATH", f"{root}/scripts/v2"),),
+            "nested": {
+                "equal": str(root),
+                "child": f"{root}/config/v2/record.json",
+                "unrelated": "/opt/shared/record.json",
+                "adjacent": f"{root}-copy/config/v2/record.json",
+            },
+        }
+
+        self.assertEqual(
+            driver._registry_value(value, root),
+            {
+                "argv": ["<root>", "<root>/scripts/v2/provider.py"],
+                "environment": [["PYTHONPATH", "<root>/scripts/v2"]],
+                "nested": {
+                    "equal": "<root>",
+                    "child": "<root>/config/v2/record.json",
+                    "unrelated": "/opt/shared/record.json",
+                    "adjacent": (
+                        "/synthetic/checkouts/project-a-copy/config/v2/record.json"
+                    ),
+                },
+            },
+        )
+
+    def test_command_registry_fingerprint_and_validation_survive_relocation(self) -> None:
+        roots = (
+            pathlib.Path("/synthetic/checkouts/project-a"),
+            pathlib.Path("/var/tmp/relocated/project-b"),
+            pathlib.Path("/srv/builds/third-location/project-c"),
+        )
+        requirement = ArtifactRequirement(
+            "set-a", "authority.json", "file", "portable-provider", "a" * 64,
+        )
+
+        def portable_command(root: pathlib.Path) -> driver.CommandSpec:
+            return driver.CommandSpec(
+                "portable-provider",
+                driver.Tier.FULL,
+                driver.CommandCategory.VALIDATOR,
+                (
+                    "/opt/tools/python",
+                    f"{root}/scripts/v2/portable_provider.py",
+                    "--root",
+                    str(root),
+                    "--record",
+                    f"{root}/config/v2/record.json",
+                    "--external-tool",
+                    "/opt/shared/tool",
+                ),
+                environment=(
+                    ("PYTHONPATH", f"{root}/scripts/v2"),
+                    ("SHARED_CACHE", "/opt/shared/cache"),
+                ),
+                live_inputs=(requirement,),
+                live_input_module="portable_provider",
+                live_input_root=root,
+                live_input_arguments=({
+                    "record": f"{root}/config/v2/record.json",
+                    "nested": [str(root), f"{root}/nested/input.bin"],
+                    "unrelated": "/opt/shared/input.bin",
+                },),
+            )
+
+        commands = tuple(portable_command(root) for root in roots)
+        fingerprints = tuple(driver._command_registry_sha256(item) for item in commands)
+        self.assertEqual(fingerprints, (fingerprints[0],) * len(fingerprints))
+
+        normalize = driver._registry_value
+
+        def without_string_normalization(value: object, root: pathlib.Path) -> object:
+            if isinstance(value, str):
+                return value
+            return normalize(value, root)
+
+        with mock.patch.object(
+            driver, "_registry_value", side_effect=without_string_normalization,
+        ):
+            mutated = tuple(
+                driver._command_registry_sha256(item) for item in commands
+            )
+        self.assertNotEqual(mutated, (mutated[0],) * len(mutated))
+
+        reviewed = fingerprints[0]
+        provider_digest = "b" * 64
+        provider_snapshot = {"portable_provider": provider_digest}
+        anchor = driver._provider_dependency_trust_anchor_sha256(provider_snapshot)
+        module = types.SimpleNamespace(required_git_inputs=None)
+        for command in commands:
+            with self.subTest(root=command.live_input_root), mock.patch.object(
+                driver, "LIVE_COMMAND_REGISTRY_SHA256", {command.command_id: reviewed},
+            ), mock.patch.object(
+                driver, "LIVE_PROVIDER_AST_SHA256", provider_snapshot,
+            ), mock.patch.object(
+                driver, "_PROVIDER_DEPENDENCY_TRUST_ANCHOR_SHA256", anchor,
+            ), mock.patch.object(
+                driver, "_provider_live_inputs", return_value=command.live_inputs,
+            ), mock.patch.object(
+                driver, "_provider_ast_sha256", return_value=provider_digest,
+            ), mock.patch.object(
+                driver.importlib, "import_module", return_value=module,
+            ):
+                registered = dataclasses.replace(command, registry_sha256=reviewed)
+                self.assertEqual(driver.validate_live_input_registry((registered,)), ())
+
+        base = commands[0]
+        unrelated_mutation = dataclasses.replace(
+            base,
+            environment=(*base.environment, ("OTHER", "/opt/changed/cache")),
+        )
+        adjacent_mutation = dataclasses.replace(
+            base,
+            environment=(*base.environment, ("OTHER", f"{roots[0]}-copy/cache")),
+        )
+        self.assertNotEqual(
+            driver._command_registry_sha256(base),
+            driver._command_registry_sha256(unrelated_mutation),
+        )
+        self.assertNotEqual(
+            driver._command_registry_sha256(base),
+            driver._command_registry_sha256(adjacent_mutation),
+        )
+
     def test_registry_rejects_every_snapshot_surface_mutation(self) -> None:
         registered = tuple(
             command for command in self.inventory
@@ -1651,6 +1779,98 @@ class V2VerifyDriverTests(unittest.TestCase):
 
         rendered = "\n".join(issue.detail for issue in summary.preflight_issues)
         self.assertIn("expander A failed", rendered)
+        self.assertIn("set-b/nested.bin", rendered)
+        self.assertEqual(summary.results, ())
+        self.assertFalse(marker.exists())
+
+    def test_failed_direct_authority_blocks_only_its_own_provider_expander(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact_root = pathlib.Path(temporary).resolve()
+            marker = artifact_root / "command-ran"
+            authority_b_path = artifact_root / "set-b" / "authority.json"
+            authority_b_path.parent.mkdir(parents=True)
+            authority_b_path.write_bytes(b"authenticated authority B\n")
+            authority_a = ArtifactRequirement(
+                "set-a", "authority.json", "file", "provider-a", "a" * 64,
+            )
+            authority_b = ArtifactRequirement(
+                "set-b",
+                "authority.json",
+                "file",
+                "provider-b",
+                hashlib.sha256(authority_b_path.read_bytes()).hexdigest(),
+            )
+
+            def command(
+                suffix: str,
+                authority: ArtifactRequirement,
+            ) -> driver.CommandSpec:
+                deferred = DeferredArtifactRequirement(
+                    authority.logical_set,
+                    "nested.bin",
+                    "file",
+                    f"provider-{suffix}",
+                    authority,
+                )
+                return driver.CommandSpec(
+                    f"provider-{suffix}",
+                    driver.Tier.FULL,
+                    driver.CommandCategory.TEST,
+                    (
+                        str(self.python),
+                        "-c",
+                        f"import pathlib; pathlib.Path({str(marker)!r}).touch()",
+                    ),
+                    live_inputs=(authority, deferred),
+                    live_input_module=f"provider_{suffix}",
+                    live_input_root=self.root,
+                )
+
+            calls: list[str] = []
+            reads: list[tuple[str, bytes]] = []
+
+            def expand(
+                module_name: str,
+                context: artifact_context.ArtifactContext,
+                _root: pathlib.Path,
+                _arguments: tuple[object, ...],
+            ) -> tuple[ArtifactRequirement, ...]:
+                calls.append(module_name)
+                authority = authority_a if module_name == "provider_a" else authority_b
+                if module_name == "provider_b":
+                    reads.append((module_name, context.resolve(authority).read_bytes()))
+                else:
+                    reads.append((module_name, b"failed provider was read"))
+                return (ArtifactRequirement(
+                    authority.logical_set,
+                    "nested.bin",
+                    "file",
+                    authority.consumer,
+                    hashlib.sha256(b"expected nested bytes\n").hexdigest(),
+                ),)
+
+            config = driver.VerificationConfig(
+                self.root,
+                self.python,
+                driver.Tier.FULL,
+                artifact_root=artifact_root,
+            )
+            with mock.patch.object(
+                driver, "validate_live_input_registry", return_value=(),
+            ), mock.patch.object(
+                driver, "_provider_expanded_live_inputs", side_effect=expand,
+            ):
+                summary = driver.run_verification(
+                    config,
+                    (command("a", authority_a), command("b", authority_b)),
+                )
+
+        rendered = "\n".join(issue.detail for issue in summary.preflight_issues)
+        self.assertEqual(calls, ["provider_b"])
+        self.assertEqual(reads, [("provider_b", b"authenticated authority B\n")])
+        self.assertEqual(rendered.count("artifact set set-a"), 1)
         self.assertIn("set-b/nested.bin", rendered)
         self.assertEqual(summary.results, ())
         self.assertFalse(marker.exists())
