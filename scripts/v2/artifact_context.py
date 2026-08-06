@@ -62,7 +62,7 @@ LIVE_PROVIDER_AST_SHA256: Mapping[str, str] = MappingProxyType({
     "validate_m22_training_evidence": "5590282e30e194e916261ecab90f0e38ea9ae701edf0b9af86d6ac221ae997a4",
     "validate_opponent_package_evidence": "8179fefb95562f59ac3511c7031798a55690e225cefc3600dbe24404688d04e8",
     "validate_opponent_runtime_evidence": "e57a91cba58fb5da46b9a45dccd7e13dc1aae8f2fd758490f8bdc47c0b00e9bf",
-    "verify_driver": "8dd7f543ae17a6a1e825dd2d4df1dfd3c0546084c540a7a0f8d0464944622984",
+    "verify_driver": "1731a3285e8aca4b0d182ad6a69ea92b5f0af6bf87e386b45f63548f54902cae",
 })
 LIVE_COMMAND_REGISTRY_SHA256: Mapping[str, str] = MappingProxyType({
     "opponent-package-evidence": "c59947ab2c41b4de3905a349c695deea8d5daffe55f239bf072fdd893539e5ce",

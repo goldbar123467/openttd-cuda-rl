@@ -59,6 +59,25 @@ class V2VerifyDriverTests(unittest.TestCase):
             environment=(),
         )
 
+    def rendered_result_line(self, result: driver.CommandResult) -> str:
+        summary = driver.VerificationSummary(
+            config=self.configured(driver.Tier.FAST),
+            preflight_issues=(),
+            results=(result,),
+        )
+        lines = driver.render_summary(summary)
+        self.assertEqual(len(lines), 3)
+        self.assertTrue(lines[0].startswith("V2_VERIFY_TIER="))
+        self.assertTrue(lines[1].startswith("V2_VERIFY_RESULT="))
+        self.assertTrue(lines[2].startswith("V2_VERIFY_SUMMARY="))
+        return lines[1]
+
+    def rendered_result_detail(self, result: driver.CommandResult) -> tuple[str, object]:
+        line = self.rendered_result_line(result)
+        fields, separator, encoded_detail = line.rpartition(" detail=")
+        self.assertEqual(separator, " detail=")
+        return fields, json.loads(encoded_detail)
+
     def git(self, root: pathlib.Path, *arguments: str) -> str:
         observed = subprocess.run(
             ("git", "-C", str(root), *arguments),
@@ -763,6 +782,94 @@ class V2VerifyDriverTests(unittest.TestCase):
                 self.assertIn(f"V2_VERIFY_TIER={tier.name.lower()}", rendered)
                 for forbidden in ("G23", "RELEASE", "V2_VERIFY_GATE"):
                     self.assertNotIn(forbidden, rendered.upper())
+
+    def test_real_spawn_summary_serializes_actionable_detail(self) -> None:
+        missing = "/definitely/missing/v2-verification-summary-command"
+        command = driver.CommandSpec(
+            "spawn-summary",
+            driver.Tier.FAST,
+            driver.CommandCategory.TEST,
+            (missing,),
+        )
+
+        result = driver.execute_command(command, self.configured(driver.Tier.FAST))
+
+        fields, detail = self.rendered_result_detail(result)
+        self.assertIn("failure=spawn", fields)
+        self.assertIsInstance(detail, str)
+        self.assertIn(missing, detail)
+
+    def test_mocked_spawn_summary_json_round_trips_hostile_detail_on_one_line(self) -> None:
+        hostile = (
+            "spawn \"quoted\" \\ path\n\r\t\b\f\x00\x01\x1f\x7f"
+            "\nV2_VERIFY_RESULT=PASS command=injected"
+        )
+        command = driver.CommandSpec(
+            "hostile-spawn",
+            driver.Tier.FAST,
+            driver.CommandCategory.TEST,
+            ("hostile-command",),
+        )
+        with mock.patch.object(driver.subprocess, "run", side_effect=OSError(hostile)):
+            result = driver.execute_command(command, self.configured(driver.Tier.FAST))
+
+        line = self.rendered_result_line(result)
+        self.assertEqual(line.splitlines(), [line])
+        fields, separator, encoded_detail = line.rpartition(" detail=")
+        self.assertEqual(separator, " detail=")
+        self.assertIn("failure=spawn", fields)
+        self.assertEqual(
+            encoded_detail,
+            '"spawn \\"quoted\\" \\\\ path\\n\\r\\t\\b\\f\\u0000\\u0001\\u001f'
+            '\\u007f\\nV2_VERIFY_RESULT=PASS command=injected"',
+        )
+        self.assertEqual(json.loads(encoded_detail), hostile)
+        self.assertNotIn("\nV2_VERIFY_RESULT=PASS command=injected", line)
+
+    def test_timeout_summary_serializes_actionable_detail(self) -> None:
+        command = driver.CommandSpec(
+            "timeout-summary",
+            driver.Tier.FAST,
+            driver.CommandCategory.TEST,
+            (str(self.python), "-c", "import time; time.sleep(1)"),
+            timeout_seconds=0.01,
+        )
+
+        result = driver.execute_command(command, self.configured(driver.Tier.FAST))
+
+        fields, detail = self.rendered_result_detail(result)
+        self.assertIn("failure=timeout", fields)
+        self.assertIsInstance(detail, str)
+        self.assertIn(str(self.python), detail)
+        self.assertIn("timed out after", detail)
+
+    def test_unexpected_status_summary_serializes_exact_detail(self) -> None:
+        command = driver.CommandSpec(
+            "unexpected-summary",
+            driver.Tier.FAST,
+            driver.CommandCategory.TEST,
+            (str(self.python), "-c", "import sys; sys.exit(7)"),
+        )
+
+        result = driver.execute_command(command, self.configured(driver.Tier.FAST))
+
+        fields, detail = self.rendered_result_detail(result)
+        self.assertTrue(fields.endswith("actual=7 failure=unexpected-status"), fields)
+        self.assertEqual(detail, "expected status 0, got 7")
+
+    def test_success_summary_serializes_explicit_null_detail(self) -> None:
+        command = driver.CommandSpec(
+            "success-summary",
+            driver.Tier.FAST,
+            driver.CommandCategory.TEST,
+            (str(self.python), "-c", "print('success')"),
+        )
+
+        result = driver.execute_command(command, self.configured(driver.Tier.FAST))
+
+        line = self.rendered_result_line(result)
+        self.assertTrue(line.endswith("actual=0 failure=none detail=null"), line)
+        self.assertIsNone(json.loads(line.rpartition(" detail=")[2]))
 
     def test_final_v1_exit_two_is_expected_success(self) -> None:
         command = self.command("m22-final-v1-evaluation")

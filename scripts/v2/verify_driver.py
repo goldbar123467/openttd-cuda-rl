@@ -1626,6 +1626,13 @@ def run_verification(
     return VerificationSummary(config=prepared, preflight_issues=(), results=results)
 
 
+def _serialize_result_detail(detail: str | None) -> str:
+    """Encode result detail as one compact ASCII JSON value; absence is ``null``."""
+
+    encoded = json.dumps(detail, ensure_ascii=True, separators=(",", ":"))
+    return encoded.replace("\x7f", "\\u007f")
+
+
 def render_summary(summary: VerificationSummary) -> tuple[str, ...]:
     lines = [f"V2_VERIFY_TIER={summary.config.tier.name.lower()}"]
     lines.extend(
@@ -1639,7 +1646,8 @@ def render_summary(summary: VerificationSummary) -> tuple[str, ...]:
         lines.append(
             f"V2_VERIFY_RESULT={status} command={result.command.command_id} "
             f"category={result.command.category.value} expected={result.command.expected_status} "
-            f"actual={actual} failure={failure}"
+            f"actual={actual} failure={failure} "
+            f"detail={_serialize_result_detail(result.detail)}"
         )
     passed = sum(result.passed for result in summary.results)
     lines.append(
