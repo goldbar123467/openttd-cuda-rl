@@ -104,9 +104,11 @@ def run_smokes(root: pathlib.Path, artifact_root: pathlib.Path,
 
 
 def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.Path, *, jobs: int,
-        base_source: pathlib.Path | None = None, m20_artifact: pathlib.Path | None = None,
-        m21_artifact: pathlib.Path | None = None) -> dict[str, Any]:
+        artifact_context: foundation.ArtifactContext | None = None) -> dict[str, Any]:
     root, artifact_root, evidence_path = root.resolve(), artifact_root.resolve(), evidence_path.resolve()
+    context = artifact_context
+    foundation.require(context is not None and context.is_live,
+                       "corrected M22 runtime preparation requires one live artifact context")
     foundation.require(jobs >= 1, "build jobs must be positive")
     foundation.require(not artifact_root.exists() and not artifact_root.is_symlink(),
                        "corrected retained artifact root must be new")
@@ -117,19 +119,10 @@ def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.
     repository = {"commit": foundation.git(root, "rev-parse", "HEAD"),
                   "tree": foundation.git(root, "rev-parse", "HEAD^{tree}")}
 
-    m20_config = foundation.load(root / foundation.M20_SOURCE)
     m21_config = foundation.load(root / foundation.M21_SOURCE)
-    m20_artifact = (m20_artifact or pathlib.Path(m20_config["retained_artifact"])).resolve()
-    m21_artifact = (m21_artifact or pathlib.Path(m21_config["retained_artifact"])).resolve()
-    base_source = (base_source or pathlib.Path(m21_config["source"]["path"])).resolve()
-    foundation.m20_source.validate(root, artifact_root=m20_artifact)
-    foundation.m21_source.validate(root, artifact_root=m21_artifact)
-    foundation.require(base_source == pathlib.Path(m21_config["source"]["path"]) and
-                       foundation.git(base_source, "status", "--porcelain") == "",
-                       "accepted M21 base source is unavailable or dirty")
-    foundation.require(foundation.git(base_source, "rev-parse", "HEAD") == m21_config["source"]["commit"] and
-                       foundation.git(base_source, "rev-parse", "HEAD^{tree}") == m21_config["source"]["tree"],
-                       "accepted M21 base source identity drifted")
+    foundation.m20_source.validate(root, artifact_context=context)
+    foundation.m21_source.validate(root, artifact_context=context)
+    base_source = context.artifact_set("v2-m21-broad-a") / "source"
 
     patches = tuple((root / path).resolve() for path in PATCHES)
     foundation.require(all(path.is_file() and not path.is_symlink() for path in patches),
@@ -143,13 +136,14 @@ def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.
     print("M22 corrected runtime source preparation", flush=True)
     source = prepare_source(base_source, source_path, patches, m21_config["source"]["commit"])
     print("M22 corrected runtime configure/build/CTest", flush=True)
-    open_gfx_source = pathlib.Path(m21_config["build"]["open_gfx"]["path"])
+    open_gfx_source = context.artifact_set("v2-m21-broad-a") / "build-broad" / "baseset" / \
+        pathlib.PurePosixPath(m21_config["build"]["open_gfx"]["path"]).name
     build, open_gfx = foundation.configure_and_build(
         source_path, build_path, artifact_root, jobs, open_gfx_source,
         m21_config["build"]["open_gfx"]["sha256"],
     )
     print("M22 corrected runtime asset staging", flush=True)
-    runtime_assets = foundation.stage_runtime(root, artifact_root, build_path, m20_artifact, m21_artifact, open_gfx)
+    runtime_assets = foundation.stage_runtime(root, artifact_root, build_path, context, open_gfx)
     executable = foundation.file_record(build_path / "openttd")
     runtime = native.RuntimePaths(
         executable=pathlib.Path(executable["path"]), opengfx=pathlib.Path(runtime_assets["open_gfx"]["path"]),
@@ -210,16 +204,17 @@ def main() -> int:
     parser.add_argument("--artifact-root", type=pathlib.Path, required=True)
     parser.add_argument("--evidence", type=pathlib.Path, required=True)
     parser.add_argument("--jobs", type=int, default=max(1, min(8, os.cpu_count() or 1)))
-    parser.add_argument("--base-source", type=pathlib.Path)
-    parser.add_argument("--m20-artifact", type=pathlib.Path)
-    parser.add_argument("--m21-artifact", type=pathlib.Path)
+    parser.add_argument("--input-artifact-root", type=pathlib.Path,
+                        help="absolute common root containing the accepted M20 and M21 logical artifact sets")
     args = parser.parse_args()
     try:
-        run(args.root, args.artifact_root, args.evidence, jobs=args.jobs, base_source=args.base_source,
-            m20_artifact=args.m20_artifact, m21_artifact=args.m21_artifact)
+        input_root = foundation.resolve_artifact_root(args.input_artifact_root)
+        context = None if input_root is None else foundation.ArtifactContext.live(input_root)
+        run(args.root, args.artifact_root, args.evidence, jobs=args.jobs, artifact_context=context)
         return 0
     except (foundation.M22RuntimePreparationError, native.M22FinalNativeError,
             foundation.m20_source.M20SourceError, foundation.m21_source.M21SourceError,
+            foundation.ArtifactContextError,
             OSError, json.JSONDecodeError, KeyError, TypeError, ValueError, subprocess.SubprocessError) as exc:
         print(f"V2_M22_FOLLOWUP_RUNTIME_PREP=FAIL {exc}")
         return 1

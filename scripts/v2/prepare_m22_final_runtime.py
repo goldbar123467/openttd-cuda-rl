@@ -21,6 +21,7 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import ArtifactContext, ArtifactContextError, resolve_artifact_root
 import m22_final_native as native
 import validate_m20_competition_source as m20_source
 import validate_m21_broad_source as m21_source
@@ -203,40 +204,41 @@ def configure_and_build(source_path: pathlib.Path, build_path: pathlib.Path, art
 
 
 def stage_runtime(root: pathlib.Path, artifact_root: pathlib.Path, build_path: pathlib.Path,
-                  m20_artifact: pathlib.Path, m21_artifact: pathlib.Path,
+                  artifact_context: ArtifactContext,
                   open_gfx: dict[str, Any]) -> dict[str, Any]:
-    m20_config, m20_content = load(root / M20_SOURCE), load(root / M20_CONTENT)
+    m20_content = load(root / M20_CONTENT)
     m21_config, content_lock = load(root / M21_SOURCE), load(root / M21_CONTENT_LOCK)
+    require(artifact_context.is_live, "M22 runtime staging requires one live artifact context")
+    m20_set = artifact_context.artifact_set("v2-m20-competition-a")
+    m21_set = artifact_context.artifact_set("v2-m21-broad-a")
     configs: dict[str, dict[str, Any]] = {}
     for name, record in m21_config["runtime"]["configs"].items():
-        configs[name] = copy_exact(pathlib.Path(record["path"]), artifact_root / f"{name}.cfg", record["sha256"])
+        configs[name] = copy_exact(m21_set / f"{name}.cfg", artifact_root / f"{name}.cfg", record["sha256"])
     ai_archives = []
     for record in m20_content["ai_archives"]:
-        source = pathlib.Path(record["path"])
+        source = m20_set / "content_download" / "ai" / pathlib.PurePosixPath(record["path"]).name
         copied = copy_exact(source, artifact_root / "content_download" / "ai" / source.name, record["sha256"])
         ai_archives.append({"name": record["name"], **copied})
     ai_libraries = []
     for record in m20_content["libraries"]:
-        source = pathlib.Path(record["path"])
+        source = m20_set / "content_download" / "ai" / "library" / pathlib.PurePosixPath(record["path"]).name
         ai_libraries.append(copy_exact(source, artifact_root / "content_download" / "ai" / "library" / source.name,
                                        record["sha256"]))
     newgrf_archives = []
     for package in content_lock["packages"]:
         relative = pathlib.Path(package["archive"]["path"])
-        source = m21_artifact / "build-broad" / relative
+        source = m21_set / "build-broad" / relative
         newgrf_archives.append(copy_exact(source, build_path / relative, package["archive"]["sha256"]))
     newgrf_files = []
-    source_content_root = pathlib.Path(m21_config["runtime"]["content_root"])
+    source_content_root = m21_set / "build-broad" / "newgrf" / "m21"
     for record in m21_config["runtime"]["content_files"]:
         newgrf_files.append(copy_exact(source_content_root / record["name"], build_path / "newgrf" / "m21" / record["name"],
                                        record["sha256"]))
     gamescript_files = []
-    source_gamescript = pathlib.Path(m21_config["runtime"]["gamescript_root"])
+    source_gamescript = m21_set / "build-broad" / "game" / "m21coverage"
     for name in ("info.nut", "main.nut"):
         source = source_gamescript / name
         gamescript_files.append(copy_exact(source, build_path / "game" / "m21coverage" / name, sha256(source)))
-    require(str(m20_artifact) == m20_config["retained_artifact"] and str(m21_artifact) == m21_config["retained_artifact"],
-            "prerequisite artifact roots drifted")
     return {
         "ai_archives": ai_archives, "ai_libraries": ai_libraries, "configs": configs,
         "gamescript_files": gamescript_files, "network_calls_during_preparation": "none",
@@ -257,25 +259,19 @@ def run_smokes(root: pathlib.Path, artifact_root: pathlib.Path, runtime: native.
 
 
 def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.Path, *, jobs: int,
-        base_source: pathlib.Path | None = None, m20_artifact: pathlib.Path | None = None,
-        m21_artifact: pathlib.Path | None = None) -> dict[str, Any]:
+        artifact_context: ArtifactContext | None = None) -> dict[str, Any]:
     root, artifact_root, evidence_path = root.resolve(), artifact_root.resolve(), evidence_path.resolve()
+    context = artifact_context
+    require(context is not None and context.is_live, "M22 runtime preparation requires one live artifact context")
     require(jobs >= 1, "build jobs must be positive")
     require(not artifact_root.exists() and not artifact_root.is_symlink(), "retained artifact root must be new")
     require(not evidence_path.exists() and not evidence_path.is_symlink(), "runtime evidence output must be new")
     require(git(root, "status", "--porcelain") == "", "repository must be clean before runtime preparation")
     repository = {"commit": git(root, "rev-parse", "HEAD"), "tree": git(root, "rev-parse", "HEAD^{tree}")}
-    m20_config, m21_config = load(root / M20_SOURCE), load(root / M21_SOURCE)
-    m20_artifact = (m20_artifact or pathlib.Path(m20_config["retained_artifact"])).resolve()
-    m21_artifact = (m21_artifact or pathlib.Path(m21_config["retained_artifact"])).resolve()
-    base_source = (base_source or pathlib.Path(m21_config["source"]["path"])).resolve()
-    m20_source.validate(root, artifact_root=m20_artifact)
-    m21_source.validate(root, artifact_root=m21_artifact)
-    require(base_source == pathlib.Path(m21_config["source"]["path"]) and git(base_source, "status", "--porcelain") == "",
-            "accepted M21 base source is unavailable or dirty")
-    require(git(base_source, "rev-parse", "HEAD") == m21_config["source"]["commit"] and
-            git(base_source, "rev-parse", "HEAD^{tree}") == m21_config["source"]["tree"],
-            "accepted M21 base source identity drifted")
+    m21_config = load(root / M21_SOURCE)
+    m20_source.validate(root, artifact_context=context)
+    m21_source.validate(root, artifact_context=context)
+    base_source = context.artifact_set("v2-m21-broad-a") / "source"
     patch = (root / PATCH).resolve()
     require(patch.is_file() and not patch.is_symlink(), "M22 cumulative patch is unavailable")
     artifact_root.mkdir(mode=0o700)
@@ -283,11 +279,12 @@ def run(root: pathlib.Path, artifact_root: pathlib.Path, evidence_path: pathlib.
     print("M22 runtime source preparation", flush=True)
     source = prepare_source(base_source, source_path, patch, m21_config["source"]["commit"])
     print("M22 runtime configure/build/CTest", flush=True)
-    open_gfx_source = pathlib.Path(m21_config["build"]["open_gfx"]["path"])
+    open_gfx_source = context.artifact_set("v2-m21-broad-a") / "build-broad" / "baseset" / \
+        pathlib.PurePosixPath(m21_config["build"]["open_gfx"]["path"]).name
     build, open_gfx = configure_and_build(source_path, build_path, artifact_root, jobs, open_gfx_source,
                                           m21_config["build"]["open_gfx"]["sha256"])
     print("M22 runtime asset staging", flush=True)
-    runtime_assets = stage_runtime(root, artifact_root, build_path, m20_artifact, m21_artifact, open_gfx)
+    runtime_assets = stage_runtime(root, artifact_root, build_path, context, open_gfx)
     executable = file_record(build_path / "openttd")
     runtime = native.RuntimePaths(
         executable=pathlib.Path(executable["path"]), opengfx=pathlib.Path(runtime_assets["open_gfx"]["path"]),
@@ -327,16 +324,16 @@ def main() -> int:
     parser.add_argument("--artifact-root", type=pathlib.Path, required=True)
     parser.add_argument("--evidence", type=pathlib.Path, required=True)
     parser.add_argument("--jobs", type=int, default=max(1, min(8, os.cpu_count() or 1)))
-    parser.add_argument("--base-source", type=pathlib.Path)
-    parser.add_argument("--m20-artifact", type=pathlib.Path)
-    parser.add_argument("--m21-artifact", type=pathlib.Path)
+    parser.add_argument("--input-artifact-root", type=pathlib.Path,
+                        help="absolute common root containing the accepted M20 and M21 logical artifact sets")
     args = parser.parse_args()
     try:
-        run(args.root, args.artifact_root, args.evidence, jobs=args.jobs, base_source=args.base_source,
-            m20_artifact=args.m20_artifact, m21_artifact=args.m21_artifact)
+        input_root = resolve_artifact_root(args.input_artifact_root)
+        context = None if input_root is None else ArtifactContext.live(input_root)
+        run(args.root, args.artifact_root, args.evidence, jobs=args.jobs, artifact_context=context)
         return 0
     except (M22RuntimePreparationError, native.M22FinalNativeError, m20_source.M20SourceError,
-            m21_source.M21SourceError, OSError, json.JSONDecodeError, KeyError, TypeError, ValueError,
+            m21_source.M21SourceError, ArtifactContextError, OSError, json.JSONDecodeError, KeyError, TypeError, ValueError,
             subprocess.SubprocessError) as exc:
         print(f"V2_M22_FINAL_RUNTIME_PREP=FAIL {exc}")
         return 1

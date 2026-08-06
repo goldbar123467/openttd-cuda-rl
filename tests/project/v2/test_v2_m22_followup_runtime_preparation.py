@@ -168,6 +168,42 @@ class M22FollowupRuntimePreparationTests(unittest.TestCase):
             with self.assertRaisesRegex(preparation.foundation.M22RuntimePreparationError, "already exists"):
                 preparation.foundation.write_new(path, {"value": 2})
 
+    def test_supported_run_routes_one_common_artifact_context(self) -> None:
+        fake = self.fake_record()
+        with tempfile.TemporaryDirectory() as raw:
+            directory = pathlib.Path(raw).resolve()
+            context = ArtifactContext.live(directory / "inputs")
+            artifact = directory / "runtime-output"
+            evidence = directory / "evidence.json"
+
+            def fake_git(_repository: pathlib.Path, *arguments: str) -> str:
+                if arguments == ("status", "--porcelain"):
+                    return ""
+                if arguments == ("rev-parse", "HEAD"):
+                    return fake["repository"]["commit"]
+                if arguments == ("rev-parse", "HEAD^{tree}"):
+                    return fake["repository"]["tree"]
+                raise AssertionError(arguments)
+
+            with mock.patch.object(preparation.foundation, "git", side_effect=fake_git), \
+                 mock.patch.object(preparation.foundation.m20_source, "validate") as m20_validate, \
+                 mock.patch.object(preparation.foundation.m21_source, "validate") as m21_validate, \
+                 mock.patch.object(preparation, "prepare_source", return_value=fake["source"]) as prepare_source, \
+                 mock.patch.object(preparation.foundation, "configure_and_build",
+                                   return_value=(fake["build"], fake["runtime"]["open_gfx"])), \
+                 mock.patch.object(preparation.foundation, "stage_runtime", return_value=fake["runtime"]) as stage_runtime, \
+                 mock.patch.object(preparation.foundation, "file_record", return_value=fake["executable"]), \
+                 mock.patch.object(preparation, "run_smokes", return_value=fake["smokes"]):
+                result = preparation.run(
+                    self.root, artifact, evidence, jobs=2, artifact_context=context,
+                )
+
+        self.assertEqual(result["retained_artifact"], str(artifact))
+        m20_validate.assert_called_once_with(self.root.resolve(), artifact_context=context)
+        m21_validate.assert_called_once_with(self.root.resolve(), artifact_context=context)
+        self.assertEqual(prepare_source.call_args.args[0], context.artifact_set("v2-m21-broad-a") / "source")
+        self.assertIs(stage_runtime.call_args.args[3], context)
+
     def test_schema_file_is_valid(self) -> None:
         jsonschema.Draft202012Validator.check_schema(self.schema)
         mutated = copy.deepcopy(self.fake_record())

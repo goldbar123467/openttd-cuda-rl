@@ -21,6 +21,7 @@ from artifact_context import (
     resolve_artifact_root,
 )
 import prepare_m22_followup_runtime as preparation
+import validate_m22_final_runtime_source as foundation_validator
 from source_context import SourceContextError, run_git
 
 
@@ -275,19 +276,16 @@ def _validate_historical_repository(root: pathlib.Path, source: dict[str, Any]) 
 
 
 def _validate_live_files(
+    root: pathlib.Path,
     source: dict[str, Any],
     paths: dict[tuple[str, str], pathlib.Path],
 ) -> None:
-    recorded_root = source["retained_artifact"]
-    for label, record in _runtime_file_records(source):
-        relative = _recorded_relative(recorded_root, record["path"], label=label)
-        path = paths[(RESULT_LOGICAL_SET, relative)]
-        require(path.stat().st_size == record["bytes"], f"corrected M22 {label} byte size drifted")
-    inventory_record = source["build"]["test_inventory"]
-    inventory_relative = _recorded_relative(recorded_root, inventory_record["path"], label="CTest inventory")
-    inventory = load(paths[(RESULT_LOGICAL_SET, inventory_relative)])
-    require(len(inventory["tests"]) == len(set(inventory["tests"])) == 98,
-            "corrected live CTest inventory drifted")
+    try:
+        foundation_validator._validate_live_files(
+            root, source, paths, result_set=RESULT_LOGICAL_SET, smoke_cases=preparation.SMOKE_CASES,
+        )
+    except foundation_validator.M22RuntimeSourceError as exc:
+        raise M22FollowupRuntimeSourceError(str(exc).replace("M22 ", "corrected M22 ", 1)) from exc
 
 
 def _validate_live_source(
@@ -327,7 +325,6 @@ def validate(
     artifact_context: ArtifactContext | None = None,
 ) -> dict[str, Any]:
     context = artifact_context or ArtifactContext.offline()
-    repository_config = config_path is None
     root = root.resolve()
     source = load(config_path or root / CONFIG)
     schema_validate(source, load(root / SCHEMA))
@@ -336,16 +333,10 @@ def validate(
         "m20_source_record_sha256": sha256(root / preparation.foundation.M20_SOURCE),
         "m21_source_record_sha256": sha256(root / preparation.foundation.M21_SOURCE),
     }, "corrected runtime prerequisite identity drifted")
-    if repository_config:
-        m21 = load(root / preparation.foundation.M21_SOURCE)
-        require(source["base"] == {
-            "commit": m21["source"]["commit"],
-            "source_record_sha256": sha256(root / preparation.foundation.M21_SOURCE),
-            "tree": m21["source"]["tree"],
-        }, "corrected runtime base identity drifted")
-    else:
-        require(source["base"]["source_record_sha256"] == sha256(root / preparation.foundation.M21_SOURCE),
-                "corrected runtime base record identity drifted")
+    try:
+        foundation_validator._canonical_runtime(root, source, build_name="build-followup")
+    except foundation_validator.M22RuntimeSourceError as exc:
+        raise M22FollowupRuntimeSourceError(str(exc).replace("M22 ", "corrected M22 ", 1)) from exc
     immutable_path = root / preparation.IMMUTABLE_FINAL_EVIDENCE
     immutable = load(immutable_path)
     require(immutable["status"] == "FAIL" and source["boundaries"] == {
@@ -367,7 +358,7 @@ def validate(
     _validate_historical_repository(root, source)
     if context.is_live:
         _validate_live_source(source, patches, paths)
-        _validate_live_files(source, paths)
+        _validate_live_files(root, source, paths)
     return {"files": len({path for touched in preparation.PATCH_TOUCHED for path in touched}),
             "live": context.is_live, "smokes": len(source["smokes"]),
             "source_tree": source["source"]["tree"]}

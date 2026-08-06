@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -121,6 +122,155 @@ def _write_record_file(
     return path
 
 
+def _write_json(path: pathlib.Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+
+
+def _project_authorities(
+    root: pathlib.Path,
+    project: pathlib.Path,
+    directory: pathlib.Path,
+    value: dict[str, Any],
+    base_source: pathlib.Path,
+) -> None:
+    for relative in ("config", "docs/project/schema", "integration/openttd/patches/15.3/m22"):
+        shutil.copytree(root / relative, project / relative)
+
+    m20_content_path = project / preparation.M20_CONTENT
+    m20_content = json.loads(m20_content_path.read_text(encoding="utf-8"))
+    for authority, record in zip(m20_content["ai_archives"], value["runtime"]["ai_archives"], strict=True):
+        authority["path"] = str(directory / "v2-m20-competition-a" / _relative(value["retained_artifact"], record["path"]))
+        authority["sha256"] = record["sha256"]
+    for authority, record in zip(m20_content["libraries"], value["runtime"]["ai_libraries"], strict=True):
+        authority["path"] = str(directory / "v2-m20-competition-a" / _relative(value["retained_artifact"], record["path"]))
+        authority["sha256"] = record["sha256"]
+    _write_json(m20_content_path, m20_content)
+    m20_contract_path = project / preparation.native.m20.CONTRACT
+    m20_contract = json.loads(m20_contract_path.read_text(encoding="utf-8"))
+    m20_contract["identities"]["content_manifest_sha256"] = hashlib.sha256(m20_content_path.read_bytes()).hexdigest()
+    _write_json(m20_contract_path, m20_contract)
+
+    lock_path = project / preparation.M21_CONTENT_LOCK
+    lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    for package, archive, grf in zip(lock["packages"], value["runtime"]["newgrf_archives"],
+                                     value["runtime"]["newgrf_files"], strict=True):
+        package["archive"]["bytes"] = archive["bytes"]
+        package["archive"]["sha256"] = archive["sha256"]
+        package["grf_files"][0]["bytes"] = grf["bytes"]
+        package["grf_files"][0]["sha256"] = grf["sha256"]
+    _write_json(lock_path, lock)
+
+    broad_contract_path = project / preparation.native.m21.CONTRACT
+    broad_contract = json.loads(broad_contract_path.read_text(encoding="utf-8"))
+    scripts = value["runtime"]["gamescript_files"]
+    broad_contract["identities"]["content_lock_sha256"] = hashlib.sha256(lock_path.read_bytes()).hexdigest()
+    broad_contract["identities"]["gamescript_info_sha256"] = scripts[0]["sha256"]
+    broad_contract["identities"]["gamescript_main_sha256"] = scripts[1]["sha256"]
+    _write_json(broad_contract_path, broad_contract)
+
+    m21_path = project / preparation.M21_SOURCE
+    m21 = json.loads(m21_path.read_text(encoding="utf-8"))
+    m21_root = directory / "v2-m21-broad-a"
+    m21["retained_artifact"] = str(m21_root)
+    m21["source"] = {"commit": _git(base_source, "rev-parse", "HEAD"), "path": str(base_source),
+                     "tree": _git(base_source, "rev-parse", "HEAD^{tree}")}
+    m21["build"]["open_gfx"] = {
+        "bytes": value["runtime"]["open_gfx"]["bytes"],
+        "path": str(m21_root / "build-broad/baseset/opengfx-8.0.tar"),
+        "sha256": value["runtime"]["open_gfx"]["sha256"],
+    }
+    for name, record in value["runtime"]["configs"].items():
+        m21["runtime"]["configs"][name] = {"path": str(m21_root / f"{name}.cfg"), "sha256": record["sha256"]}
+    m21["runtime"]["content_root"] = str(m21_root / "build-broad/newgrf/m21")
+    m21["runtime"]["gamescript_root"] = str(m21_root / "build-broad/game/m21coverage")
+    for authority, record in zip(m21["runtime"]["content_files"], value["runtime"]["newgrf_files"], strict=True):
+        authority.update({"bytes": record["bytes"], "sha256": record["sha256"]})
+    _write_json(m21_path, m21)
+
+    m20_path = project / preparation.M20_SOURCE
+    m20 = json.loads(m20_path.read_text(encoding="utf-8"))
+    m20["retained_artifact"] = str(directory / "v2-m20-competition-a")
+    _write_json(m20_path, m20)
+    value["base"] = {"commit": m21["source"]["commit"], "source_record_sha256": hashlib.sha256(m21_path.read_bytes()).hexdigest(),
+                     "tree": m21["source"]["tree"]}
+    value["prerequisites"]["m20_source_record_sha256"] = hashlib.sha256(m20_path.read_bytes()).hexdigest()
+    value["prerequisites"]["m21_source_record_sha256"] = hashlib.sha256(m21_path.read_bytes()).hexdigest()
+
+
+def _smoke_report(root: pathlib.Path, source: dict[str, Any], case: dict[str, Any], metrics: dict[str, Any]) -> dict[str, Any]:
+    from tests.project.v2.test_v2_m16_cargo_evidence import _report_fixture
+    from tests.project.v2.test_v2_m19_air_evidence import _probe as m19_probe
+    from tests.project.v2.test_v2_m21_broad_evidence import _probe_result as m21_probe
+
+    native = preparation.native
+    gate, probe = case["source_gate"], native.canonical_probe(case)
+    executable_sha = source["executable"]["sha256"]
+    record = {"case_id": case["case_id"], "climate": case["climate"], "cargo": case["cargo"],
+              "probe": probe, "seed": case["seed"], "metrics": metrics}
+    if gate == "G15":
+        return {"steps": [{"operation": "SERVICE", "service": {
+            "company": {"delivered_passengers": metrics["delivered"], "income": metrics["income"]},
+            "ticks": {"executed": metrics["ticks"]},
+            "vehicle": {"capacity": metrics["vehicle_capacity"], "running": True},
+        }}]}
+    if gate in {"G16", "G17", "G18"}:
+        logical = {"G16": "v2-m16-cargo-matrix-a", "G17": "v2-m17-rail-matrix-a", "G18": "v2-m18-ship-matrix-c"}[gate]
+        module = {"G16": native.m16, "G17": native.m17, "G18": native.m18}[gate]
+        contract = json.loads((root / module.CONTRACT).read_text(encoding="utf-8"))
+        evidence = {"aggregate": {"actual_cargo_classes": []}, "executable_sha256": executable_sha}
+        report = _report_fixture(record, "fixture", evidence, logical, contract)
+        report["map"] = {"height": case["map_height"], "width": case["map_width"]}
+        return report
+    if gate == "G19":
+        return {
+            "catalog": {"aircraft_engines": [{"kind": "helicopter" if index < 3 else "airplane"} for index in range(41)],
+                        "airport_specs": [{"enabled": index < 9} for index in range(10)],
+                        "movement_blocks": 64, "movement_headings": 22},
+            "executable_sha256": executable_sha, "map": {"height": case["map_height"], "width": case["map_width"]},
+            "probe": m19_probe(record),
+            "request": {"cargo_label": case["cargo"], "probe": probe, "run_id": case["case_id"], "seed": case["seed"]},
+            "run_id": case["case_id"], "schema_version": "openttd-rl-v2-m19-air-report-1", "status": "PASS",
+        }
+    if gate == "G20":
+        contract = native.m20.load(root / native.m20.CONTRACT)
+        identities = native.m20.expected_identities(root, contract)
+        return {
+            "identity": identities, "request": {"split": "final"}, "status": "PASS",
+            "result": {"policy_input": {"public_map": {"width": case["map_width"], "height": case["map_height"]}},
+                       "privileged_inputs": [], "save_load_public_exact": True,
+                       "score": {"rl": {"alive": True, "aircraft": 1, "delivered_cargo_units": metrics["delivered"],
+                                        "operating_profit": metrics["income"], "company_value": metrics["company_value"]},
+                                 "opponents": [{"name": case["opponent"]}]}}
+        }
+    contract = native.m21.load(root / native.m21.CONTRACT)
+    result = m21_probe({"probe": probe}, contract)
+    if probe == "authority_economy":
+        result["commands"] = [{"command": f"fixture-{index}", "status": "SUCCESS"}
+                              for index in range(metrics["commands"])]
+    elif probe == "events":
+        result["breakdown"]["recovery_ticks"] = metrics["recovery_ticks"]
+    return {
+        "active_content": [{"id": item["id"], "md5": item["md5"]} for item in contract["newgrfs"]] if probe == "content" else [],
+        "map": {"height": case["map_height"], "width": case["map_width"]},
+        "request": {"landscape": case["climate"], "probe": probe}, "result": result,
+        "status": "PASS",
+    }
+
+
+def _replace_record_file(
+    result_root: pathlib.Path,
+    recorded_root: str,
+    record: dict[str, Any],
+    payload: bytes,
+) -> pathlib.Path:
+    path = result_root.joinpath(*_relative(recorded_root, record["path"]).parts)
+    path.write_bytes(payload)
+    record["bytes"] = len(payload)
+    record["sha256"] = hashlib.sha256(payload).hexdigest()
+    return path
+
+
 def expected_runtime_closure(
     logical_set: str,
     build_name: str,
@@ -181,6 +331,7 @@ def make_live_runtime_fixture(
     """Create real relocated Git/runtime/smoke bytes while retaining frozen path strings."""
 
     value = copy.deepcopy(source)
+    project = directory / "project"
     base_source = directory / "v2-m21-broad-a/source"
     base_source.mkdir(parents=True)
     resolved_patches = tuple((root / path).resolve() for path in patches)
@@ -211,14 +362,22 @@ def make_live_runtime_fixture(
 
     recorded_root = value["retained_artifact"]
     executable = _write_record_file(
-        result_root, recorded_root, value["executable"], b"relocated-openttd\n",
+        result_root, recorded_root, value["executable"], b"#!/bin/sh\nexit 0\n",
     )
     executable.chmod(0o700)
+    names = [f"upstream-{index:03d}" for index in range(98)]
     for name, record in value["build"]["logs"].items():
-        _write_record_file(result_root, recorded_root, record, f"{name} log\n".encode())
-    inventory = json.dumps({"tests": [f"upstream-{index:03d}" for index in range(98)]}).encode() + b"\n"
+        if name == "junit":
+            cases = "".join(f'<testcase name="{test}"/>' for test in names)
+            payload = f'<testsuite tests="98" failures="0" errors="0" skipped="0">{cases}</testsuite>\n'.encode()
+        elif name == "ctest":
+            payload = b"100% tests passed, 0 tests failed out of 98\n"
+        else:
+            payload = f"M22 {name} completed successfully\n".encode()
+        _write_record_file(result_root, recorded_root, record, payload)
+    inventory = preparation.canonical_bytes({"tests": names})
     _write_record_file(result_root, recorded_root, value["build"]["test_inventory"], inventory)
-    _write_record_file(result_root, recorded_root, value["runtime"]["open_gfx"], b"relocated OpenGFX\n")
+    _write_record_file(result_root, recorded_root, value["runtime"]["open_gfx"], b"OpenGFX fixture archive\n")
     for name, record in value["runtime"]["configs"].items():
         _write_record_file(result_root, recorded_root, record, f"[{name}]\n".encode())
     for group in ("ai_archives", "ai_libraries", "gamescript_files", "newgrf_archives", "newgrf_files"):
@@ -226,20 +385,48 @@ def make_live_runtime_fixture(
             _write_record_file(
                 result_root, recorded_root, record, f"{group}-{ordinal}\n".encode(),
             )
-    for smoke in value["smokes"]:
+    _project_authorities(root, project, directory, value, base_source)
+    subprocess.run(["git", "init", "-q", str(project)], check=True)
+    subprocess.run(["git", "-C", str(project), "add", "."], check=True)
+    subprocess.run([
+        "git", "-C", str(project), "-c", "user.name=runtime fixture",
+        "-c", "user.email=runtime-fixture@example.invalid", "commit", "-q", "-m", "fixture authorities",
+    ], check=True)
+    value["repository"] = {"commit": _git(project, "rev-parse", "HEAD"), "tree": _git(project, "rev-parse", "HEAD^{tree}")}
+
+    runtime = preparation.native.RuntimePaths(
+        executable=executable,
+        opengfx=result_root.joinpath(*_relative(recorded_root, value["runtime"]["open_gfx"]["path"]).parts),
+        base_config=result_root.joinpath(*_relative(recorded_root, value["runtime"]["configs"]["base"]["path"]).parts),
+        content_config=result_root.joinpath(*_relative(recorded_root, value["runtime"]["configs"]["content"]["path"]).parts),
+        gamescript_config=result_root.joinpath(*_relative(recorded_root, value["runtime"]["configs"]["gamescript"]["path"]).parts),
+        source_tree=value["source"]["tree"],
+    )
+    if len(value["smokes"]) == len(preparation.SMOKE_CASES):
+        smoke_cases = preparation.SMOKE_CASES
+    else:
+        import prepare_m22_followup_runtime as followup_preparation
+        smoke_cases = followup_preparation.SMOKE_CASES
+    for expected, smoke in zip(smoke_cases, value["smokes"], strict=True):
         smoke["executable_sha256"] = value["executable"]["sha256"]
         smoke["source_tree"] = value["source"]["tree"]
         case_root = result_root.joinpath(*_relative(recorded_root, smoke["artifact_root"]).parts)
+        manifest = validator._expected_smoke_manifest(project, value, runtime, expected)
+        report = _smoke_report(project, value, expected, smoke["metrics"])
         for path_key, hash_key, payload in (
-            ("manifest_path", "manifest_sha256", b'{"fixture":"manifest"}\n'),
-            ("report_path", "report_sha256", b'{"fixture":"report"}\n'),
+            ("manifest_path", "manifest_sha256", preparation.canonical_bytes(manifest)),
+            ("report_path", "report_sha256", preparation.canonical_bytes(report)),
             ("openttd_log_path", "openttd_log_sha256", b""),
         ):
             path = case_root / smoke[path_key]
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(payload)
             smoke[hash_key] = hashlib.sha256(payload).hexdigest()
-    config_path = directory / f"{logical_set}.json"
+    if "final_runtime_source_record_sha256" in value["prerequisites"]:
+        value["prerequisites"]["final_runtime_source_record_sha256"] = hashlib.sha256(
+            (project / "config/v2/m22-final-runtime-source.json").read_bytes()
+        ).hexdigest()
+    config_path = project / f"{logical_set}.json"
     config_path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
     return value, config_path, base_source, result_source
 
@@ -284,7 +471,7 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
                 patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
             )
             validator.validate(
-                self.root, config_path, artifact_context=ArtifactContext.live(base),
+                config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
             )
         self.assertEqual((self.root / validator.CONFIG).read_bytes(), retained)
 
@@ -338,7 +525,7 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
                 patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
             )
             summary = validator.validate(
-                self.root, config_path, artifact_context=ArtifactContext.live(base),
+                config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
             )
         self.assertTrue(summary["live"])
 
@@ -350,7 +537,7 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
                 patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
             )
             summary = validator.validate(
-                self.root, config_path, artifact_context=ArtifactContext.live(base),
+                config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
             )
             observed_tree = _git(result_source, "rev-parse", "HEAD^{tree}")
         self.assertEqual(summary["source_tree"], observed_tree)
@@ -383,7 +570,7 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
                  mock.patch.object(validator, "_validate_live_files", side_effect=AssertionError("file reader ran before preflight")):
                 with self.assertRaisesRegex(ArtifactContextError, "missing"):
                     validator.validate(
-                        self.root, config_path, artifact_context=ArtifactContext.live(base),
+                        config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                     )
 
     def test_recorded_runtime_path_traversal_fails_offline(self) -> None:
@@ -394,7 +581,44 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
     def test_runtime_file_alias_fails_offline(self) -> None:
         value = copy.deepcopy(self.source)
         value["build"]["logs"]["build"] = copy.deepcopy(value["build"]["logs"]["configure"])
-        self.mutation_fails(value, "duplicate")
+        self.mutation_fails(value, "layout|duplicate")
+
+    def test_custom_config_cannot_substitute_m21_base_identity(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["base"]["commit"] = "1" * 40
+        value["base"]["tree"] = "2" * 40
+        self.mutation_fails(value, "base identity")
+
+    def test_renamed_base_config_fails_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["runtime"]["configs"]["base"]["path"] = value["retained_artifact"] + "/renamed.cfg"
+        self.mutation_fails(value, "canonical runtime")
+
+    def test_wrong_ai_name_fails_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["runtime"]["ai_archives"][0]["name"] = "SubstituteAI"
+        self.mutation_fails(value)
+
+    def test_duplicated_ai_name_fails_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["runtime"]["ai_archives"][1]["name"] = value["runtime"]["ai_archives"][0]["name"]
+        self.mutation_fails(value, "AI archive inventory")
+
+    def test_zero_newgrf_digest_fails_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["runtime"]["newgrf_archives"][0]["sha256"] = "0" * 64
+        self.mutation_fails(value, "NewGRF archive inventory")
+
+    def test_reordered_build_logs_fail_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        logs = value["build"]["logs"]
+        value["build"]["logs"] = {name: logs[name] for name in reversed(tuple(logs))}
+        self.mutation_fails(value, "canonical runtime")
+
+    def test_substituted_config_digest_fails_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["runtime"]["configs"]["base"]["sha256"] = value["runtime"]["configs"]["content"]["sha256"]
+        self.mutation_fails(value, "canonical runtime")
 
     def test_hardlinked_live_inputs_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -410,7 +634,7 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
             os.link(first, second)
             with self.assertRaisesRegex(validator.M22RuntimeSourceError, "hard link"):
                 validator.validate(
-                    self.root, config_path, artifact_context=ArtifactContext.live(base),
+                    config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
 
     def test_symlinked_live_input_fails_closed(self) -> None:
@@ -428,7 +652,7 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
             config.symlink_to(target)
             with self.assertRaisesRegex(ArtifactContextError, "symlink"):
                 validator.validate(
-                    self.root, config_path, artifact_context=ArtifactContext.live(base),
+                    config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
 
     def test_historical_repository_commit_mutation_fails(self) -> None:
@@ -488,7 +712,7 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
             config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(ArtifactContextError, "SHA-256 mismatch"):
                 validator.validate(
-                    self.root, config_path, artifact_context=ArtifactContext.live(base),
+                    config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
 
     def test_smoke_report_digest_mutation_fails_live(self) -> None:
@@ -502,8 +726,115 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
             config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(ArtifactContextError, "SHA-256 mismatch"):
                 validator.validate(
-                    self.root, config_path, artifact_context=ArtifactContext.live(base),
+                    config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
+
+    def test_non_executable_live_binary_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            _, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            (base / "v2-m22-final-runtime-c/build-final/openttd").chmod(0o600)
+            with self.assertRaisesRegex(validator.M22RuntimeSourceError, "executable"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_matched_malformed_ctest_json_is_domain_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            _replace_record_file(
+                base / "v2-m22-final-runtime-c", value["retained_artifact"],
+                value["build"]["test_inventory"], b"{not-json\n",
+            )
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M22RuntimeSourceError, "CTest inventory"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_matched_invalid_junit_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            _replace_record_file(
+                base / "v2-m22-final-runtime-c", value["retained_artifact"],
+                value["build"]["logs"]["junit"], b"not XML\n",
+            )
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M22RuntimeSourceError, "JUnit"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_matched_failing_junit_totals_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            names = [f"upstream-{index:03d}" for index in range(98)]
+            cases = "".join(f'<testcase name="{name}"/>' for name in names)
+            payload = f'<testsuite tests="98" failures="1" errors="0" skipped="0">{cases}</testsuite>\n'.encode()
+            _replace_record_file(base / "v2-m22-final-runtime-c", value["retained_artifact"],
+                                 value["build"]["logs"]["junit"], payload)
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M22RuntimeSourceError, "JUnit results"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_matched_smoke_manifest_semantic_drift_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            smoke = value["smokes"][0]
+            path = base / "v2-m22-final-runtime-c/smokes/source-g15-toyland-road/manifest.json"
+            payload = b'{"schema_version":"wrong"}\n'
+            path.write_bytes(payload)
+            smoke["manifest_sha256"] = hashlib.sha256(payload).hexdigest()
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M22RuntimeSourceError, "smoke .*manifest"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_matched_smoke_report_semantic_drift_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            smoke = value["smokes"][6]
+            path = base / "v2-m22-final-runtime-c/smokes/source-g21-arctic-content/report.json"
+            report = json.loads(path.read_text(encoding="utf-8"))
+            report["status"] = "FAIL"
+            payload = preparation.canonical_bytes(report)
+            path.write_bytes(payload)
+            smoke["report_sha256"] = hashlib.sha256(payload).hexdigest()
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M22RuntimeSourceError, "G21 smoke"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_matched_smoke_log_failure_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            smoke = value["smokes"][0]
+            path = base / "v2-m22-final-runtime-c/smokes/source-g15-toyland-road/openttd.log"
+            payload = b"Traceback (most recent call last):\nfixture\n"
+            path.write_bytes(payload)
+            smoke["openttd_log_sha256"] = hashlib.sha256(payload).hexdigest()
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M22RuntimeSourceError, "log semantics"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
 
     def test_removed_base_source_option_exits_two(self) -> None:
         with contextlib.redirect_stderr(io.StringIO()):
@@ -523,7 +854,7 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {ARTIFACT_ROOT_ENV: str(parent / "wrong")}, clear=False):
                 with contextlib.redirect_stdout(io.StringIO()):
                     status = validator.main([
-                        "--root", str(self.root), "--config", str(config_path),
+                        "--root", str(config_path.parent), "--config", str(config_path),
                         "--artifact-root", str(configured),
                     ])
         self.assertEqual(status, 0)

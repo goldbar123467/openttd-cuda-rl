@@ -19,6 +19,7 @@ from artifact_context import ARTIFACT_ROOT_ENV, ArtifactContext, ArtifactContext
 import prepare_m22_followup_runtime as preparation
 from tests.project.v2.test_v2_m22_final_runtime_source import (
     _git,
+    _replace_record_file,
     expected_runtime_closure,
     make_live_runtime_fixture,
 )
@@ -73,7 +74,7 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                 patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
             )
             validator.validate(
-                self.root, config_path, artifact_context=ArtifactContext.live(base),
+                config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
             )
         self.assertEqual((self.root / validator.CONFIG).read_bytes(), retained)
 
@@ -127,7 +128,7 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                 patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
             )
             summary = validator.validate(
-                self.root, config_path, artifact_context=ArtifactContext.live(base),
+                config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
             )
         self.assertTrue(summary["live"])
 
@@ -139,7 +140,7 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                 patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
             )
             summary = validator.validate(
-                self.root, config_path, artifact_context=ArtifactContext.live(base),
+                config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
             )
             observed_tree = _git(result_source, "rev-parse", "HEAD^{tree}")
         self.assertEqual(summary["source_tree"], observed_tree)
@@ -175,7 +176,7 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                  mock.patch.object(validator, "_validate_live_files", side_effect=AssertionError("file reader ran before preflight")):
                 with self.assertRaisesRegex(ArtifactContextError, "missing"):
                     validator.validate(
-                        self.root, config_path, artifact_context=ArtifactContext.live(base),
+                        config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                     )
 
     def test_recorded_runtime_path_traversal_fails_offline(self) -> None:
@@ -186,7 +187,18 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
     def test_runtime_file_alias_fails_offline(self) -> None:
         value = copy.deepcopy(self.source)
         value["build"]["logs"]["build"] = copy.deepcopy(value["build"]["logs"]["configure"])
-        self.mutation_fails(value, "duplicate")
+        self.mutation_fails(value, "layout|duplicate")
+
+    def test_custom_config_cannot_substitute_m21_base_identity(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["base"]["commit"] = "1" * 40
+        value["base"]["tree"] = "2" * 40
+        self.mutation_fails(value, "base identity")
+
+    def test_wrong_ai_name_fails_offline(self) -> None:
+        value = copy.deepcopy(self.source)
+        value["runtime"]["ai_archives"][1]["name"] = "SubstituteAI"
+        self.mutation_fails(value)
 
     def test_hardlinked_live_inputs_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -202,7 +214,7 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
             os.link(first, second)
             with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "hard link"):
                 validator.validate(
-                    self.root, config_path, artifact_context=ArtifactContext.live(base),
+                    config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
 
     def test_symlinked_live_input_fails_closed(self) -> None:
@@ -220,7 +232,7 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
             config.symlink_to(target)
             with self.assertRaisesRegex(ArtifactContextError, "symlink"):
                 validator.validate(
-                    self.root, config_path, artifact_context=ArtifactContext.live(base),
+                    config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
 
     def test_historical_repository_commit_mutation_fails(self) -> None:
@@ -299,7 +311,7 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
             config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(ArtifactContextError, "SHA-256 mismatch"):
                 validator.validate(
-                    self.root, config_path, artifact_context=ArtifactContext.live(base),
+                    config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
 
     def test_smoke_report_digest_mutation_fails_live(self) -> None:
@@ -313,8 +325,40 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
             config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(ArtifactContextError, "SHA-256 mismatch"):
                 validator.validate(
-                    self.root, config_path, artifact_context=ArtifactContext.live(base),
+                    config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
+
+    def test_digest_matched_ctest_inventory_with_nonstring_name_is_domain_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+            )
+            names: list[object] = [f"upstream-{index:03d}" for index in range(98)]
+            names[4] = ["unhashable"]
+            payload = (json.dumps({"tests": names}) + "\n").encode()
+            _replace_record_file(
+                base / "v2-m22-followup-runtime-a", value["retained_artifact"],
+                value["build"]["test_inventory"], payload,
+            )
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "CTest inventory"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_matched_ctest_inventory_missing_tests_is_domain_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+            )
+            payload = b'{"wrong":[]}\n'
+            _replace_record_file(base / "v2-m22-followup-runtime-a", value["retained_artifact"],
+                                 value["build"]["test_inventory"], payload)
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "CTest inventory"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
 
     def test_removed_base_source_option_exits_two(self) -> None:
         with contextlib.redirect_stderr(io.StringIO()):
@@ -334,7 +378,7 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {ARTIFACT_ROOT_ENV: str(parent / "wrong")}, clear=False):
                 with contextlib.redirect_stdout(io.StringIO()):
                     status = validator.main([
-                        "--root", str(self.root), "--config", str(config_path),
+                        "--root", str(config_path.parent), "--config", str(config_path),
                         "--artifact-root", str(configured),
                     ])
         self.assertEqual(status, 0)

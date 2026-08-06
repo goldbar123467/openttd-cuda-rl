@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import re
 import tempfile
+import xml.etree.ElementTree as ET
 from typing import Any
 
 import jsonschema
@@ -139,6 +141,81 @@ def _runtime_file_records(source: dict[str, Any]) -> list[tuple[str, dict[str, A
     return records
 
 
+def _canonical_runtime(root: pathlib.Path, source: dict[str, Any], *, build_name: str) -> None:
+    """Bind the M22 layout to the committed M20/M21 staging authorities."""
+
+    recorded_root = source["retained_artifact"]
+    m20_content = load(root / preparation.M20_CONTENT)
+    m21_source = load(root / preparation.M21_SOURCE)
+    m21_lock = load(root / preparation.M21_CONTENT_LOCK)
+    m21_contract = load(root / preparation.native.m21.CONTRACT)
+
+    require(source["base"] == {
+        "commit": m21_source["source"]["commit"],
+        "source_record_sha256": sha256(root / preparation.M21_SOURCE),
+        "tree": m21_source["source"]["tree"],
+    }, "M22 runtime base identity drifted")
+    require(tuple(source["build"]["logs"]) == ("build", "configure", "ctest", "junit"),
+            "M22 canonical runtime build-log order drifted")
+    expected_logs = {"build": "build.log", "configure": "configure.log", "ctest": "ctest.log", "junit": "ctest.xml"}
+    require(all(_recorded_relative(recorded_root, source["build"]["logs"][name]["path"], label=f"{name} log") == relative
+                for name, relative in expected_logs.items()), "M22 canonical runtime build-log layout drifted")
+    require(_recorded_relative(recorded_root, source["build"]["test_inventory"]["path"], label="CTest inventory") ==
+            "ctest-inventory.json", "M22 canonical runtime CTest inventory path drifted")
+    require(_recorded_relative(recorded_root, source["executable"]["path"], label="executable") ==
+            f"{build_name}/openttd", "M22 canonical runtime executable path drifted")
+
+    open_gfx = m21_source["build"]["open_gfx"]
+    actual_open_gfx = source["runtime"]["open_gfx"]
+    require(_recorded_relative(recorded_root, actual_open_gfx["path"], label="OpenGFX") ==
+            f"{build_name}/baseset/{pathlib.PurePosixPath(open_gfx['path']).name}" and
+            actual_open_gfx["bytes"] == open_gfx["bytes"] and actual_open_gfx["sha256"] == open_gfx["sha256"],
+            "M22 canonical runtime OpenGFX identity drifted")
+
+    require(tuple(source["runtime"]["configs"]) == ("base", "content", "gamescript"),
+            "M22 canonical runtime config order drifted")
+    for name, authority in m21_source["runtime"]["configs"].items():
+        actual = source["runtime"]["configs"][name]
+        require(_recorded_relative(recorded_root, actual["path"], label=f"{name} config") == f"{name}.cfg" and
+                actual["sha256"] == authority["sha256"], f"M22 canonical runtime {name} config drifted")
+
+    expected_ai = []
+    for authority in m20_content["ai_archives"]:
+        expected_ai.append((authority["name"], f"content_download/ai/{pathlib.PurePosixPath(authority['path']).name}",
+                            authority["sha256"]))
+    actual_ai = [(record["name"], _recorded_relative(recorded_root, record["path"], label="AI archive"),
+                  record["sha256"]) for record in source["runtime"]["ai_archives"]]
+    require(actual_ai == expected_ai, "M22 canonical runtime AI archive inventory drifted")
+
+    expected_libraries = [(f"content_download/ai/library/{pathlib.PurePosixPath(item['path']).name}", item["sha256"])
+                          for item in m20_content["libraries"]]
+    actual_libraries = [(_recorded_relative(recorded_root, item["path"], label="AI library"), item["sha256"])
+                        for item in source["runtime"]["ai_libraries"]]
+    require(actual_libraries == expected_libraries, "M22 canonical runtime AI library inventory drifted")
+
+    expected_archives = [(f"{build_name}/{item['archive']['path']}", item["archive"]["bytes"], item["archive"]["sha256"])
+                         for item in m21_lock["packages"]]
+    actual_archives = [(_recorded_relative(recorded_root, item["path"], label="NewGRF archive"), item["bytes"], item["sha256"])
+                       for item in source["runtime"]["newgrf_archives"]]
+    require(actual_archives == expected_archives, "M22 canonical runtime NewGRF archive inventory drifted")
+
+    expected_grfs = [(f"{build_name}/newgrf/m21/{item['name']}", item["bytes"], item["sha256"])
+                     for item in m21_source["runtime"]["content_files"]]
+    actual_grfs = [(_recorded_relative(recorded_root, item["path"], label="staged NewGRF"), item["bytes"], item["sha256"])
+                   for item in source["runtime"]["newgrf_files"]]
+    require(actual_grfs == expected_grfs, "M22 canonical runtime staged NewGRF inventory drifted")
+
+    expected_scripts = (
+        (f"{build_name}/game/m21coverage/info.nut", m21_contract["identities"]["gamescript_info_sha256"]),
+        (f"{build_name}/game/m21coverage/main.nut", m21_contract["identities"]["gamescript_main_sha256"]),
+    )
+    actual_scripts = tuple((_recorded_relative(recorded_root, item["path"], label="GameScript"), item["sha256"])
+                           for item in source["runtime"]["gamescript_files"])
+    require(actual_scripts == expected_scripts, "M22 canonical runtime GameScript inventory drifted")
+    require(source["runtime"]["network_calls_during_preparation"] == "none",
+            "M22 canonical runtime network boundary drifted")
+
+
 def _requirements(source: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
     result_set = _result_logical_set(source)
     recorded_root = source["retained_artifact"]
@@ -254,19 +331,230 @@ def _validate_historical_repository(root: pathlib.Path, source: dict[str, Any]) 
             "M22 preparation historical repository identity drifted")
 
 
+def _live_json(path: pathlib.Path, *, label: str) -> dict[str, Any]:
+    try:
+        raw = path.read_bytes()
+        value = json.loads(raw)
+        require(isinstance(value, dict), f"M22 live {label} JSON root is not an object")
+        require(raw == preparation.canonical_bytes(value), f"M22 live {label} is not canonical JSON")
+        return value
+    except M22RuntimeSourceError:
+        raise
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise M22RuntimeSourceError(f"M22 live {label} is malformed: {exc}") from exc
+
+
+def _expected_smoke_manifest(
+    root: pathlib.Path,
+    source: dict[str, Any],
+    runtime: preparation.native.RuntimePaths,
+    case: dict[str, Any],
+) -> dict[str, Any]:
+    native = preparation.native
+    executable_sha = source["executable"]["sha256"]
+    probe = native.canonical_probe(case)
+    gate = case["source_gate"]
+    if gate == "G15":
+        return native.m15_request(root, runtime, case, executable_sha)
+    if gate == "G16":
+        return {"amount": 8, "climate": case["climate"],
+                **native.simple_request(case, executable_sha, probe, "openttd-rl-v2-m16-cargo-manifest-1")}
+    if gate == "G17":
+        return native.simple_request(case, executable_sha, probe, "openttd-rl-v2-m17-rail-manifest-1")
+    if gate == "G18":
+        return native.simple_request(case, executable_sha, probe, "openttd-rl-v2-m18-ship-manifest-1")
+    if gate == "G19":
+        return native.simple_request(case, executable_sha, probe, "openttd-rl-v2-m19-air-manifest-1")
+    identity_source = {"source": {"tree": source["source"]["tree"]},
+                       "executable": {"sha256": executable_sha}}
+    if gate == "G20":
+        contract = native.m20.load(root / native.m20.CONTRACT)
+        identities = native.m20.expected_identities(root, contract)
+        roster = next((item for item in contract["roster"] if item["name"] == case["opponent"]), None)
+        require(roster is not None and probe == "head_to_head", "M22 live G20 smoke opponent/probe drifted")
+        opponent = native.m20.opponent_from(roster, 1, 0)
+        native_case = native.m20.Case(
+            case["case_id"], probe, 1000, case["seed"], native.derived_seed("competition-simulation", case["seed"]),
+            0, 0, (opponent,), "FINAL",
+        )
+        request = native.m20.manifest(native_case, "final", identities, identity_source,
+                                      contract["development_qualification"]["calendar_days"])
+        request.update({"run_id": case["case_id"], "split": "final"})
+        return request
+    require(gate == "G21", f"M22 live smoke gate is unsupported: {gate}")
+    contract = native.m21.load(root / native.m21.CONTRACT)
+    native_case = {"case_id": case["case_id"], "landscape": case["climate"], "probe": probe, "seed": case["seed"]}
+    request = native.m21.manifest(native_case, "final", contract, identity_source,
+                                  sha256(root / native.m21.CONTRACT), sha256(root / native.m21.CONTENT_LOCK))
+    request["run_id"] = case["case_id"]
+    return request
+
+
+def _report_metrics(root: pathlib.Path, source: dict[str, Any], case: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
+    native = preparation.native
+    executable_sha = source["executable"]["sha256"]
+    probe = native.canonical_probe(case)
+    gate = case["source_gate"]
+    if gate == "G15":
+        steps = report.get("steps")
+        require(isinstance(steps, list), f"M22 live G15 smoke report steps drifted: {case['case_id']}")
+        service = next((step.get("service") for step in steps if isinstance(step, dict) and step.get("operation") == "SERVICE"), None)
+        require(isinstance(service, dict) and service["company"]["delivered_passengers"] > 0 and
+                service["company"]["income"] > 0 and service["vehicle"]["running"],
+                f"M22 live G15 smoke service drifted: {case['case_id']}")
+        return {"delivered": service["company"]["delivered_passengers"], "income": service["company"]["income"],
+                "ticks": service["ticks"]["executed"], "vehicle_capacity": service["vehicle"]["capacity"]}
+    if gate == "G16":
+        native_case = native.m16.Case(case["case_id"], case["climate"], case["cargo"], probe, case["seed"])
+        native.m16.validate_common(report, native_case, native.m16.load(root / native.m16.CONTRACT), executable_sha)
+        native.validate_map(report, case)
+        return native.m16.validate_probe(report, native_case)
+    if gate == "G17":
+        native_case = native.m17.Case(case["case_id"], case["cargo"], probe, case["seed"])
+        require(report.get("status") == "PASS" and report.get("executable_sha256") == executable_sha,
+                f"M22 live G17 smoke identity/status drifted: {case['case_id']}")
+        native.validate_map(report, case)
+        return native.m17.validate_probe(report, native_case)
+    if gate == "G18":
+        native_case = native.m18.Case(case["case_id"], case["cargo"], probe, case["seed"])
+        require(report.get("status") == "PASS" and report.get("executable_sha256") == executable_sha,
+                f"M22 live G18 smoke identity/status drifted: {case['case_id']}")
+        native.validate_map(report, case)
+        return native.m18.validate_probe(report, native_case)
+    if gate == "G19":
+        native_case = native.m19.Case(case["case_id"], case["cargo"], probe, case["seed"])
+        require(report.get("status") == "PASS" and report.get("executable_sha256") == executable_sha,
+                f"M22 live G19 smoke identity/status drifted: {case['case_id']}")
+        native.validate_map(report, case)
+        return native.m19.validate_probe(report, native_case)
+    if gate == "G20":
+        contract = native.m20.load(root / native.m20.CONTRACT)
+        identities = native.m20.expected_identities(root, contract)
+        require(report.get("status") == "PASS" and report["request"]["split"] == "final" and
+                report["identity"] == identities, f"M22 live G20 smoke identity/status drifted: {case['case_id']}")
+        result = report["result"]
+        public_map, rl = result["policy_input"]["public_map"], result["score"]["rl"]
+        require(public_map["width"] == case["map_width"] and public_map["height"] == case["map_height"] and
+                result["save_load_public_exact"] and result["privileged_inputs"] == [] and rl["alive"] and
+                rl["aircraft"] >= 1 and rl["delivered_cargo_units"] >= 25 and
+                len(result["score"]["opponents"]) == 1 and
+                result["score"]["opponents"][0]["name"] == case["opponent"],
+                f"M22 live G20 smoke result drifted: {case['case_id']}")
+        return {"delivered": rl["delivered_cargo_units"], "income": rl["operating_profit"],
+                "ticks": contract["development_qualification"]["calendar_days"],
+                "company_value": rl["company_value"], "opponent": case["opponent"]}
+    require(gate == "G21", f"M22 live smoke gate is unsupported: {gate}")
+    native.validate_map(report, case)
+    require(report.get("status") == "PASS" and report["request"]["probe"] == probe and
+            report["request"]["landscape"] == case["climate"],
+            f"M22 live G21 smoke request/status drifted: {case['case_id']}")
+    result = report["result"]
+    if probe == "calendar":
+        require(result["save_load_exact"] and result["span_years"] == 200, "M22 live G21 calendar smoke drifted")
+        return {"boundaries": len(result["snapshots"]), "save_load_exact": True}
+    if probe == "authority_economy":
+        require(result["save_load_exact"] and result["exclusive_rights_expired"], "M22 live G21 authority smoke drifted")
+        return {"commands": len(result["commands"]), "save_load_exact": True}
+    if probe == "events":
+        require(result["save_load_exact"] and result["breakdown"]["observed"] and result["disaster"]["terminated"],
+                "M22 live G21 events smoke drifted")
+        return {"recovery_ticks": result["breakdown"]["recovery_ticks"], "save_load_exact": True}
+    if probe == "gamescript":
+        require(result["fixture_name"] == "M21CoverageFixture" and result["save_load_exact"] and
+                all(result["responses"].values()), "M22 live G21 GameScript smoke drifted")
+        return {"commands": len(result["commands"]), "responses": len(result["responses"]), "save_load_exact": True}
+    require(probe == "content" and result["package_count"] == 10 and result["capability_schema_closed"] and
+            len(report["active_content"]) == 10 and all(value > 0 for value in result["assets"].values()),
+            "M22 live G21 content smoke drifted")
+    return {"packages": 10, "capabilities": len(result["capabilities"])}
+
+
 def _validate_live_files(
+    root: pathlib.Path,
     source: dict[str, Any],
     paths: dict[tuple[str, str], pathlib.Path],
+    *,
+    result_set: str = RESULT_LOGICAL_SET,
+    smoke_cases: tuple[dict[str, Any], ...] = preparation.SMOKE_CASES,
 ) -> None:
-    recorded_root = source["retained_artifact"]
-    for label, record in _runtime_file_records(source):
-        relative = _recorded_relative(recorded_root, record["path"], label=label)
-        path = paths[(RESULT_LOGICAL_SET, relative)]
-        require(path.stat().st_size == record["bytes"], f"M22 {label} byte size drifted")
-    inventory_record = source["build"]["test_inventory"]
-    inventory_relative = _recorded_relative(recorded_root, inventory_record["path"], label="CTest inventory")
-    inventory = load(paths[(RESULT_LOGICAL_SET, inventory_relative)])
-    require(len(inventory["tests"]) == len(set(inventory["tests"])) == 98, "M22 live CTest inventory drifted")
+    try:
+        recorded_root = source["retained_artifact"]
+        for label, record in _runtime_file_records(source):
+            relative = _recorded_relative(recorded_root, record["path"], label=label)
+            path = paths[(result_set, relative)]
+            require(path.stat().st_size == record["bytes"], f"M22 {label} byte size drifted")
+
+        executable_relative = _recorded_relative(recorded_root, source["executable"]["path"], label="executable")
+        executable = paths[(result_set, executable_relative)]
+        require(not executable.is_symlink() and executable.is_file() and executable.stat().st_mode & 0o111 != 0 and
+                os.access(executable, os.X_OK), "M22 live executable mode drifted")
+
+        inventory_record = source["build"]["test_inventory"]
+        inventory_relative = _recorded_relative(recorded_root, inventory_record["path"], label="CTest inventory")
+        inventory = _live_json(paths[(result_set, inventory_relative)], label="CTest inventory")
+        require(set(inventory) == {"tests"} and isinstance(inventory["tests"], list) and
+                len(inventory["tests"]) == 98 and all(isinstance(name, str) and name for name in inventory["tests"]) and
+                len(set(inventory["tests"])) == 98, "M22 live CTest inventory must contain exactly 98 unique names")
+
+        junit_record = source["build"]["logs"]["junit"]
+        junit_relative = _recorded_relative(recorded_root, junit_record["path"], label="JUnit")
+        try:
+            xml = ET.parse(paths[(result_set, junit_relative)]).getroot()
+        except (ET.ParseError, OSError, ValueError) as exc:
+            raise M22RuntimeSourceError(f"M22 live JUnit XML is malformed: {exc}") from exc
+        require(xml.tag in {"testsuite", "testsuites"}, "M22 live JUnit root drifted")
+        suites = [xml] if xml.tag == "testsuite" else list(xml.findall("testsuite"))
+        require(bool(suites), "M22 live JUnit contains no test suites")
+        totals = {key: sum(int(suite.attrib.get(key, "0")) for suite in suites)
+                  for key in ("tests", "failures", "errors", "skipped")}
+        testcases = [case for suite in suites for case in suite.findall("testcase")]
+        testcase_names = [case.attrib.get("name") for case in testcases]
+        require(totals == {"tests": 98, "failures": 0, "errors": 0, "skipped": 0} and
+                testcase_names == inventory["tests"] and
+                all(case.find("failure") is None and case.find("error") is None and case.find("skipped") is None
+                    for case in testcases),
+                f"M22 live JUnit results drifted: {totals}")
+
+        ctest_record = source["build"]["logs"]["ctest"]
+        ctest_relative = _recorded_relative(recorded_root, ctest_record["path"], label="CTest log")
+        ctest_text = paths[(result_set, ctest_relative)].read_text(encoding="utf-8")
+        require(re.search(r"100% tests passed, 0 tests failed out of 98", ctest_text) is not None,
+                "M22 live CTest log totals drifted")
+        for name in ("build", "configure"):
+            record = source["build"]["logs"][name]
+            relative = _recorded_relative(recorded_root, record["path"], label=f"{name} log")
+            text = paths[(result_set, relative)].read_text(encoding="utf-8")
+            require("\x00" not in text, f"M22 live {name} log is not textual")
+
+        runtime = preparation.native.RuntimePaths(
+            executable=executable,
+            opengfx=paths[(result_set, _recorded_relative(recorded_root, source["runtime"]["open_gfx"]["path"], label="OpenGFX"))],
+            base_config=paths[(result_set, _recorded_relative(recorded_root, source["runtime"]["configs"]["base"]["path"], label="base config"))],
+            content_config=paths[(result_set, _recorded_relative(recorded_root, source["runtime"]["configs"]["content"]["path"], label="content config"))],
+            gamescript_config=paths[(result_set, _recorded_relative(recorded_root, source["runtime"]["configs"]["gamescript"]["path"], label="gamescript config"))],
+            source_tree=source["source"]["tree"],
+        )
+        for expected, record in zip(smoke_cases, source["smokes"], strict=True):
+            case_id = expected["case_id"]
+            case_relative = f"smokes/{case_id}"
+            require((record["manifest_path"], record["report_path"], record["openttd_log_path"]) ==
+                    ("manifest.json", "report.json", "openttd.log"),
+                    f"M22 live smoke {case_id} canonical file layout drifted")
+            manifest = _live_json(paths[(result_set, f"{case_relative}/manifest.json")],
+                                  label=f"smoke {case_id} manifest")
+            require(manifest == _expected_smoke_manifest(root, source, runtime, expected),
+                    f"M22 live smoke {case_id} manifest semantics drifted")
+            report = _live_json(paths[(result_set, f"{case_relative}/report.json")],
+                                label=f"smoke {case_id} report")
+            require(_report_metrics(root, source, expected, report) == record["metrics"],
+                    f"M22 live smoke {case_id} report/metrics drifted")
+            log = paths[(result_set, f"{case_relative}/openttd.log")].read_text(encoding="utf-8")
+            require("\x00" not in log and "Traceback (most recent call last)" not in log and
+                    "M22 native process failed" not in log, f"M22 live smoke {case_id} log semantics drifted")
+    except M22RuntimeSourceError:
+        raise
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ET.ParseError, KeyError, TypeError, ValueError) as exc:
+        raise M22RuntimeSourceError(f"M22 live runtime semantic validation failed: {exc}") from exc
 
 
 def _validate_live_source(
@@ -304,7 +592,6 @@ def validate(
     artifact_context: ArtifactContext | None = None,
 ) -> dict[str, Any]:
     context = artifact_context or ArtifactContext.offline()
-    repository_config = config_path is None
     root = root.resolve()
     source = load(config_path or root / CONFIG)
     schema_validate(source, load(root / SCHEMA))
@@ -313,10 +600,7 @@ def validate(
         "m21_source_record_sha256": sha256(root / preparation.M21_SOURCE),
     } and source["base"]["source_record_sha256"] == sha256(root / preparation.M21_SOURCE),
             "M22 runtime prerequisite identity drifted")
-    if repository_config:
-        m21 = load(root / preparation.M21_SOURCE)
-        require(source["base"]["commit"] == m21["source"]["commit"] and source["base"]["tree"] == m21["source"]["tree"],
-                "M22 runtime base identity drifted")
+    _canonical_runtime(root, source, build_name="build-final")
     contract = load(root / preparation.LEARNING_CONTRACT)
     require(source["final_boundary"] == {
         "expected_manifest_sha256": contract["identities"]["final_evaluation_manifest_sha256"],
@@ -333,7 +617,7 @@ def validate(
     _validate_historical_repository(root, source)
     if context.is_live:
         _validate_live_source(source, patch, paths)
-        _validate_live_files(source, paths)
+        _validate_live_files(root, source, paths)
     return {"files": len(source["patch"]["touched_files"]), "live": context.is_live,
             "smokes": len(source["smokes"]), "source_tree": source["source"]["tree"]}
 
