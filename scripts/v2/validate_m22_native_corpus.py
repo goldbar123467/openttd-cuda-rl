@@ -13,6 +13,12 @@ from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
 import build_m22_native_corpus as builder
 
 
@@ -60,7 +66,11 @@ def validate(
     root: pathlib.Path,
     corpus_path: pathlib.Path | None = None,
     contract_path: pathlib.Path | None = None,
+    *,
+    artifact_context: ArtifactContext | None = None,
 ) -> M22CorpusSummary:
+    context = artifact_context or ArtifactContext.offline()
+    del context
     root = root.resolve()
     corpus_path = corpus_path or root / CORPUS
     contract_path = contract_path or root / CONTRACT
@@ -84,7 +94,7 @@ def validate(
     require(environment["native_corpus_builder"] == "scripts/v2/build_m22_native_corpus.py",
             "learning contract corpus builder drifted")
 
-    expected = builder.build(root)
+    expected = builder.build(root, artifact_context=ArtifactContext.offline())
     require(corpus == expected, "corpus does not exactly rebuild from accepted G15-G21 native evidence")
     summary = corpus["summary"]
     require(summary == {
@@ -114,13 +124,17 @@ def main() -> int:
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--corpus", type=pathlib.Path)
     parser.add_argument("--contract", type=pathlib.Path)
+    add_artifact_root_argument(parser)
     args = parser.parse_args()
     try:
-        result = validate(args.root, args.corpus, args.contract)
+        artifact_root = resolve_artifact_root(args.artifact_root)
+        context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
+        result = validate(args.root, args.corpus, args.contract, artifact_context=context)
         print(f"V2_M22_NATIVE_CORPUS=PASS entries={result.entries} training={result.training} "
               f"development={result.development} programs={result.programs} native_gates={result.native_gates}")
         return 0
-    except (M22CorpusValidationError, builder.M22CorpusError, OSError, KeyError, TypeError, ValueError) as exc:
+    except (M22CorpusValidationError, builder.M22CorpusError, ArtifactContextError, OSError,
+            KeyError, TypeError, ValueError) as exc:
         print(f"V2_M22_NATIVE_CORPUS=FAIL {exc}", file=sys.stderr)
         return 1
 

@@ -11,6 +11,12 @@ import pathlib
 import sys
 from typing import Any
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
 import validate_m15_competence_evidence
 import validate_m16_cargo_evidence
 import validate_m17_rail_evidence
@@ -85,14 +91,21 @@ def derived_seed(domain: str, ordinal: int) -> int:
     return int.from_bytes(hashlib.sha256(f"{domain}:{ordinal}".encode("ascii")).digest()[:4], "big") & 0x7FFFFFFF
 
 
-def validate_sources(root: pathlib.Path) -> None:
-    validate_m15_competence_evidence.validate(root)
-    validate_m16_cargo_evidence.validate(root)
-    validate_m17_rail_evidence.validate(root)
-    validate_m18_ship_evidence.validate(root)
-    validate_m19_air_evidence.validate(root)
-    validate_m20_competition_evidence.validate(root)
-    validate_m21_broad_evidence.validate(root)
+def validate_sources(
+    root: pathlib.Path,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> None:
+    context = artifact_context or ArtifactContext.offline()
+    del context
+    offline = ArtifactContext.offline()
+    validate_m15_competence_evidence.validate(root, artifact_context=offline)
+    validate_m16_cargo_evidence.validate(root, artifact_context=offline)
+    validate_m17_rail_evidence.validate(root, artifact_context=offline)
+    validate_m18_ship_evidence.validate(root, artifact_context=offline)
+    validate_m19_air_evidence.validate(root, artifact_context=offline)
+    validate_m20_competition_evidence.validate(root, artifact_context=offline)
+    validate_m21_broad_evidence.validate(root, artifact_context=offline)
 
 
 def find_case(evidence: dict[str, Any], case_id: str) -> dict[str, Any]:
@@ -145,9 +158,14 @@ def public_state(program: str, mode: str, climate: str, cargo: str, opponent: st
     }
 
 
-def build(root: pathlib.Path) -> dict[str, Any]:
+def build(
+    root: pathlib.Path,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> dict[str, Any]:
+    context = artifact_context or ArtifactContext.offline()
     root = root.resolve()
-    validate_sources(root)
+    validate_sources(root, artifact_context=context)
     evidence = {gate: load(root / path) for gate, path in SOURCES.items()}
     entries: list[dict[str, Any]] = []
     for split, domain, ordinal_start in (("training", "openttd-rl-v2-m22-training-v1", 0),
@@ -195,17 +213,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--output", type=pathlib.Path, required=True)
+    add_artifact_root_argument(parser)
     args = parser.parse_args()
     try:
+        artifact_root = resolve_artifact_root(args.artifact_root)
+        context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
         output = args.output.resolve()
         require(not output.exists() and not output.is_symlink(), f"output already exists: {output}")
         output.parent.mkdir(parents=True, exist_ok=True)
-        value = build(args.root)
+        value = build(args.root, artifact_context=context)
         output.write_bytes(canonical(value))
         print(f"V2_M22_NATIVE_CORPUS=PASS entries={len(value['entries'])} programs={len(value['programs'])} "
               f"sha256={sha256(output)} output={output}")
         return 0
-    except (M22CorpusError, OSError, KeyError, TypeError, ValueError) as exc:
+    except (M22CorpusError, ArtifactContextError, OSError, KeyError, TypeError, ValueError) as exc:
         print(f"V2_M22_NATIVE_CORPUS=FAIL {exc}", file=sys.stderr)
         return 1
 

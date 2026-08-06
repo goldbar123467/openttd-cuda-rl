@@ -10,15 +10,27 @@ import json
 import math
 import pathlib
 import re
-import subprocess
 import sys
 from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    LiveInputManifest,
+    RoleRequirement,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
 import encode_m22_native_corpus as encoder
 import run_m22_recovery as recovery
 import run_m22_training as training
+from source_context import SourceContextError, run_git
+
+
+REPORT = pathlib.Path("config/v2/m22-training-evidence.json")
+LIVE_CONSUMER = "m22-training-evidence"
 
 
 class M22TrainingValidationError(ValueError):
@@ -36,13 +48,64 @@ def self_hash(value: dict[str, Any]) -> None:
     require(expected == recovery.sha256_bytes(recovery.canonical_bytes(payload)), "M22 training report self-hash mismatch")
 
 
+def _requirements(report: dict[str, Any]) -> tuple[RoleRequirement, ...]:
+    requirements: list[RoleRequirement] = []
+    for run in report["runs"]:
+        process = run["process"]
+        requirements.append(RoleRequirement(
+            "training-artifacts",
+            process["log_path"],
+            "file",
+            LIVE_CONSUMER,
+            process["stdout_sha256"],
+        ))
+        for checkpoint in process["checkpoints"]:
+            for item in checkpoint["files"]:
+                requirements.append(RoleRequirement(
+                    "training-artifacts",
+                    f"{checkpoint['path']}/{item['name']}",
+                    "file",
+                    LIVE_CONSUMER,
+                    item["sha256"],
+                ))
+    identity = report["identity"]
+    requirements.extend((
+        RoleRequirement(
+            "v2-campaign-executable", ".", "file", LIVE_CONSUMER,
+            identity["campaign_executable_sha256"],
+        ),
+        RoleRequirement(
+            "v2-corpus-binary", ".", "file", LIVE_CONSUMER,
+            identity["corpus_binary_sha256"],
+        ),
+    ))
+    require(len(requirements) == len(set(requirements)),
+            "M22 training live-input closure contains duplicates")
+    return tuple(requirements)
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[RoleRequirement, ...]:
+    root = root.resolve()
+    return _requirements(recovery.load(root / REPORT))
+
+
+def committed_bytes(root: pathlib.Path, commit: str, relative: str) -> bytes:
+    try:
+        completed = run_git("show", f"{commit}:{relative}", repository=root)
+    except SourceContextError as exc:
+        raise M22TrainingValidationError(
+            f"M22 historical source is unavailable: {relative}: {exc}"
+        ) from exc
+    require(completed.returncode == 0,
+            f"M22 historical source is unavailable: {relative}")
+    return completed.stdout
+
+
 def committed_files(root: pathlib.Path, commit: str) -> list[dict[str, str]]:
-    result = []
-    for relative in training.SOURCE_PATHS:
-        completed = subprocess.run(["git", "show", f"{commit}:{relative}"], cwd=root, check=True,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        result.append({"path": relative, "sha256": hashlib.sha256(completed.stdout).hexdigest()})
-    return result
+    return [
+        {"path": relative, "sha256": hashlib.sha256(committed_bytes(root, commit, relative)).hexdigest()}
+        for relative in training.SOURCE_PATHS
+    ]
 
 
 def validate_process(process: dict[str, Any], architecture: str, seed: int) -> None:
@@ -55,6 +118,15 @@ def validate_process(process: dict[str, Any], architecture: str, seed: int) -> N
             "M22 training terminal projection drifted")
     require([item["update"] for item in process["checkpoints"]] == list(training.CANDIDATE_UPDATES),
             "M22 training checkpoint cadence drifted")
+    for checkpoint in process["checkpoints"]:
+        checkpoint_path = checkpoint["path"]
+        require(isinstance(checkpoint_path, str) and checkpoint_path and
+                not checkpoint_path.startswith("/") and "\\" not in checkpoint_path and
+                "\x00" not in checkpoint_path and
+                all(part not in {"", ".", ".."} for part in checkpoint_path.split("/")) and
+                checkpoint_path.endswith("/" + checkpoint["id"]) and
+                [item["name"] for item in checkpoint["files"]] == list(recovery.INVENTORY),
+                "M22 training checkpoint inventory/path drifted")
     for index, update in enumerate(process["updates"], 1):
         training.validate_update_counts(update)
         require(update["update"] == index and update["transitions"] == index * 128 and
@@ -115,9 +187,27 @@ def validate_artifacts(report: dict[str, Any], artifact_root: pathlib.Path) -> N
 
 
 def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pathlib.Path | None = None,
-                   executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None) -> None:
+                   executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None, *,
+                   artifact_context: ArtifactContext | None = None,
+                   live_inputs: LiveInputManifest | None = None) -> None:
+    context = artifact_context or ArtifactContext.offline()
+    if artifact_context is not None and not context.is_live:
+        artifact_root = executable = corpus = None
     root = root.resolve()
-    schema = recovery.load(root / training.SCHEMA)
+    source = report.get("source")
+    require(isinstance(source, dict), "M22 training source identity is absent")
+    commit = source.get("repository_commit")
+    require(isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{40}", commit) is not None,
+            "M22 training source commit is malformed")
+    try:
+        retained = run_git("cat-file", "-e", commit + "^{commit}", repository=root)
+    except SourceContextError as exc:
+        raise M22TrainingValidationError(f"M22 training source commit is unavailable: {exc}") from exc
+    require(retained.returncode == 0, "M22 training source commit is not retained")
+    try:
+        schema = json.loads(committed_bytes(root, commit, training.SCHEMA.as_posix()))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise M22TrainingValidationError(f"M22 committed training schema is malformed: {exc}") from exc
     jsonschema.Draft202012Validator.check_schema(schema)
     try:
         jsonschema.Draft202012Validator(schema).validate(report)
@@ -125,26 +215,35 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         location = "/".join(map(str, exc.absolute_path)) or "<root>"
         raise M22TrainingValidationError(f"M22 training schema failed at {location}: {exc.message}") from exc
     self_hash(report)
-    identity = report["identity"]
-    require(identity["learning_contract_sha256"] == training.sha256(root / training.CONTRACT) and
-            identity["native_corpus_sha256"] == training.sha256(root / training.CORPUS) and
-            identity["recovery_evidence_sha256"] == training.sha256(root / training.RECOVERY) and
-            identity["training_schema_sha256"] == training.sha256(root / training.SCHEMA),
-            "M22 training contract/corpus/schema identity drifted")
-    if executable is not None:
-        require(identity["campaign_executable_sha256"] == training.sha256(executable.resolve()) and
-                identity["corpus_binary_sha256"] == training.sha256(corpus.resolve()),
-                "M22 training live executable/corpus identity drifted")
-    source = report["source"]
-    commit = source["repository_commit"]
-    require(re.fullmatch(r"[0-9a-f]{40}", commit) is not None, "M22 training source commit is malformed")
-    retained = subprocess.run(["git", "cat-file", "-e", commit + "^{commit}"], cwd=root,
-                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    require(retained.returncode == 0, "M22 training source commit is not retained")
     files = committed_files(root, commit)
     require(source["clean"] and source["files"] == files and
             source["tree_sha256"] == recovery.sha256_bytes(recovery.canonical_bytes(files)),
             "M22 training source identity drifted")
+    source_hashes = {item["path"]: item["sha256"] for item in files}
+    identity = report["identity"]
+    require(identity["learning_contract_sha256"] == source_hashes[training.CONTRACT.as_posix()] and
+            identity["native_corpus_sha256"] == source_hashes[training.CORPUS.as_posix()] and
+            identity["recovery_evidence_sha256"] == source_hashes[training.RECOVERY.as_posix()] and
+            identity["training_schema_sha256"] == hashlib.sha256(
+                committed_bytes(root, commit, training.SCHEMA.as_posix())).hexdigest(),
+            "M22 training contract/corpus/schema identity drifted")
+    if context.is_live:
+        require(live_inputs is not None and live_inputs.is_live,
+                "live-input manifest is required for live M22 training validation")
+        assert live_inputs is not None
+        require(live_inputs.artifact_root == context.artifact_root,
+                "live-input manifest and artifact context must share one exact artifact root")
+        requirements = _requirements(report)
+        live_inputs.preflight(requirements)
+        artifact_root = live_inputs.resolve(RoleRequirement(
+            "training-artifacts", ".", "directory", LIVE_CONSUMER,
+        ))
+        executable = live_inputs.resolve(requirements[-2])
+        corpus = live_inputs.resolve(requirements[-1])
+    if executable is not None:
+        require(identity["campaign_executable_sha256"] == training.sha256(executable.resolve()) and
+                identity["corpus_binary_sha256"] == training.sha256(corpus.resolve()),
+                "M22 training live executable/corpus identity drifted")
     require(report["configuration"] == {
         "architectures": list(training.ARCHITECTURES), "candidate_updates": list(training.CANDIDATE_UPDATES),
         "device": "cuda:0", "seeds": list(training.SEEDS), "transitions_per_seed": 6144, "updates_per_seed": 48,
@@ -204,38 +303,57 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         "finite_updates": 288, "matched_baseline_campaigns": 18, "maximum_wall_seconds": max(walls),
         "total_transitions": 36864,
     }, "M22 training summary drifted")
-    if artifact_root is not None:
+    if context.is_live and artifact_root is not None:
+        validate_artifacts(report, artifact_root)
+    elif artifact_context is None and artifact_root is not None:
         validate_artifacts(report, artifact_root)
 
 
 def validate(report_path: pathlib.Path, root: pathlib.Path, artifact_root: pathlib.Path | None = None,
-             executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None) -> None:
+             executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None, *,
+             artifact_context: ArtifactContext | None = None,
+             live_inputs: LiveInputManifest | None = None) -> dict[str, bool]:
+    context = artifact_context or ArtifactContext.offline()
     report = recovery.load(report_path.resolve())
     require(report_path.resolve().read_bytes() == recovery.canonical_bytes(report) + b"\n",
             "M22 training evidence is not canonical JSON")
-    validate_value(report, root, artifact_root, executable, corpus)
+    validate_value(
+        report, root, artifact_root, executable, corpus,
+        artifact_context=context if artifact_context is not None else None,
+        live_inputs=live_inputs,
+    )
+    return {"live": context.is_live}
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--report", type=pathlib.Path, required=True)
-    parser.add_argument("--artifact-root", type=pathlib.Path)
-    parser.add_argument("--executable", type=pathlib.Path)
-    parser.add_argument("--corpus", type=pathlib.Path)
-    args = parser.parse_args()
+    add_artifact_root_argument(parser)
+    args = parser.parse_args(argv)
     try:
-        if (args.executable is None) != (args.corpus is None):
-            raise M22TrainingValidationError("--executable and --corpus must be provided together")
-        validate(args.report, args.root, args.artifact_root, args.executable, args.corpus)
+        artifact_root = resolve_artifact_root(args.artifact_root)
+        if artifact_root is None:
+            context = ArtifactContext.offline()
+            live_inputs = LiveInputManifest.offline()
+        else:
+            context = ArtifactContext.live(artifact_root)
+            live_inputs = LiveInputManifest.load(artifact_root)
+        summary = validate(
+            args.report, args.root,
+            artifact_context=context,
+            live_inputs=live_inputs,
+        )
         report = recovery.load(args.report)
     except (M22TrainingValidationError, training.M22TrainingError, recovery.M22RecoveryError,
-            OSError, jsonschema.ValidationError, subprocess.SubprocessError, KeyError, TypeError, ValueError) as exc:
+            ArtifactContextError, SourceContextError, OSError, jsonschema.ValidationError,
+            KeyError, TypeError, ValueError) as exc:
         print(f"V2_M22_TRAINING_EVIDENCE=FAIL {exc}", file=sys.stderr)
         return 1
     selected = report["provisional_development_selection"]
     print(f"V2_M22_TRAINING_EVIDENCE=PASS campaigns={report['summary']['campaigns']} "
-          f"updates={report['summary']['finite_updates']} selected={selected['checkpoint_id']}")
+          f"updates={report['summary']['finite_updates']} selected={selected['checkpoint_id']} "
+          f"live={str(summary['live']).lower()}")
     return 0
 
 

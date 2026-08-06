@@ -10,13 +10,28 @@ import json
 import math
 import pathlib
 import re
-import subprocess
 import sys
 from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    LiveInputManifest,
+    RoleRequirement,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
 import run_m22_recovery as recovery
+from source_context import SourceContextError, run_git
+
+
+RECOVERY_V1 = pathlib.Path("config/v2/m22-recovery-evidence.json")
+RECOVERY_V2 = pathlib.Path("config/v2/m22-recovery-evidence-v2.json")
+LIVE_CONSUMER = "m22-recovery-evidence"
+V1_CONTRACT_SHA256 = "0d47417080e1675ba3040a0eef210fd4cc8c7523b832edfa3d282da7134f6b40"
+V2_CONTRACT_SHA256 = "f3ae8f89dfb6edf19b910c55f55845279b77ddd7be5adbd1db244984f968b07b"
 
 
 class M22RecoveryValidationError(ValueError):
@@ -30,6 +45,79 @@ def require(condition: bool, message: str) -> None:
 
 def load(path: pathlib.Path) -> dict[str, Any]:
     return recovery.load(path)
+
+
+def _requirements(
+    report: dict[str, Any],
+    *,
+    artifact_role: str,
+    executable_role: str,
+    corpus_role: str,
+) -> tuple[RoleRequirement, ...]:
+    requirements: list[RoleRequirement] = []
+    for run in report["runs"]:
+        for process in (run["uninterrupted"], run["prefix"], run["resumed"]):
+            requirements.append(RoleRequirement(
+                artifact_role,
+                process["log_path"],
+                "file",
+                LIVE_CONSUMER,
+                process["stdout_sha256"],
+            ))
+            for checkpoint in process["checkpoints"]:
+                for item in checkpoint["files"]:
+                    requirements.append(RoleRequirement(
+                        artifact_role,
+                        f"{checkpoint['path']}/{item['name']}",
+                        "file",
+                        LIVE_CONSUMER,
+                        item["sha256"],
+                    ))
+    identity = report["identity"]
+    requirements.extend((
+        RoleRequirement(
+            executable_role, ".", "file", LIVE_CONSUMER,
+            identity["campaign_executable_sha256"],
+        ),
+        RoleRequirement(
+            corpus_role, ".", "file", LIVE_CONSUMER,
+            identity["corpus_binary_sha256"],
+        ),
+    ))
+    require(len(requirements) == len(set(requirements)),
+            "M22 recovery live-input closure contains duplicates")
+    return tuple(requirements)
+
+
+def _live_roles(report: dict[str, Any]) -> tuple[str, str, str]:
+    contract_sha256 = report["identity"]["learning_contract_sha256"]
+    if contract_sha256 == V1_CONTRACT_SHA256:
+        return "recovery-v1-artifacts", "recovery-v1-executable", "recovery-v1-corpus"
+    require(contract_sha256 == V2_CONTRACT_SHA256,
+            "M22 recovery learning contract does not identify a frozen recovery version")
+    return "recovery-v2-artifacts", "v2-campaign-executable", "v2-corpus-binary"
+
+
+def _requirements_for_report(report: dict[str, Any]) -> tuple[RoleRequirement, ...]:
+    artifact_role, executable_role, corpus_role = _live_roles(report)
+    return _requirements(
+        report,
+        artifact_role=artifact_role,
+        executable_role=executable_role,
+        corpus_role=corpus_role,
+    )
+
+
+def required_live_inputs(
+    root: pathlib.Path,
+    report_path: pathlib.Path | None = None,
+) -> tuple[RoleRequirement, ...]:
+    root = root.resolve()
+    selected = (report_path or root / RECOVERY_V2).resolve()
+    report = load(selected)
+    require(selected in {(root / RECOVERY_V1).resolve(), (root / RECOVERY_V2).resolve()},
+            "M22 recovery report path does not identify a frozen recovery version")
+    return _requirements_for_report(report)
 
 
 def self_hash(value: dict[str, Any]) -> str:
@@ -65,7 +153,12 @@ def validate_process(process: dict[str, Any], start: int, count: int, architectu
         require(item["retention_ran"] is expected_retention and ("retention" in item) is expected_retention,
                 "M22 recovery retention cadence drifted")
     for item in process["checkpoints"]:
-        require(item["path"].endswith("/" + item["id"]) and
+        checkpoint_path = item["path"]
+        require(isinstance(checkpoint_path, str) and checkpoint_path and
+                not checkpoint_path.startswith("/") and "\\" not in checkpoint_path and
+                "\x00" not in checkpoint_path and
+                all(part not in {"", ".", ".."} for part in checkpoint_path.split("/")) and
+                checkpoint_path.endswith("/" + item["id"]) and
                 [entry["name"] for entry in item["files"]] == list(recovery.INVENTORY),
                 "M22 recovery checkpoint inventory/path drifted")
 
@@ -87,10 +180,15 @@ def validate_artifacts(report: dict[str, Any], artifact_root: pathlib.Path) -> N
 
 
 def committed_bytes(root: pathlib.Path, commit: str, relative: str) -> bytes:
-    return subprocess.run(
-        ["git", "show", f"{commit}:{relative}"], cwd=root, check=True,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    ).stdout
+    try:
+        completed = run_git("show", f"{commit}:{relative}", repository=root)
+    except SourceContextError as exc:
+        raise M22RecoveryValidationError(
+            f"M22 historical source is unavailable: {relative}: {exc}"
+        ) from exc
+    require(completed.returncode == 0,
+            f"M22 historical source is unavailable: {relative}")
+    return completed.stdout
 
 
 def committed_source_files(root: pathlib.Path, commit: str) -> list[dict[str, str]]:
@@ -101,15 +199,22 @@ def committed_source_files(root: pathlib.Path, commit: str) -> list[dict[str, st
 
 
 def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pathlib.Path | None = None,
-                   executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None) -> None:
+                   executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None, *,
+                   artifact_context: ArtifactContext | None = None,
+                   live_inputs: LiveInputManifest | None = None) -> None:
+    context = artifact_context or ArtifactContext.offline()
+    if artifact_context is not None and not context.is_live:
+        artifact_root = executable = corpus = None
     root = root.resolve()
     source = report.get("source")
     require(isinstance(source, dict), "M22 recovery source identity is absent")
     commit = source.get("repository_commit")
     require(isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{40}", commit) is not None,
             "M22 recovery repository commit is malformed")
-    contained = subprocess.run(["git", "cat-file", "-e", commit + "^{commit}"], cwd=root,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        contained = run_git("cat-file", "-e", commit + "^{commit}", repository=root)
+    except SourceContextError as exc:
+        raise M22RecoveryValidationError(f"M22 recovery source commit is unavailable: {exc}") from exc
     require(contained.returncode == 0, "M22 recovery source commit is not retained")
     try:
         schema = json.loads(committed_bytes(root, commit, recovery.SCHEMA.as_posix()))
@@ -135,6 +240,20 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
     require(identity["recovery_schema_sha256"] == hashlib.sha256(
                 committed_bytes(root, commit, recovery.SCHEMA.as_posix())).hexdigest(),
             "M22 recovery schema identity drifted")
+    if context.is_live:
+        require(live_inputs is not None and live_inputs.is_live,
+                "live-input manifest is required for live M22 recovery validation")
+        assert live_inputs is not None
+        require(live_inputs.artifact_root == context.artifact_root,
+                "live-input manifest and artifact context must share one exact artifact root")
+        requirements = _requirements_for_report(report)
+        live_inputs.preflight(requirements)
+        artifact_role, _, _ = _live_roles(report)
+        artifact_root = live_inputs.resolve(RoleRequirement(
+            artifact_role, ".", "directory", LIVE_CONSUMER,
+        ))
+        executable = live_inputs.resolve(requirements[-2])
+        corpus = live_inputs.resolve(requirements[-1])
     if executable is not None:
         require(identity["campaign_executable_sha256"] == recovery.sha256(executable.resolve()),
                 "M22 recovery campaign executable identity drifted")
@@ -184,37 +303,55 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
              for process in (run["uninterrupted"], run["prefix"], run["resumed"])]
     require(summary == {"architectures": 2, "exact_architectures": 2, "fresh_processes": 6,
                         "maximum_wall_seconds": max(walls)}, "M22 recovery summary drifted")
-    if artifact_root is not None:
+    if context.is_live and artifact_root is not None:
+        validate_artifacts(report, artifact_root)
+    elif artifact_context is None and artifact_root is not None:
         validate_artifacts(report, artifact_root)
 
 
 def validate(report_path: pathlib.Path, root: pathlib.Path, artifact_root: pathlib.Path | None = None,
-             executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None) -> None:
+             executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None, *,
+             artifact_context: ArtifactContext | None = None,
+             live_inputs: LiveInputManifest | None = None) -> dict[str, bool]:
+    context = artifact_context or ArtifactContext.offline()
     report_path = report_path.resolve()
     report = load(report_path)
     require(report_path.read_bytes() == recovery.canonical_bytes(report) + b"\n", "M22 recovery evidence is not canonical JSON")
-    validate_value(report, root, artifact_root, executable, corpus)
+    validate_value(
+        report, root, artifact_root, executable, corpus,
+        artifact_context=context if artifact_context is not None else None,
+        live_inputs=live_inputs,
+    )
+    return {"live": context.is_live}
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--report", type=pathlib.Path, required=True)
-    parser.add_argument("--artifact-root", type=pathlib.Path)
-    parser.add_argument("--executable", type=pathlib.Path)
-    parser.add_argument("--corpus", type=pathlib.Path)
-    args = parser.parse_args()
+    add_artifact_root_argument(parser)
+    args = parser.parse_args(argv)
     try:
-        if (args.executable is None) != (args.corpus is None):
-            raise M22RecoveryValidationError("--executable and --corpus must be provided together")
-        validate(args.report, args.root, args.artifact_root, args.executable, args.corpus)
+        artifact_root = resolve_artifact_root(args.artifact_root)
+        if artifact_root is None:
+            context = ArtifactContext.offline()
+            live_inputs = LiveInputManifest.offline()
+        else:
+            context = ArtifactContext.live(artifact_root)
+            live_inputs = LiveInputManifest.load(artifact_root)
+        summary = validate(
+            args.report, args.root,
+            artifact_context=context,
+            live_inputs=live_inputs,
+        )
         report = load(args.report)
-    except (M22RecoveryValidationError, recovery.M22RecoveryError, OSError, jsonschema.ValidationError,
-            subprocess.SubprocessError, KeyError, TypeError, ValueError) as exc:
+    except (M22RecoveryValidationError, recovery.M22RecoveryError, ArtifactContextError,
+            SourceContextError, OSError,
+            jsonschema.ValidationError, KeyError, TypeError, ValueError) as exc:
         print(f"V2_M22_RECOVERY_EVIDENCE=FAIL {exc}", file=sys.stderr)
         return 1
     print(f"V2_M22_RECOVERY_EVIDENCE=PASS architectures={report['summary']['architectures']} "
-          f"fresh_processes={report['summary']['fresh_processes']}")
+          f"fresh_processes={report['summary']['fresh_processes']} live={str(summary['live']).lower()}")
     return 0
 
 

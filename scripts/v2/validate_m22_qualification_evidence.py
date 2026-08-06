@@ -10,17 +10,29 @@ import json
 import math
 import pathlib
 import re
-import subprocess
 import sys
 from typing import Any
 
 import jsonschema
 
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    LiveInputManifest,
+    RoleRequirement,
+    add_artifact_root_argument,
+    resolve_artifact_root,
+)
 import run_m22_qualification as qualification
 import run_m22_recovery as recovery
 import run_m22_training as training
 import validate_m22_native_corpus as native_validator
 import validate_m22_training_evidence as training_validator
+from source_context import SourceContextError, run_git
+
+
+REPORT = pathlib.Path("config/v2/m22-qualification-evidence.json")
+LIVE_CONSUMER = "m22-qualification-evidence"
 
 
 class M22QualificationValidationError(ValueError):
@@ -33,10 +45,14 @@ def require(condition: bool, message: str) -> None:
 
 
 def committed_bytes(root: pathlib.Path, commit: str, relative: str) -> bytes:
-    completed = subprocess.run(
-        ["git", "show", f"{commit}:{relative}"], cwd=root,
-        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    )
+    try:
+        completed = run_git("show", f"{commit}:{relative}", repository=root)
+    except SourceContextError as exc:
+        raise M22QualificationValidationError(
+            f"M22 historical source is unavailable: {relative}: {exc}"
+        ) from exc
+    require(completed.returncode == 0,
+            f"M22 historical source is unavailable: {relative}")
     return completed.stdout
 
 
@@ -52,6 +68,52 @@ def self_hash(report: dict[str, Any]) -> None:
     expected = payload.pop("report_sha256")
     require(expected == recovery.sha256_bytes(recovery.canonical_bytes(payload)),
             "M22 qualification report self-hash mismatch")
+
+
+def _requirements(report: dict[str, Any]) -> tuple[RoleRequirement, ...]:
+    selected = report["finalized_selection"]
+    checkpoint = report["identity"]["checkpoint"]
+    require(checkpoint["path"] == selected["checkpoint_path"],
+            "M22 qualification selected checkpoint path drifted")
+    requirements = [
+        RoleRequirement(
+            "qualification-artifacts",
+            item["path"],
+            "file",
+            LIVE_CONSUMER,
+            item["sha256"],
+        )
+        for item in report["artifacts"]
+    ]
+    requirements.extend(
+        RoleRequirement(
+            "training-artifacts",
+            f"{selected['checkpoint_path']}/{item['name']}",
+            "file",
+            LIVE_CONSUMER,
+            item["sha256"],
+        )
+        for item in checkpoint["files"]
+    )
+    identity = report["identity"]
+    requirements.extend((
+        RoleRequirement(
+            "qualification-executable", ".", "file", LIVE_CONSUMER,
+            identity["qualification_executable_sha256"],
+        ),
+        RoleRequirement(
+            "v2-corpus-binary", ".", "file", LIVE_CONSUMER,
+            identity["corpus_binary_sha256"],
+        ),
+    ))
+    require(len(requirements) == len(set(requirements)),
+            "M22 qualification live-input closure contains duplicates")
+    return tuple(requirements)
+
+
+def required_live_inputs(root: pathlib.Path) -> tuple[RoleRequirement, ...]:
+    root = root.resolve()
+    return _requirements(recovery.load(root / REPORT))
 
 
 def close(actual: float, expected: float) -> bool:
@@ -131,21 +193,51 @@ def validate_device_result(result: dict[str, Any], contract: dict[str, Any], sel
     }, "M22 qualification device semantics drifted")
 
 
+def validate_artifacts(report: dict[str, Any], artifact_root: pathlib.Path) -> None:
+    artifact_root = artifact_root.resolve()
+    require(artifact_root.is_dir() and not artifact_root.is_symlink(),
+            "M22 qualification artifact root is unavailable")
+    expected_artifacts = []
+    for name in qualification.ARTIFACT_NAMES:
+        path = artifact_root / name
+        require(path.is_file() and not path.is_symlink(),
+                f"M22 qualification artifact is absent: {name}")
+        expected_artifacts.append({
+            "bytes": path.stat().st_size,
+            "path": name,
+            "sha256": training.sha256(path),
+        })
+    require(report["artifacts"] == expected_artifacts,
+            "M22 qualification artifact inventory drifted")
+    require(recovery.load(artifact_root / "device-result.json") == report["device_result"] and
+            recovery.load(artifact_root / "gpu-monitor-summary.json") == report["telemetry"],
+            "M22 qualification embedded device/telemetry result drifted from artifacts")
+    require(report["process"]["stdout_sha256"] == training.sha256(artifact_root / "stdout.txt") and
+            report["process"]["stderr_sha256"] == training.sha256(artifact_root / "stderr.txt"),
+            "M22 qualification process log identity drifted")
+
+
 def validate_value(
     report: dict[str, Any], root: pathlib.Path, training_artifact_root: pathlib.Path | None = None,
     artifact_root: pathlib.Path | None = None, executable: pathlib.Path | None = None,
-    corpus: pathlib.Path | None = None,
+    corpus: pathlib.Path | None = None, *, artifact_context: ArtifactContext | None = None,
+    live_inputs: LiveInputManifest | None = None,
 ) -> None:
+    context = artifact_context or ArtifactContext.offline()
+    if artifact_context is not None and not context.is_live:
+        training_artifact_root = artifact_root = executable = corpus = None
     root = root.resolve()
     source = report.get("source")
     require(isinstance(source, dict), "M22 qualification source identity is absent")
     commit = source.get("repository_commit")
     require(isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{40}", commit) is not None,
             "M22 qualification source commit is malformed")
-    retained = subprocess.run(
-        ["git", "cat-file", "-e", commit + "^{commit}"], cwd=root,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
+    try:
+        retained = run_git("cat-file", "-e", commit + "^{commit}", repository=root)
+    except SourceContextError as exc:
+        raise M22QualificationValidationError(
+            f"M22 qualification source commit is unavailable: {exc}"
+        ) from exc
     require(retained.returncode == 0, "M22 qualification source commit is not retained")
     schema_bytes = committed_bytes(root, commit, qualification.SCHEMA.as_posix())
     schema = json.loads(schema_bytes)
@@ -171,6 +263,22 @@ def validate_value(
     }
     require(all(identity[key] == value for key, value in expected_committed.items()),
             "M22 qualification committed contract/corpus/schema/training identity drifted")
+    if context.is_live:
+        require(live_inputs is not None and live_inputs.is_live,
+                "live-input manifest is required for live M22 qualification validation")
+        assert live_inputs is not None
+        require(live_inputs.artifact_root == context.artifact_root,
+                "live-input manifest and artifact context must share one exact artifact root")
+        requirements = _requirements(report)
+        live_inputs.preflight(requirements)
+        artifact_root = live_inputs.resolve(RoleRequirement(
+            "qualification-artifacts", ".", "directory", LIVE_CONSUMER,
+        ))
+        training_artifact_root = live_inputs.resolve(RoleRequirement(
+            "training-artifacts", ".", "directory", LIVE_CONSUMER,
+        ))
+        executable = live_inputs.resolve(requirements[-2])
+        corpus = live_inputs.resolve(requirements[-1])
     if executable is not None or corpus is not None:
         require(executable is not None and corpus is not None and
                 identity["qualification_executable_sha256"] == training.sha256(executable.resolve()) and
@@ -178,7 +286,12 @@ def validate_value(
                 "M22 qualification live executable/corpus identity drifted")
 
     training_report = recovery.load(root / qualification.TRAINING)
-    training_validator.validate_value(training_report, root, training_artifact_root)
+    training_validator.validate_value(
+        training_report,
+        root,
+        artifact_context=ArtifactContext.offline(),
+        live_inputs=LiveInputManifest.offline(),
+    )
     selected = training_report["provisional_development_selection"]
     selected_run, selected_candidate, selected_checkpoint = selected_records(training_report)
     require(identity["checkpoint"] == selected_checkpoint,
@@ -212,7 +325,10 @@ def validate_value(
     decoded = training.encoder.decode(corpus.resolve().read_bytes()) if corpus is not None else training.encoder.decode(training.encoder.encode(root))
     validate_device_result(report["device_result"], contract, selected, decoded)
 
-    native_summary = native_validator.validate(root)
+    native_summary = native_validator.validate(
+        root,
+        artifact_context=ArtifactContext.offline(),
+    )
     corpus_json = recovery.load(root / qualification.CORPUS)
     expected_native = {
         "accepted_checkpoint_count": 1,
@@ -243,59 +359,60 @@ def validate_value(
         "accepted_checkpoints": 1, "benchmark_measurements": 6, "final_manifest_accessed": False,
         "native_gates": 7, "parity_batches": 3, "retained_programs": 16, "selection_finalized": True,
     }, "M22 qualification summary drifted")
+    require([item["path"] for item in report["artifacts"]] == list(qualification.ARTIFACT_NAMES),
+            "M22 qualification artifact path inventory drifted")
 
-    if artifact_root is not None:
-        artifact_root = artifact_root.resolve()
-        require(artifact_root.is_dir() and not artifact_root.is_symlink(),
-                "M22 qualification artifact root is unavailable")
-        expected_artifacts = []
-        for name in qualification.ARTIFACT_NAMES:
-            path = artifact_root / name
-            require(path.is_file() and not path.is_symlink(), f"M22 qualification artifact is absent: {name}")
-            expected_artifacts.append({"bytes": path.stat().st_size, "path": name, "sha256": training.sha256(path)})
-        require(report["artifacts"] == expected_artifacts,
-                "M22 qualification artifact inventory drifted")
-        require(recovery.load(artifact_root / "device-result.json") == report["device_result"] and
-                recovery.load(artifact_root / "gpu-monitor-summary.json") == report["telemetry"],
-                "M22 qualification embedded device/telemetry result drifted from artifacts")
-        require(report["process"]["stdout_sha256"] == training.sha256(artifact_root / "stdout.txt") and
-                report["process"]["stderr_sha256"] == training.sha256(artifact_root / "stderr.txt"),
-                "M22 qualification process log identity drifted")
+    if artifact_root is not None and (context.is_live or artifact_context is None):
+        validate_artifacts(report, artifact_root)
 
 
 def validate(
     report_path: pathlib.Path, root: pathlib.Path, training_artifact_root: pathlib.Path | None = None,
     artifact_root: pathlib.Path | None = None, executable: pathlib.Path | None = None,
-    corpus: pathlib.Path | None = None,
-) -> None:
+    corpus: pathlib.Path | None = None, *, artifact_context: ArtifactContext | None = None,
+    live_inputs: LiveInputManifest | None = None,
+) -> dict[str, bool]:
+    context = artifact_context or ArtifactContext.offline()
     report = recovery.load(report_path.resolve())
     require(report_path.resolve().read_bytes() == recovery.canonical_bytes(report) + b"\n",
             "M22 qualification evidence is not canonical JSON")
-    validate_value(report, root, training_artifact_root, artifact_root, executable, corpus)
+    validate_value(
+        report, root, training_artifact_root, artifact_root, executable, corpus,
+        artifact_context=context if artifact_context is not None else None,
+        live_inputs=live_inputs,
+    )
+    return {"live": context.is_live}
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--report", type=pathlib.Path, required=True)
-    parser.add_argument("--training-artifact-root", type=pathlib.Path)
-    parser.add_argument("--artifact-root", type=pathlib.Path)
-    parser.add_argument("--executable", type=pathlib.Path)
-    parser.add_argument("--corpus", type=pathlib.Path)
-    args = parser.parse_args()
+    add_artifact_root_argument(parser)
+    args = parser.parse_args(argv)
     try:
-        if (args.executable is None) != (args.corpus is None):
-            raise M22QualificationValidationError("--executable and --corpus must be provided together")
-        validate(args.report, args.root, args.training_artifact_root, args.artifact_root, args.executable, args.corpus)
+        artifact_root = resolve_artifact_root(args.artifact_root)
+        if artifact_root is None:
+            context = ArtifactContext.offline()
+            live_inputs = LiveInputManifest.offline()
+        else:
+            context = ArtifactContext.live(artifact_root)
+            live_inputs = LiveInputManifest.load(artifact_root)
+        summary = validate(
+            args.report, args.root,
+            artifact_context=context,
+            live_inputs=live_inputs,
+        )
         report = recovery.load(args.report)
     except (M22QualificationValidationError, qualification.M22QualificationError, training.M22TrainingError,
-            recovery.M22RecoveryError, OSError, json.JSONDecodeError, jsonschema.ValidationError,
-            subprocess.SubprocessError, KeyError, TypeError, ValueError) as exc:
+            recovery.M22RecoveryError, ArtifactContextError, SourceContextError, OSError, json.JSONDecodeError,
+            jsonschema.ValidationError, KeyError, TypeError, ValueError) as exc:
         print(f"V2_M22_QUALIFICATION_EVIDENCE=FAIL {exc}", file=sys.stderr)
         return 1
     selected = report["finalized_selection"]
     print(f"V2_M22_QUALIFICATION_EVIDENCE=PASS checkpoint={selected['checkpoint_id']} "
-          f"parity={report['summary']['parity_batches']} native_programs={report['summary']['retained_programs']}")
+          f"parity={report['summary']['parity_batches']} native_programs={report['summary']['retained_programs']} "
+          f"live={str(summary['live']).lower()}")
     return 0
 
 
