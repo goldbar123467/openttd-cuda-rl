@@ -522,7 +522,7 @@ _FINGERPRINT_TABLES = frozenset({
 # table, while excluding verify_driver keeps the update order acyclic: update
 # provider hashes, then this anchor, then the verify_driver provider hash.
 _PROVIDER_DEPENDENCY_TRUST_ANCHOR_SHA256 = (
-    "ff118c572f98e8392bc67be11e8f7e0092c74612f7b4b007ea8d7d53db5faa9c"
+    "1c200ee3bb481e6ecb3f3906dcc17902c1ea38c1a4ce71a6c9f3df7b095a7096"
 )
 _FINGERPRINT_SOURCE_CACHE: dict[
     tuple[str, str, str], tuple[str, tuple[str, ...]]

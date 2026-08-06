@@ -95,6 +95,42 @@ class M15EpisodeEvidenceTests(unittest.TestCase):
                     artifact_context=ArtifactContext.offline(),
                 )
 
+    def test_recorded_artifact_base_is_strict_absolute_posix(self) -> None:
+        cases = (
+            ("absolute", "/recorded/openttd-rl", True),
+            ("empty", "", False),
+            ("relative", "recorded/openttd-rl", False),
+            ("double-leading-slash", "//recorded/openttd-rl", False),
+            ("dot-component", "/recorded/./openttd-rl", False),
+            ("empty-component", "/recorded//openttd-rl", False),
+            ("backslash", "/recorded\\openttd-rl", False),
+            ("nul", "/recorded/\x00openttd-rl", False),
+        )
+        for label, recorded_base, accepted in cases:
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as raw:
+                value = copy.deepcopy(self.config)
+                value["artifact_base_hint"] = recorded_base
+                path = self.write(pathlib.Path(raw), value)
+                if accepted:
+                    summary = freeze_m15_episode_evidence.validate(
+                        self.root,
+                        path,
+                        self.schema,
+                        artifact_context=ArtifactContext.offline(),
+                    )
+                    self.assertFalse(summary.live)
+                else:
+                    with self.assertRaises(
+                        freeze_m15_episode_evidence.M15EpisodeEvidenceError,
+                    ) as raised:
+                        freeze_m15_episode_evidence.validate(
+                            self.root,
+                            path,
+                            self.schema,
+                            artifact_context=ArtifactContext.offline(),
+                        )
+                    self.assertTrue(str(raised.exception))
+
     def test_live_capture_binary_corruption_fails(self) -> None:
         artifact_base = resolve_artifact_root(None)
         if artifact_base is None:

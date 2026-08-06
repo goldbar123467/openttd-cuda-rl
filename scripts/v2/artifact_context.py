@@ -25,44 +25,44 @@ LIVE_INPUT_SCHEMA_VERSION = "openttd-rl-v2-live-inputs-1"
 # registry implementation so provider source and command closure drift fail
 # before any verification command runs.
 LIVE_PROVIDER_AST_SHA256: Mapping[str, str] = MappingProxyType({
-    "validate_m15_action_evidence": "a8298f04d28509ca04cc2164eb5c738a3cdec8e41bd857137b5446e75b6c74ce",
-    "validate_m15_action_source": "45c21f50ad7b5e79663e6b651dde30c01cde7f949e277b72d264ea5d04c5d6ee",
-    "validate_m15_competence_evidence": "68a24af0cab13b21e8a9248152aeff2ae58e2bad59ae1c164f03f955016e01d7",
-    "validate_m15_competence_source": "03e02a6d4b4847270dee9ad1be42cf168163a01e9784a0e685ba2058dd4a6e42",
-    "validate_m15_cross_scale_replay_evidence": "d4898c6180c04ddb7b991d31f00005018531bf7d92d2c282915076b6fd0de544",
-    "validate_m15_episode_evidence": "c69d6c6b6538763765f7c35b42800549f4355530ab8bee18cb378ce019c38ec8",
-    "validate_m15_episode_source": "ae08275eb1bcbb9e6be40ef01791a1dacef2fdb2f88c5d42d6dfc69450227e23",
-    "validate_m15_map_evidence": "49b4b1ed5bd5b84be4e9d39782ed5d3e81be25145028f03ff75c920257a70d80",
-    "validate_m15_native_reset_evidence": "92c69ed87c8d8a572b11f3057d55c381ea8a12d0de61852f4d4642c17f5bf900",
-    "validate_m15_native_reset_matrix": "745de0db14d78bc89c99971e0ef9e72785d50d1bfb9ce48ba0e1388e6654126a",
-    "validate_m15_native_source": "d961c6f6a6e2b0a35437379525eb08a90a97923539612ea9b07294d62c8bc25a",
-    "validate_m15_observation_evidence": "eac04b52b3f45599159012f56878faae5a7a756f7719cd61ffa668eac56329c4",
-    "validate_m15_observation_source": "4371fcd1fb928ffb38080319d876e67999fbe5ad101a9b5b28fc7c5e1597d1b2",
-    "validate_m15_policy_evidence": "1581d709f350e34ee4f9042e15111e1d63479f918792d3e43537fc7c7c28f32b",
-    "validate_m16_cargo_evidence": "ba506aec5e165f4f34af124cf95ca56ea01cd070039da8cf1ac0727ba288bac2",
-    "validate_m16_cargo_source": "4ce68e52d6faef94c727daf00820f17d8e48d9157947810b50fe90410d97486d",
-    "validate_m17_rail_evidence": "57ade1231c26124eee4da161544abe72926a90d1269586c0d40b931f1ab23735",
-    "validate_m17_rail_source": "5d4e3e2c64b8c3e431979080bd502c452604f6bcd136aad88faf769c12383ceb",
-    "validate_m18_ship_evidence": "89340dfe86fc120a3b603381bf8a2436c61067320ab9fe902287dc0ec4e9f7f6",
-    "validate_m18_ship_source": "dd02ff6f8072f0a5eaaf53a3d3f19150763fef05091fd97b8a7b12ef889f6aa3",
-    "validate_m18_shipai_evidence": "b9ed51c60b5472b4d6e940d4c89e11457e16d9292750f5e806296ca637c970af",
-    "validate_m19_air_evidence": "d6c610531bb76d0281f02156d60d686e9d1c364d3a834aec0db6f5a8b3d1b4c3",
-    "validate_m19_air_source": "13290ea4914229164e96011a755b220ded844dab0a10f476e2f7c1248fe46680",
-    "validate_m20_competition_evidence": "2575ed7b981aea85400252d0a6860d46a99a81626d5c1aa6a2746771e87363a9",
-    "validate_m20_competition_source": "7dc06fb588893612d775515676b6cde0724367172823fe3d39d5be26769fe5e8",
-    "validate_m21_broad_evidence": "7449adca3676790c85deeb8962ee10289f34a3b1d8f8bd57a0243a55a24c3ea0",
-    "validate_m21_broad_source": "059c0e39a5fc4de27b16b8dd39ca52d798b9032430d7179f6aca5e02cd787dd4",
-    "validate_m22_final_evaluation": "b998493839d5536a6cd7cba36aef6ee9f29d6a27c2529720cb3d0442ee0ebaa1",
-    "validate_m22_final_runtime_source": "72ce0512e75604e6d3e71de54938f6bb971c2252f52ef01acd11bc026479a085",
-    "validate_m22_followup_evaluation": "38aac5c73aa33978a24fb7df0dd049be7ecd6c816e322f3a204554b1cbaf3276",
-    "validate_m22_followup_runtime_source": "0e3a6722748c948c3ff8eedc9df8451a79b8c0aec5b54a119c88c1bcb0e649aa",
-    "validate_m22_followup_v2_evaluation": "762814bc55ea20bccca8128a288a10e9e14062636f525958fc2abb85e3d58c25",
-    "validate_m22_qualification_evidence": "bdc1bc0e861915f093d2d1bca79ceddb96e3d939d234df7a2034d0d9a472b445",
-    "validate_m22_recovery_evidence": "94c85eca6665d641830a445b8d11edc8269e82e9422f323a74fd09fd3b819a84",
-    "validate_m22_training_evidence": "50d1a80a74e9f793894cb7f43ebe68fcba47b4702178658e1a057c7c3cf980ab",
-    "validate_opponent_package_evidence": "b1f1fa08b106058b53bf55ba693877c281ee5754516313e024e5b9c6b6d1e804",
-    "validate_opponent_runtime_evidence": "ac153e12608c81129005fe64218c7f34f5bd997762ba4abb869bfae9ca754af3",
-    "verify_driver": "ad7b955929ed1a210300bcd5e85ad8929cc292ccdd85adce2312ef4dc3e0d8af",
+    "validate_m15_action_evidence": "bfadf8ab31490e27cdf786266c4bab868e9586c85cfaf4a3e095f58207ad60b3",
+    "validate_m15_action_source": "a57ddbabca0b8a4d0a9e59f0758a4220d5280a8ed83038beaf427296901632a8",
+    "validate_m15_competence_evidence": "99c978bfdacee4106dad6e1fc4a6d4b9df0534a62908dd2e94dea907e1a1fb0a",
+    "validate_m15_competence_source": "291ffe97fe69f386a85a88a2138329c78e70c2d6b07eecadf878063f719fc391",
+    "validate_m15_cross_scale_replay_evidence": "987ea4cb5c56dfc39f097c53b0868364a9f5c5ae7cde31f82cc86b139f2a9c2d",
+    "validate_m15_episode_evidence": "1a424ad2d087d0e2e56dee2801a822f4676a77e1801d2bfed6b9e4deb2888055",
+    "validate_m15_episode_source": "aeb15a1994187fcb97c1fda6c36184371583adaf6cfca21491c1eb3e2b3ab84f",
+    "validate_m15_map_evidence": "4296f41fca43405373e37abe48b3bc3cccce9916db2cf0ab7dcbb814677ee54f",
+    "validate_m15_native_reset_evidence": "1c570afd0676a79adc3a4706e3eb7ac11b23c2104e9b378c061c8a9fa07e8238",
+    "validate_m15_native_reset_matrix": "e9bc4057105961b99e4f02ed47b8268109b4cd0ed00560a9eef9a2d27be8d55b",
+    "validate_m15_native_source": "de908c3aaae6651a65bf9b278a632f831db89cb7b37ef477bcfa09ba964a5285",
+    "validate_m15_observation_evidence": "dbb27115c9b8ba3023c4798beef02d8dc6e7a1cd36af12961dc30e37d501a272",
+    "validate_m15_observation_source": "3a554666c64f10664174ccb0267217ca74bac28e5b2396fe9f196f7b9d139169",
+    "validate_m15_policy_evidence": "4901dcaeb7a50b34d548bdab423a40f70c68c791e5525818229bd024c5924c6a",
+    "validate_m16_cargo_evidence": "1ed0836b2efd0f75ed1869b6d1c2b3ee8c53bd41a6739cd959091c84fe4c68b7",
+    "validate_m16_cargo_source": "818d674608b67b0e08f38013f66628e5890126ba326b4defbd6dbb374b81a45d",
+    "validate_m17_rail_evidence": "6ca5612ccca4437c0a65c1b9e16636ca3fed56bf42ff35aa712918d826660811",
+    "validate_m17_rail_source": "ab4ecf7b214119dbb657c5568e530e51ec7aead6de5c37bbef69f4418da07162",
+    "validate_m18_ship_evidence": "45c6fbcbb74cf268c5a6e77681d2ddcb1a58686ec5a4be3320898468ee99a4a2",
+    "validate_m18_ship_source": "d187b945143bcad271ab004359d26f8d592114ad180ca67bf670de4db10811a2",
+    "validate_m18_shipai_evidence": "44af853843f1f5e28eb812a7ab4740e44dd423afc40c426c493623f4b56ffd19",
+    "validate_m19_air_evidence": "6e5f757c022fd3a2e5fa8922026fbe603d8690e54e9be0131f45b608aada30fe",
+    "validate_m19_air_source": "da10964658870175a504e833fd85f37ee78f5ee6e5f8421b68f36dacf493e69f",
+    "validate_m20_competition_evidence": "1e94eaa240deb9b1b34cbe4ab79882891592166de0abe2249cdba8048f7a3339",
+    "validate_m20_competition_source": "e9c8e615b0343fe2785243d474d74b3741d708b74c3b2273d70ac45925a7849a",
+    "validate_m21_broad_evidence": "f11ef93ffde5065777c3e66c879a1e3a1b90c0718f50a1e66042a0b82b22d260",
+    "validate_m21_broad_source": "0d5af5462c2f3dd64ca243e27aef10b28ebc6409e24f2156589b8af48566f600",
+    "validate_m22_final_evaluation": "b12cfa1881694dc54bc9d9f1b6dd6d7a29b11bd7d297601a6ac03cc3e53043c4",
+    "validate_m22_final_runtime_source": "dd9e83f589988485b266dcf497d57de2dbd223d359fa14af2a17becf2cf069ef",
+    "validate_m22_followup_evaluation": "e924692a4a15ce480e9e7f530fb03b89b5b0727a6f4c4da46d8fd48107a87d03",
+    "validate_m22_followup_runtime_source": "31b7b56ff0c0aa300f23d43e596c2e79a6267503e6e23a00db8efc7c4460369a",
+    "validate_m22_followup_v2_evaluation": "c29af14bc3ab48d2407359e798cfcb116ab43a56cbd3a5d12c5be712618c1214",
+    "validate_m22_qualification_evidence": "f81242a7c72830344fdf02e81f82640195cb76f1661236bfd980c0fdf80b57ae",
+    "validate_m22_recovery_evidence": "7ebb4f8e46ff219b77a605dd1609c6d8b8ec3f167d4c312c96aaf86c277e3eb1",
+    "validate_m22_training_evidence": "5590282e30e194e916261ecab90f0e38ea9ae701edf0b9af86d6ac221ae997a4",
+    "validate_opponent_package_evidence": "8179fefb95562f59ac3511c7031798a55690e225cefc3600dbe24404688d04e8",
+    "validate_opponent_runtime_evidence": "e57a91cba58fb5da46b9a45dccd7e13dc1aae8f2fd758490f8bdc47c0b00e9bf",
+    "verify_driver": "8dd7f543ae17a6a1e825dd2d4df1dfd3c0546084c540a7a0f8d0464944622984",
 })
 LIVE_COMMAND_REGISTRY_SHA256: Mapping[str, str] = MappingProxyType({
     "opponent-package-evidence": "c59947ab2c41b4de3905a349c695deea8d5daffe55f239bf072fdd893539e5ce",
@@ -158,7 +158,9 @@ def _relative_parts(
     return tuple(parts)
 
 
-def _absolute_parts(value: str, *, label: str) -> tuple[str, ...]:
+def absolute_posix_parts(value: str, *, label: str) -> tuple[str, ...]:
+    """Return the components of one unambiguous absolute POSIX path."""
+
     if (
         not isinstance(value, str)
         or not value.startswith("/")
@@ -476,7 +478,7 @@ def _duplicate_issues(pairs: _ObjectPairs, *, label: str) -> list[str]:
 
 def _manifest_role_path(root: pathlib.Path, value: str) -> pathlib.Path:
     if value.startswith("/"):
-        candidate = pathlib.Path("/").joinpath(*_absolute_parts(value, label="live-input path"))
+        candidate = pathlib.Path("/").joinpath(*absolute_posix_parts(value, label="live-input path"))
         try:
             relative = candidate.relative_to(root)
         except ValueError as exc:
@@ -498,7 +500,7 @@ def _bound_role_path(
         raise ArtifactContextError(f"live-input binding must be a path: {value!r}")
     raw = str(value)
     candidate = pathlib.Path("/").joinpath(
-        *_absolute_parts(raw, label="live-input binding")
+        *absolute_posix_parts(raw, label="live-input binding")
     )
     try:
         relative = candidate.relative_to(root)
@@ -535,7 +537,7 @@ class LiveInputManifest:
             raise TypeError("live-input binding requires an ArtifactContext")
         root = context._live_root()
         if root != pathlib.Path("/"):
-            _absolute_parts(str(root), label="artifact root")
+            absolute_posix_parts(str(root), label="artifact root")
         _raise_issues(_path_issues(root, kind="directory", label="artifact root"))
         if not isinstance(bindings, Mapping):
             raise TypeError("live-input bindings must be a mapping")

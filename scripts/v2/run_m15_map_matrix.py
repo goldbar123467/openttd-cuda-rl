@@ -25,6 +25,7 @@ from artifact_context import (
     ArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
+    absolute_posix_parts,
 )
 import qualify_m15_native_map
 
@@ -122,15 +123,12 @@ def result_projection(manifest: dict[str, Any], artifact_dir: str, evidence_sha2
 
 def _recorded_artifact_set(evidence: dict[str, Any]) -> str:
     recorded_hint = evidence["artifact_base_hint"]
-    hint = pathlib.PurePosixPath(recorded_hint)
-    require(
-        isinstance(recorded_hint, str)
-        and recorded_hint.startswith("/")
-        and not recorded_hint.startswith("//")
-        and str(hint) == recorded_hint
-        and all(part not in {"", ".", ".."} for part in hint.parts[1:]),
-        "M15 map recorded artifact hint is not an absolute normalized POSIX path",
-    )
+    try:
+        absolute_posix_parts(recorded_hint, label="M15 map recorded artifact hint")
+    except ArtifactContextError as exc:
+        raise M15MapMatrixError(
+            "M15 map recorded artifact hint is not an absolute normalized POSIX path"
+        ) from exc
     logical_set = evidence["artifact_root"]
     require(
         isinstance(logical_set, str)

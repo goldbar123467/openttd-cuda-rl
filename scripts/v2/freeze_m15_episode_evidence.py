@@ -15,7 +15,12 @@ from typing import Any
 
 import jsonschema
 
-from artifact_context import ArtifactContext, ArtifactRequirement
+from artifact_context import (
+    ArtifactContext,
+    ArtifactContextError,
+    ArtifactRequirement,
+    absolute_posix_parts,
+)
 
 SCHEMA = pathlib.Path("docs/project/schema/v2-m15-episode-evidence.schema.json")
 CONFIG = pathlib.Path("config/v2/m15-episode-evidence.json")
@@ -183,13 +188,12 @@ def summarize(runs: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _recorded_artifact_set(config: dict[str, Any]) -> str:
     recorded_base = config["artifact_base_hint"]
-    parts = recorded_base.split("/")
-    require(
-        recorded_base.startswith("/")
-        and not recorded_base.startswith("//")
-        and all(part not in {"", ".", ".."} for part in parts[1:]),
-        "M15 episode recorded artifact base is not an absolute normalized POSIX path",
-    )
+    try:
+        absolute_posix_parts(recorded_base, label="M15 episode recorded artifact base")
+    except ArtifactContextError as exc:
+        raise M15EpisodeEvidenceError(
+            "M15 episode recorded artifact base is not an absolute normalized POSIX path"
+        ) from exc
     require(
         config["artifact_root"] == LOGICAL_ARTIFACT_SET,
         "M15 episode logical artifact set drifted",

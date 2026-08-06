@@ -8,6 +8,8 @@ import contextlib
 import hashlib
 import io
 import json
+import lzma
+import os
 import pathlib
 import re
 import shlex
@@ -75,6 +77,8 @@ class M15MapQualificationTests(unittest.TestCase):
     def make_live_matrix_fixture(
         self,
         directory: pathlib.Path,
+        *,
+        byte_real_manifests: bool = False,
     ) -> tuple[
         pathlib.Path,
         pathlib.Path,
@@ -89,6 +93,7 @@ class M15MapQualificationTests(unittest.TestCase):
             pathlib.Path("config/v2/m15-scalable-contract.json"),
             pathlib.Path("config/v2/opponent-runtime-evidence.json"),
             pathlib.Path("docs/project/schema/v2-m15-map-evidence.schema.json"),
+            pathlib.Path("docs/project/schema/v2-m15-map-qualification.schema.json"),
         ):
             target = project / relative
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -117,7 +122,15 @@ class M15MapQualificationTests(unittest.TestCase):
             result_root = artifact_set / item["artifact_dir"]
             result_root.mkdir()
             if item["outcome"] == "GENERATED":
-                save_bytes = f"save {item['artifact_dir']}\n".encode()
+                if byte_real_manifests:
+                    save_bytes, map_observation = self.make_map_save(
+                        item["width"],
+                        item["height"],
+                    )
+                    item["map_sha256"] = map_observation["map_sha256"]
+                else:
+                    save_bytes = f"save {item['artifact_dir']}\n".encode()
+                    map_observation = {"map_sha256": item["map_sha256"]}
                 transcript_bytes = f"transcript {item['artifact_dir']}\n".encode()
                 save_path = result_root / qualify_m15_native_map.SAVE_RELATIVE
                 save_path.parent.mkdir()
@@ -132,25 +145,76 @@ class M15MapQualificationTests(unittest.TestCase):
                         "size": len(save_bytes),
                         "sha256": item["save_sha256"],
                     },
-                    "map": {"map_sha256": item["map_sha256"]},
+                    "map": map_observation,
                     "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
                 }
             else:
                 observations = {"save": None, "map": None, "transcript_sha256": None}
-            manifest: dict[str, object] = {
-                "request": {
-                    "width": item["width"],
-                    "height": item["height"],
-                    "tile_count": item["tile_count"],
-                },
-                "outcome": item["outcome"],
-                "reason_code": item["reason_code"],
-                "observations": observations,
-                "resources": {
-                    "max_rss_kib": item["max_rss_kib"],
-                    "wall_seconds": item["wall_seconds"],
-                },
-            }
+            if byte_real_manifests:
+                generated = item["outcome"] == "GENERATED"
+                qualification_schema = (
+                    project / qualify_m15_native_map.SCHEMA_RELATIVE
+                )
+                manifest = {
+                    "$schema": "../../docs/project/schema/v2-m15-map-qualification.schema.json",
+                    "schema_version": "openttd-rl-v2-m15-map-qualification-1",
+                    "schema_sha256": hashlib.sha256(
+                        qualification_schema.read_bytes()
+                    ).hexdigest(),
+                    "engine_source": copy.deepcopy(matrix["engine_source"]),
+                    "executable": copy.deepcopy(matrix["executable"]),
+                    "contract_sha256": matrix["contract_sha256"],
+                    "request": {
+                        "width": item["width"],
+                        "height": item["height"],
+                        "map_x_bits": item["width"].bit_length() - 1,
+                        "map_y_bits": item["height"].bit_length() - 1,
+                        "tile_count": item["tile_count"],
+                        "seed": matrix["seed"],
+                    },
+                    "limits": {
+                        "maximum_generated_tiles": (
+                            qualify_m15_native_map.MAXIMUM_GENERATED_TILES
+                        ),
+                        **qualify_m15_native_map.LIMITS,
+                    },
+                    "outcome": item["outcome"],
+                    "reason_code": item["reason_code"],
+                    "checks": {
+                        "native_rectangle": True,
+                        "preflight_passed": generated,
+                        "map_generated": generated,
+                        "save_created": generated,
+                        "dimensions_confirmed": generated,
+                        "load_succeeded": generated,
+                        "resource_limits_respected": True,
+                    },
+                    "observations": {
+                        "start_date": "1950-01-01" if generated else None,
+                        "post_load_date": "1950-01-02" if generated else None,
+                        **observations,
+                    },
+                    "resources": {
+                        "max_rss_kib": item["max_rss_kib"],
+                        "wall_seconds": item["wall_seconds"],
+                        "returncode": 0 if generated else None,
+                    },
+                }
+            else:
+                manifest = {
+                    "request": {
+                        "width": item["width"],
+                        "height": item["height"],
+                        "tile_count": item["tile_count"],
+                    },
+                    "outcome": item["outcome"],
+                    "reason_code": item["reason_code"],
+                    "observations": observations,
+                    "resources": {
+                        "max_rss_kib": item["max_rss_kib"],
+                        "wall_seconds": item["wall_seconds"],
+                    },
+                }
             evidence_path = result_root / item["evidence_file"]
             evidence_path.write_text(json.dumps(manifest, sort_keys=True) + "\n", encoding="utf-8")
             item["evidence_sha256"] = hashlib.sha256(evidence_path.read_bytes()).hexdigest()
@@ -168,6 +232,74 @@ class M15MapQualificationTests(unittest.TestCase):
                 {"m14-openttd-executable": executable},
             )
         return project, base, matrix_path, live_inputs, manifests, matrix
+
+    @staticmethod
+    def make_map_save(
+        width: int,
+        height: int,
+    ) -> tuple[bytes, dict[str, object]]:
+        tiles = width * height
+        maps = (
+            b"MAPS"
+            b"\x03\x10\x06\x05dim_x\x06\x05dim_y\x00"
+            b"\x00"
+            + width.to_bytes(4, "big")
+            + height.to_bytes(4, "big")
+            + b"\x00"
+        )
+        chunks = [b"MAPT" + tiles.to_bytes(4, "big") + bytes(tiles)]
+        chunks.extend(
+            tag + (0).to_bytes(4, "big")
+            for tag in (
+                b"MAPH", b"MAPO", b"MAP2", b"M3LO", b"M3HI",
+                b"MAP5", b"MAPE", b"MAP7", b"MAP8",
+            )
+        )
+        map_bytes = maps + b"".join(chunks)
+        return (
+            b"OTTX" + bytes(4) + lzma.compress(map_bytes),
+            {
+                "width": width,
+                "height": height,
+                "tiles": tiles,
+                "tile_type_counts": {"clear": tiles},
+                "map_sha256": hashlib.sha256(map_bytes).hexdigest(),
+            },
+        )
+
+    @staticmethod
+    @contextlib.contextmanager
+    def reject_recorded_host_access(recorded_hint: str):
+        real_open = io.open
+        real_stat = os.stat
+        real_lstat = os.lstat
+
+        def reject(path: object) -> None:
+            try:
+                raw = os.fsdecode(os.fspath(path))
+            except TypeError:
+                return
+            if raw == recorded_hint or raw.startswith(f"{recorded_hint}/"):
+                raise AssertionError(f"accessed recorded host hint: {raw}")
+
+        def checked_open(path: object, *args: object, **kwargs: object):
+            reject(path)
+            return real_open(path, *args, **kwargs)
+
+        def checked_stat(path: object, *args: object, **kwargs: object):
+            reject(path)
+            return real_stat(path, *args, **kwargs)
+
+        def checked_lstat(path: object, *args: object, **kwargs: object):
+            reject(path)
+            return real_lstat(path, *args, **kwargs)
+
+        with (
+            mock.patch.object(io, "open", side_effect=checked_open),
+            mock.patch.object(os, "stat", side_effect=checked_stat),
+            mock.patch.object(os, "lstat", side_effect=checked_lstat),
+        ):
+            yield
 
     @contextlib.contextmanager
     def stubbed_matrix_run(
@@ -257,27 +389,13 @@ class M15MapQualificationTests(unittest.TestCase):
     def test_relocated_live_map_matrix_passes(self) -> None:
         recorded_hint = self.matrix["artifact_base_hint"]
         with tempfile.TemporaryDirectory() as raw:
-            project, base, matrix_path, live_inputs, manifests, matrix = self.make_live_matrix_fixture(
-                pathlib.Path(raw).resolve()
+            project, base, matrix_path, live_inputs, _, matrix = self.make_live_matrix_fixture(
+                pathlib.Path(raw).resolve(),
+                byte_real_manifests=True,
             )
-
-            def validate_manifest(
-                root: pathlib.Path,
-                evidence_path: pathlib.Path,
-                *,
-                openttd: pathlib.Path | None = None,
-            ) -> dict[str, object]:
-                self.assertEqual(root, project)
-                requirement = run_m15_map_matrix.required_live_roles(project, matrix_path)[0]
-                self.assertEqual(openttd, live_inputs.resolve(requirement))
-                run_m15_map_matrix.load_json(evidence_path)
-                return manifests[evidence_path]
-
-            with mock.patch.object(
-                qualify_m15_native_map,
-                "validate_manifest",
-                side_effect=validate_manifest,
-            ) as reader:
+            role = run_m15_map_matrix.required_live_roles(project, matrix_path)[0]
+            executable = live_inputs.resolve(role)
+            with self.reject_recorded_host_access(recorded_hint):
                 summary = run_m15_map_matrix.validate(
                     project,
                     matrix_path,
@@ -285,9 +403,93 @@ class M15MapQualificationTests(unittest.TestCase):
                     artifact_context=ArtifactContext.live(base),
                     live_inputs=live_inputs,
                 )
-        self.assertTrue(summary.live_artifacts)
-        self.assertEqual(matrix["artifact_base_hint"], recorded_hint)
-        self.assertEqual(reader.call_count, 49)
+            representative = matrix["results"][0]
+            result_root = base / matrix["artifact_root"] / representative["artifact_dir"]
+            evidence_path = result_root / representative["evidence_file"]
+            manifest = json.loads(evidence_path.read_text(encoding="utf-8"))
+            save_path = result_root / manifest["observations"]["save"]["path"]
+            transcript_path = result_root / qualify_m15_native_map.TRANSCRIPT_NAME
+            self.assertTrue(summary.live_artifacts)
+            self.assertEqual(matrix["artifact_base_hint"], recorded_hint)
+            self.assertNotEqual(base, pathlib.Path(recorded_hint))
+            self.assertEqual(executable, base / "roles/openttd")
+            self.assertEqual(
+                manifest["executable"],
+                {
+                    "sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
+                    "size": executable.stat().st_size,
+                },
+            )
+            self.assertEqual(
+                hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
+                representative["evidence_sha256"],
+            )
+            self.assertEqual(
+                manifest["observations"]["save"],
+                {
+                    "path": qualify_m15_native_map.SAVE_RELATIVE.as_posix(),
+                    "size": save_path.stat().st_size,
+                    "sha256": hashlib.sha256(save_path.read_bytes()).hexdigest(),
+                },
+            )
+            self.assertEqual(
+                hashlib.sha256(transcript_path.read_bytes()).hexdigest(),
+                manifest["observations"]["transcript_sha256"],
+            )
+            self.assertEqual(
+                manifest["observations"]["map"]["map_sha256"],
+                representative["map_sha256"],
+            )
+
+    def test_relocated_live_map_matrix_real_reader_rejects_semantic_save_mutation(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            project, base, matrix_path, live_inputs, _, matrix = self.make_live_matrix_fixture(
+                pathlib.Path(raw).resolve(),
+                byte_real_manifests=True,
+            )
+            representative = matrix["results"][0]
+            result_root = base / matrix["artifact_root"] / representative["artifact_dir"]
+            evidence_path = result_root / representative["evidence_file"]
+            manifest = json.loads(evidence_path.read_text(encoding="utf-8"))
+            save_path = result_root / manifest["observations"]["save"]["path"]
+            wrong_dimensions, _ = self.make_map_save(128, 64)
+            save_path.write_bytes(wrong_dimensions)
+            save_identity = {
+                "path": qualify_m15_native_map.SAVE_RELATIVE.as_posix(),
+                "size": len(wrong_dimensions),
+                "sha256": hashlib.sha256(wrong_dimensions).hexdigest(),
+            }
+            manifest["observations"]["save"] = save_identity
+            evidence_path.write_text(
+                json.dumps(manifest, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            representative["save_sha256"] = save_identity["sha256"]
+            representative["save_size"] = save_identity["size"]
+            representative["evidence_sha256"] = hashlib.sha256(
+                evidence_path.read_bytes()
+            ).hexdigest()
+            matrix["counts"]["save_bytes"] = sum(
+                item["save_size"] or 0 for item in matrix["results"]
+            )
+            matrix_path.write_text(
+                json.dumps(matrix, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                qualify_m15_native_map.M15MapQualificationError,
+                "parsed map evidence drifted",
+            ):
+                run_m15_map_matrix.validate(
+                    project,
+                    matrix_path,
+                    project / run_m15_map_matrix.SCHEMA_RELATIVE,
+                    artifact_context=ArtifactContext.live(base),
+                    live_inputs=live_inputs,
+                )
 
     def test_live_map_preflight_fails_before_result_reader(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -971,6 +1173,32 @@ class M15MapQualificationTests(unittest.TestCase):
         matrix["schema_sha256"] = "0" * 64
         with self.assertRaisesRegex(run_m15_map_matrix.M15MapMatrixError, "schema SHA-256"):
             self.validate_matrix_mutation(matrix)
+
+    def test_recorded_artifact_hint_is_strict_absolute_posix(self) -> None:
+        cases = (
+            ("absolute", "/recorded/openttd-rl", True),
+            ("empty", "", False),
+            ("relative", "recorded/openttd-rl", False),
+            ("double-leading-slash", "//recorded/openttd-rl", False),
+            ("dot-component", "/recorded/./openttd-rl", False),
+            ("empty-component", "/recorded//openttd-rl", False),
+            ("backslash", "/recorded\\openttd-rl", False),
+            ("nul", "/recorded/\x00openttd-rl", False),
+        )
+        for label, recorded_hint, accepted in cases:
+            with self.subTest(case=label):
+                matrix = copy.deepcopy(self.matrix)
+                matrix["artifact_base_hint"] = recorded_hint
+                if accepted:
+                    self.assertFalse(
+                        self.validate_matrix_mutation(matrix).live_artifacts,
+                    )
+                else:
+                    with self.assertRaises(
+                        run_m15_map_matrix.M15MapMatrixError,
+                    ) as raised:
+                        self.validate_matrix_mutation(matrix)
+                    self.assertTrue(str(raised.exception))
 
     def test_contract_hash_drift_fails(self) -> None:
         matrix = copy.deepcopy(self.matrix)
