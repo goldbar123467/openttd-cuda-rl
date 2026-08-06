@@ -145,10 +145,21 @@ def _canonical_runtime(root: pathlib.Path, source: dict[str, Any], *, build_name
     """Bind the M22 layout to the committed M20/M21 staging authorities."""
 
     recorded_root = source["retained_artifact"]
-    m20_content = load(root / preparation.M20_CONTENT)
+    m20_source = load(root / preparation.M20_SOURCE)
+    m20_contract = load(root / preparation.native.m20.CONTRACT)
     m21_source = load(root / preparation.M21_SOURCE)
-    m21_lock = load(root / preparation.M21_CONTENT_LOCK)
     m21_contract = load(root / preparation.native.m21.CONTRACT)
+
+    try:
+        preparation.native.m20.expected_identities(root, m20_contract)
+        preparation.native.m21.identities(root, m21_contract)
+        preparation.m20_source._content_records(root, m20_source, repository_config=False)
+        preparation.m21_source.validate_content(root, m21_contract)
+    except (preparation.native.m20.M20MatrixError, preparation.native.m21.M21MatrixError,
+            preparation.m20_source.M20SourceError, preparation.m21_source.M21SourceError) as exc:
+        raise M22RuntimeSourceError(f"M20/M21 content authority closure drifted: {exc}") from exc
+    m20_content = load(root / preparation.M20_CONTENT)
+    m21_lock = load(root / preparation.M21_CONTENT_LOCK)
 
     require(source["base"] == {
         "commit": m21_source["source"]["commit"],
@@ -460,11 +471,21 @@ def _report_metrics(root: pathlib.Path, source: dict[str, Any], case: dict[str, 
                 "M22 live G21 events smoke drifted")
         return {"recovery_ticks": result["breakdown"]["recovery_ticks"], "save_load_exact": True}
     if probe == "gamescript":
-        require(result["fixture_name"] == "M21CoverageFixture" and result["save_load_exact"] and
-                all(result["responses"].values()), "M22 live G21 GameScript smoke drifted")
-        return {"commands": len(result["commands"]), "responses": len(result["responses"]), "save_load_exact": True}
+        responses = result.get("responses") if isinstance(result, dict) else None
+        commands = result.get("commands") if isinstance(result, dict) else None
+        require(isinstance(responses, dict) and set(responses) == {"goal_question", "story_button"} and
+                all(type(value) is bool and value is True for value in responses.values()),
+                "M22 live G21 GameScript responses drifted")
+        require(result.get("fixture_name") == "M21CoverageFixture" and result.get("save_load_exact") is True and
+                isinstance(commands, list) and len(commands) == 13,
+                "M22 live G21 GameScript smoke drifted")
+        return {"commands": len(commands), "responses": len(responses), "save_load_exact": True}
+    assets = result.get("assets") if isinstance(result, dict) else None
+    require(isinstance(assets, dict) and bool(assets) and
+            all(type(value) is int and value > 0 for value in assets.values()),
+            "M22 live G21 content assets drifted")
     require(probe == "content" and result["package_count"] == 10 and result["capability_schema_closed"] and
-            len(report["active_content"]) == 10 and all(value > 0 for value in result["assets"].values()),
+            len(report["active_content"]) == 10,
             "M22 live G21 content smoke drifted")
     return {"packages": 10, "capabilities": len(result["capabilities"])}
 

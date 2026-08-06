@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -20,6 +21,7 @@ import prepare_m22_followup_runtime as preparation
 from tests.project.v2.test_v2_m22_final_runtime_source import (
     _git,
     _replace_record_file,
+    _write_json,
     expected_runtime_closure,
     make_live_runtime_fixture,
 )
@@ -195,6 +197,39 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
         value["base"]["tree"] = "2" * 40
         self.mutation_fails(value, "base identity")
 
+    def test_offline_custom_authorities_reject_zeroed_content_digest_links(self) -> None:
+        links = (
+            (preparation.native.m20.CONTRACT, "content_manifest_sha256"),
+            (preparation.native.m21.CONTRACT, "content_lock_sha256"),
+        )
+        for relative, identity in links:
+            with self.subTest(identity=identity), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                _, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+                )
+                authority_path = config_path.parent / relative
+                authority = json.loads(authority_path.read_text(encoding="utf-8"))
+                authority["identities"][identity] = "0" * 64
+                _write_json(authority_path, authority)
+                with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "identity"):
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+
+    def test_offline_custom_authorities_reject_wrong_referenced_content_bytes(self) -> None:
+        references = (preparation.foundation.M20_CONTENT, preparation.foundation.M21_CONTENT_LOCK)
+        for relative in references:
+            with self.subTest(relative=str(relative)), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                _, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+                )
+                authority_path = config_path.parent / relative
+                authority_path.write_bytes(authority_path.read_bytes() + b"\n")
+                with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "identity"):
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+
     def test_wrong_ai_name_fails_offline(self) -> None:
         value = copy.deepcopy(self.source)
         value["runtime"]["ai_archives"][1]["name"] = "SubstituteAI"
@@ -327,6 +362,54 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                 validator.validate(
                     config_path.parent, config_path, artifact_context=ArtifactContext.live(base),
                 )
+
+    def test_live_fixture_manifest_is_independent_of_validator_expectation(self) -> None:
+        with tempfile.TemporaryDirectory() as raw, mock.patch.object(
+            validator.foundation_validator, "_expected_smoke_manifest",
+            return_value={"schema_version": "validator-substitute"},
+        ):
+            base = pathlib.Path(raw).resolve()
+            _, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+            )
+            with self.assertRaisesRegex(validator.M22FollowupRuntimeSourceError, "smoke .*manifest"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_honest_gamescript_response_shapes_are_domain_errors_without_traceback(self) -> None:
+        variants = (
+            ("list", []),
+            ("null", None),
+            ("wrong-keys", {"wrong_one": True, "wrong_two": True}),
+            ("nested-wrong-type", {"goal_question": {"nested": True}, "story_button": True}),
+        )
+        for label, responses in variants:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                value, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+                )
+                smoke = self.smoke(value, "source-g21-tropic-gamescript")
+                report_path = base / "v2-m22-followup-runtime-a/smokes/source-g21-tropic-gamescript/report.json"
+                report = json.loads(report_path.read_text(encoding="utf-8"))
+                report["result"]["responses"] = responses
+                payload = preparation.foundation.canonical_bytes(report)
+                report_path.write_bytes(payload)
+                smoke["report_sha256"] = hashlib.sha256(payload).hexdigest()
+                config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+                with self.assertRaises(Exception) as raised:
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+                self.assertIsInstance(raised.exception, validator.M22FollowupRuntimeSourceError)
+                self.assertRegex(str(raised.exception), "GameScript responses")
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    status = validator.main([
+                        "--root", str(config_path.parent), "--config", str(config_path),
+                        "--artifact-root", str(base),
+                    ])
+                self.assertEqual(status, 1)
+                self.assertNotIn("Traceback", output.getvalue())
 
     def test_digest_matched_ctest_inventory_with_nonstring_name_is_domain_error(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

@@ -168,6 +168,8 @@ def _project_authorities(
     broad_contract["identities"]["gamescript_info_sha256"] = scripts[0]["sha256"]
     broad_contract["identities"]["gamescript_main_sha256"] = scripts[1]["sha256"]
     _write_json(broad_contract_path, broad_contract)
+    (project / preparation.native.m21.GAMESCRIPT_INFO).write_bytes(b"gamescript_files-0\n")
+    (project / preparation.native.m21.GAMESCRIPT_MAIN).write_bytes(b"gamescript_files-1\n")
 
     m21_path = project / preparation.M21_SOURCE
     m21 = json.loads(m21_path.read_text(encoding="utf-8"))
@@ -269,6 +271,32 @@ def _replace_record_file(
     record["bytes"] = len(payload)
     record["sha256"] = hashlib.sha256(payload).hexdigest()
     return path
+
+
+def _run_producer_smoke(
+    root: pathlib.Path,
+    runtime: preparation.native.RuntimePaths,
+    case_root: pathlib.Path,
+    case: dict[str, Any],
+    report: dict[str, Any],
+) -> dict[str, Any]:
+    """Create the retained smoke through the producer dispatch, stubbing only native launch."""
+
+    native = preparation.native
+
+    def launch(_command: list[str], _runtime: preparation.native.RuntimePaths,
+               run_root: pathlib.Path, launched_case: dict[str, Any]) -> tuple[float, str]:
+        native.write_new(run_root / "report.json", report)
+        if launched_case["source_gate"] == "G15":
+            native.write_new(run_root / "reset.json", {"request": {
+                "width": launched_case["map_width"], "height": launched_case["map_height"],
+                "climate": launched_case["climate"], "split": "final",
+            }})
+        (run_root / "openttd.log").write_text("", encoding="utf-8")
+        return 0.0, ""
+
+    with mock.patch.object(native, "launch", side_effect=launch):
+        return native.run_native_case(root, runtime, case_root, case)
 
 
 def expected_runtime_closure(
@@ -407,21 +435,14 @@ def make_live_runtime_fixture(
     else:
         import prepare_m22_followup_runtime as followup_preparation
         smoke_cases = followup_preparation.SMOKE_CASES
+    (result_root / "smokes").mkdir(mode=0o700)
     for expected, smoke in zip(smoke_cases, value["smokes"], strict=True):
         smoke["executable_sha256"] = value["executable"]["sha256"]
         smoke["source_tree"] = value["source"]["tree"]
         case_root = result_root.joinpath(*_relative(recorded_root, smoke["artifact_root"]).parts)
-        manifest = validator._expected_smoke_manifest(project, value, runtime, expected)
         report = _smoke_report(project, value, expected, smoke["metrics"])
-        for path_key, hash_key, payload in (
-            ("manifest_path", "manifest_sha256", preparation.canonical_bytes(manifest)),
-            ("report_path", "report_sha256", preparation.canonical_bytes(report)),
-            ("openttd_log_path", "openttd_log_sha256", b""),
-        ):
-            path = case_root / smoke[path_key]
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(payload)
-            smoke[hash_key] = hashlib.sha256(payload).hexdigest()
+        produced = _run_producer_smoke(project, runtime, case_root, expected, report)
+        smoke.update(produced)
     if "final_runtime_source_record_sha256" in value["prerequisites"]:
         value["prerequisites"]["final_runtime_source_record_sha256"] = hashlib.sha256(
             (project / "config/v2/m22-final-runtime-source.json").read_bytes()
@@ -588,6 +609,39 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
         value["base"]["commit"] = "1" * 40
         value["base"]["tree"] = "2" * 40
         self.mutation_fails(value, "base identity")
+
+    def test_offline_custom_authorities_reject_zeroed_content_digest_links(self) -> None:
+        links = (
+            (preparation.native.m20.CONTRACT, "content_manifest_sha256"),
+            (preparation.native.m21.CONTRACT, "content_lock_sha256"),
+        )
+        for relative, identity in links:
+            with self.subTest(identity=identity), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                _, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+                )
+                authority_path = config_path.parent / relative
+                authority = json.loads(authority_path.read_text(encoding="utf-8"))
+                authority["identities"][identity] = "0" * 64
+                _write_json(authority_path, authority)
+                with self.assertRaisesRegex(validator.M22RuntimeSourceError, "identity"):
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+
+    def test_offline_custom_authorities_reject_wrong_referenced_content_bytes(self) -> None:
+        references = (preparation.M20_CONTENT, preparation.M21_CONTENT_LOCK)
+        for relative in references:
+            with self.subTest(relative=str(relative)), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                _, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+                )
+                authority_path = config_path.parent / relative
+                authority_path.write_bytes(authority_path.read_bytes() + b"\n")
+                with self.assertRaisesRegex(validator.M22RuntimeSourceError, "identity"):
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
 
     def test_renamed_base_config_fails_offline(self) -> None:
         value = copy.deepcopy(self.source)
@@ -802,6 +856,18 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.M22RuntimeSourceError, "smoke .*manifest"):
                 validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
 
+    def test_live_fixture_manifest_is_independent_of_validator_expectation(self) -> None:
+        with tempfile.TemporaryDirectory() as raw, mock.patch.object(
+            validator, "_expected_smoke_manifest", return_value={"schema_version": "validator-substitute"},
+        ):
+            base = pathlib.Path(raw).resolve()
+            _, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            with self.assertRaisesRegex(validator.M22RuntimeSourceError, "smoke .*manifest"):
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
     def test_digest_matched_smoke_report_semantic_drift_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             base = pathlib.Path(raw).resolve()
@@ -819,6 +885,63 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
             config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(validator.M22RuntimeSourceError, "G21 smoke"):
                 validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+
+    def test_digest_honest_gamescript_response_shapes_are_domain_errors_without_traceback(self) -> None:
+        variants = (
+            ("list", []),
+            ("null", None),
+            ("wrong-keys", {"wrong_one": True, "wrong_two": True}),
+            ("nested-wrong-type", {"goal_question": {"nested": True}, "story_button": True}),
+        )
+        for label, responses in variants:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                base = pathlib.Path(raw).resolve()
+                value, config_path, _, _ = make_live_runtime_fixture(
+                    self.root, base, self.source,
+                    patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+                )
+                smoke = next(item for item in value["smokes"]
+                             if item["case"]["case_id"] == "source-g21-tropic-gamescript")
+                report_path = base / "v2-m22-final-runtime-c/smokes/source-g21-tropic-gamescript/report.json"
+                report = json.loads(report_path.read_text(encoding="utf-8"))
+                report["result"]["responses"] = responses
+                payload = preparation.canonical_bytes(report)
+                report_path.write_bytes(payload)
+                smoke["report_sha256"] = hashlib.sha256(payload).hexdigest()
+                config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+                with self.assertRaises(Exception) as raised:
+                    validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+                self.assertIsInstance(raised.exception, validator.M22RuntimeSourceError)
+                self.assertRegex(str(raised.exception), "GameScript responses")
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    status = validator.main([
+                        "--root", str(config_path.parent), "--config", str(config_path),
+                        "--artifact-root", str(base),
+                    ])
+                self.assertEqual(status, 1)
+                self.assertNotIn("Traceback", output.getvalue())
+
+    def test_digest_honest_content_assets_container_is_a_domain_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            smoke = next(item for item in value["smokes"]
+                         if item["case"]["case_id"] == "source-g21-arctic-content")
+            report_path = base / "v2-m22-final-runtime-c/smokes/source-g21-arctic-content/report.json"
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            report["result"]["assets"] = []
+            payload = preparation.canonical_bytes(report)
+            report_path.write_bytes(payload)
+            smoke["report_sha256"] = hashlib.sha256(payload).hexdigest()
+            config_path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaises(Exception) as raised:
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.live(base))
+            self.assertIsInstance(raised.exception, validator.M22RuntimeSourceError)
+            self.assertRegex(str(raised.exception), "content assets")
 
     def test_digest_matched_smoke_log_failure_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
