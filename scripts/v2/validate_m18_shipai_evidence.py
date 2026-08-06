@@ -112,13 +112,54 @@ def _requirements(
     )
 
 
+def _complete_requirements(
+    evidence: dict[str, Any],
+    package_record: dict[str, Any],
+) -> tuple[ArtifactRequirement, ...]:
+    return (
+        *_requirements(evidence, package_record),
+        ArtifactRequirement(
+            PACKAGE_LOGICAL_SET,
+            "content_download/ai/53484950-ShipAI-10.tar",
+            "file",
+            LIVE_CONSUMER,
+            evidence["package"]["archive_sha256"],
+        ),
+        ArtifactRequirement(
+            RUNTIME_LOGICAL_SET,
+            qualify_ai_runtime.COPIED_LOCK_NAME,
+            "file",
+            LIVE_CONSUMER,
+        ),
+        ArtifactRequirement(
+            RUNTIME_LOGICAL_SET,
+            qualify_ai_runtime.TRANSCRIPT_NAME,
+            "file",
+            LIVE_CONSUMER,
+        ),
+        ArtifactRequirement(
+            RUNTIME_LOGICAL_SET,
+            f"{qualify_ai_runtime.SAVE_BASENAME}.sav",
+            "file",
+            LIVE_CONSUMER,
+        ),
+        ArtifactRequirement(
+            RUNTIME_LOGICAL_SET,
+            "content_download/ai/53484950-ShipAI-10.tar",
+            "file",
+            LIVE_CONSUMER,
+            evidence["package"]["archive_sha256"],
+        ),
+    )
+
+
 def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
     root = root.resolve()
     evidence = load(root / CONFIG)
     package_index = load(root / PACKAGE_INDEX)
     package_records = [item for item in package_index["results"] if item["name"] == "ShipAI"]
     require(len(package_records) == 1, "M14 ShipAI package index cardinality drifted")
-    return _requirements(evidence, package_records[0])
+    return _complete_requirements(evidence, package_records[0])
 
 
 def _role_requirements(package_index: dict[str, Any]) -> tuple[RoleRequirement, ...]:

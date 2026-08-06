@@ -306,14 +306,21 @@ class M18ShipAIEvidenceTests(unittest.TestCase):
 
     def test_required_live_inputs_are_the_exact_direct_shipai_closure(self) -> None:
         requirements = validator.required_live_inputs(self.root)
-        self.assertEqual(
-            tuple((item.logical_set, item.relative_path, item.kind, item.expected_sha256) for item in requirements),
-            (
+        observed = tuple(
+            (item.logical_set, item.relative_path, item.kind, item.expected_sha256)
+            for item in requirements
+        )
+        for expected in (
                 ("v2-m14-ai-shipai-a", "ai-package-lock.json", "file", self.package_record["evidence_sha256"]),
                 ("v2-m18-shipai-scenario-c", "report.json.sav", "file", self.config["scenario"]["sha256"]),
                 ("v2-m18-shipai-runtime-b", "ai-runtime-qualification.json", "file", self.config["qualification_manifest"]["sha256"]),
-            ),
-        )
+                ("v2-m14-ai-shipai-a", "content_download/ai/53484950-ShipAI-10.tar", "file", self.config["package"]["archive_sha256"]),
+                ("v2-m18-shipai-runtime-b", "ai-package-lock.json", "file", None),
+                ("v2-m18-shipai-runtime-b", "openttd-runtime-console.log", "file", None),
+                ("v2-m18-shipai-runtime-b", "v2-qualification.sav", "file", None),
+                ("v2-m18-shipai-runtime-b", "content_download/ai/53484950-ShipAI-10.tar", "file", self.config["package"]["archive_sha256"]),
+        ):
+            self.assertIn(expected, observed)
         self.assertEqual({item.consumer for item in requirements}, {"m18-shipai-evidence"})
 
     def test_required_live_role_is_the_frozen_m14_executable(self) -> None:

@@ -95,6 +95,18 @@ def _requirements(report: dict[str, Any]) -> tuple[RoleRequirement, ...]:
         )
         for item in checkpoint["files"]
     )
+    requirements.extend((
+        RoleRequirement(
+            "qualification-artifacts", ".", "directory", LIVE_CONSUMER,
+        ),
+        RoleRequirement(
+            "training-artifacts", ".", "directory", LIVE_CONSUMER,
+        ),
+        RoleRequirement(
+            "training-artifacts", selected["checkpoint_path"], "directory",
+            LIVE_CONSUMER,
+        ),
+    ))
     identity = report["identity"]
     requirements.extend((
         RoleRequirement(

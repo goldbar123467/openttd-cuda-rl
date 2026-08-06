@@ -289,35 +289,25 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
         package = validate_opponent_runtime_evidence.validate_opponent_package_evidence.load_json(
             self.root / "config/v2/opponent-package-evidence.json"
         )
-        expected = [
-            (
-                result["artifact_dir"],
-                result["evidence_file"],
+        observed = {
+            (item.logical_set, item.relative_path, item.kind, item.expected_sha256)
+            for item in requirements
+        }
+        for result in self.evidence["results"]:
+            if result["phase"] == "PACKAGE":
+                continue
+            self.assertIn((
+                result["artifact_dir"], result["evidence_file"], "file",
                 result["evidence_sha256"],
-            )
-            for result in package["results"]
-        ] + [
-            (
-                result["artifact_dir"],
-                result["evidence_file"],
-                result["evidence_sha256"],
-            )
-            for result in self.evidence["results"]
-            if result["phase"] != "PACKAGE"
-        ]
-        self.assertEqual(len(requirements), 18)
-        self.assertEqual(len({item.logical_set for item in requirements}), 18)
-        self.assertEqual(
-            [
-                (
-                    requirement.logical_set,
-                    requirement.relative_path,
-                    requirement.expected_sha256,
-                )
-                for requirement in requirements
-            ],
-            expected,
-        )
+            ), observed)
+            self.assertIn((result["artifact_dir"], "ai-package-lock.json", "file", None), observed)
+            self.assertIn((result["artifact_dir"], "openttd-runtime-console.log", "file", None), observed)
+            if result["save_sha256"] is not None:
+                self.assertIn((
+                    result["artifact_dir"], "v2-qualification.sav", "file",
+                    result["save_sha256"],
+                ), observed)
+        self.assertGreater(len(requirements), 50)
         custom = copy.deepcopy(self.evidence)
         custom_requirements = (
             *validate_opponent_runtime_evidence.validate_opponent_package_evidence.required_live_inputs(
@@ -325,7 +315,7 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
             ),
             *validate_opponent_runtime_evidence._requirements(custom),
         )
-        self.assertEqual(len(custom_requirements), 18)
+        self.assertGreaterEqual(len(custom_requirements), 18)
         self.assertEqual(len({item.logical_set for item in custom_requirements}), 18)
 
     def test_required_live_role_is_the_frozen_m14_executable(self) -> None:

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import dataclasses
 import importlib
@@ -716,6 +717,143 @@ class V2VerifyDriverTests(unittest.TestCase):
         self.assertIn("m22-final-v1-evaluation", artifact_backed)
         self.assertIn("v2-unit-tests", artifact_backed)
 
+    def test_live_registry_locks_exact_commands_providers_and_provider_calls(self) -> None:
+        artifact_backed = tuple(
+            command for command in self.inventory
+            if command.live_input_module is not None
+        )
+        self.assertEqual(len(artifact_backed), 39)
+        self.assertEqual(len({command.live_input_module for command in artifact_backed}), 38)
+        self.assertEqual(
+            set(driver.LIVE_COMMAND_REGISTRY_SHA256),
+            {command.command_id for command in artifact_backed},
+        )
+        self.assertEqual(
+            set(driver.LIVE_PROVIDER_AST_SHA256),
+            {command.live_input_module for command in artifact_backed},
+        )
+        self.assertEqual(
+            [
+                (
+                    command.command_id,
+                    command.live_input_module,
+                    command.live_input_arguments,
+                    command.include_live_roles,
+                )
+                for command in artifact_backed[-4:]
+            ],
+            [
+                ("m22-final-v1-evaluation", "validate_m22_final_evaluation", (), False),
+                ("m22-followup-v1-evaluation", "validate_m22_followup_evaluation", (), False),
+                ("m22-followup-v2-evaluation", "validate_m22_followup_v2_evaluation", (), False),
+                ("v2-unit-tests", "verify_driver", (), False),
+            ],
+        )
+        self.assertEqual(driver.validate_live_input_registry(artifact_backed), ())
+
+    def test_registry_rejects_every_snapshot_surface_mutation(self) -> None:
+        registered = tuple(
+            command for command in self.inventory
+            if command.live_input_module is not None
+        )
+
+        def replace_registered(mutated: driver.CommandSpec) -> tuple[driver.CommandSpec, ...]:
+            return tuple(
+                mutated if command.command_id == mutated.command_id else command
+                for command in registered
+            )
+
+        recovery = self.command("m22-recovery-v1-evidence")
+        literal = self.command("m15-action-evidence")
+        relocated = self.command("m15-action-source")
+        role = next(
+            item for item in recovery.live_inputs
+            if isinstance(item, RoleRequirement)
+        )
+        unit = self.command("v2-unit-tests")
+        mutations = {
+            "literal-artifact-set": dataclasses.replace(
+                literal,
+                live_inputs=(
+                    dataclasses.replace(
+                        literal.live_inputs[0], logical_set="mutated-literal-set",
+                    ),
+                    *literal.live_inputs[1:],
+                ),
+            ),
+            "relocated-source-path": dataclasses.replace(
+                relocated,
+                live_inputs=(
+                    dataclasses.replace(
+                        relocated.live_inputs[0], relative_path="mutated-source",
+                    ),
+                    *relocated.live_inputs[1:],
+                ),
+            ),
+            "record-derived-checkpoint": dataclasses.replace(
+                recovery, live_inputs=recovery.live_inputs[1:],
+            ),
+            "provider-module": dataclasses.replace(
+                recovery, live_input_module="validate_m22_training_evidence",
+            ),
+            "provider-call-arguments": dataclasses.replace(
+                recovery, live_input_arguments=(),
+            ),
+            "role-requirement": dataclasses.replace(
+                recovery,
+                live_inputs=tuple(
+                    dataclasses.replace(item, role="mutated-role")
+                    if item is role else item
+                    for item in recovery.live_inputs
+                ),
+            ),
+            "role-binding": dataclasses.replace(
+                recovery,
+                argument_bindings=(*recovery.argument_bindings[:-1], driver.ArgumentBinding(
+                    "--corpus", "live-role", "v2-corpus-binary",
+                )),
+            ),
+            "m23-git-read": dataclasses.replace(
+                unit, git_apply_inputs=unit.git_apply_inputs[1:],
+            ),
+        }
+        for surface, mutated in mutations.items():
+            with self.subTest(surface=surface):
+                issues = driver.validate_live_input_registry(replace_registered(mutated))
+                self.assertTrue(issues)
+                self.assertFalse(any("command inventory drifted" in issue.detail for issue in issues))
+
+        evaluator = self.command("m22-followup-v2-evaluation")
+        changed_tool = dataclasses.replace(
+            evaluator,
+            argument_bindings=tuple(
+                driver.ArgumentBinding(binding.option, binding.source, "git")
+                if binding.source == "tool" else binding
+                for binding in evaluator.argument_bindings
+            ),
+        )
+        tool_issues = driver.validate_live_input_registry(replace_registered(changed_tool))
+        self.assertTrue(tool_issues)
+        self.assertFalse(any(
+            "command inventory drifted" in issue.detail for issue in tool_issues
+        ))
+
+    def test_registry_rejects_new_arbitrary_provider_read_site(self) -> None:
+        provider = importlib.import_module("validate_m15_action_evidence")
+        source = pathlib.Path(provider.__file__).read_text(encoding="utf-8")
+        mutated = source + "\ndef injected_live_read():\n    return pathlib.Path('/tmp/unregistered').read_bytes()\n"
+        ast.parse(mutated)
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / "validate_m15_action_evidence.py"
+            path.write_text(mutated, encoding="utf-8")
+            with mock.patch.object(provider, "__file__", str(path)):
+                issues = driver.validate_live_input_registry(tuple(
+                    command for command in self.inventory
+                    if command.live_input_module is not None
+                ))
+        self.assertTrue(issues)
+        self.assertIn("fingerprint", "\n".join(issue.detail for issue in issues).lower())
+
     def test_registry_mutation_rejects_an_artifact_binding_without_a_closure(self) -> None:
         command = driver.CommandSpec(
             "unregistered-live-read", driver.Tier.FULL, driver.CommandCategory.VALIDATOR,
@@ -740,6 +878,85 @@ class V2VerifyDriverTests(unittest.TestCase):
         }
         self.assertIn(("v2-m22-followup-runtime-a", "source"), directories)
         self.assertIn(("v2-m23-visible-runtime-baseline-a", "."), directories)
+
+    def test_empty_m23_source_directories_fail_git_preflight_before_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact_root = pathlib.Path(temporary).resolve()
+            (artifact_root / "v2-m22-followup-runtime-a/source").mkdir(parents=True)
+            (artifact_root / "v2-m23-visible-runtime-baseline-a").mkdir()
+            marker = artifact_root / "unit-command-ran"
+            command = dataclasses.replace(
+                self.command("v2-unit-tests"),
+                argv=(str(self.python), "-c", f"import pathlib; pathlib.Path({str(marker)!r}).touch()"),
+            )
+            config = self.configured(driver.Tier.FULL, artifact_root=artifact_root)
+            summary = driver.run_verification(config, (command,))
+        self.assertEqual(summary.results, ())
+        self.assertTrue(summary.preflight_issues)
+        self.assertFalse(marker.exists())
+        rendered = "\n".join(issue.detail for issue in summary.preflight_issues)
+        self.assertIn("Git", rendered)
+        self.assertIn("v2-m22-followup-runtime-a/source", rendered)
+        self.assertIn("v2-m23-visible-runtime-baseline-a", rendered)
+
+    def test_bare_git_uses_exact_preflighted_git_not_python_directory_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            copied_tools = pathlib.Path(temporary)
+            copied_python = copied_tools / "python"
+            copied_git = copied_tools / "git"
+            shutil.copy2(self.python, copied_python)
+            shutil.copy2("/usr/bin/echo", copied_git)
+            exact_git = pathlib.Path(shutil.which("git") or "/missing/git")
+            command = driver.CommandSpec(
+                "bare-git", driver.Tier.FAST, driver.CommandCategory.TEST,
+                ("git", "--version"),
+            )
+            config = driver.VerificationConfig(
+                self.root,
+                copied_python,
+                driver.Tier.FAST,
+                tools=(
+                    ToolRequirement("python", copied_python),
+                    ToolRequirement("git", exact_git),
+                ),
+            )
+            self.assertEqual(driver.preflight(config, (command,)), ())
+            result = driver.execute_command(command, config)
+        self.assertTrue(result.passed, result.stderr)
+        self.assertRegex(result.stdout, r"^git version ")
+
+    def test_source_preflight_scrubs_hostile_git_environment(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            outer, source, pin = self.initialized_submodule(base)
+            hostile = {
+                "GIT_DIR": str(source / ".git"),
+                "GIT_WORK_TREE": str(source),
+                "GIT_CONFIG_COUNT": "1",
+                "GIT_CONFIG_KEY_0": "status.showUntrackedFiles",
+                "GIT_CONFIG_VALUE_0": "no",
+                "GIT_REPLACE_REF_BASE": "refs/hostile/replace/",
+            }
+            config = self.configured(driver.Tier.CONTRACT, repository_root=outer)
+            with mock.patch.object(driver, "OPENTTD_PIN", pin), mock.patch.dict(
+                os.environ, hostile, clear=False,
+            ):
+                self.assertEqual(driver.preflight(config, self.source_commands()), ())
+
+    def test_git_and_bwrap_discovery_preserves_lexical_paths_for_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            tools = pathlib.Path(temporary)
+            git_link = tools / "git"
+            bwrap_link = tools / "bwrap"
+            git_link.symlink_to(pathlib.Path(shutil.which("git") or "/missing/git"))
+            bwrap_link.symlink_to(pathlib.Path("/usr/bin/echo"))
+            args = driver.parse_args([
+                "--root", str(self.root), "--tools-python", str(self.python),
+                "--tier", "full", "--artifact-root", "/artifacts",
+            ])
+            config = driver.resolve_config(args, {"PATH": str(tools)})
+        self.assertEqual(config.tool_path("git"), git_link)
+        self.assertEqual(config.tool_path("bwrap"), bwrap_link)
 
     def test_v1_materialization_scrubs_all_optional_m07_m08_live_variables(self) -> None:
         forbidden = (

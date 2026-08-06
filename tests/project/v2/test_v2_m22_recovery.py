@@ -21,6 +21,7 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     LiveInputManifest,
+    RoleRequirement,
     ValidationMode,
 )
 import run_m22_recovery as runner
@@ -311,12 +312,37 @@ class M22RecoveryTests(unittest.TestCase):
                                 (f"{checkpoint['path']}/{item['name']}", item["sha256"])
                                 for item in checkpoint["files"]
                             )
-                self.assertEqual(len(requirements), 92)
+                self.assertEqual(len(requirements), 105)
+                checkpoint_directories = {
+                    item.relative_path for item in requirements
+                    if item.role == artifact_role and item.kind == "directory"
+                    and item.relative_path != "."
+                }
                 self.assertEqual(
-                    [(item.relative_path, item.expected_sha256) for item in requirements[:-2]],
+                    checkpoint_directories,
+                    {
+                        checkpoint["path"]
+                        for run in report["runs"]
+                        for process in (run["uninterrupted"], run["prefix"], run["resumed"])
+                        for checkpoint in process["checkpoints"]
+                    },
+                )
+                self.assertIn(
+                    RoleRequirement(artifact_role, ".", "directory", validator.LIVE_CONSUMER),
+                    requirements,
+                )
+                self.assertEqual(
+                    [
+                        (item.relative_path, item.expected_sha256)
+                        for item in requirements[:-2]
+                        if item.kind == "file"
+                    ],
                     expected_artifacts,
                 )
-                self.assertEqual({item.role for item in requirements[:-2]}, {artifact_role})
+                self.assertEqual(
+                    {item.role for item in requirements[:-2] if item.kind == "file"},
+                    {artifact_role},
+                )
                 self.assertEqual(
                     [(item.role, item.relative_path, item.expected_sha256) for item in requirements[-2:]],
                     [

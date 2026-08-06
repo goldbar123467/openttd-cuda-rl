@@ -20,6 +20,7 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     LiveInputManifest,
+    RoleRequirement,
     ValidationMode,
 )
 import run_m22_training as runner
@@ -364,12 +365,36 @@ class M22TrainingTests(unittest.TestCase):
                     (f"{checkpoint['path']}/{item['name']}", item["sha256"])
                     for item in checkpoint["files"]
                 )
-        self.assertEqual(len(requirements), 260)
+        self.assertEqual(len(requirements), 297)
+        checkpoint_directories = {
+            item.relative_path for item in requirements
+            if item.role == "training-artifacts" and item.kind == "directory"
+            and item.relative_path != "."
+        }
         self.assertEqual(
-            [(item.relative_path, item.expected_sha256) for item in requirements[:-2]],
+            checkpoint_directories,
+            {
+                checkpoint["path"]
+                for run in self.report["runs"]
+                for checkpoint in run["process"]["checkpoints"]
+            },
+        )
+        self.assertIn(
+            RoleRequirement("training-artifacts", ".", "directory", validator.LIVE_CONSUMER),
+            requirements,
+        )
+        self.assertEqual(
+            [
+                (item.relative_path, item.expected_sha256)
+                for item in requirements[:-2]
+                if item.kind == "file"
+            ],
             expected_artifacts,
         )
-        self.assertEqual({item.role for item in requirements[:-2]}, {"training-artifacts"})
+        self.assertEqual(
+            {item.role for item in requirements[:-2] if item.kind == "file"},
+            {"training-artifacts"},
+        )
         self.assertEqual(
             [(item.role, item.relative_path, item.expected_sha256) for item in requirements[-2:]],
             [

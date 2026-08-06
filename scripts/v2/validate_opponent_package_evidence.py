@@ -28,6 +28,30 @@ from artifact_context import (
 EVIDENCE_RELATIVE = pathlib.Path("config/v2/opponent-package-evidence.json")
 LIVE_CONSUMER = "m14-opponent-package-evidence"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+PACKAGE_ARCHIVES = {
+    "AAAHogEx": ("content_download/ai/484f4745-AAAHogEx-115.tar",),
+    "KrakenAI2": (
+        "content_download/ai/4b524132-KrakenAI2-3.tar",
+        "content_download/ai/library/4752412a-Graph.AyStar-6.tar",
+        "content_download/ai/library/5046524f-Pathfinder.Road-4.tar",
+        "content_download/ai/library/51554248-Queue.BinaryHeap-1.tar",
+        "content_download/ai/library/5350524c-SuperLib-40.tar",
+    ),
+    "LuDiAI AfterFix": ("content_download/ai/4c444146-LuDiAI_AfterFix-27.tar",),
+    "Lufthansa": ("content_download/ai/4c554654-Lufthansa-2.tar",),
+    "NoOpAI": ("content_download/ai/4e6f7041-NoOpAI-4.tar",),
+    "ShipAI": ("content_download/ai/53484950-ShipAI-10.tar",),
+    "Trans AI": ("content_download/ai/46544149-Trans_AI-200626.tar",),
+    "WmDOT": (
+        "content_download/ai/7d7d6d57-WmDOT-16.tar",
+        "content_download/ai/library/4752412a-Graph.AyStar-6.tar",
+        "content_download/ai/library/4c4d6d57-MinchinWeb_s_MetaLibrary-11.tar",
+        "content_download/ai/library/5046524f-Pathfinder.Road-4.tar",
+        "content_download/ai/library/51554248-Queue.BinaryHeap-1.tar",
+        "content_download/ai/library/51554648-Queue.FibonacciHeap-3.tar",
+        "content_download/ai/library/5350524c-SuperLib-40.tar",
+    ),
+}
 
 
 class OpponentEvidenceError(ValueError):
@@ -91,9 +115,35 @@ def _requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
     )
 
 
+def _complete_requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
+    requirements = list(_requirements(evidence))
+    for result in evidence["results"]:
+        if result["outcome"] == "REJECTED":
+            requirements.append(ArtifactRequirement(
+                result["artifact_dir"],
+                acquire_ai_package.TRANSCRIPT_NAME,
+                "file",
+                LIVE_CONSUMER,
+                result["transcript_sha256"],
+            ))
+            continue
+        archives = PACKAGE_ARCHIVES.get(result["name"])
+        require(
+            archives is not None and len(archives) == result["package_count"],
+            f"{result['name']} committed package archive closure drifted",
+        )
+        requirements.extend(
+            ArtifactRequirement(
+                result["artifact_dir"], archive, "file", LIVE_CONSUMER,
+            )
+            for archive in archives
+        )
+    return tuple(requirements)
+
+
 def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
     root = root.resolve()
-    return _requirements(load_json(root / EVIDENCE_RELATIVE))
+    return _complete_requirements(load_json(root / EVIDENCE_RELATIVE))
 
 
 def _role_requirements(evidence: dict[str, Any]) -> tuple[RoleRequirement, ...]:

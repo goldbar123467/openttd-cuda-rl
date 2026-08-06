@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import dataclasses
 import enum
+import hashlib
 import importlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +21,8 @@ from collections.abc import Mapping, Sequence
 from artifact_context import (
     ARTIFACT_ROOT_ENV,
     LIVE_INPUT_ROLE_SPECS,
+    LIVE_COMMAND_REGISTRY_SHA256,
+    LIVE_PROVIDER_AST_SHA256,
     ArtifactContext,
     ArtifactContextError,
     ArtifactRequirement,
@@ -27,6 +32,7 @@ from artifact_context import (
     preflight_tools,
     resolve_artifact_root,
 )
+from source_context import SourceContextError, run_git
 
 
 OPENTTD_SUBMODULE = pathlib.Path("openttd-upstream")
@@ -47,6 +53,7 @@ SCRUBBED_V1_LIVE_ENV = frozenset({
     "M08_CUDA_SMOKE_REPORT",
     "M08_LIVE_MANIFEST",
 })
+_COMMIT = re.compile(r"[0-9a-f]{40}")
 FAST_UNIT_MODULES = (
     "tests.project.v2.test_v2_artifact_context",
     "tests.project.v2.test_v2_m22_native_corpus_binary",
@@ -139,6 +146,7 @@ class Requirement(enum.Enum):
     ARTIFACT_INPUT = "artifact-input"
     LIVE_INPUT_ROLE = "live-input-role"
     TOOL = "tool"
+    GIT_INPUT = "git-input"
     LIVE_INPUT_REGISTRY = "live-input-registry"
 
 
@@ -169,6 +177,25 @@ class ArgumentBinding:
 LiveRequirement = ArtifactRequirement | RoleRequirement
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
+class GitApplyRequirement:
+    logical_set: str
+    relative_path: str
+    patch_relative_path: str
+    consumer: str
+    expected_head: str | None = None
+
+    def __post_init__(self) -> None:
+        ArtifactRequirement(
+            self.logical_set, self.relative_path, "directory", self.consumer,
+        )
+        ArtifactRequirement(
+            "repository-input", self.patch_relative_path, "file", self.consumer,
+        )
+        if self.expected_head is not None and _COMMIT.fullmatch(self.expected_head) is None:
+            raise ValueError("Git apply expected HEAD must be 40 lowercase hexadecimal characters")
+
+
 @dataclasses.dataclass(frozen=True)
 class CommandSpec:
     command_id: str
@@ -181,6 +208,11 @@ class CommandSpec:
     timeout_seconds: float | None = None
     live_inputs: tuple[LiveRequirement, ...] = ()
     live_input_module: str | None = None
+    live_input_root: pathlib.Path | None = None
+    live_input_arguments: tuple[object, ...] = ()
+    include_live_roles: bool = False
+    git_apply_inputs: tuple[GitApplyRequirement, ...] = ()
+    registry_sha256: str | None = None
     argument_bindings: tuple[ArgumentBinding, ...] = ()
     cumulative_tests: bool = False
 
@@ -250,13 +282,28 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _canonical_python_path(value: pathlib.Path | str) -> pathlib.Path:
+    """Canonicalize Python once; Python is always invoked by this exact argv path.
+
+    Git and Bubblewrap deliberately retain their lexical paths so tool preflight
+    can reject symlink traversal. Python has a separate policy because its
+    canonical path is the immutable interpreter argv for every Python command.
+    """
+
+    supplied = pathlib.Path(value)
+    if not supplied.is_absolute() or not supplied.is_file() or not os.access(supplied, os.X_OK):
+        raise ValueError("tools Python must be an executable absolute path")
+    canonical = supplied.resolve()
+    if not canonical.is_file() or not os.access(canonical, os.X_OK):
+        raise ValueError("canonical tools Python must be an executable file")
+    return canonical
+
+
 def resolve_config(
     args: argparse.Namespace,
     environ: Mapping[str, str] = os.environ,
 ) -> VerificationConfig:
-    tools_python = pathlib.Path(args.tools_python)
-    if not tools_python.is_absolute() or not tools_python.is_file() or not os.access(tools_python, os.X_OK):
-        raise ValueError("tools Python must be an executable absolute path")
+    tools_python = _canonical_python_path(args.tools_python)
 
     artifact_root = None
     if args.tier is Tier.FULL:
@@ -267,19 +314,19 @@ def resolve_config(
 
     root = pathlib.Path(args.root).resolve()
     tool_names = ["python"]
-    tools = [ToolRequirement("python", tools_python.resolve())]
+    tools = [ToolRequirement("python", tools_python)]
     if args.tier >= Tier.CONTRACT:
         tool_names.append("git")
     if args.tier is Tier.FULL:
         tool_names.append("bwrap")
     for name in tool_names[1:]:
         found = shutil.which(name, path=environ.get("PATH"))
-        path = pathlib.Path(found).resolve() if found else pathlib.Path(f"/missing/{name}")
+        path = pathlib.Path(found) if found else pathlib.Path(f"/missing/{name}")
         tools.append(ToolRequirement(name, path))
 
     return VerificationConfig(
         repository_root=root,
-        tools_python=tools_python.resolve(),
+        tools_python=tools_python,
         tier=args.tier,
         artifact_root=artifact_root,
         object_repository=root / OPENTTD_SUBMODULE,
@@ -303,6 +350,40 @@ def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
     )
 
 
+def required_git_inputs(root: pathlib.Path) -> tuple[GitApplyRequirement, ...]:
+    """Return the two exact M23 Git apply boundaries used by cumulative tests."""
+
+    root = pathlib.Path(root).resolve()
+    try:
+        authority = json.loads(
+            (root / "config/v2/m22-followup-runtime-source.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        expected_head = authority["repository"]["commit"]
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise ValueError(f"M23 source Git authority is unavailable or malformed: {exc}") from exc
+    if not isinstance(expected_head, str) or _COMMIT.fullmatch(expected_head) is None:
+        raise ValueError("M23 source Git authority commit is malformed")
+    return (
+        GitApplyRequirement(
+            "v2-m22-followup-runtime-a",
+            "source",
+            "integration/openttd/patches/15.3/m23/"
+            "0001-Add-M23-source-integrated-ONNX-runtime.patch",
+            "m23-source-integrated-patch-test",
+            expected_head,
+        ),
+        GitApplyRequirement(
+            "v2-m23-visible-runtime-baseline-a",
+            ".",
+            "integration/openttd/patches/15.3/m23/"
+            "0002-Add-M23-visible-normal-game-controller-foundation.patch",
+            "m23-visible-playback-patch-test",
+        ),
+    )
+
+
 def _provider_live_inputs(
     module_name: str,
     root: pathlib.Path,
@@ -318,6 +399,77 @@ def _provider_live_inputs(
     if len(values) != len(set(values)):
         raise ValueError(f"duplicate live-input requirement in {module_name}")
     return values
+
+
+def _registry_value(value: object, root: pathlib.Path) -> object:
+    if dataclasses.is_dataclass(value):
+        return {
+            field.name: _registry_value(getattr(value, field.name), root)
+            for field in dataclasses.fields(value)
+        }
+    if isinstance(value, enum.Enum):
+        return value.value
+    if isinstance(value, pathlib.Path):
+        try:
+            relative = value.relative_to(root)
+        except ValueError:
+            return value.as_posix()
+        return f"<root>/{relative.as_posix()}" if relative.parts else "<root>"
+    if isinstance(value, (tuple, list, frozenset, set)):
+        items = [_registry_value(item, root) for item in value]
+        if isinstance(value, (frozenset, set)):
+            items.sort(key=lambda item: json.dumps(item, sort_keys=True))
+        return items
+    if isinstance(value, dict):
+        return {
+            str(key): _registry_value(item, root)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    return value
+
+
+def _command_registry_sha256(command: CommandSpec) -> str:
+    if command.live_input_root is None:
+        raise ValueError(f"registered command has no provider root: {command.command_id}")
+    root = command.live_input_root
+    argv = tuple(command.argv)
+    if argv:
+        argv = ("<tools-python>", *argv[1:])
+    payload = {
+        "command_id": command.command_id,
+        "minimum_tier": command.minimum_tier,
+        "category": command.category,
+        "argv": argv,
+        "expected_status": command.expected_status,
+        "environment": command.environment,
+        "requirements": command.requirements,
+        "timeout_seconds": command.timeout_seconds,
+        "live_inputs": command.live_inputs,
+        "live_input_module": command.live_input_module,
+        "live_input_root": root,
+        "live_input_arguments": command.live_input_arguments,
+        "include_live_roles": command.include_live_roles,
+        "git_apply_inputs": command.git_apply_inputs,
+        "argument_bindings": command.argument_bindings,
+        "cumulative_tests": command.cumulative_tests,
+    }
+    encoded = json.dumps(
+        _registry_value(payload, root),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _provider_ast_sha256(module_name: str) -> str:
+    module = importlib.import_module(module_name)
+    source_path = pathlib.Path(module.__file__ or "")
+    try:
+        source = source_path.read_text(encoding="utf-8")
+        normalized = ast.dump(ast.parse(source), include_attributes=False)
+    except (OSError, UnicodeError, SyntaxError) as exc:
+        raise ValueError(f"cannot fingerprint live-input provider {module_name}: {exc}") from exc
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def build_inventory(
@@ -388,6 +540,9 @@ def build_inventory(
             requirements=requirements,
             live_inputs=live_inputs,
             live_input_module=live_input_module,
+            live_input_root=root if live_input_module is not None else None,
+            live_input_arguments=live_input_arguments,
+            include_live_roles=include_live_roles,
             argument_bindings=argument_bindings,
         )
 
@@ -583,6 +738,8 @@ def build_inventory(
             environment=pythonpath,
             live_inputs=required_live_inputs(root),
             live_input_module="verify_driver",
+            live_input_root=root,
+            git_apply_inputs=required_git_inputs(root),
             cumulative_tests=True,
         ),
         CommandSpec(
@@ -606,7 +763,11 @@ def build_inventory(
             requirements=source_requirement,
         ),
     )
-    return inventory
+    return tuple(
+        dataclasses.replace(command, registry_sha256=_command_registry_sha256(command))
+        if command.live_input_module is not None else command
+        for command in inventory
+    )
 
 
 def select_commands(
@@ -621,9 +782,14 @@ def _git(
     repository_root: pathlib.Path,
     *arguments: str,
 ) -> subprocess.CompletedProcess[str]:
+    environment = {
+        key: value for key, value in os.environ.items()
+        if not key.startswith("GIT_")
+    }
     return subprocess.run(
-        (str(git), "-C", str(repository_root), *arguments),
+        (str(git), "--no-replace-objects", "-C", str(repository_root), *arguments),
         cwd=repository_root,
+        env=environment,
         text=True,
         capture_output=True,
         check=False,
@@ -693,6 +859,18 @@ def validate_live_input_registry(
     commands: Sequence[CommandSpec],
 ) -> tuple[PreflightIssue, ...]:
     issues: list[PreflightIssue] = []
+    registered_ids = {
+        command.command_id for command in commands
+        if command.live_input_module is not None
+    }
+    if registered_ids and LIVE_COMMAND_REGISTRY_SHA256:
+        missing = sorted(set(LIVE_COMMAND_REGISTRY_SHA256) - registered_ids)
+        extra = sorted(registered_ids - set(LIVE_COMMAND_REGISTRY_SHA256))
+        if missing or extra:
+            issues.append(PreflightIssue(
+                Requirement.LIVE_INPUT_REGISTRY,
+                f"live-input registry command inventory drifted: missing={missing} extra={extra}",
+            ))
     for command in commands:
         has_live_binding = any(
             binding.source in {"artifact-root", "live-role"}
@@ -702,6 +880,84 @@ def validate_live_input_registry(
             issues.append(PreflightIssue(
                 Requirement.LIVE_INPUT_REGISTRY,
                 f"artifact-backed command has no complete live-input registry: {command.command_id}",
+            ))
+            continue
+        if command.live_input_module is None:
+            continue
+        if command.live_input_root is None:
+            issues.append(PreflightIssue(
+                Requirement.LIVE_INPUT_REGISTRY,
+                f"live-input provider root is absent: {command.command_id}",
+            ))
+            continue
+        try:
+            observed = list(_provider_live_inputs(
+                command.live_input_module,
+                command.live_input_root,
+                command.live_input_arguments,
+                include_roles=command.include_live_roles,
+            ))
+            declared_roles = {
+                (item.role, item.relative_path)
+                for item in observed
+                if isinstance(item, RoleRequirement)
+            }
+            for binding in command.argument_bindings:
+                if binding.source != "live-role" or (binding.key, ".") in declared_roles:
+                    continue
+                assert binding.key is not None
+                spec = LIVE_INPUT_ROLE_SPECS[binding.key]
+                observed.append(RoleRequirement(
+                    binding.key,
+                    ".",
+                    spec.kind,
+                    command.command_id,
+                    spec.expected_sha256,
+                ))
+            if tuple(observed) != command.live_inputs:
+                issues.append(PreflightIssue(
+                    Requirement.LIVE_INPUT_REGISTRY,
+                    f"live-input provider snapshot diverged: {command.command_id}",
+                ))
+
+            module = importlib.import_module(command.live_input_module)
+            git_provider = getattr(module, "required_git_inputs", None)
+            observed_git = tuple(git_provider(
+                command.live_input_root, *command.live_input_arguments,
+            )) if callable(git_provider) else ()
+            # When this file is the CLI entrypoint its dataclasses belong to
+            # ``__main__`` while the pure provider is imported as
+            # ``verify_driver``.  Compare their frozen values, not Python class
+            # identity, so the same typed snapshot is stable in both modes.
+            if _registry_value(observed_git, command.live_input_root) != _registry_value(
+                command.git_apply_inputs, command.live_input_root,
+            ):
+                issues.append(PreflightIssue(
+                    Requirement.LIVE_INPUT_REGISTRY,
+                    f"Git live-input provider snapshot diverged: {command.command_id}",
+                ))
+
+            actual_fingerprint = _provider_ast_sha256(command.live_input_module)
+            expected_fingerprint = LIVE_PROVIDER_AST_SHA256.get(command.live_input_module)
+            if expected_fingerprint != actual_fingerprint:
+                issues.append(PreflightIssue(
+                    Requirement.LIVE_INPUT_REGISTRY,
+                    f"live-input provider AST fingerprint drifted: {command.live_input_module}",
+                ))
+            actual_registry = _command_registry_sha256(command)
+            expected_registry = LIVE_COMMAND_REGISTRY_SHA256.get(command.command_id)
+            if (
+                command.registry_sha256 != actual_registry
+                or expected_registry != actual_registry
+            ):
+                issues.append(PreflightIssue(
+                    Requirement.LIVE_INPUT_REGISTRY,
+                    f"live-input command snapshot drifted: {command.command_id}",
+                ))
+        except (AttributeError, ImportError, TypeError, ValueError, ArtifactContextError) as exc:
+            issues.append(PreflightIssue(
+                Requirement.LIVE_INPUT_REGISTRY,
+                f"live-input registry cannot be evaluated for {command.command_id}: {exc}",
             ))
     return tuple(issues)
 
@@ -758,6 +1014,66 @@ def _sorted_live_inputs(commands: Sequence[CommandSpec]) -> tuple[LiveRequiremen
         item.consumer,
         item.expected_sha256 or "",
     )))
+
+
+def _git_apply_issues(
+    config: VerificationConfig,
+    commands: Sequence[CommandSpec],
+    context: ArtifactContext,
+) -> list[PreflightIssue]:
+    requirements = tuple(
+        requirement
+        for command in commands
+        for requirement in command.git_apply_inputs
+    )
+    if not requirements:
+        return []
+    try:
+        git = config.tool_path("git")
+    except ValueError as exc:
+        return [PreflightIssue(Requirement.GIT_INPUT, str(exc))]
+
+    issues: list[PreflightIssue] = []
+    for requirement in requirements:
+        source = context.resolve(ArtifactRequirement(
+            requirement.logical_set,
+            requirement.relative_path,
+            "directory",
+            requirement.consumer,
+        ))
+        patch = config.repository_root / requirement.patch_relative_path
+        try:
+            if requirement.expected_head is not None:
+                observed = run_git(
+                    "rev-parse", "HEAD", repository=source, git_path=git,
+                )
+                actual_head = observed.stdout.decode("ascii", errors="replace").strip()
+                if observed.returncode != 0 or actual_head != requirement.expected_head:
+                    issues.append(PreflightIssue(
+                        Requirement.GIT_INPUT,
+                        f"Git repository HEAD mismatch for {requirement.consumer}: "
+                        f"expected {requirement.expected_head}, got {actual_head or '<unavailable>'}: {source}",
+                    ))
+            applied = run_git(
+                "apply", "--check", "--whitespace=error-all", str(patch),
+                repository=source,
+                git_path=git,
+            )
+            if applied.returncode != 0:
+                detail = (applied.stderr or applied.stdout).decode(
+                    "utf-8", errors="replace"
+                ).strip()
+                issues.append(PreflightIssue(
+                    Requirement.GIT_INPUT,
+                    f"Git apply preflight failed for {requirement.consumer} at {source}: "
+                    f"{detail or 'git apply --check failed'}",
+                ))
+        except (SourceContextError, OSError) as exc:
+            issues.append(PreflightIssue(
+                Requirement.GIT_INPUT,
+                f"Git preflight failed for {requirement.consumer} at {source}: {exc}",
+            ))
+    return issues
 
 
 def _prepare_preflight(
@@ -825,6 +1141,7 @@ def _prepare_preflight(
             context.preflight(artifacts)
         except ArtifactContextError as exc:
             issues.extend(_error_issues(Requirement.ARTIFACT_INPUT, exc))
+    issues.extend(_git_apply_issues(config, commands, context))
     if roles:
         try:
             live_inputs = LiveInputManifest.load(config.artifact_root)
@@ -877,13 +1194,22 @@ def materialize_command(
         argv.extend((binding.option, str(value)))
 
     environment: dict[str, str] = {}
-    tool_directories = tuple(dict.fromkeys(str(tool.path.parent) for tool in config.tools))
+    git_directories = [
+        str(tool.path.parent) for tool in config.tools if tool.name == "git"
+    ]
+    other_directories = [
+        str(tool.path.parent) for tool in config.tools if tool.name != "git"
+    ]
+    tool_directories = tuple(dict.fromkeys((*git_directories, *other_directories)))
     if tool_directories:
         environment["PATH"] = os.pathsep.join(tool_directories)
     for name in ("LANG", "LC_ALL", "TZ", "TMPDIR"):
         if name in os.environ:
             environment[name] = os.environ[name]
     environment.update(dict(command.environment))
+    for name in tuple(environment):
+        if name.startswith("GIT_"):
+            environment.pop(name)
     environment[VALIDATION_MODE_ENV] = (
         "live" if config.tier is Tier.FULL else "offline"
     )

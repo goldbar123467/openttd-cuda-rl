@@ -220,6 +220,17 @@ def _requirements(
                         LIVE_CONSUMER,
                         item["sha256"],
                     ))
+    requirements.append(RoleRequirement(
+        artifact_role, ".", "directory", LIVE_CONSUMER,
+    ))
+    requirements.extend(
+        RoleRequirement(
+            artifact_role, checkpoint["path"], "directory", LIVE_CONSUMER,
+        )
+        for run in report["runs"]
+        for process in (run["uninterrupted"], run["prefix"], run["resumed"])
+        for checkpoint in process["checkpoints"]
+    )
     identity = report["identity"]
     requirements.extend((
         RoleRequirement(

@@ -68,6 +68,16 @@ def _requirements(report: dict[str, Any]) -> tuple[RoleRequirement, ...]:
                     LIVE_CONSUMER,
                     item["sha256"],
                 ))
+    requirements.append(RoleRequirement(
+        "training-artifacts", ".", "directory", LIVE_CONSUMER,
+    ))
+    requirements.extend(
+        RoleRequirement(
+            "training-artifacts", checkpoint["path"], "directory", LIVE_CONSUMER,
+        )
+        for run in report["runs"]
+        for checkpoint in run["process"]["checkpoints"]
+    )
     identity = report["identity"]
     requirements.extend((
         RoleRequirement(

@@ -38,6 +38,18 @@ def _git_environment() -> dict[str, str]:
     }
 
 
+def _explicit_git_path(value: pathlib.Path | str | None) -> str:
+    if value is None:
+        return "git"
+    path = _canonical_absolute_path(value, label="Git executable")
+    symlink = _first_symlink(path)
+    if symlink is not None:
+        raise SourceContextError(f"Git executable traverses a symlink: {symlink}")
+    if not path.is_file() or not os.access(path, os.X_OK):
+        raise SourceContextError(f"Git executable must be an existing executable file: {path}")
+    return str(path)
+
+
 def _validate_git_arguments(arguments: tuple[str, ...]) -> None:
     if not arguments or any(
         not isinstance(argument, str) or not argument or "\x00" in argument
@@ -219,10 +231,11 @@ def _validate_repository_identity(
     repository: pathlib.Path,
     environment: dict[str, str],
     *,
+    git: str,
     label: str = "Git repository",
     invocation_repository: pathlib.Path | None = None,
 ) -> None:
-    prefix = ("git", "--no-replace-objects", "-C", str(repository))
+    prefix = (git, "--no-replace-objects", "-C", str(repository))
     bare = _invoke_git(
         (*prefix, "rev-parse", "--is-bare-repository"),
         repository=invocation_repository,
@@ -251,21 +264,24 @@ def _validate_repository_identity(
 def run_git(
     *arguments: str,
     repository: pathlib.Path | str | None = None,
+    git_path: pathlib.Path | str | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
     """Run Git through one scrubbed, replacement-free subprocess boundary."""
 
     _validate_git_arguments(arguments)
     environment = _git_environment()
+    git = _explicit_git_path(git_path)
     if repository is None:
         source, _ = _validate_clone_command(arguments)
         _validate_repository_identity(
             source,
             environment,
+            git=git,
             label="controlled clone source",
             invocation_repository=None,
         )
         return _invoke_git(
-            ("git", "--no-replace-objects", *arguments),
+            (git, "--no-replace-objects", *arguments),
             repository=None,
             environment=environment,
         )
@@ -274,11 +290,12 @@ def run_git(
     _validate_repository_identity(
         repository_path,
         environment,
+        git=git,
         invocation_repository=repository_path,
     )
     return _invoke_git(
         (
-            "git", "--no-replace-objects", "-C", str(repository_path),
+            git, "--no-replace-objects", "-C", str(repository_path),
             *arguments,
         ),
         repository=repository_path,

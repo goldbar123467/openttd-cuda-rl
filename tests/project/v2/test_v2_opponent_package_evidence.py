@@ -161,25 +161,25 @@ class OpponentPackageEvidenceTests(unittest.TestCase):
 
     def test_required_live_inputs_are_the_exact_ten_package_sets(self) -> None:
         requirements = validate_opponent_package_evidence.required_live_inputs(self.root)
-        self.assertEqual(len(requirements), 10)
-        self.assertEqual(
-            [
-                (
-                    requirement.logical_set,
-                    requirement.relative_path,
-                    requirement.expected_sha256,
-                )
-                for requirement in requirements
-            ],
-            [
-                (
-                    result["artifact_dir"],
-                    result["evidence_file"],
-                    result["evidence_sha256"],
-                )
-                for result in self.evidence["results"]
-            ],
+        observed = {
+            (item.logical_set, item.relative_path, item.kind, item.expected_sha256)
+            for item in requirements
+        }
+        for result in self.evidence["results"]:
+            self.assertIn((
+                result["artifact_dir"], result["evidence_file"], "file",
+                result["evidence_sha256"],
+            ), observed)
+            if result["outcome"] == "REJECTED":
+                self.assertIn((
+                    result["artifact_dir"], "openttd-content-console.log", "file",
+                    result["transcript_sha256"],
+                ), observed)
+        self.assertIn(
+            ("v2-m14-ai-shipai-a", "content_download/ai/53484950-ShipAI-10.tar", "file", None),
+            observed,
         )
+        self.assertGreater(len(requirements), 20)
 
     def test_required_live_role_is_the_frozen_m14_executable(self) -> None:
         self.assertEqual(

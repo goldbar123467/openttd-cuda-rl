@@ -102,12 +102,52 @@ def _requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
     )
 
 
+def _complete_requirements(
+    evidence: dict[str, Any],
+    package_index: dict[str, Any],
+) -> tuple[ArtifactRequirement, ...]:
+    requirements = list(_requirements(evidence))
+    package_by_name = {item["name"]: item for item in package_index["results"]}
+    for result in evidence["results"]:
+        if result["phase"] == "PACKAGE":
+            continue
+        requirements.extend((
+            ArtifactRequirement(
+                result["artifact_dir"], qualify_ai_runtime.COPIED_LOCK_NAME,
+                "file", LIVE_CONSUMER,
+            ),
+            ArtifactRequirement(
+                result["artifact_dir"], qualify_ai_runtime.TRANSCRIPT_NAME,
+                "file", LIVE_CONSUMER,
+            ),
+        ))
+        if result["save_sha256"] is not None:
+            requirements.append(ArtifactRequirement(
+                result["artifact_dir"], f"{qualify_ai_runtime.SAVE_BASENAME}.sav",
+                "file", LIVE_CONSUMER, result["save_sha256"],
+            ))
+        package_record = package_by_name[result["name"]]
+        archives = validate_opponent_package_evidence.PACKAGE_ARCHIVES.get(result["name"])
+        require(
+            archives is not None and len(archives) == package_record["package_count"],
+            f"{result['name']} committed runtime archive closure drifted",
+        )
+        requirements.extend(
+            ArtifactRequirement(result["artifact_dir"], archive, "file", LIVE_CONSUMER)
+            for archive in archives
+        )
+    return tuple(requirements)
+
+
 def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
     root = root.resolve()
     evidence = load_json(root / EVIDENCE_RELATIVE)
     return (
         *validate_opponent_package_evidence.required_live_inputs(root),
-        *_requirements(evidence),
+        *_complete_requirements(
+            evidence,
+            load_json(root / validate_opponent_package_evidence.EVIDENCE_RELATIVE),
+        ),
     )
 
 
@@ -273,13 +313,17 @@ def validate(
             live_inputs.artifact_root == context.artifact_root,
             "live-input manifest and artifact context must share one exact artifact root",
         )
+        # The portable driver preflights ``required_live_inputs`` as the complete,
+        # immutable repository closure.  The validator's own first stage remains
+        # fixture-aware: it authenticates the two evidence indexes before their
+        # retained records are used to derive and preflight nested paths below.
         requirements = (
-            required_live_inputs(root)
-            if repository_evidence
-            else (
-                *validate_opponent_package_evidence.required_live_inputs(root),
-                *_requirements(evidence),
-            )
+            *validate_opponent_package_evidence._requirements(
+                validate_opponent_package_evidence.load_json(
+                    root / validate_opponent_package_evidence.EVIDENCE_RELATIVE
+                )
+            ),
+            *_requirements(evidence),
         )
         roles = (
             required_live_roles(root)
@@ -374,6 +418,7 @@ def validate(
         try:
             validate_opponent_package_evidence.validate(
                 root,
+                evidence_path=package_path,
                 artifact_context=context,
                 live_inputs=live_inputs,
             )

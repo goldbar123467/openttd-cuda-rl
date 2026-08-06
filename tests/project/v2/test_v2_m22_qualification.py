@@ -21,6 +21,7 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     LiveInputManifest,
+    RoleRequirement,
     ValidationMode,
 )
 import run_m22_qualification as runner
@@ -487,6 +488,13 @@ class M22QualificationTests(unittest.TestCase):
             for item in checkpoint["files"]
         )
         expected.extend((
+            ("qualification-artifacts", ".", None),
+            ("training-artifacts", ".", None),
+            (
+                "training-artifacts",
+                self.report["finalized_selection"]["checkpoint_path"],
+                None,
+            ),
             (
                 "qualification-executable",
                 ".",
@@ -494,7 +502,24 @@ class M22QualificationTests(unittest.TestCase):
             ),
             ("v2-corpus-binary", ".", self.report["identity"]["corpus_binary_sha256"]),
         ))
-        self.assertEqual(len(requirements), 14)
+        self.assertEqual(len(requirements), 17)
+        self.assertIn(
+            RoleRequirement("qualification-artifacts", ".", "directory", validator.LIVE_CONSUMER),
+            requirements,
+        )
+        self.assertIn(
+            RoleRequirement("training-artifacts", ".", "directory", validator.LIVE_CONSUMER),
+            requirements,
+        )
+        self.assertIn(
+            RoleRequirement(
+                "training-artifacts",
+                self.report["finalized_selection"]["checkpoint_path"],
+                "directory",
+                validator.LIVE_CONSUMER,
+            ),
+            requirements,
+        )
         self.assertEqual(
             [(item.role, item.relative_path, item.expected_sha256) for item in requirements],
             expected,
