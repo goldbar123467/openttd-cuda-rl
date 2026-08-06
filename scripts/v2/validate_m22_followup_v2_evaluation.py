@@ -60,8 +60,16 @@ def _safe_relative(value: str, *, label: str) -> str:
 
 
 def validate_source(value: dict[str, Any], root: pathlib.Path) -> None:
-    evaluation_common.validate_source_identity(
-        value, root, mechanics=runner, suite_label="M22 follow-up-v2", require=require,
+    try:
+        evaluation_common.validate_source_identity(
+            value, root, mechanics=runner, suite_label="M22 follow-up-v2", require=require,
+        )
+    except evaluation_common._CommitTreeError:
+        require(False, "M22 follow-up-v2 source repository identity drifted")
+        raise AssertionError("require() returned after rejecting source commit tree")
+    require(
+        value.get("main_synchronized") is True,
+        "M22 follow-up-v2 source repository identity drifted",
     )
 
 

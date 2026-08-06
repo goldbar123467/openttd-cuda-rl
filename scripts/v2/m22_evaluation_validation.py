@@ -9,7 +9,7 @@ import json
 import pathlib
 import re
 from collections.abc import Callable, Sequence
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 import jsonschema
 
@@ -17,6 +17,14 @@ from source_context import SourceContextError, run_git
 
 
 Require = Callable[[bool, str], None]
+
+
+class _CommitTreeError(Exception):
+    """A neutral commit-tree failure for suite-local diagnostic translation."""
+
+    def __init__(self, reason: Literal["identity", "no-tree"]) -> None:
+        self.reason = reason
+        super().__init__(reason)
 
 
 class EvaluationMechanics(Protocol):
@@ -68,10 +76,17 @@ def validate_schema(
     """Validate with Draft 2020-12 while preserving the suite error contract."""
 
     try:
-        jsonschema.Draft202012Validator(schema).validate(value)
+        jsonschema.Draft202012Validator.check_schema(schema)
+        validator = jsonschema.Draft202012Validator(schema)
+    except (jsonschema.SchemaError, TypeError) as exc:
+        raise error_type(f"{label} schema is invalid") from exc
+    try:
+        validator.validate(value)
     except jsonschema.ValidationError as exc:
         where = "/".join(map(str, exc.absolute_path)) or "<root>"
         raise error_type(f"{label} schema failed at {where}: {exc.message}") from exc
+    except TypeError as exc:
+        raise error_type(f"{label} schema is invalid") from exc
 
 
 def historical_blob(
@@ -115,15 +130,10 @@ def _commit_tree(
         require(False, f"{suite_label} source repository identity is unavailable: {exc}")
         raise AssertionError("require() returned after rejecting unavailable source repository")
     first = body.stdout.splitlines()[0] if body.stdout else b""
-    if suite_label == "M22 final":
-        require(exists.returncode == 0 and body.returncode == 0,
-                f"{suite_label} source repository identity drifted")
-        require(first.startswith(b"tree "), f"{suite_label} source commit has no tree")
-    else:
-        require(
-            exists.returncode == 0 and body.returncode == 0 and first.startswith(b"tree "),
-            f"{suite_label} source repository identity drifted",
-        )
+    if exists.returncode != 0 or body.returncode != 0:
+        raise _CommitTreeError("identity")
+    if not first.startswith(b"tree "):
+        raise _CommitTreeError("no-tree")
     return first.removeprefix(b"tree ").decode("ascii")
 
 
@@ -170,10 +180,10 @@ def validate_source_identity(
         value["tree_sha256"] == mechanics.sha256_bytes(mechanics.canonical_bytes(files)),
         f"{suite_label} source inventory digest drifted",
     )
-    tree_matches = _commit_tree(root, commit, suite_label, require) == value.get("repository_tree")
-    if hasattr(mechanics, "source_is_synchronized_main"):
-        tree_matches = tree_matches and value.get("main_synchronized") is True
-    require(tree_matches, f"{suite_label} source repository identity drifted")
+    require(
+        _commit_tree(root, commit, suite_label, require) == value.get("repository_tree"),
+        f"{suite_label} source repository identity drifted",
+    )
 
 
 def validate_report_digest(

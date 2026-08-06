@@ -10,8 +10,9 @@ import pathlib
 import tempfile
 import unittest
 from collections.abc import Callable
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any
+from unittest import mock
 
 import run_m22_final_evaluation as final_runner
 import run_m22_followup_evaluation as followup_runner
@@ -95,6 +96,31 @@ class M22EvaluationCommonTests(unittest.TestCase):
     def cases(self, spec: SuiteSpec) -> list[dict[str, Any]]:
         return json.loads((self.root / spec.manifest_path).read_bytes())["cases"]
 
+    def aggregate_record_mutations(self) -> tuple[fixtures.MutationCase, ...]:
+        def mutate_statistics(report: dict[str, Any]) -> None:
+            report["statistics"]["policies"][0]["statistics"]["mean"] += 1.0
+
+        def mutate_acceptance(report: dict[str, Any]) -> None:
+            report["acceptance"]["all_42_once"] = not report["acceptance"]["all_42_once"]
+
+        def mutate_failure_counts(report: dict[str, Any]) -> None:
+            category = next(iter(report["failure_counts"]))
+            report["failure_counts"][category] += 1
+
+        def mutate_status(report: dict[str, Any]) -> None:
+            report["status"] = "PASS" if report["status"] == "FAIL" else "FAIL"
+
+        return (
+            fixtures.MutationCase("statistics", mutate_statistics, "statistics drifted"),
+            fixtures.MutationCase(
+                "acceptance", mutate_acceptance, "acceptance recomputation drifted",
+            ),
+            fixtures.MutationCase(
+                "failure-counts", mutate_failure_counts, "failure counts drifted",
+            ),
+            fixtures.MutationCase("status", mutate_status, "status drifted"),
+        )
+
     def test_json_and_schema_helpers_preserve_requested_error_type(self) -> None:
         mechanics = self.require_common()
         with tempfile.TemporaryDirectory() as raw:
@@ -119,6 +145,51 @@ class M22EvaluationCommonTests(unittest.TestCase):
                 "fixture", error_type=followup_validator.M22FollowupEvidenceError,
             )
 
+    def test_malformed_schema_uses_requested_error_type_at_common_and_public_boundaries(self) -> None:
+        mechanics = self.require_common()
+
+        def assert_requested_error(call: Callable[[], None], pattern: str) -> None:
+            try:
+                call()
+            except final_validator.M22FinalEvidenceError as exc:
+                self.assertRegex(str(exc), pattern)
+            except Exception as exc:  # pragma: no cover - the assertion reports the leaked type
+                self.fail(f"schema boundary leaked {type(exc).__name__}: {exc}")
+            else:
+                self.fail("malformed schema was accepted")
+
+        invalid_schema = {"type": 3}
+        assert_requested_error(
+            lambda: mechanics.validate_schema(
+                {}, invalid_schema, "common fixture",
+                error_type=final_validator.M22FinalEvidenceError,
+            ),
+            "common fixture schema is invalid",
+        )
+        assert_requested_error(
+            lambda: final_validator.schema_validate({}, invalid_schema, "public fixture"),
+            "public fixture schema is invalid",
+        )
+
+        report = final_validator.load(self.root / final_validator.CONFIG)
+        manifest_bytes = (self.root / final_runner.learning.EVALUATION).read_bytes()
+        manifest = json.loads(manifest_bytes)
+        original_load = final_validator.load
+
+        def load_with_invalid_schema(path: pathlib.Path) -> dict[str, Any]:
+            if path == self.root / final_runner.EVIDENCE_SCHEMA:
+                return invalid_schema
+            return original_load(path)
+
+        with mock.patch.object(final_validator, "load", side_effect=load_with_invalid_schema):
+            assert_requested_error(
+                lambda: final_validator.validate_value(
+                    report, self.root, manifest_value=manifest,
+                    manifest_bytes=manifest_bytes,
+                ),
+                "M22 final evaluation evidence schema is invalid",
+            )
+
     def test_frozen_source_identity_validates_for_every_suite(self) -> None:
         mechanics = self.require_common()
         for spec in self.suites:
@@ -128,6 +199,119 @@ class M22EvaluationCommonTests(unittest.TestCase):
                     mechanics=spec.mechanics, suite_label=spec.message_prefix,
                     require=spec.validator.require,
                 )
+
+    def test_followup_v1_source_policy_ignores_incidental_runner_attributes(self) -> None:
+        setattr(followup_runner, "source_is_synchronized_main", lambda *_: True)
+        try:
+            try:
+                followup_validator.validate_source(
+                    self.report(self.suites[1])["source"], self.root,
+                )
+            except Exception as exc:  # pragma: no cover - the assertion reports the leaked policy
+                self.fail(f"incidental runner attribute changed source policy: {exc}")
+        finally:
+            delattr(followup_runner, "source_is_synchronized_main")
+
+    def test_followup_v2_local_synchronization_policy_survives_runner_attribute_removal(self) -> None:
+        value = copy.deepcopy(self.report(self.suites[2])["source"])
+        value["main_synchronized"] = False
+        synchronization_helper = followup_v2_runner.source_is_synchronized_main
+        delattr(followup_v2_runner, "source_is_synchronized_main")
+        try:
+            with self.assertRaisesRegex(
+                followup_v2_validator.M22FollowupV2EvidenceError,
+                "M22 follow-up-v2 source repository identity drifted",
+            ):
+                followup_v2_validator.validate_source(value, self.root)
+        finally:
+            setattr(
+                followup_v2_runner,
+                "source_is_synchronized_main",
+                synchronization_helper,
+            )
+
+    def test_common_commit_tree_failure_is_neutral_across_suite_labels(self) -> None:
+        mechanics = self.require_common()
+        internal_error = getattr(mechanics, "_CommitTreeError", None)
+        self.assertIsNotNone(internal_error, "common commit-tree failure must be structured")
+        source = self.report(self.suites[0])["source"]
+        commit = source["repository_commit"]
+        blobs = {
+            record["path"]: mechanics.historical_blob(
+                self.root, commit, record["path"], final_validator.require,
+            )
+            for record in source["files"]
+        }
+
+        def fake_git(*arguments: str, repository: pathlib.Path) -> SimpleNamespace:
+            self.assertEqual(repository, self.root)
+            if arguments[1] == "-e":
+                return SimpleNamespace(returncode=0, stdout=b"")
+            return SimpleNamespace(returncode=0, stdout=b"author no-tree fixture\n")
+
+        failures: list[Exception] = []
+        with mock.patch.object(
+            mechanics, "historical_blob",
+            side_effect=lambda _root, _commit, path, _require: blobs[path],
+        ), mock.patch.object(mechanics, "run_git", side_effect=fake_git):
+            for label in ("M22 final", "unrelated suite label"):
+                with self.subTest(label=label):
+                    try:
+                        mechanics.validate_source_identity(
+                            source, self.root, mechanics=final_runner,
+                            suite_label=label, require=final_validator.require,
+                        )
+                    except Exception as exc:
+                        failures.append(exc)
+                    else:
+                        self.fail("tree-less commit was accepted")
+        self.assertEqual(len(failures), 2)
+        self.assertTrue(all(isinstance(exc, internal_error) for exc in failures))
+        self.assertEqual(
+            [getattr(exc, "reason", None) for exc in failures],
+            ["no-tree", "no-tree"],
+        )
+
+    def test_suite_wrappers_translate_tree_less_commit_without_common_policy(self) -> None:
+        mechanics = self.require_common()
+        expectations = {
+            "final-v1": (
+                final_validator.M22FinalEvidenceError,
+                "M22 final source commit has no tree",
+            ),
+            "follow-up-v1": (
+                followup_validator.M22FollowupEvidenceError,
+                "M22 follow-up source repository identity drifted",
+            ),
+            "follow-up-v2": (
+                followup_v2_validator.M22FollowupV2EvidenceError,
+                "M22 follow-up-v2 source repository identity drifted",
+            ),
+        }
+        for spec in self.suites:
+            with self.subTest(suite=spec.label):
+                source = self.report(spec)["source"]
+                commit = source["repository_commit"]
+                blobs = {
+                    record["path"]: mechanics.historical_blob(
+                        self.root, commit, record["path"], spec.validator.require,
+                    )
+                    for record in source["files"]
+                }
+
+                def fake_git(*arguments: str, repository: pathlib.Path) -> SimpleNamespace:
+                    self.assertEqual(repository, self.root)
+                    if arguments[1] == "-e":
+                        return SimpleNamespace(returncode=0, stdout=b"")
+                    return SimpleNamespace(returncode=0, stdout=b"author no-tree fixture\n")
+
+                error_type, pattern = expectations[spec.label]
+                with mock.patch.object(
+                    mechanics, "historical_blob",
+                    side_effect=lambda _root, _commit, path, _require: blobs[path],
+                ), mock.patch.object(mechanics, "run_git", side_effect=fake_git):
+                    with self.assertRaisesRegex(error_type, pattern):
+                        spec.validator.validate_source(source, self.root)
 
     def test_source_path_order_hash_commit_and_tree_mutations_fail_for_every_suite(self) -> None:
         mechanics = self.require_common()
@@ -160,15 +344,11 @@ class M22EvaluationCommonTests(unittest.TestCase):
                 support.run_named_mutations(self, self.report(spec)["source"], mutations, reject)
 
     def test_followup_v2_main_synchronization_mutation_fails(self) -> None:
-        mechanics = self.require_common()
         value = copy.deepcopy(self.report(self.suites[2])["source"])
         value["main_synchronized"] = False
         with self.assertRaisesRegex(followup_v2_validator.M22FollowupV2EvidenceError,
                                     "source repository identity drifted"):
-            mechanics.validate_source_identity(
-                value, self.root, mechanics=followup_v2_runner,
-                suite_label="M22 follow-up-v2", require=followup_v2_validator.require,
-            )
+            followup_v2_validator.validate_source(value, self.root)
 
     def test_report_digest_mutation_fails_for_every_suite(self) -> None:
         mechanics = self.require_common()
@@ -253,6 +433,35 @@ class M22EvaluationCommonTests(unittest.TestCase):
                         )
 
                 support.run_named_mutations(self, self.report(spec), mutations, reject)
+
+    def test_aggregate_record_mutation_inventory_covers_every_derived_record(self) -> None:
+        self.assertEqual(
+            {mutation.label for mutation in self.aggregate_record_mutations()},
+            {"statistics", "acceptance", "failure-counts", "status"},
+        )
+
+    def test_aggregate_derived_record_mutations_fail_for_every_suite(self) -> None:
+        mechanics = self.require_common()
+        support = self.require_fixtures()
+        error_types = {
+            "final-v1": final_validator.M22FinalEvidenceError,
+            "follow-up-v1": followup_validator.M22FollowupEvidenceError,
+            "follow-up-v2": followup_v2_validator.M22FollowupV2EvidenceError,
+        }
+        for spec in self.suites:
+            with self.subTest(suite=spec.label):
+                def reject(value: dict[str, Any], pattern: str, live: bool) -> None:
+                    self.assertFalse(live)
+                    with self.assertRaisesRegex(error_types[spec.label], pattern):
+                        mechanics.validate_aggregate_records(
+                            value, self.cases(spec), mechanics=spec.mechanics,
+                            suite_label=spec.message_prefix, live=False,
+                            require=spec.validator.require,
+                        )
+
+                support.run_named_mutations(
+                    self, self.report(spec), self.aggregate_record_mutations(), reject,
+                )
 
     def test_fixture_factories_return_fresh_42_run_reports(self) -> None:
         support = self.require_fixtures()
