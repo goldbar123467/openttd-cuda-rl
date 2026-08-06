@@ -24,8 +24,10 @@ from tests.project.v2.test_v2_m22_final_runtime_source import (
     G21_GAMESCRIPT_COMMAND_NAMES,
     _git,
     _mutate_authority,
+    _replace_m21_source_configs,
     _replace_record_file,
     _replace_smoke_report,
+    _run_validator_cli,
     _write_json,
     expected_runtime_closure,
     make_live_runtime_fixture,
@@ -257,6 +259,37 @@ class M22FollowupRuntimeSourceTests(unittest.TestCase):
                     status = validator.main(["--root", str(config_path.parent), "--config", str(config_path)])
                 self.assertEqual(status, 1)
                 self.assertNotIn("Traceback", output.getvalue())
+
+    def test_m21_source_configs_list_is_offline_domain_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+            )
+            _replace_m21_source_configs(config_path.parent, config_path, value, [])
+            with self.assertRaises(Exception) as raised:
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+            self.assertIsInstance(raised.exception, validator.M22FollowupRuntimeSourceError)
+            self.assertRegex(str(raised.exception), "M20/M21 content authority is malformed")
+
+    def test_m21_source_configs_list_cli_is_a_domain_failure_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=preparation.PATCHES, logical_set="v2-m22-followup-runtime-a",
+            )
+            _replace_m21_source_configs(config_path.parent, config_path, value, [])
+            completed = _run_validator_cli(
+                self.root, config_path.parent, config_path, "validate_m22_followup_runtime_source.py",
+            )
+            self.assertEqual(completed.returncode, 1)
+            self.assertIn(
+                "V2_M22_FOLLOWUP_RUNTIME_SOURCE=FAIL M20/M21 content authority is malformed",
+                completed.stdout,
+            )
+            self.assertNotIn("Traceback", completed.stdout)
 
     def test_wrong_ai_name_fails_offline(self) -> None:
         value = copy.deepcopy(self.source)

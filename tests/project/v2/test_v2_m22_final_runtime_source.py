@@ -13,6 +13,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from typing import Any
@@ -172,6 +173,38 @@ def _update_authority_link(project: pathlib.Path, contract_relative: pathlib.Pat
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
     contract["identities"][identity] = hashlib.sha256(target.read_bytes()).hexdigest()
     _write_json(contract_path, contract)
+
+
+def _replace_m21_source_configs(
+    project: pathlib.Path,
+    config_path: pathlib.Path,
+    value: dict[str, Any],
+    configs: object,
+) -> None:
+    source_path = project / preparation.M21_SOURCE
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    source["runtime"]["configs"] = configs
+    _write_json(source_path, source)
+    digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
+    value["base"]["source_record_sha256"] = digest
+    value["prerequisites"]["m21_source_record_sha256"] = digest
+    _write_json(config_path, value)
+
+
+def _run_validator_cli(
+    repository: pathlib.Path,
+    project: pathlib.Path,
+    config_path: pathlib.Path,
+    script: str,
+) -> subprocess.CompletedProcess[str]:
+    environment = dict(os.environ)
+    environment.pop(ARTIFACT_ROOT_ENV, None)
+    return subprocess.run(
+        [sys.executable, str(repository / "scripts/v2" / script),
+         "--root", str(project), "--config", str(config_path)],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        env=environment, check=False,
+    )
 
 
 def _mutate_authority(project: pathlib.Path, label: str) -> None:
@@ -775,6 +808,37 @@ class M22FinalRuntimeSourceTests(unittest.TestCase):
                     status = validator.main(["--root", str(config_path.parent), "--config", str(config_path)])
                 self.assertEqual(status, 1)
                 self.assertNotIn("Traceback", output.getvalue())
+
+    def test_m21_source_configs_list_is_offline_domain_error(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            _replace_m21_source_configs(config_path.parent, config_path, value, [])
+            with self.assertRaises(Exception) as raised:
+                validator.validate(config_path.parent, config_path, artifact_context=ArtifactContext.offline())
+            self.assertIsInstance(raised.exception, validator.M22RuntimeSourceError)
+            self.assertRegex(str(raised.exception), "M20/M21 content authority is malformed")
+
+    def test_m21_source_configs_list_cli_is_a_domain_failure_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            value, config_path, _, _ = make_live_runtime_fixture(
+                self.root, base, self.source,
+                patches=(preparation.PATCH,), logical_set="v2-m22-final-runtime-c",
+            )
+            _replace_m21_source_configs(config_path.parent, config_path, value, [])
+            completed = _run_validator_cli(
+                self.root, config_path.parent, config_path, "validate_m22_final_runtime_source.py",
+            )
+            self.assertEqual(completed.returncode, 1)
+            self.assertIn(
+                "V2_M22_FINAL_RUNTIME_SOURCE=FAIL M20/M21 content authority is malformed",
+                completed.stdout,
+            )
+            self.assertNotIn("Traceback", completed.stdout)
 
     def test_renamed_base_config_fails_offline(self) -> None:
         value = copy.deepcopy(self.source)

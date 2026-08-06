@@ -176,6 +176,32 @@ def _canonical_runtime(root: pathlib.Path, source: dict[str, Any], *, build_name
         m20_contract = load(root / preparation.native.m20.CONTRACT)
         m21_source = load(root / preparation.M21_SOURCE)
         m21_contract = load(root / preparation.native.m21.CONTRACT)
+        m21_runtime = m21_source.get("runtime")
+        require(
+            isinstance(m21_runtime, dict)
+            and tuple(m21_runtime) == (
+                "configs", "content_files", "content_root", "gamescript_root",
+                "network_calls_during_qualification",
+            )
+            and isinstance(m21_runtime.get("configs"), dict)
+            and isinstance(m21_runtime.get("content_files"), list)
+            and isinstance(m21_runtime.get("content_root"), str)
+            and isinstance(m21_runtime.get("gamescript_root"), str)
+            and isinstance(m21_runtime.get("network_calls_during_qualification"), str),
+            "M21 runtime authority is malformed",
+        )
+        m21_configs = m21_runtime["configs"]
+        require(
+            tuple(m21_configs) == ("base", "content", "gamescript")
+            and all(
+                isinstance(authority, dict)
+                and tuple(authority) == ("path", "sha256")
+                and isinstance(authority.get("path"), str)
+                and isinstance(authority.get("sha256"), str)
+                for authority in m21_configs.values()
+            ),
+            "M21 runtime config authority is malformed",
+        )
         preparation.native.m20.expected_identities(root, m20_contract)
         preparation.native.m21.identities(root, m21_contract)
         preparation.m20_source._content_records(root, m20_source, repository_config=False)
@@ -195,7 +221,7 @@ def _canonical_runtime(root: pathlib.Path, source: dict[str, Any], *, build_name
         )
         expected_configs = tuple(
             (name, authority["sha256"])
-            for name, authority in m21_source["runtime"]["configs"].items()
+            for name, authority in m21_configs.items()
         )
         expected_ai = [
             (authority["name"], f"content_download/ai/{pathlib.PurePosixPath(authority['path']).name}",
