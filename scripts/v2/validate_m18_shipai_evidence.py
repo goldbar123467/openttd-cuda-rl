@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import hashlib
 import json
 import pathlib
@@ -17,6 +18,7 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     ArtifactRequirement,
+    DeferredArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
     add_artifact_root_argument,
@@ -115,51 +117,101 @@ def _requirements(
 def _complete_requirements(
     evidence: dict[str, Any],
     package_record: dict[str, Any],
-) -> tuple[ArtifactRequirement, ...]:
+) -> tuple[ArtifactRequirement | DeferredArtifactRequirement, ...]:
+    direct = _requirements(evidence, package_record)
+    package_authority, _scenario_authority, runtime_authority = direct
     return (
-        *_requirements(evidence, package_record),
-        ArtifactRequirement(
+        *direct,
+        DeferredArtifactRequirement(
             PACKAGE_LOGICAL_SET,
             "content_download/ai/53484950-ShipAI-10.tar",
             "file",
             LIVE_CONSUMER,
-            evidence["package"]["archive_sha256"],
+            package_authority,
         ),
-        ArtifactRequirement(
+        DeferredArtifactRequirement(
             RUNTIME_LOGICAL_SET,
             qualify_ai_runtime.COPIED_LOCK_NAME,
             "file",
             LIVE_CONSUMER,
+            runtime_authority,
         ),
-        ArtifactRequirement(
+        DeferredArtifactRequirement(
             RUNTIME_LOGICAL_SET,
             qualify_ai_runtime.TRANSCRIPT_NAME,
             "file",
             LIVE_CONSUMER,
+            runtime_authority,
         ),
-        ArtifactRequirement(
+        DeferredArtifactRequirement(
             RUNTIME_LOGICAL_SET,
             f"{qualify_ai_runtime.SAVE_BASENAME}.sav",
             "file",
             LIVE_CONSUMER,
+            runtime_authority,
         ),
-        ArtifactRequirement(
+        DeferredArtifactRequirement(
             RUNTIME_LOGICAL_SET,
             "content_download/ai/53484950-ShipAI-10.tar",
             "file",
             LIVE_CONSUMER,
-            evidence["package"]["archive_sha256"],
+            package_authority,
         ),
     )
 
 
-def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+def required_live_inputs(
+    root: pathlib.Path,
+) -> tuple[ArtifactRequirement | DeferredArtifactRequirement, ...]:
     root = root.resolve()
     evidence = load(root / CONFIG)
     package_index = load(root / PACKAGE_INDEX)
     package_records = [item for item in package_index["results"] if item["name"] == "ShipAI"]
     require(len(package_records) == 1, "M14 ShipAI package index cardinality drifted")
     return _complete_requirements(evidence, package_records[0])
+
+
+def expanded_live_inputs(
+    context: ArtifactContext,
+    root: pathlib.Path,
+) -> tuple[ArtifactRequirement, ...]:
+    """Expand ShipAI nested bytes from its authenticated lock and manifest."""
+
+    root = root.resolve()
+    evidence = load(root / CONFIG)
+    package_index = load(root / PACKAGE_INDEX)
+    package_records = [
+        item for item in package_index["results"] if item["name"] == "ShipAI"
+    ]
+    require(len(package_records) == 1, "M14 ShipAI package index cardinality drifted")
+    direct = _requirements(evidence, package_records[0])
+    lock = load(context.resolve(direct[0]))
+    manifest = load(context.resolve(direct[2]))
+    package_archives = _package_archive_requirements(
+        PACKAGE_LOGICAL_SET,
+        acquire_ai_package.LOCK_NAME,
+        lock,
+        "M14 ShipAI package lock",
+    )
+    require(
+        len(package_archives) == 1
+        and package_archives[0].relative_path
+        == "content_download/ai/53484950-ShipAI-10.tar"
+        and package_archives[0].expected_sha256
+        == evidence["package"]["archive_sha256"],
+        "M14 ShipAI package archive authority drifted",
+    )
+    qualification_inputs = _qualification_inputs(manifest)
+    require(
+        qualification_inputs[2].relative_path
+        == f"{qualify_ai_runtime.SAVE_BASENAME}.sav",
+        "ShipAI qualification save path drifted",
+    )
+    runtime_archive = dataclasses.replace(
+        package_archives[0],
+        logical_set=RUNTIME_LOGICAL_SET,
+    )
+    return (*package_archives, *qualification_inputs, runtime_archive)
 
 
 def _role_requirements(package_index: dict[str, Any]) -> tuple[RoleRequirement, ...]:
@@ -341,11 +393,11 @@ def validate(
     require(live_inputs is not None and live_inputs.is_live, "live-input manifest is required for live ShipAI validation")
     assert live_inputs is not None
     require(live_inputs.artifact_root == context.artifact_root, "live-input manifest and artifact context must share one exact artifact root")
-    if repository_evidence:
-        requirements = required_live_inputs(root)
-        roles = required_live_roles(root)
-    else:
-        roles = _role_requirements(package_index)
+    roles = (
+        required_live_roles(root)
+        if repository_evidence
+        else _role_requirements(package_index)
+    )
     context.preflight(requirements)
     live_inputs.preflight(roles)
     openttd = live_inputs.resolve(roles[0])

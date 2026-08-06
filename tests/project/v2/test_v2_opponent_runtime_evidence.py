@@ -18,6 +18,8 @@ from unittest import mock
 
 from artifact_context import (
     ArtifactContext,
+    ArtifactRequirement,
+    DeferredArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
     resolve_artifact_root,
@@ -79,24 +81,36 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
             artifact_set.mkdir(exist_ok=True)
             evidence_file = artifact_set / result["evidence_file"]
             if result["outcome"] == "LOCKED":
-                archive_relative = f"content_download/{result['content_unique_id']}.tar"
-                archive = artifact_set / archive_relative
-                archive.parent.mkdir()
-                archive.write_bytes(f"package:{result['name']}\n".encode("utf-8"))
-                package_row = {
-                    "local_unique_id": result["content_unique_id"],
-                    "archive_path": archive_relative,
-                    "archive_size": archive.stat().st_size,
-                    "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
-                    "licenses": ["COPYING"],
-                }
-                record = {"packages": [package_row]}
-                result["package_count"] = 1
-                result["archive_bytes"] = package_row["archive_size"]
-                result["license_files"] = 1
+                package_rows = []
+                for archive_relative in (
+                    validate_opponent_runtime_evidence
+                    .validate_opponent_package_evidence.PACKAGE_ARCHIVES[result["name"]]
+                ):
+                    archive = artifact_set / archive_relative
+                    archive.parent.mkdir(parents=True, exist_ok=True)
+                    archive.write_bytes(
+                        f"package:{result['name']}:{archive_relative}\n".encode(
+                            "utf-8"
+                        )
+                    )
+                    package_rows.append({
+                        "local_unique_id": archive.name.split("-", 1)[0],
+                        "archive_path": archive_relative,
+                        "archive_size": archive.stat().st_size,
+                        "archive_sha256": hashlib.sha256(
+                            archive.read_bytes()
+                        ).hexdigest(),
+                        "licenses": ["COPYING"],
+                    })
+                record = {"packages": package_rows}
+                result["package_count"] = len(package_rows)
+                result["archive_bytes"] = sum(
+                    row["archive_size"] for row in package_rows
+                )
+                result["license_files"] = len(package_rows)
                 result["closure_sha256"] = (
                     validate_opponent_runtime_evidence.validate_opponent_package_evidence.closure_sha256(
-                        [package_row]
+                        package_rows
                     )
                 )
                 package_lock_paths.append(evidence_file)
@@ -136,22 +150,17 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
                 continue
             artifact_set = artifact_root / result["artifact_dir"]
             artifact_set.mkdir()
-            copied_archive = artifact_set / "content_download/runtime-package.tar"
-            copied_archive.parent.mkdir()
-            copied_archive.write_bytes(f"runtime-package:{result['name']}\n".encode("utf-8"))
-            copied_lock_record = {
-                "packages": [{
-                    "archive_path": "content_download/runtime-package.tar",
-                    "archive_sha256": hashlib.sha256(
-                        copied_archive.read_bytes()
-                    ).hexdigest(),
-                }],
-            }
+            source_lock = artifact_root / package_by_name[result["name"]][
+                "artifact_dir"
+            ] / package_by_name[result["name"]]["evidence_file"]
+            copied_lock_record = copy.deepcopy(package_records[source_lock])
             copied_lock = artifact_set / "ai-package-lock.json"
-            copied_lock.write_text(
-                json.dumps(copied_lock_record) + "\n",
-                encoding="utf-8",
-            )
+            shutil.copyfile(source_lock, copied_lock)
+            for package_row in copied_lock_record["packages"]:
+                source_archive = source_lock.parent / package_row["archive_path"]
+                copied_archive = artifact_set / package_row["archive_path"]
+                copied_archive.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source_archive, copied_archive)
             transcript = artifact_set / "openttd-runtime-console.log"
             if result["reason_code"] == "declared-identity-not-listed":
                 transcript.write_text("Compile error\n", encoding="utf-8")
@@ -161,7 +170,7 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
                 transcript.write_text(f"runtime:{result['name']}\n", encoding="utf-8")
             save = None
             if result["save_sha256"] is not None:
-                save_path = artifact_set / "runtime.sav"
+                save_path = artifact_set / "v2-qualification.sav"
                 save_path.write_bytes(f"save:{result['name']}\n".encode("utf-8"))
                 result["save_sha256"] = hashlib.sha256(save_path.read_bytes()).hexdigest()
                 save = {
@@ -286,12 +295,15 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
 
     def test_required_live_inputs_are_the_exact_package_and_runtime_sets(self) -> None:
         requirements = validate_opponent_runtime_evidence.required_live_inputs(self.root)
-        package = validate_opponent_runtime_evidence.validate_opponent_package_evidence.load_json(
-            self.root / "config/v2/opponent-package-evidence.json"
-        )
-        observed = {
+        direct = {
             (item.logical_set, item.relative_path, item.kind, item.expected_sha256)
             for item in requirements
+            if isinstance(item, ArtifactRequirement)
+        }
+        deferred = {
+            (item.logical_set, item.relative_path, item.kind)
+            for item in requirements
+            if isinstance(item, DeferredArtifactRequirement)
         }
         for result in self.evidence["results"]:
             if result["phase"] == "PACKAGE":
@@ -299,14 +311,26 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
             self.assertIn((
                 result["artifact_dir"], result["evidence_file"], "file",
                 result["evidence_sha256"],
-            ), observed)
-            self.assertIn((result["artifact_dir"], "ai-package-lock.json", "file", None), observed)
-            self.assertIn((result["artifact_dir"], "openttd-runtime-console.log", "file", None), observed)
+            ), direct)
+            self.assertIn(
+                (result["artifact_dir"], "ai-package-lock.json", "file"),
+                deferred,
+            )
+            self.assertIn(
+                (
+                    result["artifact_dir"],
+                    "openttd-runtime-console.log",
+                    "file",
+                ),
+                deferred,
+            )
             if result["save_sha256"] is not None:
                 self.assertIn((
                     result["artifact_dir"], "v2-qualification.sav", "file",
-                    result["save_sha256"],
-                ), observed)
+                ), deferred)
+        self.assertTrue(all(item[3] is not None for item in direct))
+        self.assertEqual(len(direct), 18)
+        self.assertEqual(len(deferred), 61)
         self.assertGreater(len(requirements), 50)
         custom = copy.deepcopy(self.evidence)
         custom_requirements = (
@@ -317,6 +341,57 @@ class OpponentRuntimeEvidenceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(custom_requirements), 18)
         self.assertEqual(len({item.logical_set for item in custom_requirements}), 18)
+
+    def test_authenticated_runtime_expansion_has_exact_paths_and_digests(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_live_fixture(pathlib.Path(raw))
+            requirements = validate_opponent_runtime_evidence.required_live_inputs(
+                fixture["project"]
+            )
+            direct = tuple(
+                item for item in requirements
+                if isinstance(item, ArtifactRequirement)
+            )
+            deferred = tuple(
+                item for item in requirements
+                if isinstance(item, DeferredArtifactRequirement)
+            )
+            context = ArtifactContext.live(fixture["artifact_root"])
+            context.preflight(direct)
+            expanded = validate_opponent_runtime_evidence.expanded_live_inputs(
+                context, fixture["project"]
+            )
+            self.assertEqual(
+                [
+                    (item.logical_set, item.relative_path, item.kind, item.consumer)
+                    for item in expanded
+                ],
+                [
+                    (item.logical_set, item.relative_path, item.kind, item.consumer)
+                    for item in deferred
+                ],
+            )
+            self.assertTrue(all(item.expected_sha256 is not None for item in expanded))
+            self.assertEqual(
+                {
+                    (item.logical_set, item.relative_path, item.expected_sha256)
+                    for item in expanded
+                },
+                {
+                    (
+                        item.logical_set,
+                        item.relative_path,
+                        hashlib.sha256(
+                            (
+                                fixture["artifact_root"]
+                                / item.logical_set
+                                / item.relative_path
+                            ).read_bytes()
+                        ).hexdigest(),
+                    )
+                    for item in expanded
+                },
+            )
 
     def test_required_live_role_is_the_frozen_m14_executable(self) -> None:
         self.assertEqual(

@@ -19,6 +19,8 @@ from unittest import mock
 from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
+    ArtifactRequirement,
+    DeferredArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
     ValidationMode,
@@ -92,7 +94,9 @@ def make_live_shipai_fixture(
 
     package_set = artifact_root / package_record["artifact_dir"]
     package_set.mkdir()
-    package_archive = package_set / "content_download/53484950-ShipAI-v10.tar"
+    package_archive = (
+        package_set / "content_download/ai/53484950-ShipAI-10.tar"
+    )
     _write_archive(package_archive)
     catalog = validator.acquire_ai_package.CatalogRecord(
         content_id=1,
@@ -138,8 +142,10 @@ def make_live_shipai_fixture(
 
     runtime_set = artifact_root / "v2-m18-shipai-runtime-b"
     runtime_set.mkdir()
-    runtime_archive = runtime_set / "content_download/53484950-ShipAI-v10.tar"
-    runtime_archive.parent.mkdir()
+    runtime_archive = (
+        runtime_set / "content_download/ai/53484950-ShipAI-10.tar"
+    )
+    runtime_archive.parent.mkdir(parents=True)
     shutil.copyfile(package_archive, runtime_archive)
     copied_lock = copy.deepcopy(package_lock)
     copied_lock_path = runtime_set / "ai-package-lock.json"
@@ -306,22 +312,72 @@ class M18ShipAIEvidenceTests(unittest.TestCase):
 
     def test_required_live_inputs_are_the_exact_direct_shipai_closure(self) -> None:
         requirements = validator.required_live_inputs(self.root)
-        observed = tuple(
+        direct = tuple(
             (item.logical_set, item.relative_path, item.kind, item.expected_sha256)
             for item in requirements
+            if isinstance(item, ArtifactRequirement)
         )
-        for expected in (
+        deferred = tuple(
+            (item.logical_set, item.relative_path, item.kind)
+            for item in requirements
+            if isinstance(item, DeferredArtifactRequirement)
+        )
+        self.assertEqual(
+            direct,
+            (
                 ("v2-m14-ai-shipai-a", "ai-package-lock.json", "file", self.package_record["evidence_sha256"]),
                 ("v2-m18-shipai-scenario-c", "report.json.sav", "file", self.config["scenario"]["sha256"]),
                 ("v2-m18-shipai-runtime-b", "ai-runtime-qualification.json", "file", self.config["qualification_manifest"]["sha256"]),
-                ("v2-m14-ai-shipai-a", "content_download/ai/53484950-ShipAI-10.tar", "file", self.config["package"]["archive_sha256"]),
-                ("v2-m18-shipai-runtime-b", "ai-package-lock.json", "file", None),
-                ("v2-m18-shipai-runtime-b", "openttd-runtime-console.log", "file", None),
-                ("v2-m18-shipai-runtime-b", "v2-qualification.sav", "file", None),
-                ("v2-m18-shipai-runtime-b", "content_download/ai/53484950-ShipAI-10.tar", "file", self.config["package"]["archive_sha256"]),
-        ):
-            self.assertIn(expected, observed)
+            ),
+        )
+        self.assertEqual(
+            deferred,
+            (
+                ("v2-m14-ai-shipai-a", "content_download/ai/53484950-ShipAI-10.tar", "file"),
+                ("v2-m18-shipai-runtime-b", "ai-package-lock.json", "file"),
+                ("v2-m18-shipai-runtime-b", "openttd-runtime-console.log", "file"),
+                ("v2-m18-shipai-runtime-b", "v2-qualification.sav", "file"),
+                ("v2-m18-shipai-runtime-b", "content_download/ai/53484950-ShipAI-10.tar", "file"),
+            ),
+        )
         self.assertEqual({item.consumer for item in requirements}, {"m18-shipai-evidence"})
+
+    def test_authenticated_shipai_expansion_has_exact_paths_and_digests(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = make_live_shipai_fixture(
+                self.root,
+                pathlib.Path(raw),
+                self.config,
+                self.package_index,
+                self.runtime_index,
+                self.ship_evidence,
+            )
+            requirements = validator.required_live_inputs(fixture["project_root"])
+            direct = tuple(
+                item for item in requirements
+                if isinstance(item, ArtifactRequirement)
+            )
+            deferred = tuple(
+                item for item in requirements
+                if isinstance(item, DeferredArtifactRequirement)
+            )
+            context = ArtifactContext.live(fixture["artifact_root"])
+            context.preflight(direct)
+            expanded = validator.expanded_live_inputs(
+                context, fixture["project_root"]
+            )
+            self.assertEqual(
+                [
+                    (item.logical_set, item.relative_path, item.kind, item.consumer)
+                    for item in expanded
+                ],
+                [
+                    (item.logical_set, item.relative_path, item.kind, item.consumer)
+                    for item in deferred
+                ],
+            )
+            self.assertTrue(all(item.expected_sha256 is not None for item in expanded))
+            context.preflight(expanded)
 
     def test_required_live_role_is_the_frozen_m14_executable(self) -> None:
         self.assertEqual(

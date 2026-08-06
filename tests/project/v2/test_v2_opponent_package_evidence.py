@@ -10,14 +10,20 @@ import json
 import pathlib
 import re
 import shlex
+import shutil
+import tarfile
 import tempfile
 import unittest
+from types import MappingProxyType
 from unittest import mock
 
 from artifact_context import (
     ArtifactContext,
+    ArtifactRequirement,
+    DeferredArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
+    ValidationMode,
     resolve_artifact_root,
 )
 import artifact_context
@@ -115,6 +121,165 @@ class OpponentPackageEvidenceTests(unittest.TestCase):
             "fixture_digest": fixture_digest,
         }
 
+    def make_repository_live_fixture(self, directory: pathlib.Path) -> dict[str, object]:
+        """Build a repository-shaped authority and every retained package byte."""
+
+        project = directory / "project"
+        for relative in (
+            "config/v1/openttd-source-profile.json",
+            "config/v2/research-baseline.json",
+            "docs/project/schema/v2-opponent-package-evidence.schema.json",
+            "docs/project/schema/v2-ai-package-lock.schema.json",
+            "docs/project/schema/v2-ai-package-rejection.schema.json",
+        ):
+            target = project / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(self.root / relative, target)
+
+        artifact_root = directory / "artifacts"
+        artifact_root.mkdir()
+        executable = artifact_root / "m14-openttd"
+        executable.write_bytes(b"#!/bin/sh\nexit 0\n")
+        executable.chmod(0o755)
+        executable_digest = hashlib.sha256(executable.read_bytes()).hexdigest()
+        executable_identity = {
+            "sha256": executable_digest,
+            "size": executable.stat().st_size,
+        }
+        evidence = copy.deepcopy(self.evidence)
+        evidence["executable"] = executable_identity
+        baseline = json.loads(
+            (project / "config/v2/research-baseline.json").read_text(encoding="utf-8")
+        )
+        opponents = {item["name"]: item for item in baseline["opponents"]}
+        source = json.loads(
+            (project / "config/v1/openttd-source-profile.json").read_text(
+                encoding="utf-8"
+            )
+        )["upstream"]
+        engine_source = {key: source[key] for key in ("release", "commit", "tree")}
+        lock_schema_digest = hashlib.sha256(
+            (project / "docs/project/schema/v2-ai-package-lock.schema.json").read_bytes()
+        ).hexdigest()
+        rejection_schema_digest = hashlib.sha256(
+            (project / "docs/project/schema/v2-ai-package-rejection.schema.json").read_bytes()
+        ).hexdigest()
+
+        for result in evidence["results"]:
+            artifact_set = artifact_root / result["artifact_dir"]
+            artifact_set.mkdir()
+            if result["outcome"] == "LOCKED":
+                packages = []
+                archives = validate_opponent_package_evidence.PACKAGE_ARCHIVES[
+                    result["name"]
+                ]
+                for content_id, relative in enumerate(archives, start=1):
+                    archive_path = artifact_set / relative
+                    archive_path.parent.mkdir(parents=True, exist_ok=True)
+                    member = f"fixture-{content_id}/LICENSE"
+                    payload = f"byte-real package {result['name']} {relative}\n".encode()
+                    with tarfile.open(archive_path, "w") as archive:
+                        info = tarfile.TarInfo(member)
+                        info.mode = 0o644
+                        info.mtime = 0
+                        info.size = len(payload)
+                        archive.addfile(info, io.BytesIO(payload))
+                    unique_id = archive_path.name.split("-", 1)[0]
+                    record = validate_opponent_package_evidence.acquire_ai_package.CatalogRecord(
+                        content_id=content_id,
+                        content_type="AI" if content_id == 1 else "AI library",
+                        state="locked",
+                        name=result["name"] if content_id == 1 else f"dependency-{content_id}",
+                        server_unique_id=bytes.fromhex(unique_id)[::-1].hex().upper(),
+                        catalog_md5="0" * 32,
+                    )
+                    packages.append(
+                        validate_opponent_package_evidence.acquire_ai_package.audit_archive(
+                            artifact_set, archive_path, record,
+                        )
+                    )
+                primary = validate_opponent_package_evidence.acquire_ai_package.CatalogRecord(
+                    content_id=1,
+                    content_type="AI",
+                    state="locked",
+                    name=result["name"],
+                    server_unique_id=bytes.fromhex(result["content_unique_id"])[::-1].hex().upper(),
+                    catalog_md5="0" * 32,
+                )
+                retained = {
+                    "$schema": "../../docs/project/schema/v2-ai-package-lock.schema.json",
+                    "schema_version": "openttd-rl-v2-ai-package-lock-1",
+                    "schema_sha256": lock_schema_digest,
+                    "engine_source": engine_source,
+                    "executable": {**executable_identity, "reported_version": "15.3-test"},
+                    "request": {
+                        "name": result["name"],
+                        "content_unique_id": result["content_unique_id"],
+                        "version": result["version"],
+                        "catalog_url": opponents[result["name"]]["package_url"],
+                    },
+                    "catalog_primary": primary.manifest_dict(),
+                    "packages": packages,
+                }
+                result.update({
+                    "package_count": len(packages),
+                    "archive_bytes": sum(item["archive_size"] for item in packages),
+                    "license_files": sum(len(item["licenses"]) for item in packages),
+                    "closure_sha256": validate_opponent_package_evidence.closure_sha256(
+                        packages
+                    ),
+                })
+            else:
+                transcript = artifact_set / "openttd-content-console.log"
+                transcript.write_text(
+                    f"byte-real rejection {result['name']}\n", encoding="utf-8"
+                )
+                transcript_digest = hashlib.sha256(transcript.read_bytes()).hexdigest()
+                retained = {
+                    "$schema": "../../docs/project/schema/v2-ai-package-rejection.schema.json",
+                    "schema_version": "openttd-rl-v2-ai-package-rejection-1",
+                    "schema_sha256": rejection_schema_digest,
+                    "engine_source": engine_source,
+                    "executable": executable_identity,
+                    "request": {
+                        "name": result["name"],
+                        "content_unique_id": result["content_unique_id"],
+                        "version": result["version"],
+                        "catalog_url": opponents[result["name"]]["package_url"],
+                    },
+                    "reason_code": result["reason_code"],
+                    "detail": "byte-real repository-live rejection fixture",
+                    "console_transcript": {
+                        "path": transcript.name,
+                        "size": transcript.stat().st_size,
+                        "sha256": transcript_digest,
+                    },
+                }
+                result["transcript_sha256"] = transcript_digest
+            evidence_file = artifact_set / result["evidence_file"]
+            evidence_file.write_text(
+                json.dumps(retained, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            result["evidence_sha256"] = hashlib.sha256(
+                evidence_file.read_bytes()
+            ).hexdigest()
+
+        evidence_path = project / "config/v2/opponent-package-evidence.json"
+        evidence_path.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+        context = ArtifactContext.live(artifact_root)
+        live_inputs = LiveInputManifest(
+            ValidationMode.LIVE,
+            artifact_root,
+            MappingProxyType({"m14-openttd-executable": executable}),
+        )
+        return {
+            "project": project,
+            "artifact_root": artifact_root,
+            "context": context,
+            "live_inputs": live_inputs,
+        }
+
     def documented_command_arguments(self, marker: str) -> list[str]:
         document = (
             self.root / "docs/project/M14_OPPONENT_ACQUISITION.md"
@@ -159,27 +324,103 @@ class OpponentPackageEvidenceTests(unittest.TestCase):
             )
         self.assertFalse(summary.live_artifacts)
 
+    def test_repository_live_complete_closure_has_no_positional_zip_crash(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_repository_live_fixture(pathlib.Path(raw))
+            try:
+                summary = validate_opponent_package_evidence.validate(
+                    fixture["project"],
+                    artifact_context=fixture["context"],
+                    live_inputs=fixture["live_inputs"],
+                )
+            except ValueError as exc:
+                self.fail(f"repository-live aggregate closure entered result zip: {exc}")
+        self.assertTrue(summary.live_artifacts)
+        self.assertEqual(summary.opponents, 10)
+
     def test_required_live_inputs_are_the_exact_ten_package_sets(self) -> None:
         requirements = validate_opponent_package_evidence.required_live_inputs(self.root)
-        observed = {
+        direct = {
             (item.logical_set, item.relative_path, item.kind, item.expected_sha256)
             for item in requirements
+            if isinstance(item, ArtifactRequirement)
         }
+        deferred = {
+            (item.logical_set, item.relative_path, item.kind)
+            for item in requirements
+            if isinstance(item, DeferredArtifactRequirement)
+        }
+        expected_deferred = set()
         for result in self.evidence["results"]:
             self.assertIn((
                 result["artifact_dir"], result["evidence_file"], "file",
                 result["evidence_sha256"],
-            ), observed)
+            ), direct)
             if result["outcome"] == "REJECTED":
-                self.assertIn((
+                expected_deferred.add((
                     result["artifact_dir"], "openttd-content-console.log", "file",
-                    result["transcript_sha256"],
-                ), observed)
-        self.assertIn(
-            ("v2-m14-ai-shipai-a", "content_download/ai/53484950-ShipAI-10.tar", "file", None),
-            observed,
-        )
-        self.assertGreater(len(requirements), 20)
+                ))
+            else:
+                expected_deferred.update(
+                    (result["artifact_dir"], path, "file")
+                    for path in validate_opponent_package_evidence.PACKAGE_ARCHIVES[
+                        result["name"]
+                    ]
+                )
+        self.assertEqual(deferred, expected_deferred)
+        self.assertEqual(len(direct), 10)
+        self.assertTrue(all(item[3] is not None for item in direct))
+        self.assertEqual(len(deferred), 20)
+
+    def test_authenticated_package_expansion_has_exact_paths_and_digests(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = self.make_repository_live_fixture(pathlib.Path(raw))
+            requirements = validate_opponent_package_evidence.required_live_inputs(
+                fixture["project"]
+            )
+            direct = tuple(
+                item for item in requirements
+                if isinstance(item, ArtifactRequirement)
+            )
+            deferred = tuple(
+                item for item in requirements
+                if isinstance(item, DeferredArtifactRequirement)
+            )
+            fixture["context"].preflight(direct)
+            expanded = validate_opponent_package_evidence.expanded_live_inputs(
+                fixture["context"], fixture["project"]
+            )
+            self.assertEqual(
+                [
+                    (item.logical_set, item.relative_path, item.kind, item.consumer)
+                    for item in expanded
+                ],
+                [
+                    (item.logical_set, item.relative_path, item.kind, item.consumer)
+                    for item in deferred
+                ],
+            )
+            self.assertTrue(all(item.expected_sha256 is not None for item in expanded))
+            self.assertEqual(
+                {
+                    (item.logical_set, item.relative_path, item.expected_sha256)
+                    for item in expanded
+                },
+                {
+                    (
+                        item.logical_set,
+                        item.relative_path,
+                        hashlib.sha256(
+                            (
+                                fixture["artifact_root"]
+                                / item.logical_set
+                                / item.relative_path
+                            ).read_bytes()
+                        ).hexdigest(),
+                    )
+                    for item in expanded
+                },
+            )
 
     def test_required_live_role_is_the_frozen_m14_executable(self) -> None:
         self.assertEqual(

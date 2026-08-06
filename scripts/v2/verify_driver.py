@@ -26,6 +26,7 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     ArtifactRequirement,
+    DeferredArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
     ToolRequirement,
@@ -174,7 +175,9 @@ class ArgumentBinding:
             raise ValueError(f"argument binding {self.source!r} key declaration is invalid")
 
 
-LiveRequirement = ArtifactRequirement | RoleRequirement
+LiveRequirement = (
+    ArtifactRequirement | DeferredArtifactRequirement | RoleRequirement
+)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -401,6 +404,45 @@ def _provider_live_inputs(
     return values
 
 
+def _provider_expanded_live_inputs(
+    module_name: str,
+    context: ArtifactContext,
+    root: pathlib.Path,
+    arguments: tuple[object, ...] = (),
+) -> tuple[ArtifactRequirement, ...]:
+    module = importlib.import_module(module_name)
+    provider = getattr(module, "expanded_live_inputs")
+    values = tuple(provider(context, root, *arguments))
+    if not all(isinstance(value, ArtifactRequirement) for value in values):
+        raise TypeError(
+            f"expanded live-input provider returned an invalid value: {module_name}"
+        )
+    if len(values) != len(set(values)):
+        raise ValueError(f"duplicate expanded live-input requirement in {module_name}")
+    undigested = [
+        f"{value.logical_set}/{value.relative_path}"
+        for value in values
+        if value.kind == "file" and value.expected_sha256 is None
+    ]
+    if undigested:
+        raise ValueError(
+            f"expanded live-input provider returned undigested files in "
+            f"{module_name}: {undigested}"
+        )
+    return values
+
+
+def _artifact_projection(value: object) -> tuple[str, str, str, str]:
+    if not isinstance(value, (ArtifactRequirement, DeferredArtifactRequirement)):
+        raise TypeError("artifact projection requires a live artifact requirement")
+    return (
+        value.logical_set,
+        value.relative_path,
+        value.kind,
+        value.consumer,
+    )
+
+
 def _registry_value(value: object, root: pathlib.Path) -> object:
     if dataclasses.is_dataclass(value):
         return {
@@ -461,15 +503,131 @@ def _command_registry_sha256(command: CommandSpec) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _provider_ast_sha256(module_name: str) -> str:
-    module = importlib.import_module(module_name)
-    source_path = pathlib.Path(module.__file__ or "")
+_FINGERPRINT_TABLES = frozenset({
+    "LIVE_COMMAND_REGISTRY_SHA256",
+    "LIVE_PROVIDER_AST_SHA256",
+})
+_FINGERPRINT_SOURCE_CACHE: dict[
+    tuple[str, str, str], tuple[str, tuple[str, ...]]
+] = {}
+
+
+class _FingerprintTableNormalizer(ast.NodeTransformer):
+    """Exclude only reviewed snapshot values from their own dependency hash."""
+
+    @staticmethod
+    def _is_snapshot_target(target: ast.expr) -> bool:
+        return isinstance(target, ast.Name) and target.id in _FINGERPRINT_TABLES
+
+    def visit_Module(self, node: ast.Module) -> ast.AST:
+        for statement in node.body:
+            if isinstance(statement, ast.Assign) and any(
+                self._is_snapshot_target(target)
+                for target in statement.targets
+            ):
+                statement.value = ast.Constant(
+                    "<reviewed-fingerprint-snapshot>"
+                )
+            elif (
+                isinstance(statement, ast.AnnAssign)
+                and self._is_snapshot_target(statement.target)
+            ):
+                statement.value = ast.Constant(
+                    "<reviewed-fingerprint-snapshot>"
+                )
+        return node
+
+
+def _local_imports(tree: ast.AST, local_modules: frozenset[str]) -> tuple[str, ...]:
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        names: tuple[str, ...] = ()
+        if isinstance(node, ast.Import):
+            names = tuple(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            names = (node.module,)
+        for name in names:
+            if "." not in name and name in local_modules:
+                imports.add(name)
+    return tuple(sorted(imports))
+
+
+def _fingerprint_source_record(
+    name: str,
+    path: pathlib.Path,
+    local_modules: frozenset[str],
+    local_modules_sha256: str,
+) -> tuple[str, tuple[str, ...]]:
     try:
-        source = source_path.read_text(encoding="utf-8")
-        normalized = ast.dump(ast.parse(source), include_attributes=False)
-    except (OSError, UnicodeError, SyntaxError) as exc:
-        raise ValueError(f"cannot fingerprint live-input provider {module_name}: {exc}") from exc
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        source_bytes = path.read_bytes()
+        source = source_bytes.decode("utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise ValueError(
+            f"cannot fingerprint local V2 dependency {name}: {exc}"
+        ) from exc
+    source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+    cache_key = (name, source_sha256, local_modules_sha256)
+    cached = _FINGERPRINT_SOURCE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as exc:
+        raise ValueError(
+            f"cannot fingerprint local V2 dependency {name}: {exc}"
+        ) from exc
+    imports = _local_imports(tree, local_modules)
+    if name == "artifact_context":
+        tree = _FingerprintTableNormalizer().visit(tree)
+        ast.fix_missing_locations(tree)
+    record = (ast.dump(tree, include_attributes=False), imports)
+    _FINGERPRINT_SOURCE_CACHE[cache_key] = record
+    return record
+
+
+def _provider_ast_sha256(module_name: str) -> str:
+    """Fingerprint one provider and every reachable local scripts/v2 module."""
+
+    scripts = pathlib.Path(__file__).resolve().parent
+    local_modules = frozenset(path.stem for path in scripts.glob("*.py"))
+    local_modules_sha256 = hashlib.sha256(
+        "\n".join(sorted(local_modules)).encode("utf-8")
+    ).hexdigest()
+    if module_name not in local_modules:
+        raise ValueError(f"live-input provider is not a local V2 module: {module_name}")
+
+    visited: set[str] = set()
+    records: list[dict[str, str]] = []
+
+    def source_path(name: str) -> pathlib.Path:
+        loaded = sys.modules.get(name)
+        loaded_path = pathlib.Path(getattr(loaded, "__file__", "") or "")
+        if loaded_path.is_file():
+            return loaded_path
+        return scripts / f"{name}.py"
+
+    def visit(name: str) -> None:
+        if name in visited:
+            return
+        visited.add(name)
+        path = source_path(name)
+        normalized, imports = _fingerprint_source_record(
+            name, path, local_modules, local_modules_sha256,
+        )
+        records.append({
+            "module": name,
+            "ast": normalized,
+        })
+        for dependency in imports:
+            visit(dependency)
+
+    visit(module_name)
+    encoded = json.dumps(
+        sorted(records, key=lambda record: record["module"]),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def build_inventory(
@@ -882,6 +1040,12 @@ def validate_live_input_registry(
                 f"artifact-backed command has no complete live-input registry: {command.command_id}",
             ))
             continue
+        if command.live_inputs and command.live_input_module is None:
+            issues.append(PreflightIssue(
+                Requirement.LIVE_INPUT_REGISTRY,
+                f"live-input declarations have no provider: {command.command_id}",
+            ))
+            continue
         if command.live_input_module is None:
             continue
         if command.live_input_root is None:
@@ -919,6 +1083,31 @@ def validate_live_input_registry(
                     Requirement.LIVE_INPUT_REGISTRY,
                     f"live-input provider snapshot diverged: {command.command_id}",
                 ))
+
+            direct_artifacts = {
+                item for item in observed
+                if isinstance(item, ArtifactRequirement)
+            }
+            for item in observed:
+                if not isinstance(item, DeferredArtifactRequirement):
+                    continue
+                if item.authority not in direct_artifacts:
+                    issues.append(PreflightIssue(
+                        Requirement.LIVE_INPUT_REGISTRY,
+                        f"deferred live input has no registered authenticated "
+                        f"authority: {command.command_id}: "
+                        f"{item.logical_set}/{item.relative_path}",
+                    ))
+                if not callable(getattr(
+                    importlib.import_module(command.live_input_module),
+                    "expanded_live_inputs",
+                    None,
+                )):
+                    issues.append(PreflightIssue(
+                        Requirement.LIVE_INPUT_REGISTRY,
+                        f"deferred live-input provider has no expander: "
+                        f"{command.command_id}",
+                    ))
 
             module = importlib.import_module(command.live_input_module)
             git_provider = getattr(module, "required_git_inputs", None)
@@ -1012,8 +1201,66 @@ def _sorted_live_inputs(commands: Sequence[CommandSpec]) -> tuple[LiveRequiremen
         item.relative_path,
         item.kind,
         item.consumer,
-        item.expected_sha256 or "",
+        getattr(item, "expected_sha256", None) or "",
     )))
+
+
+def _expanded_artifact_issues(
+    commands: Sequence[CommandSpec],
+    context: ArtifactContext,
+) -> list[PreflightIssue]:
+    expanded: set[ArtifactRequirement] = set()
+    issues: list[PreflightIssue] = []
+    for command in commands:
+        deferred = tuple(
+            item for item in command.live_inputs
+            if isinstance(item, DeferredArtifactRequirement)
+        )
+        if not deferred:
+            continue
+        if command.live_input_module is None or command.live_input_root is None:
+            issues.append(PreflightIssue(
+                Requirement.ARTIFACT_INPUT,
+                f"deferred live-input provider is unavailable: {command.command_id}",
+            ))
+            continue
+        try:
+            observed = _provider_expanded_live_inputs(
+                command.live_input_module,
+                context,
+                command.live_input_root,
+                command.live_input_arguments,
+            )
+            expected_projection = tuple(map(_artifact_projection, deferred))
+            observed_projection = tuple(map(_artifact_projection, observed))
+            if observed_projection != expected_projection:
+                raise ArtifactContextError(
+                    f"expanded live-input provider snapshot diverged: "
+                    f"{command.command_id}"
+                )
+            expanded.update(observed)
+        except (
+            AttributeError,
+            ImportError,
+            OSError,
+            TypeError,
+            ValueError,
+            ArtifactContextError,
+        ) as exc:
+            issues.extend(_error_issues(Requirement.ARTIFACT_INPUT, exc))
+    if issues or not expanded:
+        return issues
+    try:
+        context.preflight(tuple(sorted(expanded, key=lambda item: (
+            item.logical_set,
+            item.relative_path,
+            item.kind,
+            item.consumer,
+            item.expected_sha256 or "",
+        ))))
+    except ArtifactContextError as exc:
+        issues.extend(_error_issues(Requirement.ARTIFACT_INPUT, exc))
+    return issues
 
 
 def _git_apply_issues(
@@ -1118,6 +1365,10 @@ def _prepare_preflight(
     artifacts = tuple(
         item for item in live_requirements if isinstance(item, ArtifactRequirement)
     )
+    deferred = tuple(
+        item for item in live_requirements
+        if isinstance(item, DeferredArtifactRequirement)
+    )
     roles = tuple(item for item in live_requirements if isinstance(item, RoleRequirement))
     prepared = config
     if config.artifact_root is None:
@@ -1126,6 +1377,12 @@ def _prepare_preflight(
                 Requirement.ARTIFACT_INPUT,
                 f"artifact input unavailable without root: {item.logical_set}/{item.relative_path} "
                 f"for {item.consumer}",
+            ))
+        for item in deferred:
+            issues.append(PreflightIssue(
+                Requirement.ARTIFACT_INPUT,
+                f"deferred artifact input unavailable without root: "
+                f"{item.logical_set}/{item.relative_path} for {item.consumer}",
             ))
         for item in roles:
             issues.append(PreflightIssue(
@@ -1136,11 +1393,15 @@ def _prepare_preflight(
         return prepared, tuple(issues)
 
     context = ArtifactContext.live(config.artifact_root)
+    artifact_phase_failed = False
     if artifacts:
         try:
             context.preflight(artifacts)
         except ArtifactContextError as exc:
+            artifact_phase_failed = True
             issues.extend(_error_issues(Requirement.ARTIFACT_INPUT, exc))
+    if not artifact_phase_failed:
+        issues.extend(_expanded_artifact_issues(commands, context))
     issues.extend(_git_apply_issues(config, commands, context))
     if roles:
         try:

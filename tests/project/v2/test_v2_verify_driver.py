@@ -19,15 +19,25 @@ import unittest
 from types import MappingProxyType
 from unittest import mock
 
+import acquire_ai_package
+import artifact_context
+import source_context
 from artifact_context import (
     LIVE_INPUT_ROLE_SPECS,
     ArtifactRequirement,
+    DeferredArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
     ToolRequirement,
     ValidationMode,
 )
+import validate_opponent_package_evidence
+import validate_opponent_runtime_evidence
+import validate_m18_shipai_evidence
 import verify_driver as driver
+from tests.project.v2.test_v2_m18_shipai_evidence import (
+    make_live_shipai_fixture,
+)
 
 
 class V2VerifyDriverTests(unittest.TestCase):
@@ -838,21 +848,250 @@ class V2VerifyDriverTests(unittest.TestCase):
             "command inventory drifted" in issue.detail for issue in tool_issues
         ))
 
-    def test_registry_rejects_new_arbitrary_provider_read_site(self) -> None:
+    def test_registry_rejects_arbitrary_reads_in_every_local_dependency_layer(self) -> None:
         provider = importlib.import_module("validate_m15_action_evidence")
-        source = pathlib.Path(provider.__file__).read_text(encoding="utf-8")
-        mutated = source + "\ndef injected_live_read():\n    return pathlib.Path('/tmp/unregistered').read_bytes()\n"
-        ast.parse(mutated)
+        registered = tuple(
+            command for command in self.inventory
+            if command.live_input_module is not None
+        )
+        cases = (
+            ("artifact-context", artifact_context),
+            ("source-context", source_context),
+            ("transitive-helper", acquire_ai_package),
+            ("direct-provider", provider),
+        )
         with tempfile.TemporaryDirectory() as temporary:
-            path = pathlib.Path(temporary) / "validate_m15_action_evidence.py"
-            path.write_text(mutated, encoding="utf-8")
-            with mock.patch.object(provider, "__file__", str(path)):
-                issues = driver.validate_live_input_registry(tuple(
-                    command for command in self.inventory
-                    if command.live_input_module is not None
-                ))
-        self.assertTrue(issues)
+            for label, module in cases:
+                with self.subTest(layer=label):
+                    source = pathlib.Path(module.__file__).read_text(encoding="utf-8")
+                    mutated = source + (
+                        "\ndef injected_live_read():\n"
+                        "    return pathlib.Path('/tmp/unregistered').read_bytes()\n"
+                    )
+                    ast.parse(mutated)
+                    path = pathlib.Path(temporary) / f"{label}.py"
+                    path.write_text(mutated, encoding="utf-8")
+                    with mock.patch.object(module, "__file__", str(path)):
+                        issues = driver.validate_live_input_registry(registered)
+                    self.assertIn(
+                        "fingerprint",
+                        "\n".join(issue.detail for issue in issues).lower(),
+                    )
+
+    def test_registry_table_edit_cannot_bless_a_transitive_helper_read(self) -> None:
+        registered = tuple(
+            command for command in self.inventory
+            if command.live_input_module is not None
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = pathlib.Path(temporary)
+            context_source = pathlib.Path(artifact_context.__file__).read_text(
+                encoding="utf-8"
+            )
+            context_source += "\nLIVE_PROVIDER_AST_SHA256 = {}\n"
+            context_path = directory / "artifact_context.py"
+            context_path.write_text(context_source, encoding="utf-8")
+            helper_source = pathlib.Path(acquire_ai_package.__file__).read_text(
+                encoding="utf-8"
+            )
+            helper_source += (
+                "\ndef injected_live_read():\n"
+                "    return pathlib.Path('/tmp/unregistered').read_bytes()\n"
+            )
+            helper_path = directory / "acquire_ai_package.py"
+            helper_path.write_text(helper_source, encoding="utf-8")
+            with mock.patch.object(
+                artifact_context, "__file__", str(context_path),
+            ), mock.patch.object(
+                acquire_ai_package, "__file__", str(helper_path),
+            ):
+                issues = driver.validate_live_input_registry(registered)
         self.assertIn("fingerprint", "\n".join(issue.detail for issue in issues).lower())
+
+    def test_recursive_provider_fingerprint_is_cycle_safe(self) -> None:
+        provider = importlib.import_module("validate_m15_action_evidence")
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = pathlib.Path(temporary)
+            provider_path = directory / "validate_m15_action_evidence.py"
+            provider_path.write_text(
+                pathlib.Path(provider.__file__).read_text(encoding="utf-8")
+                + "\nimport acquire_ai_package\n",
+                encoding="utf-8",
+            )
+            helper_path = directory / "acquire_ai_package.py"
+            helper_path.write_text(
+                pathlib.Path(acquire_ai_package.__file__).read_text(encoding="utf-8")
+                + "\nimport validate_m15_action_evidence\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(
+                provider, "__file__", str(provider_path),
+            ), mock.patch.object(
+                acquire_ai_package, "__file__", str(helper_path),
+            ):
+                digest = driver._provider_ast_sha256(provider.__name__)
+        self.assertRegex(digest, r"^[0-9a-f]{64}$")
+
+    def test_repeated_registry_validation_reuses_content_keyed_dependency_parses(
+        self,
+    ) -> None:
+        registered = tuple(
+            command for command in self.inventory
+            if command.live_input_module is not None
+        )
+        driver._FINGERPRINT_SOURCE_CACHE.clear()
+        with mock.patch.object(
+            driver.ast, "parse", wraps=driver.ast.parse,
+        ) as parse:
+            self.assertEqual(driver.validate_live_input_registry(registered), ())
+            self.assertGreater(parse.call_count, 0)
+            parse.reset_mock()
+            self.assertEqual(driver.validate_live_input_registry(registered), ())
+            self.assertEqual(parse.call_count, 0)
+
+    def test_m14_nested_byte_mutations_stop_driver_before_commands(self) -> None:
+        shipai = validate_m18_shipai_evidence.load(
+            self.root / validate_m18_shipai_evidence.CONFIG
+        )
+        package_index = validate_m18_shipai_evidence.load(
+            self.root / validate_m18_shipai_evidence.PACKAGE_INDEX
+        )
+        runtime_index = validate_m18_shipai_evidence.load(
+            self.root / validate_m18_shipai_evidence.RUNTIME_INDEX
+        )
+        ship_evidence = validate_m18_shipai_evidence.load(
+            self.root / validate_m18_shipai_evidence.SHIP_EVIDENCE
+        )
+        mutations = (
+            (
+                "archive",
+                "v2-m14-ai-shipai-a",
+                "content_download/ai/53484950-ShipAI-10.tar",
+            ),
+            (
+                "copied-lock",
+                "v2-m18-shipai-runtime-b",
+                "ai-package-lock.json",
+            ),
+            (
+                "transcript",
+                "v2-m18-shipai-runtime-b",
+                "openttd-runtime-console.log",
+            ),
+        )
+        for label, logical_set, relative_path in mutations:
+            with self.subTest(kind=label), tempfile.TemporaryDirectory() as temporary:
+                fixture = make_live_shipai_fixture(
+                    self.root,
+                    pathlib.Path(temporary),
+                    shipai,
+                    package_index,
+                    runtime_index,
+                    ship_evidence,
+                )
+                requirements = validate_m18_shipai_evidence.required_live_inputs(
+                    fixture["project_root"]
+                )
+                self.assertIn(
+                    (logical_set, relative_path),
+                    {
+                        (item.logical_set, item.relative_path)
+                        for item in requirements
+                        if isinstance(item, DeferredArtifactRequirement)
+                    },
+                )
+                artifact_root = fixture["artifact_root"]
+                path = artifact_root / logical_set / relative_path
+                path.write_bytes(f"arbitrary mutated {label}\n".encode())
+                marker = artifact_root / "command-ran"
+                command = driver.CommandSpec(
+                    f"mutated-{label}",
+                    driver.Tier.FULL,
+                    driver.CommandCategory.TEST,
+                    (
+                        str(self.python), "-c",
+                        f"import pathlib; pathlib.Path({str(marker)!r}).touch()",
+                    ),
+                    live_inputs=requirements,
+                    live_input_module="validate_m18_shipai_evidence",
+                    live_input_root=fixture["project_root"],
+                )
+                config = driver.VerificationConfig(
+                    self.root,
+                    self.python,
+                    driver.Tier.FULL,
+                    artifact_root=artifact_root,
+                )
+                with mock.patch.object(
+                    driver, "validate_live_input_registry", return_value=(),
+                ):
+                    issues = driver.preflight(config, (command,))
+                self.assertIn(driver.Requirement.ARTIFACT_INPUT, {
+                    issue.requirement for issue in issues
+                })
+                with mock.patch.object(
+                    driver, "validate_live_input_registry", return_value=(),
+                ):
+                    summary = driver.run_verification(config, (command,))
+                self.assertEqual(summary.results, ())
+                self.assertFalse(marker.exists())
+
+    def test_m14_expansion_never_reads_a_failed_top_level_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = make_live_shipai_fixture(
+                self.root,
+                pathlib.Path(temporary),
+                validate_m18_shipai_evidence.load(
+                    self.root / validate_m18_shipai_evidence.CONFIG
+                ),
+                validate_m18_shipai_evidence.load(
+                    self.root / validate_m18_shipai_evidence.PACKAGE_INDEX
+                ),
+                validate_m18_shipai_evidence.load(
+                    self.root / validate_m18_shipai_evidence.RUNTIME_INDEX
+                ),
+                validate_m18_shipai_evidence.load(
+                    self.root / validate_m18_shipai_evidence.SHIP_EVIDENCE
+                ),
+            )
+            requirements = validate_m18_shipai_evidence.required_live_inputs(
+                fixture["project_root"]
+            )
+            fixture["manifest_path"].write_bytes(b"mutated top authority\n")
+            marker = fixture["artifact_root"] / "command-ran"
+            command = driver.CommandSpec(
+                "mutated-top-authority",
+                driver.Tier.FULL,
+                driver.CommandCategory.TEST,
+                (
+                    str(self.python),
+                    "-c",
+                    f"import pathlib; pathlib.Path({str(marker)!r}).touch()",
+                ),
+                live_inputs=requirements,
+                live_input_module="validate_m18_shipai_evidence",
+                live_input_root=fixture["project_root"],
+            )
+            config = driver.VerificationConfig(
+                self.root,
+                self.python,
+                driver.Tier.FULL,
+                artifact_root=fixture["artifact_root"],
+            )
+            with mock.patch.object(
+                driver, "validate_live_input_registry", return_value=(),
+            ), mock.patch.object(
+                validate_m18_shipai_evidence,
+                "expanded_live_inputs",
+                side_effect=AssertionError("unauthenticated expansion"),
+            ) as expanded:
+                summary = driver.run_verification(config, (command,))
+        expanded.assert_not_called()
+        self.assertEqual(summary.results, ())
+        self.assertIn(driver.Requirement.ARTIFACT_INPUT, {
+            issue.requirement for issue in summary.preflight_issues
+        })
+        self.assertFalse(marker.exists())
 
     def test_registry_mutation_rejects_an_artifact_binding_without_a_closure(self) -> None:
         command = driver.CommandSpec(

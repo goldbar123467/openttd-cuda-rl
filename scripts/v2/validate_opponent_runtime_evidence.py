@@ -22,6 +22,7 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     ArtifactRequirement,
+    DeferredArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
     add_artifact_root_argument,
@@ -105,26 +106,46 @@ def _requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
 def _complete_requirements(
     evidence: dict[str, Any],
     package_index: dict[str, Any],
-) -> tuple[ArtifactRequirement, ...]:
-    requirements = list(_requirements(evidence))
+) -> tuple[ArtifactRequirement | DeferredArtifactRequirement, ...]:
+    direct = _requirements(evidence)
+    requirements: list[ArtifactRequirement | DeferredArtifactRequirement] = [*direct]
     package_by_name = {item["name"]: item for item in package_index["results"]}
+    package_authorities = {
+        item["name"]: ArtifactRequirement(
+            item["artifact_dir"],
+            item["evidence_file"],
+            "file",
+            validate_opponent_package_evidence.LIVE_CONSUMER,
+            item["evidence_sha256"],
+        )
+        for item in package_index["results"]
+    }
+    runtime_authorities = {
+        result["name"]: requirement
+        for result, requirement in zip(
+            (item for item in evidence["results"] if item["phase"] != "PACKAGE"),
+            direct,
+            strict=True,
+        )
+    }
     for result in evidence["results"]:
         if result["phase"] == "PACKAGE":
             continue
+        runtime_authority = runtime_authorities[result["name"]]
         requirements.extend((
-            ArtifactRequirement(
+            DeferredArtifactRequirement(
                 result["artifact_dir"], qualify_ai_runtime.COPIED_LOCK_NAME,
-                "file", LIVE_CONSUMER,
+                "file", LIVE_CONSUMER, runtime_authority,
             ),
-            ArtifactRequirement(
+            DeferredArtifactRequirement(
                 result["artifact_dir"], qualify_ai_runtime.TRANSCRIPT_NAME,
-                "file", LIVE_CONSUMER,
+                "file", LIVE_CONSUMER, runtime_authority,
             ),
         ))
         if result["save_sha256"] is not None:
-            requirements.append(ArtifactRequirement(
+            requirements.append(DeferredArtifactRequirement(
                 result["artifact_dir"], f"{qualify_ai_runtime.SAVE_BASENAME}.sav",
-                "file", LIVE_CONSUMER, result["save_sha256"],
+                "file", LIVE_CONSUMER, runtime_authority,
             ))
         package_record = package_by_name[result["name"]]
         archives = validate_opponent_package_evidence.PACKAGE_ARCHIVES.get(result["name"])
@@ -133,13 +154,18 @@ def _complete_requirements(
             f"{result['name']} committed runtime archive closure drifted",
         )
         requirements.extend(
-            ArtifactRequirement(result["artifact_dir"], archive, "file", LIVE_CONSUMER)
+            DeferredArtifactRequirement(
+                result["artifact_dir"], archive, "file", LIVE_CONSUMER,
+                package_authorities[result["name"]],
+            )
             for archive in archives
         )
     return tuple(requirements)
 
 
-def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+def required_live_inputs(
+    root: pathlib.Path,
+) -> tuple[ArtifactRequirement | DeferredArtifactRequirement, ...]:
     root = root.resolve()
     evidence = load_json(root / EVIDENCE_RELATIVE)
     return (
@@ -149,6 +175,105 @@ def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
             load_json(root / validate_opponent_package_evidence.EVIDENCE_RELATIVE),
         ),
     )
+
+
+def expanded_live_inputs(
+    context: ArtifactContext,
+    root: pathlib.Path,
+) -> tuple[ArtifactRequirement, ...]:
+    """Expand runtime nested bytes from authenticated locks and manifests."""
+
+    root = root.resolve()
+    package_index = validate_opponent_package_evidence.load_json(
+        root / validate_opponent_package_evidence.EVIDENCE_RELATIVE
+    )
+    evidence = load_json(root / EVIDENCE_RELATIVE)
+    expanded = list(
+        validate_opponent_package_evidence.expanded_live_inputs(context, root)
+    )
+    runtime_requirements = _requirements(evidence)
+    package_requirements = validate_opponent_package_evidence._requirements(
+        package_index
+    )
+    package_by_name = {
+        result["name"]: (result, requirement)
+        for result, requirement in zip(
+            package_index["results"], package_requirements, strict=True,
+        )
+    }
+    for result, requirement in zip(
+        (item for item in evidence["results"] if item["phase"] != "PACKAGE"),
+        runtime_requirements,
+        strict=True,
+    ):
+        manifest = load_json(context.resolve(requirement))
+        package_lock_sha256, transcript_sha256, save = _retained_manifest_inputs(
+            manifest, result["name"],
+        )
+        package_record, package_requirement = package_by_name[result["name"]]
+        require(
+            package_lock_sha256 == package_record["evidence_sha256"],
+            f"{result['name']} copied package-lock digest drifted",
+        )
+        expanded.extend((
+            ArtifactRequirement(
+                result["artifact_dir"], qualify_ai_runtime.COPIED_LOCK_NAME,
+                "file", LIVE_CONSUMER, package_lock_sha256,
+            ),
+            ArtifactRequirement(
+                result["artifact_dir"], qualify_ai_runtime.TRANSCRIPT_NAME,
+                "file", LIVE_CONSUMER, transcript_sha256,
+            ),
+        ))
+        if save is not None:
+            require(
+                save["path"] == f"{qualify_ai_runtime.SAVE_BASENAME}.sav"
+                and save["sha256"] == result["save_sha256"],
+                f"{result['name']} retained runtime save drifted",
+            )
+            expanded.append(ArtifactRequirement(
+                result["artifact_dir"],
+                save["path"],
+                "file",
+                LIVE_CONSUMER,
+                save["sha256"],
+            ))
+        else:
+            require(
+                result["save_sha256"] is None,
+                f"{result['name']} retained runtime save drifted",
+            )
+
+        lock = validate_opponent_package_evidence.load_json(
+            context.resolve(package_requirement)
+        )
+        packages = _retained_lock_packages(lock, result["name"])
+        expected_paths = validate_opponent_package_evidence.PACKAGE_ARCHIVES.get(
+            result["name"]
+        )
+        observed_paths = tuple(
+            _adjacent_relative_path(
+                result["evidence_file"], package["archive_path"],
+            )
+            for package in packages
+        )
+        require(
+            expected_paths is not None and observed_paths == expected_paths,
+            f"{result['name']} retained runtime archive closure drifted",
+        )
+        expanded.extend(
+            ArtifactRequirement(
+                result["artifact_dir"],
+                relative_path,
+                "file",
+                LIVE_CONSUMER,
+                package["archive_sha256"],
+            )
+            for relative_path, package in zip(
+                observed_paths, packages, strict=True,
+            )
+        )
+    return tuple(expanded)
 
 
 def _role_requirements(evidence: dict[str, Any]) -> tuple[RoleRequirement, ...]:

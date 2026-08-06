@@ -19,6 +19,7 @@ from artifact_context import (
     ArtifactContext,
     ArtifactContextError,
     ArtifactRequirement,
+    DeferredArtifactRequirement,
     LiveInputManifest,
     RoleRequirement,
     add_artifact_root_argument,
@@ -115,16 +116,19 @@ def _requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
     )
 
 
-def _complete_requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequirement, ...]:
-    requirements = list(_requirements(evidence))
-    for result in evidence["results"]:
+def _complete_requirements(
+    evidence: dict[str, Any],
+) -> tuple[ArtifactRequirement | DeferredArtifactRequirement, ...]:
+    direct = _requirements(evidence)
+    requirements: list[ArtifactRequirement | DeferredArtifactRequirement] = [*direct]
+    for result, authority in zip(evidence["results"], direct, strict=True):
         if result["outcome"] == "REJECTED":
-            requirements.append(ArtifactRequirement(
+            requirements.append(DeferredArtifactRequirement(
                 result["artifact_dir"],
                 acquire_ai_package.TRANSCRIPT_NAME,
                 "file",
                 LIVE_CONSUMER,
-                result["transcript_sha256"],
+                authority,
             ))
             continue
         archives = PACKAGE_ARCHIVES.get(result["name"])
@@ -133,17 +137,76 @@ def _complete_requirements(evidence: dict[str, Any]) -> tuple[ArtifactRequiremen
             f"{result['name']} committed package archive closure drifted",
         )
         requirements.extend(
-            ArtifactRequirement(
-                result["artifact_dir"], archive, "file", LIVE_CONSUMER,
+            DeferredArtifactRequirement(
+                result["artifact_dir"], archive, "file", LIVE_CONSUMER, authority,
             )
             for archive in archives
         )
     return tuple(requirements)
 
 
-def required_live_inputs(root: pathlib.Path) -> tuple[ArtifactRequirement, ...]:
+def required_live_inputs(
+    root: pathlib.Path,
+) -> tuple[ArtifactRequirement | DeferredArtifactRequirement, ...]:
     root = root.resolve()
     return _complete_requirements(load_json(root / EVIDENCE_RELATIVE))
+
+
+def expanded_live_inputs(
+    context: ArtifactContext,
+    root: pathlib.Path,
+) -> tuple[ArtifactRequirement, ...]:
+    """Expand nested bytes only from digest-authenticated retained records."""
+
+    root = root.resolve()
+    evidence = load_json(root / EVIDENCE_RELATIVE)
+    result_requirements = _requirements(evidence)
+    expanded: list[ArtifactRequirement] = []
+    for result, requirement in zip(
+        evidence["results"], result_requirements, strict=True,
+    ):
+        record = load_json(context.resolve(requirement))
+        if result["outcome"] == "LOCKED":
+            packages = _retained_packages(record, result["name"])
+            expected_paths = PACKAGE_ARCHIVES.get(result["name"])
+            observed_paths = tuple(
+                _adjacent_relative_path(
+                    result["evidence_file"], package["archive_path"],
+                )
+                for package in packages
+            )
+            require(
+                expected_paths is not None and observed_paths == expected_paths,
+                f"{result['name']} retained package archive closure drifted",
+            )
+            expanded.extend(
+                ArtifactRequirement(
+                    result["artifact_dir"],
+                    relative_path,
+                    "file",
+                    LIVE_CONSUMER,
+                    package["archive_sha256"],
+                )
+                for relative_path, package in zip(
+                    observed_paths, packages, strict=True,
+                )
+            )
+        else:
+            transcript = _retained_transcript(record, result["name"])
+            require(
+                transcript["sha256"] == result["transcript_sha256"],
+                f"{result['name']} retained transcript digest drifted",
+            )
+            expanded.append(ArtifactRequirement(
+                result["artifact_dir"],
+                _adjacent_relative_path(
+                    result["evidence_file"], transcript["path"],
+                ),
+                "file",
+                LIVE_CONSUMER,
+                transcript["sha256"],
+            ))
+    return tuple(expanded)
 
 
 def _role_requirements(evidence: dict[str, Any]) -> tuple[RoleRequirement, ...]:
@@ -288,18 +351,14 @@ def validate(
             live_inputs.artifact_root == context.artifact_root,
             "live-input manifest and artifact context must share one exact artifact root",
         )
-        requirements = (
-            required_live_inputs(root)
-            if repository_evidence
-            else _requirements(evidence)
-        )
+        result_requirements = _requirements(evidence)
         roles = (
             required_live_roles(root)
             if repository_evidence
             else _role_requirements(evidence)
         )
         try:
-            context.preflight(requirements)
+            context.preflight(result_requirements)
             live_inputs.preflight(roles)
             openttd = live_inputs.resolve(roles[0])
             require(
@@ -308,7 +367,9 @@ def validate(
             )
             retained: list[tuple[dict[str, Any], pathlib.Path, dict[str, Any]]] = []
             derived: list[ArtifactRequirement] = []
-            for result, requirement in zip(results, requirements, strict=True):
+            for result, requirement in zip(
+                results, result_requirements, strict=True,
+            ):
                 evidence_file = context.resolve(requirement)
                 record = load_json(evidence_file)
                 retained.append((result, evidence_file, record))

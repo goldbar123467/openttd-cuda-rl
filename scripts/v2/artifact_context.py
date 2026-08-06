@@ -25,48 +25,48 @@ LIVE_INPUT_SCHEMA_VERSION = "openttd-rl-v2-live-inputs-1"
 # registry implementation so provider source and command closure drift fail
 # before any verification command runs.
 LIVE_PROVIDER_AST_SHA256: Mapping[str, str] = MappingProxyType({
-    "validate_m15_action_evidence": "f58ca653ed7c4231ef7eb971e284df20822f8d52d2ded5c9a35ccd7163d562ab",
-    "validate_m15_action_source": "ebc52622f4893135cde876ce2a0e3ddaf26c4fc07171181af4f330d8fac2c74e",
-    "validate_m15_competence_evidence": "307049ea8b5eedc14649c3f94af3c2e79936376f4d230ce061b8e02528a04334",
-    "validate_m15_competence_source": "0cf35b875a9dea372b832e4396ff90c05b725275a5bae86ecc8fd2ec8e46e621",
-    "validate_m15_cross_scale_replay_evidence": "9abfeee658235b0080dc41a7ab2f85a20e86236470c108d7a437efd6c7667252",
-    "validate_m15_episode_evidence": "5e4a723b34d38495e3eae84c93ce2decf3efb81ebd9844f0a4cd6b9ca5213498",
-    "validate_m15_episode_source": "89ddde153aab2090603cc3393cf15a817cc4a447fe988c0a20fbb1e0b7c8de1c",
-    "validate_m15_map_evidence": "70dfe2c94d4ecfd8a2767a397e26b9fe212ec18e94fb74e6109d49bdfa09468c",
-    "validate_m15_native_reset_evidence": "9a9b5b4cd81b8200a591dba6071fc9ea6e434237c05c6319df68b4cf8f8624a7",
-    "validate_m15_native_reset_matrix": "1170ea0ac2cb94350533295c8b335d7e86a6dec6e8756352522bffe83bd499bf",
-    "validate_m15_native_source": "da483c61449b85854cf847b09e6b9609d6e28383398f735b536f4d4ede3133df",
-    "validate_m15_observation_evidence": "15304701a81904575f415718f71d4c70317f79e9acc978b49321cad779c7e42b",
-    "validate_m15_observation_source": "ba61edd43ad688ff67cdf003bf7ea01a25a2fb8c73d7311c88b684a4c0715edf",
-    "validate_m15_policy_evidence": "ea46940b08e51ce971e5248e5128006a63862cc548392aea17b6d02c41676d44",
-    "validate_m16_cargo_evidence": "5d137b17c98bcbda4344f940684df73eb9f8604c5297bd118782d47f39b67547",
-    "validate_m16_cargo_source": "357ca09c8d9d68590005992cf13d9362f6c61315c7f3542d1067352906450888",
-    "validate_m17_rail_evidence": "b52939122a00e27ce2d1d314888037fef201833893dd1c10f652290fcb35edb6",
-    "validate_m17_rail_source": "d0fb95c411164f5afaeb3877d77d3744eecbdedd37cb68ab200f20fee7a2e42c",
-    "validate_m18_ship_evidence": "21e38cf785fc97476bb4a91233c7be0035021764ee09e2a5bba06d52f8c7c449",
-    "validate_m18_ship_source": "dedced483b7a9009296816c576fd741abfafd17644bd9b86105001ac310ab5bd",
-    "validate_m18_shipai_evidence": "25880a5714c9682f167e1963875eaede4d9b0cd30ff17d3b8509c7fd56fdf16c",
-    "validate_m19_air_evidence": "c721ed9bcdb11588441900a24a8f57b8c190fdd7639c4a16ca8522cb22ebe74d",
-    "validate_m19_air_source": "6c6fcf7c8d5e359e17690843160ee2e852340a2709a7c745d2e498dbc02271fc",
-    "validate_m20_competition_evidence": "406f6c5e6a0c898013372b3cdf3f011f8f36ec1f0e958fad1670a504f180f5ec",
-    "validate_m20_competition_source": "67a6e4fb891acf93039d6750fb525d35eb79be6b08367e1a8e5014e41e858e7d",
-    "validate_m21_broad_evidence": "5cb244aa77f262d51400b73a1e13ebba151bcfbd74d66e343075ef0b553f7fa5",
-    "validate_m21_broad_source": "13c610c89283c65b9f6b0c7d820af07ff4bd2263dacf2379da6400dbf1f0d4ae",
-    "validate_m22_final_evaluation": "8e38c8577e5388b2deca383d10d3758aec6f9b3fff02421fc3e572faedada8bd",
-    "validate_m22_final_runtime_source": "654cbdd60b9d1831940ed0f19222995420f324cf44b44eca7dec4f42f86b36b0",
-    "validate_m22_followup_evaluation": "8bbf06de0ada107ea6722831048225a54ab28fb6c5ca3ec06b9063f684971e19",
-    "validate_m22_followup_runtime_source": "34450276514fcc3d218ec3eab82d188983e0bf17aa638a50b91eb280a1496eb4",
-    "validate_m22_followup_v2_evaluation": "117099c9deb0990c2cc9388cc83206483ef81894017d64ffd63fe6c2ef1eccee",
-    "validate_m22_qualification_evidence": "60e57dbe40c9537e9506098e341ecfdca1cca6fe27c51bc8195cd57821b5df31",
-    "validate_m22_recovery_evidence": "d3d916d657417d95c0c7e6c0b2db59613dad54f2c0565c2a1132bf7b3e0fc0b9",
-    "validate_m22_training_evidence": "6065b98808695405d9f8289691e84d0ee914452c01bf64fd8caf4de0a2899713",
-    "validate_opponent_package_evidence": "bb4d24663fa0609b658f1c09494407d8520b7c51fadaadd985fb6477fa85c969",
-    "validate_opponent_runtime_evidence": "f8dcee880797d034ab7ff5ed2f7e05416e16a12820a7618426bd205af3e69d33",
-    "verify_driver": "0c966a3b1fcb83fd4ddeed75436b3fbf0c823c84f2950d805935f52ccf81b104",
+    "validate_m15_action_evidence": "a8298f04d28509ca04cc2164eb5c738a3cdec8e41bd857137b5446e75b6c74ce",
+    "validate_m15_action_source": "45c21f50ad7b5e79663e6b651dde30c01cde7f949e277b72d264ea5d04c5d6ee",
+    "validate_m15_competence_evidence": "68a24af0cab13b21e8a9248152aeff2ae58e2bad59ae1c164f03f955016e01d7",
+    "validate_m15_competence_source": "03e02a6d4b4847270dee9ad1be42cf168163a01e9784a0e685ba2058dd4a6e42",
+    "validate_m15_cross_scale_replay_evidence": "d4898c6180c04ddb7b991d31f00005018531bf7d92d2c282915076b6fd0de544",
+    "validate_m15_episode_evidence": "c69d6c6b6538763765f7c35b42800549f4355530ab8bee18cb378ce019c38ec8",
+    "validate_m15_episode_source": "ae08275eb1bcbb9e6be40ef01791a1dacef2fdb2f88c5d42d6dfc69450227e23",
+    "validate_m15_map_evidence": "49b4b1ed5bd5b84be4e9d39782ed5d3e81be25145028f03ff75c920257a70d80",
+    "validate_m15_native_reset_evidence": "92c69ed87c8d8a572b11f3057d55c381ea8a12d0de61852f4d4642c17f5bf900",
+    "validate_m15_native_reset_matrix": "745de0db14d78bc89c99971e0ef9e72785d50d1bfb9ce48ba0e1388e6654126a",
+    "validate_m15_native_source": "d961c6f6a6e2b0a35437379525eb08a90a97923539612ea9b07294d62c8bc25a",
+    "validate_m15_observation_evidence": "eac04b52b3f45599159012f56878faae5a7a756f7719cd61ffa668eac56329c4",
+    "validate_m15_observation_source": "4371fcd1fb928ffb38080319d876e67999fbe5ad101a9b5b28fc7c5e1597d1b2",
+    "validate_m15_policy_evidence": "1581d709f350e34ee4f9042e15111e1d63479f918792d3e43537fc7c7c28f32b",
+    "validate_m16_cargo_evidence": "ba506aec5e165f4f34af124cf95ca56ea01cd070039da8cf1ac0727ba288bac2",
+    "validate_m16_cargo_source": "4ce68e52d6faef94c727daf00820f17d8e48d9157947810b50fe90410d97486d",
+    "validate_m17_rail_evidence": "57ade1231c26124eee4da161544abe72926a90d1269586c0d40b931f1ab23735",
+    "validate_m17_rail_source": "5d4e3e2c64b8c3e431979080bd502c452604f6bcd136aad88faf769c12383ceb",
+    "validate_m18_ship_evidence": "89340dfe86fc120a3b603381bf8a2436c61067320ab9fe902287dc0ec4e9f7f6",
+    "validate_m18_ship_source": "dd02ff6f8072f0a5eaaf53a3d3f19150763fef05091fd97b8a7b12ef889f6aa3",
+    "validate_m18_shipai_evidence": "b9ed51c60b5472b4d6e940d4c89e11457e16d9292750f5e806296ca637c970af",
+    "validate_m19_air_evidence": "d6c610531bb76d0281f02156d60d686e9d1c364d3a834aec0db6f5a8b3d1b4c3",
+    "validate_m19_air_source": "13290ea4914229164e96011a755b220ded844dab0a10f476e2f7c1248fe46680",
+    "validate_m20_competition_evidence": "2575ed7b981aea85400252d0a6860d46a99a81626d5c1aa6a2746771e87363a9",
+    "validate_m20_competition_source": "7dc06fb588893612d775515676b6cde0724367172823fe3d39d5be26769fe5e8",
+    "validate_m21_broad_evidence": "7449adca3676790c85deeb8962ee10289f34a3b1d8f8bd57a0243a55a24c3ea0",
+    "validate_m21_broad_source": "059c0e39a5fc4de27b16b8dd39ca52d798b9032430d7179f6aca5e02cd787dd4",
+    "validate_m22_final_evaluation": "804006e4b2ec1c3ea185778583013fbe03b6f7f2ef3d9bbdf0e9737970c2f3a8",
+    "validate_m22_final_runtime_source": "72ce0512e75604e6d3e71de54938f6bb971c2252f52ef01acd11bc026479a085",
+    "validate_m22_followup_evaluation": "b09c2bd902ebf4d610c45978763f5834fd6203e86b003f142393831c6c9bf12f",
+    "validate_m22_followup_runtime_source": "0e3a6722748c948c3ff8eedc9df8451a79b8c0aec5b54a119c88c1bcb0e649aa",
+    "validate_m22_followup_v2_evaluation": "450b67db74a392eff315cdb5e659cb51e6c99aa9e7bc4ced58b607a4f6c5768b",
+    "validate_m22_qualification_evidence": "bdc1bc0e861915f093d2d1bca79ceddb96e3d939d234df7a2034d0d9a472b445",
+    "validate_m22_recovery_evidence": "94c85eca6665d641830a445b8d11edc8269e82e9422f323a74fd09fd3b819a84",
+    "validate_m22_training_evidence": "50d1a80a74e9f793894cb7f43ebe68fcba47b4702178658e1a057c7c3cf980ab",
+    "validate_opponent_package_evidence": "b1f1fa08b106058b53bf55ba693877c281ee5754516313e024e5b9c6b6d1e804",
+    "validate_opponent_runtime_evidence": "ac153e12608c81129005fe64218c7f34f5bd997762ba4abb869bfae9ca754af3",
+    "verify_driver": "37bb30f59f5aa92ec491e11e15e852f1897b202cc102ebec9a0bed82434a4f9c",
 })
 LIVE_COMMAND_REGISTRY_SHA256: Mapping[str, str] = MappingProxyType({
-    "opponent-package-evidence": "1098785d926df3cefdc35e384c3a51a9f180e552b14f3fa939b715d5163cfb05",
-    "opponent-runtime-evidence": "63dfd683ff3047c65a2c0dd16805b9acd0e92ca190aa066dbfe14d44c11b847e",
+    "opponent-package-evidence": "adf4a34ebaec4d05d95dcaf27aea2ff64b532cc52efebcdc3983dd7113e7cf50",
+    "opponent-runtime-evidence": "0fc172ecfe8f8f76e66124b98de51cebcef43b158c53cccd31d81dc97e070aec",
     "m15-policy-evidence": "0892ebb2b2f2cb590777cb40cca64f2dfc043993d25bb22f48a4d2904d082f93",
     "m15-map-matrix": "83e020c5935c700555effc6fbe22a8e0f8397cb510430852282d3b4a484fd666",
     "m15-native-source": "a3d492105868a9624b74a30acc4c88e89437d654cef2394fc6086f3e33732871",
@@ -86,7 +86,7 @@ LIVE_COMMAND_REGISTRY_SHA256: Mapping[str, str] = MappingProxyType({
     "m17-rail-source": "c9db439dffc1745647a62e6ff3c47a5438d24f354f2071bba061d2def2a421fa",
     "m17-rail-evidence": "9b330cfbd70bdb7b5019923b812000045fc558452f19b375fbbd1d4d993a65e0",
     "m18-ship-source": "656576ac8f00d65d291d8f4ca3ddfddf570fc098b10ae961a705c8dd24147ecc",
-    "m18-shipai-evidence": "36b3fb83843d9bdd4b2e9c43586d868b899b3f1d40f5a57be684b117d873c0ab",
+    "m18-shipai-evidence": "b4ac4cfac5f5400bb070c3afc57494a5089d4d26560a9198ee93983090504529",
     "m18-ship-evidence": "5b8015a4982aacd2e24e466aa5283c530202b1457f99d9e35b386c5d3a512be9",
     "m19-air-source": "6341a81dab40f3f69d5b5564393e359a1260092e0a039eeb2c42ca9737cd3b21",
     "m19-air-evidence": "46655168223b95c07364a2d5cccfc780d371cfe755740b902af3c58d49c8bf04",
@@ -199,6 +199,37 @@ class ArtifactRequirement:
             allow_root_selector=True,
         )
         _validate_kind_and_digest(self.kind, self.expected_sha256)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class DeferredArtifactRequirement:
+    """A statically named file whose digest comes from authenticated evidence."""
+
+    logical_set: str
+    relative_path: str
+    kind: str
+    consumer: str
+    authority: ArtifactRequirement
+
+    def __post_init__(self) -> None:
+        _validate_component(self.logical_set, label="logical artifact set")
+        _relative_parts(
+            self.relative_path,
+            label="artifact relative path",
+            allow_root_selector=True,
+        )
+        _validate_kind_and_digest(self.kind, None)
+        if not isinstance(self.authority, ArtifactRequirement):
+            raise ArtifactContextError(
+                "deferred artifact authority must be an ArtifactRequirement"
+            )
+        if (
+            self.authority.kind != "file"
+            or self.authority.expected_sha256 is None
+        ):
+            raise ArtifactContextError(
+                "deferred artifact authority must be a digest-bound file"
+            )
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
