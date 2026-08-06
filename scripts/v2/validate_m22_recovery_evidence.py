@@ -32,6 +32,20 @@ RECOVERY_V2 = pathlib.Path("config/v2/m22-recovery-evidence-v2.json")
 LIVE_CONSUMER = "m22-recovery-evidence"
 V1_CONTRACT_SHA256 = "0d47417080e1675ba3040a0eef210fd4cc8c7523b832edfa3d282da7134f6b40"
 V2_CONTRACT_SHA256 = "f3ae8f89dfb6edf19b910c55f55845279b77ddd7be5adbd1db244984f968b07b"
+CHECKPOINT_SCHEMA = "v2-m22-generalist-checkpoint-v1"
+CHECKPOINT_BOUNDARY = "after-completed-ppo-update-and-retention-check-before-next-rollout"
+CHECKPOINT_MANIFEST_FIELDS = (
+    "schema", "contract", "corpus", "architecture", "run_seed", "checkpoint_id",
+    "model_sha256", "optimizer_sha256", "runtime_sha256", "trainer_state_sha256",
+    "selection_sha256", "boundary",
+)
+CHECKPOINT_PAYLOADS = (
+    ("model_sha256", "model.pt"),
+    ("optimizer_sha256", "optimizer.pt"),
+    ("runtime_sha256", "runtime.pt"),
+    ("trainer_state_sha256", "trainer-state.bin"),
+    ("selection_sha256", "selection.json"),
+)
 
 
 class M22RecoveryValidationError(ValueError):
@@ -41,6 +55,137 @@ class M22RecoveryValidationError(ValueError):
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise M22RecoveryValidationError(message)
+
+
+def _safe_relative_posix(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and not value.startswith("/")
+        and "\\" not in value
+        and "\x00" not in value
+        and all(part not in {"", ".", ".."} for part in value.split("/"))
+    )
+
+
+def _checkpoint_id(fields: dict[str, str]) -> str:
+    identity = "\n".join((
+        fields["schema"], fields["contract"], fields["corpus"], fields["architecture"],
+        fields["run_seed"], fields["model_sha256"], fields["optimizer_sha256"],
+        fields["runtime_sha256"], fields["trainer_state_sha256"],
+        fields["selection_sha256"], fields["boundary"],
+    )) + "\n"
+    return recovery.sha256_bytes(identity.encode("ascii"))
+
+
+def _parse_checkpoint_manifest(
+    path: pathlib.Path,
+    require_value: Any,
+) -> dict[str, str]:
+    try:
+        data = path.read_bytes()
+        text = data.decode("ascii")
+    except (OSError, UnicodeError) as exc:
+        require_value(False, f"M22 checkpoint manifest is unreadable: {exc}")
+        raise AssertionError("unreachable")
+    require_value(len(data) <= 8192 and text.endswith("\n") and "\r" not in text,
+                  "M22 checkpoint manifest framing drifted")
+    lines = text.splitlines()
+    require_value(len(lines) == len(CHECKPOINT_MANIFEST_FIELDS),
+                  "M22 checkpoint manifest field count drifted")
+    pairs = []
+    for line in lines:
+        require_value("=" in line and not line.startswith("="),
+                      "M22 checkpoint manifest is malformed")
+        pairs.append(line.split("=", 1))
+    require_value(tuple(pair[0] for pair in pairs) == CHECKPOINT_MANIFEST_FIELDS,
+                  "M22 checkpoint manifest field order drifted")
+    fields = {name: value for name, value in pairs}
+    require_value(
+        fields["schema"] == CHECKPOINT_SCHEMA and fields["boundary"] == CHECKPOINT_BOUNDARY,
+        "M22 checkpoint manifest compatibility drifted",
+    )
+    for name in ("checkpoint_id", *(field for field, _ in CHECKPOINT_PAYLOADS)):
+        require_value(re.fullmatch(r"[0-9a-f]{64}", fields[name]) is not None,
+                      f"M22 checkpoint manifest digest is malformed: {name}")
+    return fields
+
+
+def _validate_checkpoint_artifact(
+    path: pathlib.Path,
+    checkpoint: dict[str, Any],
+    architecture: str,
+    seed: int,
+    contract_sha256: str,
+    corpus_sha256: str,
+    require_value: Any,
+) -> None:
+    fields = _parse_checkpoint_manifest(path / "m22.manifest", require_value)
+    require_value(
+        fields["contract"] == contract_sha256 and fields["corpus"] == corpus_sha256 and
+        fields["architecture"] == architecture and fields["run_seed"] == str(seed),
+        "M22 checkpoint manifest contract/corpus/run identity drifted",
+    )
+    checkpoint_id = checkpoint["id"]
+    require_value(
+        path.name == checkpoint_id == fields["checkpoint_id"] == _checkpoint_id(fields),
+        "M22 checkpoint identity is not content addressed",
+    )
+    try:
+        committed = (path / "COMMITTED").read_text(encoding="ascii")
+    except (OSError, UnicodeError) as exc:
+        require_value(False, f"M22 checkpoint commit marker is unreadable: {exc}")
+        raise AssertionError("unreachable")
+    require_value(committed == checkpoint_id + "\n", "M22 checkpoint commit marker drifted")
+    records = {item["name"]: item for item in checkpoint["files"]}
+    for field, name in CHECKPOINT_PAYLOADS:
+        payload = path / name
+        try:
+            observed = recovery.sha256(payload)
+            observed_bytes = payload.stat().st_size
+        except OSError as exc:
+            require_value(False, f"M22 checkpoint payload is unreadable: {name}: {exc}")
+            raise AssertionError("unreachable")
+        require_value(
+            fields[field] == observed == records[name]["sha256"] and
+            observed_bytes == records[name]["bytes"],
+            f"M22 checkpoint payload identity drifted: {name}",
+        )
+
+
+def _validate_live_structure(
+    live_inputs: LiveInputManifest,
+    requirements: tuple[RoleRequirement, ...],
+    exact_directories: list[tuple[pathlib.Path, tuple[str, ...], str]],
+    require_value: Any,
+) -> None:
+    for directory, expected, label in exact_directories:
+        try:
+            entries = list(directory.iterdir())
+        except OSError as exc:
+            require_value(False, f"{label} is unreadable: {exc}")
+            raise AssertionError("unreachable")
+        require_value(directory.is_dir() and not directory.is_symlink(),
+                      f"{label} is not a real directory")
+        require_value(tuple(sorted(item.name for item in entries)) == expected,
+                      f"{label} exact inventory drifted")
+        require_value(all(item.is_file() and not item.is_symlink() for item in entries),
+                      f"{label} contains a non-regular entry")
+
+    identities: dict[tuple[int, int], pathlib.Path] = {}
+    for requirement in requirements:
+        if requirement.kind != "file":
+            continue
+        path = live_inputs.resolve(requirement)
+        try:
+            status = path.stat()
+        except OSError as exc:
+            require_value(False, f"M22 live input is unreadable after preflight: {path}: {exc}")
+            raise AssertionError("unreachable")
+        identity = (status.st_dev, status.st_ino)
+        previous = identities.get(identity)
+        require_value(previous is None, f"M22 physical file alias: {path} aliases {previous}")
+        identities[identity] = path
 
 
 def load(path: pathlib.Path) -> dict[str, Any]:
@@ -127,6 +272,30 @@ def self_hash(value: dict[str, Any]) -> str:
     observed = recovery.sha256_bytes(recovery.canonical_bytes(payload))
     require(expected == observed, "M22 recovery report self-hash mismatch")
     return observed
+
+
+def _validate_record_paths(report: dict[str, Any]) -> None:
+    log_paths: set[str] = set()
+    for run in report["runs"]:
+        architecture = run["architecture"]
+        for process_name in ("uninterrupted", "prefix", "resumed"):
+            process = run[process_name]
+            expected_log = f"{architecture}/{process_name}/campaign.log"
+            log_path = process["log_path"]
+            require(
+                _safe_relative_posix(log_path) and log_path == expected_log and log_path not in log_paths,
+                "M22 recovery log path is unsafe, duplicated, or not bound to its process",
+            )
+            log_paths.add(log_path)
+            for checkpoint in process["checkpoints"]:
+                checkpoint_id = checkpoint["id"]
+                expected_path = f"{architecture}/{process_name}/checkpoints/{checkpoint_id}"
+                require(
+                    isinstance(checkpoint_id, str) and re.fullmatch(r"[0-9a-f]{64}", checkpoint_id) is not None and
+                    _safe_relative_posix(checkpoint["path"]) and checkpoint["path"] == expected_path and
+                    [item["name"] for item in checkpoint["files"]] == list(recovery.INVENTORY),
+                    "M22 recovery checkpoint inventory/path drifted",
+                )
 
 
 def validate_process(process: dict[str, Any], start: int, count: int, architecture: str, seed: int) -> None:
@@ -240,6 +409,7 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
     require(identity["recovery_schema_sha256"] == hashlib.sha256(
                 committed_bytes(root, commit, recovery.SCHEMA.as_posix())).hexdigest(),
             "M22 recovery schema identity drifted")
+    _validate_record_paths(report)
     if context.is_live:
         require(live_inputs is not None and live_inputs.is_live,
                 "live-input manifest is required for live M22 recovery validation")
@@ -254,6 +424,21 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         ))
         executable = live_inputs.resolve(requirements[-2])
         corpus = live_inputs.resolve(requirements[-1])
+        exact_directories = [
+            (artifact_root / checkpoint["path"], recovery.INVENTORY, "M22 recovery checkpoint")
+            for run in report["runs"]
+            for process in (run["uninterrupted"], run["prefix"], run["resumed"])
+            for checkpoint in process["checkpoints"]
+        ]
+        _validate_live_structure(live_inputs, requirements, exact_directories, require)
+        for run in report["runs"]:
+            for process in (run["uninterrupted"], run["prefix"], run["resumed"]):
+                for checkpoint in process["checkpoints"]:
+                    _validate_checkpoint_artifact(
+                        artifact_root / checkpoint["path"], checkpoint,
+                        run["architecture"], report["configuration"]["run_seed"],
+                        identity["learning_contract_sha256"], identity["native_corpus_sha256"], require,
+                    )
     if executable is not None:
         require(identity["campaign_executable_sha256"] == recovery.sha256(executable.resolve()),
                 "M22 recovery campaign executable identity drifted")
@@ -309,17 +494,24 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         validate_artifacts(report, artifact_root)
 
 
-def validate(report_path: pathlib.Path, root: pathlib.Path, artifact_root: pathlib.Path | None = None,
-             executable: pathlib.Path | None = None, corpus: pathlib.Path | None = None, *,
-             artifact_context: ArtifactContext | None = None,
-             live_inputs: LiveInputManifest | None = None) -> dict[str, bool]:
+def validate(
+    report_path: pathlib.Path,
+    root: pathlib.Path,
+    *,
+    artifact_context: ArtifactContext | None = None,
+) -> dict[str, bool]:
     context = artifact_context or ArtifactContext.offline()
     report_path = report_path.resolve()
     report = load(report_path)
     require(report_path.read_bytes() == recovery.canonical_bytes(report) + b"\n", "M22 recovery evidence is not canonical JSON")
+    live_inputs = (
+        LiveInputManifest.load(context.artifact_root)
+        if context.is_live and context.artifact_root is not None
+        else LiveInputManifest.offline()
+    )
     validate_value(
-        report, root, artifact_root, executable, corpus,
-        artifact_context=context if artifact_context is not None else None,
+        report, root,
+        artifact_context=context,
         live_inputs=live_inputs,
     )
     return {"live": context.is_live}
@@ -333,16 +525,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         artifact_root = resolve_artifact_root(args.artifact_root)
-        if artifact_root is None:
-            context = ArtifactContext.offline()
-            live_inputs = LiveInputManifest.offline()
-        else:
-            context = ArtifactContext.live(artifact_root)
-            live_inputs = LiveInputManifest.load(artifact_root)
+        context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
         summary = validate(
             args.report, args.root,
             artifact_context=context,
-            live_inputs=live_inputs,
         )
         report = load(args.report)
     except (M22RecoveryValidationError, recovery.M22RecoveryError, ArtifactContextError,

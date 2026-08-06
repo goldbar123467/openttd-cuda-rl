@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import inspect
 import os
 import pathlib
 import subprocess
@@ -24,6 +25,78 @@ from artifact_context import (
 import run_m22_training as runner
 import run_m22_recovery as recovery
 import validate_m22_training_evidence as validator
+
+
+CHECKPOINT_SCHEMA = "v2-m22-generalist-checkpoint-v1"
+CHECKPOINT_BOUNDARY = "after-completed-ppo-update-and-retention-check-before-next-rollout"
+
+
+def fixture_checkpoint_id(fields: dict[str, str]) -> str:
+    identity = "\n".join((
+        fields["schema"], fields["contract"], fields["corpus"], fields["architecture"],
+        fields["run_seed"], fields["model_sha256"], fields["optimizer_sha256"],
+        fields["runtime_sha256"], fields["trainer_state_sha256"],
+        fields["selection_sha256"], fields["boundary"],
+    )) + "\n"
+    return hashlib.sha256(identity.encode("ascii")).hexdigest()
+
+
+def write_checkpoint_fixture(
+    parent: pathlib.Path,
+    architecture: str,
+    seed: int,
+    update: int,
+    contract_sha256: str,
+    corpus_sha256: str,
+) -> tuple[str, list[dict[str, object]]]:
+    payloads = {
+        "model.pt": f"fixture model {architecture} {seed} {update}\n".encode(),
+        "optimizer.pt": f"fixture optimizer {architecture} {seed} {update}\n".encode(),
+        "runtime.pt": f"fixture runtime {architecture} {seed} {update}\n".encode(),
+        "selection.json": f'{{"architecture":"{architecture}","seed":{seed},"update":{update}}}\n'.encode(),
+        "trainer-state.bin": f"fixture trainer state {architecture} {seed} {update}\n".encode(),
+    }
+    digests = {name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()}
+    fields = {
+        "schema": CHECKPOINT_SCHEMA,
+        "contract": contract_sha256,
+        "corpus": corpus_sha256,
+        "architecture": architecture,
+        "run_seed": str(seed),
+        "checkpoint_id": "",
+        "model_sha256": digests["model.pt"],
+        "optimizer_sha256": digests["optimizer.pt"],
+        "runtime_sha256": digests["runtime.pt"],
+        "trainer_state_sha256": digests["trainer-state.bin"],
+        "selection_sha256": digests["selection.json"],
+        "boundary": CHECKPOINT_BOUNDARY,
+    }
+    checkpoint_id = fixture_checkpoint_id(fields)
+    fields["checkpoint_id"] = checkpoint_id
+    directory = parent / checkpoint_id
+    directory.mkdir(parents=True)
+    for name, data in payloads.items():
+        (directory / name).write_bytes(data)
+    (directory / "m22.manifest").write_text(
+        "".join(f"{name}={value}\n" for name, value in fields.items()),
+        encoding="ascii",
+    )
+    (directory / "COMMITTED").write_text(checkpoint_id + "\n", encoding="ascii")
+    files = [
+        {
+            "bytes": (directory / name).stat().st_size,
+            "name": name,
+            "sha256": hashlib.sha256((directory / name).read_bytes()).hexdigest(),
+        }
+        for name in recovery.INVENTORY
+    ]
+    return checkpoint_id, files
+
+
+def refresh_file_record(checkpoint: dict[str, object], path: pathlib.Path) -> None:
+    record = next(item for item in checkpoint["files"] if item["name"] == path.name)
+    record["bytes"] = path.stat().st_size
+    record["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 class M22TrainingTests(unittest.TestCase):
@@ -53,18 +126,37 @@ class M22TrainingTests(unittest.TestCase):
             log.write_bytes(f"byte-real {process['log_path']}\n".encode())
             process["stdout_sha256"] = hashlib.sha256(log.read_bytes()).hexdigest()
             for checkpoint in process["checkpoints"]:
-                directory = artifact_root / checkpoint["path"]
-                directory.mkdir(parents=True, exist_ok=True)
-                files = []
-                for name in recovery.INVENTORY:
-                    path = directory / name
-                    path.write_bytes(f"{checkpoint['id']}:{name}\n".encode())
-                    files.append({
-                        "bytes": path.stat().st_size,
-                        "name": name,
-                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                    })
+                old_path = pathlib.PurePosixPath(checkpoint["path"])
+                checkpoint_id, files = write_checkpoint_fixture(
+                    artifact_root.joinpath(*old_path.parent.parts),
+                    run["architecture"],
+                    run["seed"],
+                    checkpoint["update"],
+                    value["identity"]["learning_contract_sha256"],
+                    value["identity"]["native_corpus_sha256"],
+                )
+                checkpoint["id"] = checkpoint_id
+                checkpoint["path"] = (old_path.parent / checkpoint_id).as_posix()
                 checkpoint["files"] = files
+            checkpoints = {item["update"]: item for item in process["checkpoints"]}
+            for candidate in run["candidates"]:
+                checkpoint = checkpoints[candidate["update"]]
+                candidate["checkpoint_id"] = checkpoint["id"]
+                candidate["checkpoint_path"] = checkpoint["path"]
+            run["provisional_selection"] = runner.select(run["candidates"])
+        all_candidates = [
+            {"architecture": run["architecture"], "seed": run["seed"], **candidate}
+            for run in value["runs"]
+            for candidate in run["candidates"]
+        ]
+        selected = runner.select(all_candidates)
+        value["provisional_development_selection"].update({
+            "architecture": selected["architecture"],
+            "seed": selected["seed"],
+            "update": selected["update"],
+            "checkpoint_id": selected["checkpoint_id"],
+            "checkpoint_path": selected["checkpoint_path"],
+        })
         executable = live_root / "campaign"
         executable.write_bytes(b"byte-real relocated campaign executable\n")
         corpus = live_root / "corpus.bin"
@@ -226,6 +318,112 @@ class M22TrainingTests(unittest.TestCase):
             )
         self.assertEqual(self.report, retained)
 
+    def test_live_training_closes_checkpoint_directories_before_reader(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            live_root = pathlib.Path(raw).resolve()
+            value, live_inputs = self.make_live_fixture(live_root)
+            checkpoint = value["runs"][0]["process"]["checkpoints"][0]
+            directory = live_root / "training" / checkpoint["path"]
+            (directory / "unexpected.bin").write_bytes(b"extra checkpoint entry\n")
+            with (
+                self.assertRaisesRegex(validator.M22TrainingValidationError, "exact inventory"),
+                mock.patch.object(validator, "validate_artifacts") as artifact_reader,
+            ):
+                validator.validate_value(
+                    value,
+                    self.root,
+                    artifact_context=ArtifactContext.live(live_root),
+                    live_inputs=live_inputs,
+                )
+            artifact_reader.assert_not_called()
+
+    def test_live_training_rejects_cross_checkpoint_hardlink_before_reader(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            live_root = pathlib.Path(raw).resolve()
+            value, live_inputs = self.make_live_fixture(live_root)
+            checkpoints = value["runs"][0]["process"]["checkpoints"]
+            source = live_root / "training" / checkpoints[0]["path"] / "model.pt"
+            target = live_root / "training" / checkpoints[1]["path"] / "model.pt"
+            target.unlink()
+            os.link(source, target)
+            refresh_file_record(checkpoints[1], target)
+            candidate = next(item for item in value["runs"][0]["candidates"] if item["update"] == checkpoints[1]["update"])
+            candidate["checkpoint_id"] = checkpoints[1]["id"]
+            candidate["checkpoint_path"] = checkpoints[1]["path"]
+            self.rehash(value)
+            with (
+                self.assertRaisesRegex(validator.M22TrainingValidationError, "physical file alias"),
+                mock.patch.object(validator, "validate_artifacts") as artifact_reader,
+            ):
+                validator.validate_value(
+                    value,
+                    self.root,
+                    artifact_context=ArtifactContext.live(live_root),
+                    live_inputs=live_inputs,
+                )
+            artifact_reader.assert_not_called()
+
+    def test_live_training_missing_or_symlink_entry_fails_in_preflight(self) -> None:
+        for mutation in ("missing", "symlink"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as raw:
+                live_root = pathlib.Path(raw).resolve()
+                value, live_inputs = self.make_live_fixture(live_root)
+                checkpoint = value["runs"][0]["process"]["checkpoints"][0]
+                target = live_root / "training" / checkpoint["path"] / "model.pt"
+                if mutation == "missing":
+                    target.unlink()
+                else:
+                    real = target.with_name("model-real.pt")
+                    target.rename(real)
+                    target.symlink_to(real)
+                with (
+                    self.assertRaises(ArtifactContextError),
+                    mock.patch.object(
+                        validator.recovery_validator,
+                        "_validate_live_structure",
+                    ) as structure_guard,
+                    mock.patch.object(validator, "validate_artifacts") as artifact_reader,
+                ):
+                    validator.validate_value(
+                        value,
+                        self.root,
+                        artifact_context=ArtifactContext.live(live_root),
+                        live_inputs=live_inputs,
+                    )
+                structure_guard.assert_not_called()
+                artifact_reader.assert_not_called()
+
+    def test_public_validate_has_no_raw_path_bypass_and_loads_live_manifest(self) -> None:
+        parameters = inspect.signature(validator.validate).parameters
+        self.assertEqual(list(parameters), ["report_path", "root", "artifact_context"])
+        self.assertEqual(parameters["artifact_context"].kind, inspect.Parameter.KEYWORD_ONLY)
+        report_path = self.root / validator.REPORT
+        with self.assertRaises(TypeError):
+            validator.validate(report_path, self.root, self.root)
+        with self.assertRaises(TypeError):
+            validator.validate(report_path, self.root, executable=self.root)
+        with mock.patch.object(
+            validator,
+            "validate_artifacts",
+            side_effect=AssertionError("contextless public validation read retained paths"),
+        ):
+            self.assertEqual(validator.validate(report_path, self.root), {"live": False})
+
+        with tempfile.TemporaryDirectory() as raw:
+            live_root = pathlib.Path(raw).resolve()
+            value, live_inputs = self.make_live_fixture(live_root)
+            relocated_report = live_root / "training.json"
+            relocated_report.write_bytes(recovery.canonical_bytes(value) + b"\n")
+            with mock.patch.object(validator.LiveInputManifest, "load", return_value=live_inputs):
+                self.assertEqual(
+                    validator.validate(
+                        relocated_report,
+                        self.root,
+                        artifact_context=ArtifactContext.live(live_root),
+                    ),
+                    {"live": True},
+                )
+
     def test_relocated_live_training_symlink_fails_before_artifact_reader(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             live_root = pathlib.Path(raw).resolve()
@@ -285,6 +483,26 @@ class M22TrainingTests(unittest.TestCase):
                 value = copy.deepcopy(self.report)
                 mutate(value["runs"][0]["process"]["checkpoints"][0])
                 self.mutation_fails(value, "checkpoint inventory/path")
+
+    def test_training_log_paths_are_safe_unique_and_run_bound_offline(self) -> None:
+        mutations = {
+            "parent": "../escape.log",
+            "absolute": "/tmp/campaign.log",
+            "dot": "./campaign.log",
+            "empty": "",
+            "empty-component": "monolithic-generalist-v1//campaign.log",
+            "backslash": "monolithic-generalist-v1\\campaign.log",
+            "nul": "monolithic-generalist-v1/campaign\x00.log",
+            "duplicate": self.report["runs"][0]["process"]["log_path"],
+        }
+        for label, path in mutations.items():
+            with self.subTest(label=label):
+                value = copy.deepcopy(self.report)
+                target = value["runs"][1]["process"] if label == "duplicate" else value["runs"][0]["process"]
+                target["log_path"] = path
+                self.rehash(value)
+                with self.assertRaisesRegex(validator.M22TrainingValidationError, "log path|log_path"):
+                    validator.validate_value(value, self.root)
 
     def test_process_identity_reuse_fails(self) -> None:
         value = copy.deepcopy(self.report)

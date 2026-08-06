@@ -27,6 +27,7 @@ import run_m22_qualification as qualification
 import run_m22_recovery as recovery
 import run_m22_training as training
 import validate_m22_native_corpus as native_validator
+import validate_m22_recovery_evidence as recovery_validator
 import validate_m22_training_evidence as training_validator
 from source_context import SourceContextError, run_git
 
@@ -114,6 +115,25 @@ def _requirements(report: dict[str, Any]) -> tuple[RoleRequirement, ...]:
 def required_live_inputs(root: pathlib.Path) -> tuple[RoleRequirement, ...]:
     root = root.resolve()
     return _requirements(recovery.load(root / REPORT))
+
+
+def _validate_record_paths(report: dict[str, Any]) -> None:
+    require(
+        [item["path"] for item in report["artifacts"]] == list(qualification.ARTIFACT_NAMES),
+        "M22 qualification artifact path inventory drifted",
+    )
+    selected = report["finalized_selection"]
+    checkpoint = report["identity"]["checkpoint"]
+    checkpoint_id = checkpoint["id"]
+    require(
+        isinstance(checkpoint_id, str) and re.fullmatch(r"[0-9a-f]{64}", checkpoint_id) is not None and
+        checkpoint["path"] == selected["checkpoint_path"] and
+        selected["checkpoint_id"] == checkpoint_id and
+        recovery_validator._safe_relative_posix(checkpoint["path"]) and
+        checkpoint["path"].endswith("/" + checkpoint_id) and
+        [item["name"] for item in checkpoint["files"]] == list(recovery.INVENTORY),
+        "M22 qualification selected checkpoint inventory/path drifted",
+    )
 
 
 def close(actual: float, expected: float) -> bool:
@@ -255,14 +275,16 @@ def validate_value(
             "M22 qualification source identity drifted")
 
     identity = report["identity"]
+    training_bytes = committed_bytes(root, commit, qualification.TRAINING.as_posix())
     expected_committed = {
         "learning_contract_sha256": hashlib.sha256(committed_bytes(root, commit, qualification.CONTRACT.as_posix())).hexdigest(),
         "native_corpus_sha256": hashlib.sha256(committed_bytes(root, commit, qualification.CORPUS.as_posix())).hexdigest(),
         "qualification_schema_sha256": hashlib.sha256(schema_bytes).hexdigest(),
-        "training_evidence_sha256": hashlib.sha256(committed_bytes(root, commit, qualification.TRAINING.as_posix())).hexdigest(),
+        "training_evidence_sha256": hashlib.sha256(training_bytes).hexdigest(),
     }
     require(all(identity[key] == value for key, value in expected_committed.items()),
             "M22 qualification committed contract/corpus/schema/training identity drifted")
+    _validate_record_paths(report)
     if context.is_live:
         require(live_inputs is not None and live_inputs.is_live,
                 "live-input manifest is required for live M22 qualification validation")
@@ -279,13 +301,32 @@ def validate_value(
         ))
         executable = live_inputs.resolve(requirements[-2])
         corpus = live_inputs.resolve(requirements[-1])
+        selected_checkpoint_path = training_artifact_root / report["finalized_selection"]["checkpoint_path"]
+        exact_directories = [
+            (artifact_root, tuple(qualification.ARTIFACT_NAMES), "M22 qualification artifact directory"),
+            (selected_checkpoint_path, recovery.INVENTORY, "M22 qualification selected checkpoint"),
+        ]
+        recovery_validator._validate_live_structure(
+            live_inputs, requirements, exact_directories, require,
+        )
+        recovery_validator._validate_checkpoint_artifact(
+            selected_checkpoint_path, identity["checkpoint"],
+            report["finalized_selection"]["architecture"], report["finalized_selection"]["seed"],
+            identity["learning_contract_sha256"], identity["native_corpus_sha256"], require,
+        )
     if executable is not None or corpus is not None:
         require(executable is not None and corpus is not None and
                 identity["qualification_executable_sha256"] == training.sha256(executable.resolve()) and
                 identity["corpus_binary_sha256"] == training.sha256(corpus.resolve()),
                 "M22 qualification live executable/corpus identity drifted")
 
-    training_report = recovery.load(root / qualification.TRAINING)
+    try:
+        training_report = json.loads(training_bytes)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise M22QualificationValidationError(
+            f"M22 committed training evidence is malformed: {exc}"
+        ) from exc
+    require(isinstance(training_report, dict), "M22 committed training evidence is not an object")
     training_validator.validate_value(
         training_report,
         root,
@@ -367,18 +408,23 @@ def validate_value(
 
 
 def validate(
-    report_path: pathlib.Path, root: pathlib.Path, training_artifact_root: pathlib.Path | None = None,
-    artifact_root: pathlib.Path | None = None, executable: pathlib.Path | None = None,
-    corpus: pathlib.Path | None = None, *, artifact_context: ArtifactContext | None = None,
-    live_inputs: LiveInputManifest | None = None,
+    report_path: pathlib.Path,
+    root: pathlib.Path,
+    *,
+    artifact_context: ArtifactContext | None = None,
 ) -> dict[str, bool]:
     context = artifact_context or ArtifactContext.offline()
     report = recovery.load(report_path.resolve())
     require(report_path.resolve().read_bytes() == recovery.canonical_bytes(report) + b"\n",
             "M22 qualification evidence is not canonical JSON")
+    live_inputs = (
+        LiveInputManifest.load(context.artifact_root)
+        if context.is_live and context.artifact_root is not None
+        else LiveInputManifest.offline()
+    )
     validate_value(
-        report, root, training_artifact_root, artifact_root, executable, corpus,
-        artifact_context=context if artifact_context is not None else None,
+        report, root,
+        artifact_context=context,
         live_inputs=live_inputs,
     )
     return {"live": context.is_live}
@@ -392,16 +438,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         artifact_root = resolve_artifact_root(args.artifact_root)
-        if artifact_root is None:
-            context = ArtifactContext.offline()
-            live_inputs = LiveInputManifest.offline()
-        else:
-            context = ArtifactContext.live(artifact_root)
-            live_inputs = LiveInputManifest.load(artifact_root)
+        context = ArtifactContext.offline() if artifact_root is None else ArtifactContext.live(artifact_root)
         summary = validate(
             args.report, args.root,
             artifact_context=context,
-            live_inputs=live_inputs,
         )
         report = recovery.load(args.report)
     except (M22QualificationValidationError, qualification.M22QualificationError, training.M22TrainingError,

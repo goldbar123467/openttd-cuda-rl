@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import inspect
 import json
 import os
 import pathlib
@@ -27,6 +28,90 @@ import run_m22_recovery as recovery
 import validate_m22_qualification_evidence as validator
 
 
+CHECKPOINT_SCHEMA = "v2-m22-generalist-checkpoint-v1"
+CHECKPOINT_BOUNDARY = "after-completed-ppo-update-and-retention-check-before-next-rollout"
+
+
+def fixture_checkpoint_id(fields: dict[str, str]) -> str:
+    identity = "\n".join((
+        fields["schema"], fields["contract"], fields["corpus"], fields["architecture"],
+        fields["run_seed"], fields["model_sha256"], fields["optimizer_sha256"],
+        fields["runtime_sha256"], fields["trainer_state_sha256"],
+        fields["selection_sha256"], fields["boundary"],
+    )) + "\n"
+    return hashlib.sha256(identity.encode("ascii")).hexdigest()
+
+
+def write_checkpoint_fixture(
+    parent: pathlib.Path,
+    architecture: str,
+    seed: int,
+    update: int,
+    contract_sha256: str,
+    corpus_sha256: str,
+    *,
+    before_id: str | None = None,
+) -> tuple[str, list[dict[str, object]]]:
+    nonce = 0
+    while True:
+        suffix = f" {nonce}" if before_id is not None else ""
+        payloads = {
+            "model.pt": f"fixture model {architecture} {seed} {update}{suffix}\n".encode(),
+            "optimizer.pt": f"fixture optimizer {architecture} {seed} {update}{suffix}\n".encode(),
+            "runtime.pt": f"fixture runtime {architecture} {seed} {update}{suffix}\n".encode(),
+            "selection.json": f'{{"architecture":"{architecture}","seed":{seed},"update":{update},"nonce":{nonce}}}\n'.encode(),
+            "trainer-state.bin": f"fixture trainer state {architecture} {seed} {update}{suffix}\n".encode(),
+        }
+        digests = {name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()}
+        fields = {
+            "schema": CHECKPOINT_SCHEMA,
+            "contract": contract_sha256,
+            "corpus": corpus_sha256,
+            "architecture": architecture,
+            "run_seed": str(seed),
+            "checkpoint_id": "",
+            "model_sha256": digests["model.pt"],
+            "optimizer_sha256": digests["optimizer.pt"],
+            "runtime_sha256": digests["runtime.pt"],
+            "trainer_state_sha256": digests["trainer-state.bin"],
+            "selection_sha256": digests["selection.json"],
+            "boundary": CHECKPOINT_BOUNDARY,
+        }
+        checkpoint_id = fixture_checkpoint_id(fields)
+        if before_id is None or checkpoint_id < before_id:
+            break
+        nonce += 1
+    fields["checkpoint_id"] = checkpoint_id
+    directory = parent / checkpoint_id
+    directory.mkdir(parents=True)
+    for name, data in payloads.items():
+        (directory / name).write_bytes(data)
+    (directory / "m22.manifest").write_text(
+        "".join(f"{name}={value}\n" for name, value in fields.items()),
+        encoding="ascii",
+    )
+    (directory / "COMMITTED").write_text(checkpoint_id + "\n", encoding="ascii")
+    files = [
+        {
+            "bytes": (directory / name).stat().st_size,
+            "name": name,
+            "sha256": hashlib.sha256((directory / name).read_bytes()).hexdigest(),
+        }
+        for name in recovery.INVENTORY
+    ]
+    return checkpoint_id, files
+
+
+def committed_fixture_bytes(project: pathlib.Path, commit: str, relative: str) -> bytes:
+    return subprocess.run(
+        ["git", "show", f"{commit}:{relative}"],
+        cwd=project,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).stdout
+
+
 class M22QualificationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -47,6 +132,8 @@ class M22QualificationTests(unittest.TestCase):
     def make_live_fixture(
         self,
         directory: pathlib.Path,
+        *,
+        commit_training: bool = True,
     ) -> tuple[pathlib.Path, dict[str, object], LiveInputManifest]:
         project = directory / "project"
         subprocess.run(
@@ -67,27 +154,83 @@ class M22QualificationTests(unittest.TestCase):
         live_root.mkdir()
         training_artifacts = live_root / "training"
         checkpoint_root = training_artifacts / selected["checkpoint_path"]
-        checkpoint_root.mkdir(parents=True)
-        checkpoint_files = []
-        for name in recovery.INVENTORY:
-            path = checkpoint_root / name
-            data = (
-                (selected["checkpoint_id"] + "\n").encode("ascii")
-                if name == "COMMITTED"
-                else f"byte-real selected checkpoint {name}\n".encode()
-            )
-            path.write_bytes(data)
-            checkpoint_files.append({
-                "bytes": path.stat().st_size,
-                "name": name,
-                "sha256": hashlib.sha256(data).hexdigest(),
-            })
+        checkpoint_id, checkpoint_files = write_checkpoint_fixture(
+            checkpoint_root.parent,
+            selected["architecture"],
+            selected["seed"],
+            selected["update"],
+            training_report["identity"]["learning_contract_sha256"],
+            training_report["identity"]["native_corpus_sha256"],
+            before_id=selected["checkpoint_id"],
+        )
+        selected_checkpoint["id"] = checkpoint_id
+        selected_checkpoint["path"] = (
+            pathlib.PurePosixPath(selected_checkpoint["path"]).parent / checkpoint_id
+        ).as_posix()
         selected_checkpoint["files"] = checkpoint_files
+        selected_candidate = next(
+            item for item in selected_run["candidates"]
+            if item["update"] == selected["update"]
+        )
+        selected_candidate["checkpoint_id"] = checkpoint_id
+        selected_candidate["checkpoint_path"] = selected_checkpoint["path"]
+        selected_run["provisional_selection"]["checkpoint_id"] = checkpoint_id
+        selected_run["provisional_selection"]["checkpoint_path"] = selected_checkpoint["path"]
+        selected["checkpoint_id"] = checkpoint_id
+        selected["checkpoint_path"] = selected_checkpoint["path"]
         self.rehash(training_report)
         (project / runner.TRAINING).write_bytes(recovery.canonical_bytes(training_report) + b"\n")
 
         value = copy.deepcopy(self.report)
         value["identity"]["checkpoint"] = copy.deepcopy(selected_checkpoint)
+        value["finalized_selection"]["checkpoint_id"] = checkpoint_id
+        value["finalized_selection"]["checkpoint_path"] = selected_checkpoint["path"]
+        value["device_result"]["checkpoint"]["id"] = checkpoint_id
+        schema = recovery.load(project / runner.SCHEMA)
+        schema["$defs"]["checkpoint"]["properties"]["id"]["const"] = checkpoint_id
+        schema["$defs"]["selection"]["properties"]["checkpoint_id"]["const"] = checkpoint_id
+        schema["$defs"]["device_result"]["properties"]["checkpoint"]["const"]["id"] = checkpoint_id
+        (project / runner.SCHEMA).write_bytes(recovery.canonical_bytes(schema) + b"\n")
+        subprocess.run(["git", "config", "user.name", "Task 5A fixture"], cwd=project, check=True)
+        subprocess.run(["git", "config", "user.email", "task5a@example.invalid"], cwd=project, check=True)
+        paths_to_commit = [runner.SCHEMA.as_posix()]
+        if commit_training:
+            paths_to_commit.append(runner.TRAINING.as_posix())
+        subprocess.run(["git", "add", *paths_to_commit], cwd=project, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Commit qualification fixture authority"],
+            cwd=project,
+            check=True,
+        )
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=project,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+        ).stdout.strip()
+        source_files = [
+            {
+                "path": relative,
+                "sha256": hashlib.sha256(committed_fixture_bytes(project, commit, relative)).hexdigest(),
+            }
+            for relative in runner.SOURCE_PATHS
+        ]
+        value["source"].update({
+            "clean": True,
+            "files": source_files,
+            "repository_commit": commit,
+            "tree_sha256": recovery.sha256_bytes(recovery.canonical_bytes(source_files)),
+        })
+        for key, relative in (
+            ("learning_contract_sha256", runner.CONTRACT.as_posix()),
+            ("native_corpus_sha256", runner.CORPUS.as_posix()),
+            ("qualification_schema_sha256", runner.SCHEMA.as_posix()),
+            ("training_evidence_sha256", runner.TRAINING.as_posix()),
+        ):
+            value["identity"][key] = hashlib.sha256(
+                committed_fixture_bytes(project, commit, relative)
+            ).hexdigest()
         qualification_artifacts = live_root / "qualification"
         qualification_artifacts.mkdir()
         artifact_payloads = {
@@ -298,8 +441,16 @@ class M22QualificationTests(unittest.TestCase):
             )
             with (
                 self.assertRaises(ArtifactContextError),
-                mock.patch.object(validator.training_validator, "validate_value") as training_helper,
-                mock.patch.object(validator.native_validator, "validate") as native_helper,
+                mock.patch.object(
+                    validator.training_validator,
+                    "validate_value",
+                    wraps=validator.training_validator.validate_value,
+                ) as training_helper,
+                mock.patch.object(
+                    validator.native_validator,
+                    "validate",
+                    wraps=validator.native_validator.validate,
+                ) as native_helper,
             ):
                 validator.validate_value(
                     self.report,
@@ -343,6 +494,185 @@ class M22QualificationTests(unittest.TestCase):
                 live_inputs=live_inputs,
             )
         self.assertEqual(self.report, retained)
+
+    def test_offline_qualification_rejects_uncommitted_training_replacement(self) -> None:
+        self.assertIsNotNone(self.report)
+        retained = copy.deepcopy(self.report)
+        with tempfile.TemporaryDirectory() as raw:
+            project, value, _ = self.make_live_fixture(
+                pathlib.Path(raw).resolve(),
+                commit_training=False,
+            )
+            with self.assertRaisesRegex(
+                validator.M22QualificationValidationError,
+                "training evidence|checkpoint inventory",
+            ):
+                validator.validate_value(value, project)
+        self.assertEqual(self.report, retained)
+
+    def test_live_qualification_rejects_uncommitted_training_replacement(self) -> None:
+        self.assertIsNotNone(self.report)
+        retained = copy.deepcopy(self.report)
+        with tempfile.TemporaryDirectory() as raw:
+            project, value, live_inputs = self.make_live_fixture(
+                pathlib.Path(raw).resolve(),
+                commit_training=False,
+            )
+            with self.assertRaisesRegex(
+                validator.M22QualificationValidationError,
+                "training evidence|checkpoint inventory",
+            ):
+                validator.validate_value(
+                    value,
+                    project,
+                    artifact_context=ArtifactContext.live(live_inputs.artifact_root),
+                    live_inputs=live_inputs,
+                )
+        self.assertEqual(self.report, retained)
+
+    def test_live_qualification_closes_only_selected_and_qualification_directories(self) -> None:
+        self.assertIsNotNone(self.report)
+        for label in ("qualification", "selected-checkpoint"):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                fixture_root = pathlib.Path(raw).resolve()
+                project, value, live_inputs = self.make_live_fixture(fixture_root)
+                if label == "qualification":
+                    directory = fixture_root / "live" / "qualification"
+                else:
+                    directory = fixture_root / "live" / "training" / value["finalized_selection"]["checkpoint_path"]
+                (directory / "unexpected.bin").write_bytes(b"unexpected retained entry\n")
+                with (
+                    self.assertRaisesRegex(validator.M22QualificationValidationError, "exact inventory"),
+                    mock.patch.object(
+                        validator.training_validator,
+                        "validate_value",
+                        wraps=validator.training_validator.validate_value,
+                    ) as training_helper,
+                    mock.patch.object(
+                        validator.native_validator,
+                        "validate",
+                        wraps=validator.native_validator.validate,
+                    ) as native_helper,
+                ):
+                    validator.validate_value(
+                        value,
+                        project,
+                        artifact_context=ArtifactContext.live(live_inputs.artifact_root),
+                        live_inputs=live_inputs,
+                    )
+                training_helper.assert_not_called()
+                native_helper.assert_not_called()
+
+    def test_live_qualification_allows_unrelated_training_checkpoints(self) -> None:
+        self.assertIsNotNone(self.report)
+        with tempfile.TemporaryDirectory() as raw:
+            project, value, live_inputs = self.make_live_fixture(pathlib.Path(raw).resolve())
+            unrelated = live_inputs.artifact_root / "training" / "unrelated" / "checkpoints" / ("f" * 64)
+            unrelated.mkdir(parents=True)
+            (unrelated / "not-selected.bin").write_bytes(b"outside selected checkpoint closure\n")
+            validator.validate_value(
+                value,
+                project,
+                artifact_context=ArtifactContext.live(live_inputs.artifact_root),
+                live_inputs=live_inputs,
+            )
+
+    def test_live_qualification_rejects_cross_role_hardlink_before_helpers(self) -> None:
+        self.assertIsNotNone(self.report)
+        with tempfile.TemporaryDirectory() as raw:
+            project, value, live_inputs = self.make_live_fixture(pathlib.Path(raw).resolve())
+            checkpoint = live_inputs.artifact_root / "training" / value["finalized_selection"]["checkpoint_path"]
+            source = checkpoint / "model.pt"
+            target = live_inputs.artifact_root / "qualification" / "stdout.txt"
+            target.unlink()
+            os.link(source, target)
+            stdout_record = next(item for item in value["artifacts"] if item["path"] == "stdout.txt")
+            stdout_record["bytes"] = target.stat().st_size
+            stdout_record["sha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+            value["process"]["stdout_sha256"] = stdout_record["sha256"]
+            self.rehash(value)
+            with (
+                self.assertRaisesRegex(validator.M22QualificationValidationError, "physical file alias"),
+                mock.patch.object(
+                    validator.training_validator,
+                    "validate_value",
+                    wraps=validator.training_validator.validate_value,
+                ) as training_helper,
+                mock.patch.object(
+                    validator.native_validator,
+                    "validate",
+                    wraps=validator.native_validator.validate,
+                ) as native_helper,
+            ):
+                validator.validate_value(
+                    value,
+                    project,
+                    artifact_context=ArtifactContext.live(live_inputs.artifact_root),
+                    live_inputs=live_inputs,
+                )
+            training_helper.assert_not_called()
+            native_helper.assert_not_called()
+
+    def test_live_qualification_missing_or_symlink_entry_fails_in_preflight(self) -> None:
+        self.assertIsNotNone(self.report)
+        for mutation in ("missing", "symlink"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as raw:
+                project, value, live_inputs = self.make_live_fixture(pathlib.Path(raw).resolve())
+                target = live_inputs.artifact_root / "qualification" / "stdout.txt"
+                if mutation == "missing":
+                    target.unlink()
+                else:
+                    real = target.with_name("stdout-real.txt")
+                    target.rename(real)
+                    target.symlink_to(real)
+                with (
+                    self.assertRaises(ArtifactContextError),
+                    mock.patch.object(
+                        validator.recovery_validator,
+                        "_validate_live_structure",
+                    ) as structure_guard,
+                    mock.patch.object(validator.training_validator, "validate_value") as training_helper,
+                    mock.patch.object(validator.native_validator, "validate") as native_helper,
+                ):
+                    validator.validate_value(
+                        value,
+                        project,
+                        artifact_context=ArtifactContext.live(live_inputs.artifact_root),
+                        live_inputs=live_inputs,
+                    )
+                structure_guard.assert_not_called()
+                training_helper.assert_not_called()
+                native_helper.assert_not_called()
+
+    def test_public_validate_has_no_raw_path_bypass_and_loads_live_manifest(self) -> None:
+        parameters = inspect.signature(validator.validate).parameters
+        self.assertEqual(list(parameters), ["report_path", "root", "artifact_context"])
+        self.assertEqual(parameters["artifact_context"].kind, inspect.Parameter.KEYWORD_ONLY)
+        report_path = self.root / validator.REPORT
+        with self.assertRaises(TypeError):
+            validator.validate(report_path, self.root, self.root)
+        with self.assertRaises(TypeError):
+            validator.validate(report_path, self.root, training_artifact_root=self.root)
+        with mock.patch.object(
+            validator,
+            "validate_artifacts",
+            side_effect=AssertionError("contextless public validation read retained paths"),
+        ):
+            self.assertEqual(validator.validate(report_path, self.root), {"live": False})
+
+        with tempfile.TemporaryDirectory() as raw:
+            project, value, live_inputs = self.make_live_fixture(pathlib.Path(raw).resolve())
+            relocated_report = live_inputs.artifact_root / "qualification.json"
+            relocated_report.write_bytes(recovery.canonical_bytes(value) + b"\n")
+            with mock.patch.object(validator.LiveInputManifest, "load", return_value=live_inputs):
+                self.assertEqual(
+                    validator.validate(
+                        relocated_report,
+                        project,
+                        artifact_context=ArtifactContext.live(live_inputs.artifact_root),
+                    ),
+                    {"live": True},
+                )
 
     def test_qualification_cli_is_offline_by_default_and_removes_raw_path_bypasses(self) -> None:
         script = self.root / "scripts/v2/validate_m22_qualification_evidence.py"
