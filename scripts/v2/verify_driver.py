@@ -507,6 +507,13 @@ _FINGERPRINT_TABLES = frozenset({
     "LIVE_COMMAND_REGISTRY_SHA256",
     "LIVE_PROVIDER_AST_SHA256",
 })
+# This anchor binds the dependency fingerprints for every provider except this
+# driver.  Its literal lives outside artifact_context's normalized snapshot
+# table, while excluding verify_driver keeps the update order acyclic: update
+# provider hashes, then this anchor, then the verify_driver provider hash.
+_PROVIDER_DEPENDENCY_TRUST_ANCHOR_SHA256 = (
+    "fb96317ca087eb77132a0a49f3eb2730bdaa98ee011ae1089fdd7ed5e7921e89"
+)
 _FINGERPRINT_SOURCE_CACHE: dict[
     tuple[str, str, str], tuple[str, tuple[str, ...]]
 ] = {}
@@ -627,6 +634,20 @@ def _provider_ast_sha256(module_name: str) -> str:
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _provider_dependency_trust_anchor_sha256(
+    fingerprints: Mapping[str, str],
+) -> str:
+    """Bind provider dependency snapshots without hashing this driver itself."""
+
+    payload = sorted(
+        (module, digest)
+        for module, digest in fingerprints.items()
+        if module != "verify_driver"
+    )
+    encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -1029,6 +1050,19 @@ def validate_live_input_registry(
                 Requirement.LIVE_INPUT_REGISTRY,
                 f"live-input registry command inventory drifted: missing={missing} extra={extra}",
             ))
+    registered_modules = {
+        command.live_input_module for command in commands
+        if command.live_input_module is not None
+    }
+    if registered_modules == set(LIVE_PROVIDER_AST_SHA256):
+        observed_anchor = _provider_dependency_trust_anchor_sha256(
+            LIVE_PROVIDER_AST_SHA256
+        )
+        if observed_anchor != _PROVIDER_DEPENDENCY_TRUST_ANCHOR_SHA256:
+            issues.append(PreflightIssue(
+                Requirement.LIVE_INPUT_REGISTRY,
+                "live-input provider dependency trust anchor drifted",
+            ))
     for command in commands:
         has_live_binding = any(
             binding.source in {"artifact-root", "live-role"}
@@ -1248,7 +1282,7 @@ def _expanded_artifact_issues(
             ArtifactContextError,
         ) as exc:
             issues.extend(_error_issues(Requirement.ARTIFACT_INPUT, exc))
-    if issues or not expanded:
+    if not expanded:
         return issues
     try:
         context.preflight(tuple(sorted(expanded, key=lambda item: (

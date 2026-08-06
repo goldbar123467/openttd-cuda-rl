@@ -6,6 +6,7 @@ from __future__ import annotations
 import ast
 import contextlib
 import dataclasses
+import hashlib
 import importlib
 import io
 import json
@@ -878,19 +879,15 @@ class V2VerifyDriverTests(unittest.TestCase):
                         "\n".join(issue.detail for issue in issues).lower(),
                     )
 
-    def test_registry_table_edit_cannot_bless_a_transitive_helper_read(self) -> None:
+    def test_consumed_registry_table_edit_cannot_bless_a_transitive_helper_read(
+        self,
+    ) -> None:
         registered = tuple(
             command for command in self.inventory
             if command.live_input_module is not None
         )
         with tempfile.TemporaryDirectory() as temporary:
             directory = pathlib.Path(temporary)
-            context_source = pathlib.Path(artifact_context.__file__).read_text(
-                encoding="utf-8"
-            )
-            context_source += "\nLIVE_PROVIDER_AST_SHA256 = {}\n"
-            context_path = directory / "artifact_context.py"
-            context_path.write_text(context_source, encoding="utf-8")
             helper_source = pathlib.Path(acquire_ai_package.__file__).read_text(
                 encoding="utf-8"
             )
@@ -901,12 +898,26 @@ class V2VerifyDriverTests(unittest.TestCase):
             helper_path = directory / "acquire_ai_package.py"
             helper_path.write_text(helper_source, encoding="utf-8")
             with mock.patch.object(
-                artifact_context, "__file__", str(context_path),
-            ), mock.patch.object(
                 acquire_ai_package, "__file__", str(helper_path),
             ):
-                issues = driver.validate_live_input_registry(registered)
-        self.assertIn("fingerprint", "\n".join(issue.detail for issue in issues).lower())
+                recomputed = MappingProxyType({
+                    module: driver._provider_ast_sha256(module)
+                    for module in driver.LIVE_PROVIDER_AST_SHA256
+                })
+                self.assertNotEqual(
+                    recomputed["validate_opponent_package_evidence"],
+                    driver.LIVE_PROVIDER_AST_SHA256[
+                        "validate_opponent_package_evidence"
+                    ],
+                )
+                with mock.patch.object(
+                    driver, "LIVE_PROVIDER_AST_SHA256", recomputed,
+                ):
+                    issues = driver.validate_live_input_registry(registered)
+        self.assertIn(
+            "trust anchor",
+            "\n".join(issue.detail for issue in issues).lower(),
+        )
 
     def test_recursive_provider_fingerprint_is_cycle_safe(self) -> None:
         provider = importlib.import_module("validate_m15_action_evidence")
@@ -1091,6 +1102,81 @@ class V2VerifyDriverTests(unittest.TestCase):
         self.assertIn(driver.Requirement.ARTIFACT_INPUT, {
             issue.requirement for issue in summary.preflight_issues
         })
+        self.assertFalse(marker.exists())
+
+    def test_expander_failure_does_not_hide_missing_successful_expansion(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact_root = pathlib.Path(temporary).resolve()
+            marker = artifact_root / "command-ran"
+            commands = []
+            for suffix in ("a", "b"):
+                logical_set = f"set-{suffix}"
+                authority_path = artifact_root / logical_set / "authority.json"
+                authority_path.parent.mkdir(parents=True)
+                authority_path.write_bytes(f"authority-{suffix}\n".encode())
+                authority = ArtifactRequirement(
+                    logical_set,
+                    "authority.json",
+                    "file",
+                    f"expander-{suffix}",
+                    hashlib.sha256(authority_path.read_bytes()).hexdigest(),
+                )
+                deferred = DeferredArtifactRequirement(
+                    logical_set,
+                    "nested.bin",
+                    "file",
+                    f"expander-{suffix}",
+                    authority,
+                )
+                commands.append(driver.CommandSpec(
+                    f"expander-{suffix}",
+                    driver.Tier.FULL,
+                    driver.CommandCategory.TEST,
+                    (
+                        str(self.python),
+                        "-c",
+                        f"import pathlib; pathlib.Path({str(marker)!r}).touch()",
+                    ),
+                    live_inputs=(authority, deferred),
+                    live_input_module=f"expander_{suffix}",
+                    live_input_root=self.root,
+                ))
+
+            def expand(
+                module_name: str,
+                _context: artifact_context.ArtifactContext,
+                _root: pathlib.Path,
+                _arguments: tuple[object, ...],
+            ) -> tuple[ArtifactRequirement, ...]:
+                if module_name == "expander_a":
+                    raise ValueError("expander A failed")
+                return (ArtifactRequirement(
+                    "set-b",
+                    "nested.bin",
+                    "file",
+                    "expander-b",
+                    hashlib.sha256(b"expected nested bytes\n").hexdigest(),
+                ),)
+
+            config = driver.VerificationConfig(
+                self.root,
+                self.python,
+                driver.Tier.FULL,
+                artifact_root=artifact_root,
+            )
+            with mock.patch.object(
+                driver, "validate_live_input_registry", return_value=(),
+            ), mock.patch.object(
+                driver, "_provider_expanded_live_inputs", side_effect=expand,
+            ):
+                summary = driver.run_verification(config, tuple(commands))
+
+        rendered = "\n".join(issue.detail for issue in summary.preflight_issues)
+        self.assertIn("expander A failed", rendered)
+        self.assertIn("set-b/nested.bin", rendered)
+        self.assertEqual(summary.results, ())
         self.assertFalse(marker.exists())
 
     def test_registry_mutation_rejects_an_artifact_binding_without_a_closure(self) -> None:
