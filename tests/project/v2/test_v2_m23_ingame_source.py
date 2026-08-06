@@ -9,7 +9,9 @@ import struct
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
+from artifact_context import ArtifactContext, resolve_artifact_root
 import m23_golden
 import m23_ingame
 import m23_package
@@ -135,12 +137,29 @@ class M23InGameSourceTests(unittest.TestCase):
         for required in ("m23_equivalence.cpp", "m23_golden.cpp", "m23_onnx.cpp", "OpenSSL::Crypto"):
             self.assertIn(required, self.patch)
 
+    def test_patch_application_source_is_relative_to_configured_artifact_root(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            expected = base / "v2-m22-followup-runtime-a/source"
+            completed = subprocess.CompletedProcess([], 0, "", "")
+            with mock.patch(
+                f"{__name__}.resolve_artifact_root", return_value=base,
+            ), mock.patch.object(
+                pathlib.Path, "is_dir", return_value=True,
+            ), mock.patch.object(
+                subprocess, "run", return_value=completed,
+            ) as runner:
+                self.test_patch_applies_exactly_to_retained_m22_source_when_available()
+
+        self.assertEqual(runner.call_args.args[0][2], str(expected))
+
     def test_patch_applies_exactly_to_retained_m22_source_when_available(self) -> None:
-        source = pathlib.Path(
-            "/home/thecl/.codex/artifacts/openttd-rl/v2-m22-followup-runtime-a/source"
-        )
+        base = resolve_artifact_root(None)
+        if base is None:
+            self.skipTest("live artifact validation is outside offline mode")
+        source = ArtifactContext.live(base).artifact_set("v2-m22-followup-runtime-a") / "source"
         if not source.is_dir():
-            self.skipTest("retained M22 source is not present")
+            self.fail(f"retained M22 source is not present: {source}")
         completed = subprocess.run(
             ["git", "-C", str(source), "apply", "--check", "--whitespace=error-all",
              str((self.root / m23_ingame.PATCH).resolve())],

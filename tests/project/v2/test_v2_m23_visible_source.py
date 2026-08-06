@@ -6,7 +6,11 @@ from __future__ import annotations
 import pathlib
 import re
 import subprocess
+import tempfile
 import unittest
+from unittest import mock
+
+from artifact_context import ArtifactContext, resolve_artifact_root
 
 
 class M23VisibleSourceTests(unittest.TestCase):
@@ -36,12 +40,29 @@ class M23VisibleSourceTests(unittest.TestCase):
             "src/rl_v2_program_executor.h",
         ])
 
+    def test_patch_application_source_is_relative_to_configured_artifact_root(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = pathlib.Path(raw).resolve()
+            expected = base / "v2-m23-visible-runtime-baseline-a"
+            completed = subprocess.CompletedProcess([], 0, "", "")
+            with mock.patch(
+                f"{__name__}.resolve_artifact_root", return_value=base,
+            ), mock.patch.object(
+                pathlib.Path, "is_dir", return_value=True,
+            ), mock.patch.object(
+                subprocess, "run", return_value=completed,
+            ) as runner:
+                self.test_patch_applies_after_source_integrated_equivalence_foundation()
+
+        self.assertEqual(runner.call_args.args[0][2], str(expected))
+
     def test_patch_applies_after_source_integrated_equivalence_foundation(self) -> None:
-        source = pathlib.Path(
-            "/home/thecl/.codex/artifacts/openttd-rl/v2-m23-visible-runtime-baseline-a"
-        )
+        base = resolve_artifact_root(None)
+        if base is None:
+            self.skipTest("live artifact validation is outside offline mode")
+        source = ArtifactContext.live(base).artifact_set("v2-m23-visible-runtime-baseline-a")
         if not source.is_dir():
-            self.skipTest("retained M23 source-integrated baseline is not present")
+            self.fail(f"retained M23 source-integrated baseline is not present: {source}")
         completed = subprocess.run(
             ["git", "-C", str(source), "apply", "--check", "--whitespace=error-all",
              str(self.patch_path.resolve())],
