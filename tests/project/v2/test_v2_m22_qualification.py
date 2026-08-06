@@ -112,6 +112,46 @@ def committed_fixture_bytes(project: pathlib.Path, commit: str, relative: str) -
     ).stdout
 
 
+def refresh_file_record(checkpoint: dict[str, object], path: pathlib.Path) -> None:
+    record = next(item for item in checkpoint["files"] if item["name"] == path.name)
+    record["bytes"] = path.stat().st_size
+    record["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def bind_qualification_source(project: pathlib.Path, value: dict[str, object]) -> None:
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=project,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    ).stdout.strip()
+    source_files = [
+        {
+            "path": relative,
+            "sha256": hashlib.sha256(
+                committed_fixture_bytes(project, commit, relative)
+            ).hexdigest(),
+        }
+        for relative in runner.SOURCE_PATHS
+    ]
+    value["source"].update({
+        "clean": True,
+        "files": source_files,
+        "repository_commit": commit,
+        "tree_sha256": recovery.sha256_bytes(recovery.canonical_bytes(source_files)),
+    })
+    for key, relative in (
+        ("learning_contract_sha256", runner.CONTRACT.as_posix()),
+        ("native_corpus_sha256", runner.CORPUS.as_posix()),
+        ("qualification_schema_sha256", runner.SCHEMA.as_posix()),
+        ("training_evidence_sha256", runner.TRAINING.as_posix()),
+    ):
+        value["identity"][key] = hashlib.sha256(
+            committed_fixture_bytes(project, commit, relative)
+        ).hexdigest()
+
+
 class M22QualificationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -202,35 +242,7 @@ class M22QualificationTests(unittest.TestCase):
             cwd=project,
             check=True,
         )
-        commit = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=project,
-            check=True,
-            text=True,
-            stdout=subprocess.PIPE,
-        ).stdout.strip()
-        source_files = [
-            {
-                "path": relative,
-                "sha256": hashlib.sha256(committed_fixture_bytes(project, commit, relative)).hexdigest(),
-            }
-            for relative in runner.SOURCE_PATHS
-        ]
-        value["source"].update({
-            "clean": True,
-            "files": source_files,
-            "repository_commit": commit,
-            "tree_sha256": recovery.sha256_bytes(recovery.canonical_bytes(source_files)),
-        })
-        for key, relative in (
-            ("learning_contract_sha256", runner.CONTRACT.as_posix()),
-            ("native_corpus_sha256", runner.CORPUS.as_posix()),
-            ("qualification_schema_sha256", runner.SCHEMA.as_posix()),
-            ("training_evidence_sha256", runner.TRAINING.as_posix()),
-        ):
-            value["identity"][key] = hashlib.sha256(
-                committed_fixture_bytes(project, commit, relative)
-            ).hexdigest()
+        bind_qualification_source(project, value)
         qualification_artifacts = live_root / "qualification"
         qualification_artifacts.mkdir()
         artifact_payloads = {
@@ -271,6 +283,41 @@ class M22QualificationTests(unittest.TestCase):
             }),
         )
         return project, value, live_inputs
+
+    def make_historical_schema_fixture(
+        self,
+        directory: pathlib.Path,
+        schema_bytes: bytes,
+    ) -> tuple[pathlib.Path, pathlib.Path, dict[str, object]]:
+        project = directory / "project"
+        subprocess.run(
+            ["git", "clone", "-q", "--no-hardlinks", str(self.root), str(project)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        subprocess.run(["git", "config", "user.name", "Task 5A fixture"], cwd=project, check=True)
+        subprocess.run(["git", "config", "user.email", "task5a@example.invalid"], cwd=project, check=True)
+        (project / runner.SCHEMA).write_bytes(schema_bytes)
+        subprocess.run(["git", "add", runner.SCHEMA.as_posix()], cwd=project, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Commit qualification schema fixture"],
+            cwd=project,
+            check=True,
+        )
+        self.assertEqual(
+            subprocess.run(
+                ["git", "status", "--porcelain"], cwd=project, check=True,
+                text=True, stdout=subprocess.PIPE,
+            ).stdout,
+            "",
+        )
+        value = copy.deepcopy(self.report)
+        bind_qualification_source(project, value)
+        self.rehash(value)
+        report_path = directory / "qualification-report.json"
+        report_path.write_bytes(recovery.canonical_bytes(value) + b"\n")
+        return project, report_path, value
 
     def test_schema_is_strict_and_freezes_the_selected_checkpoint(self) -> None:
         schema = recovery.load(self.root / runner.SCHEMA)
@@ -313,6 +360,41 @@ class M22QualificationTests(unittest.TestCase):
                 value = copy.deepcopy(self.report)
                 mutate(value)
                 self.mutation_fails(value, "source commit|source identity")
+
+    def test_historical_schema_failures_stay_in_qualification_domain(self) -> None:
+        variants = {
+            "malformed-json": b"{\n",
+            "invalid-utf8": b"\xff\n",
+            "invalid-json-schema": b'{"type":7}\n',
+        }
+        script = self.root / "scripts/v2/validate_m22_qualification_evidence.py"
+        for label, schema_bytes in variants.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                directory = pathlib.Path(raw).resolve()
+                project, report_path, value = self.make_historical_schema_fixture(
+                    directory,
+                    schema_bytes,
+                )
+                with self.assertRaisesRegex(
+                    validator.M22QualificationValidationError,
+                    "committed qualification schema is (?:malformed|invalid)",
+                ) as raised:
+                    validator.validate_value(value, project)
+                self.assertIsNotNone(raised.exception.__cause__)
+                completed = subprocess.run(
+                    [
+                        "python3", str(script), "--root", str(project),
+                        "--report", str(report_path),
+                    ],
+                    cwd=project,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                )
+                self.assertEqual(completed.returncode, 1)
+                self.assertIn("V2_M22_QUALIFICATION_EVIDENCE=FAIL", completed.stderr)
+                self.assertNotIn("Traceback", completed.stderr)
 
     def test_native_corpus_revalidation_is_explicitly_offline(self) -> None:
         self.assertIsNotNone(self.report)
@@ -494,6 +576,57 @@ class M22QualificationTests(unittest.TestCase):
                 live_inputs=live_inputs,
             )
         self.assertEqual(self.report, retained)
+
+    def test_live_qualification_checkpoint_commit_marker_requires_exact_bytes(self) -> None:
+        self.assertIsNotNone(self.report)
+        with tempfile.TemporaryDirectory() as raw:
+            fixture_root = pathlib.Path(raw).resolve()
+            project, value, live_inputs = self.make_live_fixture(fixture_root)
+            checkpoint = value["identity"]["checkpoint"]
+            marker = fixture_root / "live" / "training" / checkpoint["path"] / "COMMITTED"
+            marker.write_bytes(checkpoint["id"].encode("ascii") + b"\r\n")
+            refresh_file_record(checkpoint, marker)
+
+            training_report = recovery.load(project / runner.TRAINING)
+            selected = training_report["provisional_development_selection"]
+            selected_run = next(
+                item for item in training_report["runs"]
+                if item["architecture"] == selected["architecture"] and
+                item["seed"] == selected["seed"]
+            )
+            selected_checkpoint = recovery.checkpoint(
+                selected_run["process"], selected["update"],
+            )
+            refresh_file_record(selected_checkpoint, marker)
+            self.rehash(training_report)
+            (project / runner.TRAINING).write_bytes(
+                recovery.canonical_bytes(training_report) + b"\n",
+            )
+            subprocess.run(["git", "add", runner.TRAINING.as_posix()], cwd=project, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "Commit exact marker evidence"],
+                cwd=project,
+                check=True,
+            )
+            self.assertEqual(
+                subprocess.run(
+                    ["git", "status", "--porcelain"], cwd=project, check=True,
+                    text=True, stdout=subprocess.PIPE,
+                ).stdout,
+                "",
+            )
+            bind_qualification_source(project, value)
+            self.rehash(value)
+            with self.assertRaisesRegex(
+                validator.M22QualificationValidationError,
+                "checkpoint commit marker",
+            ):
+                validator.validate_value(
+                    value,
+                    project,
+                    artifact_context=ArtifactContext.live(live_inputs.artifact_root),
+                    live_inputs=live_inputs,
+                )
 
     def test_offline_qualification_rejects_uncommitted_training_replacement(self) -> None:
         self.assertIsNotNone(self.report)

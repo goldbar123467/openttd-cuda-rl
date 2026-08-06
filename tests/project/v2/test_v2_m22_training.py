@@ -99,6 +99,16 @@ def refresh_file_record(checkpoint: dict[str, object], path: pathlib.Path) -> No
     record["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def committed_fixture_bytes(project: pathlib.Path, commit: str, relative: str) -> bytes:
+    return subprocess.run(
+        ["git", "show", f"{commit}:{relative}"],
+        cwd=project,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).stdout
+
+
 class M22TrainingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -175,6 +185,64 @@ class M22TrainingTests(unittest.TestCase):
         )
         return value, live_inputs
 
+    def make_historical_schema_fixture(
+        self,
+        directory: pathlib.Path,
+        schema_bytes: bytes,
+    ) -> tuple[pathlib.Path, pathlib.Path, dict[str, object]]:
+        project = directory / "project"
+        subprocess.run(
+            ["git", "clone", "-q", "--no-hardlinks", str(self.root), str(project)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        subprocess.run(["git", "config", "user.name", "Task 5A fixture"], cwd=project, check=True)
+        subprocess.run(["git", "config", "user.email", "task5a@example.invalid"], cwd=project, check=True)
+        (project / runner.SCHEMA).write_bytes(schema_bytes)
+        subprocess.run(["git", "add", runner.SCHEMA.as_posix()], cwd=project, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Commit training schema fixture"],
+            cwd=project,
+            check=True,
+        )
+        self.assertEqual(
+            subprocess.run(
+                ["git", "status", "--porcelain"], cwd=project, check=True,
+                text=True, stdout=subprocess.PIPE,
+            ).stdout,
+            "",
+        )
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=project, check=True,
+            text=True, stdout=subprocess.PIPE,
+        ).stdout.strip()
+        value = copy.deepcopy(self.report)
+        source_files = [
+            {
+                "path": relative,
+                "sha256": hashlib.sha256(
+                    committed_fixture_bytes(project, commit, relative)
+                ).hexdigest(),
+            }
+            for relative in runner.SOURCE_PATHS
+        ]
+        source_hashes = {item["path"]: item["sha256"] for item in source_files}
+        value["source"].update({
+            "clean": True,
+            "files": source_files,
+            "repository_commit": commit,
+            "tree_sha256": recovery.sha256_bytes(recovery.canonical_bytes(source_files)),
+        })
+        value["identity"]["learning_contract_sha256"] = source_hashes[runner.CONTRACT.as_posix()]
+        value["identity"]["native_corpus_sha256"] = source_hashes[runner.CORPUS.as_posix()]
+        value["identity"]["recovery_evidence_sha256"] = source_hashes[runner.RECOVERY.as_posix()]
+        value["identity"]["training_schema_sha256"] = hashlib.sha256(schema_bytes).hexdigest()
+        self.rehash(value)
+        report_path = directory / "training-report.json"
+        report_path.write_bytes(recovery.canonical_bytes(value) + b"\n")
+        return project, report_path, value
+
     def test_training_schema_is_strict_and_valid(self) -> None:
         schema = recovery.load(self.root / runner.SCHEMA)
         jsonschema.Draft202012Validator.check_schema(schema)
@@ -236,6 +304,41 @@ class M22TrainingTests(unittest.TestCase):
                 value = copy.deepcopy(self.report)
                 mutate(value)
                 self.mutation_fails(value, "source commit|source identity")
+
+    def test_historical_schema_failures_stay_in_training_domain(self) -> None:
+        variants = {
+            "malformed-json": b"{\n",
+            "invalid-utf8": b"\xff\n",
+            "invalid-json-schema": b'{"type":7}\n',
+        }
+        script = self.root / "scripts/v2/validate_m22_training_evidence.py"
+        for label, schema_bytes in variants.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                directory = pathlib.Path(raw).resolve()
+                project, report_path, value = self.make_historical_schema_fixture(
+                    directory,
+                    schema_bytes,
+                )
+                with self.assertRaisesRegex(
+                    validator.M22TrainingValidationError,
+                    "committed training schema is (?:malformed|invalid)",
+                ) as raised:
+                    validator.validate_value(value, project)
+                self.assertIsNotNone(raised.exception.__cause__)
+                completed = subprocess.run(
+                    [
+                        "python3", str(script), "--root", str(project),
+                        "--report", str(report_path),
+                    ],
+                    cwd=project,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                )
+                self.assertEqual(completed.returncode, 1)
+                self.assertIn("V2_M22_TRAINING_EVIDENCE=FAIL", completed.stderr)
+                self.assertNotIn("Traceback", completed.stderr)
 
     def test_offline_validation_never_reads_training_artifacts(self) -> None:
         with mock.patch.object(
@@ -317,6 +420,26 @@ class M22TrainingTests(unittest.TestCase):
                 live_inputs=live_inputs,
             )
         self.assertEqual(self.report, retained)
+
+    def test_live_training_checkpoint_commit_marker_requires_exact_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            live_root = pathlib.Path(raw).resolve()
+            value, live_inputs = self.make_live_fixture(live_root)
+            checkpoint = value["runs"][0]["process"]["checkpoints"][0]
+            marker = live_root / "training" / checkpoint["path"] / "COMMITTED"
+            marker.write_bytes(checkpoint["id"].encode("ascii") + b"\r\n")
+            refresh_file_record(checkpoint, marker)
+            self.rehash(value)
+            with self.assertRaisesRegex(
+                validator.M22TrainingValidationError,
+                "checkpoint commit marker",
+            ):
+                validator.validate_value(
+                    value,
+                    self.root,
+                    artifact_context=ArtifactContext.live(live_root),
+                    live_inputs=live_inputs,
+                )
 
     def test_live_training_closes_checkpoint_directories_before_reader(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -483,6 +606,104 @@ class M22TrainingTests(unittest.TestCase):
                 value = copy.deepcopy(self.report)
                 mutate(value["runs"][0]["process"]["checkpoints"][0])
                 self.mutation_fails(value, "checkpoint inventory/path")
+
+    def test_checkpoint_path_and_id_cannot_be_reused_across_updates_offline(self) -> None:
+        value = copy.deepcopy(self.report)
+        run = value["runs"][0]
+        source = recovery.checkpoint(run["process"], 8)
+        target = recovery.checkpoint(run["process"], 16)
+        target.update({
+            "files": copy.deepcopy(source["files"]),
+            "id": source["id"],
+            "path": source["path"],
+        })
+        candidate = next(item for item in run["candidates"] if item["update"] == 16)
+        candidate["checkpoint_id"] = target["id"]
+        candidate["checkpoint_path"] = target["path"]
+        run["provisional_selection"] = runner.select(run["candidates"])
+        all_candidates = [
+            {"architecture": item["architecture"], "seed": item["seed"], **candidate_item}
+            for item in value["runs"]
+            for candidate_item in item["candidates"]
+        ]
+        selected = runner.select(all_candidates)
+        value["provisional_development_selection"].update({
+            "architecture": selected["architecture"],
+            "checkpoint_id": selected["checkpoint_id"],
+            "checkpoint_path": selected["checkpoint_path"],
+            "seed": selected["seed"],
+            "update": selected["update"],
+        })
+        self.rehash(value)
+        with (
+            self.assertRaisesRegex(
+                validator.M22TrainingValidationError,
+                "checkpoint (?:path|identity) is reused",
+            ),
+            mock.patch.object(
+                validator,
+                "validate_artifacts",
+                side_effect=AssertionError("offline duplicate check traversed artifacts"),
+            ) as artifact_reader,
+        ):
+            validator.validate_value(
+                value,
+                self.root,
+                artifact_context=ArtifactContext.offline(),
+                live_inputs=LiveInputManifest.offline(),
+            )
+        artifact_reader.assert_not_called()
+
+    def test_checkpoint_id_cannot_be_reused_across_distinct_runs_offline(self) -> None:
+        value = copy.deepcopy(self.report)
+        source_run = value["runs"][0]
+        target_run = value["runs"][1]
+        source = recovery.checkpoint(source_run["process"], 8)
+        target = recovery.checkpoint(target_run["process"], 8)
+        target.update({
+            "files": copy.deepcopy(source["files"]),
+            "id": source["id"],
+            "path": (
+                f"{target_run['architecture']}/seed-{target_run['seed']}"
+                f"/training/checkpoints/{source['id']}"
+            ),
+        })
+        candidate = next(item for item in target_run["candidates"] if item["update"] == 8)
+        candidate["checkpoint_id"] = target["id"]
+        candidate["checkpoint_path"] = target["path"]
+        target_run["provisional_selection"] = runner.select(target_run["candidates"])
+        all_candidates = [
+            {"architecture": item["architecture"], "seed": item["seed"], **candidate_item}
+            for item in value["runs"]
+            for candidate_item in item["candidates"]
+        ]
+        selected = runner.select(all_candidates)
+        value["provisional_development_selection"].update({
+            "architecture": selected["architecture"],
+            "checkpoint_id": selected["checkpoint_id"],
+            "checkpoint_path": selected["checkpoint_path"],
+            "seed": selected["seed"],
+            "update": selected["update"],
+        })
+        self.rehash(value)
+        with (
+            self.assertRaisesRegex(
+                validator.M22TrainingValidationError,
+                "checkpoint identity is reused",
+            ),
+            mock.patch.object(
+                validator,
+                "validate_artifacts",
+                side_effect=AssertionError("offline duplicate check traversed artifacts"),
+            ) as artifact_reader,
+        ):
+            validator.validate_value(
+                value,
+                self.root,
+                artifact_context=ArtifactContext.offline(),
+                live_inputs=LiveInputManifest.offline(),
+            )
+        artifact_reader.assert_not_called()
 
     def test_training_log_paths_are_safe_unique_and_run_bound_offline(self) -> None:
         mutations = {

@@ -132,11 +132,14 @@ def _validate_checkpoint_artifact(
         "M22 checkpoint identity is not content addressed",
     )
     try:
-        committed = (path / "COMMITTED").read_text(encoding="ascii")
-    except (OSError, UnicodeError) as exc:
+        committed = (path / "COMMITTED").read_bytes()
+    except OSError as exc:
         require_value(False, f"M22 checkpoint commit marker is unreadable: {exc}")
         raise AssertionError("unreachable")
-    require_value(committed == checkpoint_id + "\n", "M22 checkpoint commit marker drifted")
+    require_value(
+        committed == checkpoint_id.encode("ascii") + b"\n",
+        "M22 checkpoint commit marker drifted",
+    )
     records = {item["name"]: item for item in checkpoint["files"]}
     for field, name in CHECKPOINT_PAYLOADS:
         payload = path / name
@@ -276,6 +279,8 @@ def self_hash(value: dict[str, Any]) -> str:
 
 def _validate_record_paths(report: dict[str, Any]) -> None:
     log_paths: set[str] = set()
+    checkpoint_paths: set[str] = set()
+    checkpoint_identities: dict[str, tuple[str, int]] = {}
     for run in report["runs"]:
         architecture = run["architecture"]
         for process_name in ("uninterrupted", "prefix", "resumed"):
@@ -296,6 +301,18 @@ def _validate_record_paths(report: dict[str, Any]) -> None:
                     [item["name"] for item in checkpoint["files"]] == list(recovery.INVENTORY),
                     "M22 recovery checkpoint inventory/path drifted",
                 )
+                require(
+                    checkpoint["path"] not in checkpoint_paths,
+                    "M22 recovery checkpoint path is reused across logical checkpoints",
+                )
+                checkpoint_paths.add(checkpoint["path"])
+                logical_checkpoint = (architecture, checkpoint["update"])
+                previous = checkpoint_identities.get(checkpoint_id)
+                require(
+                    previous is None or previous == logical_checkpoint,
+                    "M22 recovery checkpoint identity is reused across logical checkpoints",
+                )
+                checkpoint_identities[checkpoint_id] = logical_checkpoint
 
 
 def validate_process(process: dict[str, Any], start: int, count: int, architecture: str, seed: int) -> None:
@@ -389,7 +406,10 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         schema = json.loads(committed_bytes(root, commit, recovery.SCHEMA.as_posix()))
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise M22RecoveryValidationError(f"M22 committed recovery schema is malformed: {exc}") from exc
-    jsonschema.Draft202012Validator.check_schema(schema)
+    try:
+        jsonschema.Draft202012Validator.check_schema(schema)
+    except jsonschema.SchemaError as exc:
+        raise M22RecoveryValidationError(f"M22 committed recovery schema is invalid: {exc}") from exc
     try:
         jsonschema.Draft202012Validator(schema).validate(report)
     except jsonschema.ValidationError as exc:

@@ -111,6 +111,8 @@ def committed_files(root: pathlib.Path, commit: str) -> list[dict[str, str]]:
 
 def _validate_record_paths(report: dict[str, Any]) -> None:
     log_paths: set[str] = set()
+    checkpoint_paths: set[str] = set()
+    checkpoint_identities: set[str] = set()
     for run in report["runs"]:
         architecture = run["architecture"]
         seed = run["seed"]
@@ -133,6 +135,16 @@ def _validate_record_paths(report: dict[str, Any]) -> None:
                 [item["name"] for item in checkpoint["files"]] == list(recovery.INVENTORY),
                 "M22 training checkpoint inventory/path drifted",
             )
+            require(
+                checkpoint["path"] not in checkpoint_paths,
+                "M22 training checkpoint path is reused across logical checkpoints",
+            )
+            checkpoint_paths.add(checkpoint["path"])
+            require(
+                checkpoint_id not in checkpoint_identities,
+                "M22 training checkpoint identity is reused across logical checkpoints",
+            )
+            checkpoint_identities.add(checkpoint_id)
 
 
 def validate_process(process: dict[str, Any], architecture: str, seed: int) -> None:
@@ -235,7 +247,10 @@ def validate_value(report: dict[str, Any], root: pathlib.Path, artifact_root: pa
         schema = json.loads(committed_bytes(root, commit, training.SCHEMA.as_posix()))
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise M22TrainingValidationError(f"M22 committed training schema is malformed: {exc}") from exc
-    jsonschema.Draft202012Validator.check_schema(schema)
+    try:
+        jsonschema.Draft202012Validator.check_schema(schema)
+    except jsonschema.SchemaError as exc:
+        raise M22TrainingValidationError(f"M22 committed training schema is invalid: {exc}") from exc
     try:
         jsonschema.Draft202012Validator(schema).validate(report)
     except jsonschema.ValidationError as exc:

@@ -260,8 +260,18 @@ def validate_value(
         ) from exc
     require(retained.returncode == 0, "M22 qualification source commit is not retained")
     schema_bytes = committed_bytes(root, commit, qualification.SCHEMA.as_posix())
-    schema = json.loads(schema_bytes)
-    jsonschema.Draft202012Validator.check_schema(schema)
+    try:
+        schema = json.loads(schema_bytes)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise M22QualificationValidationError(
+            f"M22 committed qualification schema is malformed: {exc}"
+        ) from exc
+    try:
+        jsonschema.Draft202012Validator.check_schema(schema)
+    except jsonschema.SchemaError as exc:
+        raise M22QualificationValidationError(
+            f"M22 committed qualification schema is invalid: {exc}"
+        ) from exc
     try:
         jsonschema.Draft202012Validator(schema).validate(report)
     except jsonschema.ValidationError as exc:

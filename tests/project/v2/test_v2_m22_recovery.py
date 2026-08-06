@@ -109,6 +109,16 @@ def refresh_file_record(checkpoint: dict[str, object], path: pathlib.Path) -> No
     record["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def committed_fixture_bytes(project: pathlib.Path, commit: str, relative: str) -> bytes:
+    return subprocess.run(
+        ["git", "show", f"{commit}:{relative}"],
+        cwd=project,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).stdout
+
+
 class M22RecoveryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -188,6 +198,63 @@ class M22RecoveryTests(unittest.TestCase):
             }),
         )
         return value, live_inputs
+
+    def make_historical_schema_fixture(
+        self,
+        directory: pathlib.Path,
+        schema_bytes: bytes,
+    ) -> tuple[pathlib.Path, pathlib.Path, dict[str, object]]:
+        project = directory / "project"
+        subprocess.run(
+            ["git", "clone", "-q", "--no-hardlinks", str(self.root), str(project)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        subprocess.run(["git", "config", "user.name", "Task 5A fixture"], cwd=project, check=True)
+        subprocess.run(["git", "config", "user.email", "task5a@example.invalid"], cwd=project, check=True)
+        (project / runner.SCHEMA).write_bytes(schema_bytes)
+        subprocess.run(["git", "add", runner.SCHEMA.as_posix()], cwd=project, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Commit recovery schema fixture"],
+            cwd=project,
+            check=True,
+        )
+        self.assertEqual(
+            subprocess.run(
+                ["git", "status", "--porcelain"], cwd=project, check=True,
+                text=True, stdout=subprocess.PIPE,
+            ).stdout,
+            "",
+        )
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=project, check=True,
+            text=True, stdout=subprocess.PIPE,
+        ).stdout.strip()
+        value = copy.deepcopy(self.report)
+        source_files = [
+            {
+                "path": relative,
+                "sha256": hashlib.sha256(
+                    committed_fixture_bytes(project, commit, relative)
+                ).hexdigest(),
+            }
+            for relative in runner.SOURCE_PATHS
+        ]
+        source_hashes = {item["path"]: item["sha256"] for item in source_files}
+        value["source"].update({
+            "clean": True,
+            "files": source_files,
+            "repository_commit": commit,
+            "tree_sha256": runner.sha256_bytes(runner.canonical_bytes(source_files)),
+        })
+        value["identity"]["learning_contract_sha256"] = source_hashes[runner.CONTRACT.as_posix()]
+        value["identity"]["native_corpus_sha256"] = source_hashes[runner.CORPUS.as_posix()]
+        value["identity"]["recovery_schema_sha256"] = hashlib.sha256(schema_bytes).hexdigest()
+        self.rehash(value)
+        report_path = directory / "recovery-report.json"
+        report_path.write_bytes(runner.canonical_bytes(value) + b"\n")
+        return project, report_path, value
 
     def test_recovery_schema_is_strict_and_valid(self) -> None:
         schema = runner.load(self.root / runner.SCHEMA)
@@ -389,6 +456,38 @@ class M22RecoveryTests(unittest.TestCase):
                 for path, original in zip(payloads, original_payloads):
                     path.write_bytes(original)
 
+    def test_live_checkpoint_commit_marker_requires_exact_bytes(self) -> None:
+        marker_builders = {
+            "crlf": lambda checkpoint_id: checkpoint_id.encode("ascii") + b"\r\n",
+            "lone-cr": lambda checkpoint_id: checkpoint_id.encode("ascii") + b"\r",
+            "missing-lf": lambda checkpoint_id: checkpoint_id.encode("ascii"),
+            "extra-byte": lambda checkpoint_id: checkpoint_id.encode("ascii") + b"\nX",
+            "non-ascii": lambda checkpoint_id: checkpoint_id[:-1].encode("ascii") + b"\xff\n",
+        }
+        for label, marker_bytes in marker_builders.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                live_root = pathlib.Path(raw).resolve()
+                value, live_inputs = self.make_live_fixture(live_root)
+                paired = [
+                    runner.checkpoint(value["runs"][0]["uninterrupted"], 8),
+                    runner.checkpoint(value["runs"][0]["prefix"], 8),
+                ]
+                for checkpoint in paired:
+                    marker = live_root / "recovery" / checkpoint["path"] / "COMMITTED"
+                    marker.write_bytes(marker_bytes(checkpoint["id"]))
+                    refresh_file_record(checkpoint, marker)
+                self.rehash(value)
+                with self.assertRaisesRegex(
+                    validator.M22RecoveryValidationError,
+                    "checkpoint commit marker",
+                ):
+                    validator.validate_value(
+                        value,
+                        self.root,
+                        artifact_context=ArtifactContext.live(live_root),
+                        live_inputs=live_inputs,
+                    )
+
     def test_live_recovery_closes_checkpoint_directories_before_reader(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             live_root = pathlib.Path(raw).resolve()
@@ -578,6 +677,75 @@ class M22RecoveryTests(unittest.TestCase):
         checkpoint["path"] = "../outside/" + checkpoint["id"]
         self.mutation_fails(value, "checkpoint inventory/path")
 
+    def test_checkpoint_path_and_id_cannot_be_reused_across_updates_offline(self) -> None:
+        value = copy.deepcopy(self.report)
+        run = value["runs"][0]
+        for process_name in ("uninterrupted", "prefix"):
+            process = run[process_name]
+            source = runner.checkpoint(process, 8)
+            target = runner.checkpoint(process, 16)
+            target.update({
+                "files": copy.deepcopy(source["files"]),
+                "id": source["id"],
+                "path": source["path"],
+            })
+        run["equivalence"]["fork_checkpoint_id"] = runner.checkpoint(
+            run["uninterrupted"], 16,
+        )["id"]
+        self.rehash(value)
+        with (
+            self.assertRaisesRegex(
+                validator.M22RecoveryValidationError,
+                "checkpoint (?:path|identity) is reused",
+            ),
+            mock.patch.object(
+                validator,
+                "validate_artifacts",
+                side_effect=AssertionError("offline duplicate check traversed artifacts"),
+            ) as artifact_reader,
+        ):
+            validator.validate_value(
+                value,
+                self.root,
+                artifact_context=ArtifactContext.offline(),
+                live_inputs=LiveInputManifest.offline(),
+            )
+        artifact_reader.assert_not_called()
+
+    def test_checkpoint_id_cannot_be_reused_across_distinct_runs_offline(self) -> None:
+        value = copy.deepcopy(self.report)
+        source_run = value["runs"][0]
+        target_run = value["runs"][1]
+        source = runner.checkpoint(source_run["uninterrupted"], 8)
+        for process_name in ("uninterrupted", "prefix"):
+            target = runner.checkpoint(target_run[process_name], 8)
+            target.update({
+                "files": copy.deepcopy(source["files"]),
+                "id": source["id"],
+                "path": (
+                    f"{target_run['architecture']}/{process_name}/checkpoints/{source['id']}"
+                ),
+            })
+        self.rehash(value)
+        with (
+            self.assertRaisesRegex(
+                validator.M22RecoveryValidationError,
+                "checkpoint identity is reused",
+            ),
+            mock.patch.object(
+                validator,
+                "validate_artifacts",
+                side_effect=AssertionError("offline duplicate check traversed artifacts"),
+            ) as artifact_reader,
+        ):
+            validator.validate_value(
+                value,
+                self.root,
+                artifact_context=ArtifactContext.offline(),
+                live_inputs=LiveInputManifest.offline(),
+            )
+        artifact_reader.assert_not_called()
+
     def test_recovery_log_paths_are_safe_unique_and_process_bound_offline(self) -> None:
         mutations = {
             "parent": "../escape.log",
@@ -616,6 +784,41 @@ class M22RecoveryTests(unittest.TestCase):
                 value = copy.deepcopy(self.report)
                 mutate(value)
                 self.mutation_fails(value, "source commit|source tree identity")
+
+    def test_historical_schema_failures_stay_in_recovery_domain(self) -> None:
+        variants = {
+            "malformed-json": b"{\n",
+            "invalid-utf8": b"\xff\n",
+            "invalid-json-schema": b'{"type":7}\n',
+        }
+        script = self.root / "scripts/v2/validate_m22_recovery_evidence.py"
+        for label, schema_bytes in variants.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as raw:
+                directory = pathlib.Path(raw).resolve()
+                project, report_path, value = self.make_historical_schema_fixture(
+                    directory,
+                    schema_bytes,
+                )
+                with self.assertRaisesRegex(
+                    validator.M22RecoveryValidationError,
+                    "committed recovery schema is (?:malformed|invalid)",
+                ) as raised:
+                    validator.validate_value(value, project)
+                self.assertIsNotNone(raised.exception.__cause__)
+                completed = subprocess.run(
+                    [
+                        "python3", str(script), "--root", str(project),
+                        "--report", str(report_path),
+                    ],
+                    cwd=project,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                )
+                self.assertEqual(completed.returncode, 1)
+                self.assertIn("V2_M22_RECOVERY_EVIDENCE=FAIL", completed.stderr)
+                self.assertNotIn("Traceback", completed.stderr)
 
     def test_historical_git_reads_ignore_hostile_environment(self) -> None:
         with mock.patch.dict(
