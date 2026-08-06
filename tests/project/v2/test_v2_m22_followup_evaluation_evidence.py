@@ -16,6 +16,7 @@ import artifact_context
 from artifact_context import ArtifactContext, ArtifactContextError
 import run_m22_followup_evaluation as runner
 import validate_m22_followup_evaluation as validator
+from tests.project.v2 import m22_fixture_support as fixture_support
 from tests.project.v2.test_v2_m22_final_evaluation_source import make_relocated_evaluation_fixture
 
 
@@ -68,6 +69,12 @@ class M22FollowupEvaluationEvidenceTests(unittest.TestCase):
                         bwrap_path=pathlib.Path("/usr/bin/bwrap"),
                     )
 
+    def run_mutations(self, cases: tuple[fixture_support.MutationCase, ...]) -> None:
+        def reject(value: dict[str, object], pattern: str, live: bool) -> None:
+            self.mutation_fails(value, pattern, live=live)
+
+        fixture_support.run_named_mutations(self, self.report, cases, reject)
+
     def test_live_evidence_and_every_retained_artifact_validate(self) -> None:
         if not self.artifact.is_dir() or not (self.artifact.parent / "v2-live-inputs.json").is_file():
             self.skipTest("retained follow-up-v1 artifacts are unavailable")
@@ -102,21 +109,30 @@ class M22FollowupEvaluationEvidenceTests(unittest.TestCase):
         self.assertFalse(protocol["post_result_selection"])
 
     def test_report_digest_mutation_fails(self) -> None:
-        value = copy.deepcopy(self.report)
-        value["report_sha256"] = "0" * 64
-        self.mutation_fails(value, "report digest drifted")
+        def mutate(value: dict[str, object]) -> None:
+            value["report_sha256"] = "0" * 64
+
+        self.run_mutations((fixture_support.MutationCase(
+            "report-digest", mutate, "report digest drifted",
+        ),))
 
     def test_case_score_mutation_fails_after_valid_resigning(self) -> None:
-        value = copy.deepcopy(self.report)
-        value["runs"][0]["scores"]["learned_return"] = 0.0
-        self.resign(value)
-        self.mutation_fails(value, "case score drifted")
+        def mutate(value: dict[str, object]) -> None:
+            value["runs"][0]["scores"]["learned_return"] = 0.0
+            self.resign(value)
+
+        self.run_mutations((fixture_support.MutationCase(
+            "case-score", mutate, "case score drifted",
+        ),))
 
     def test_source_identity_mutation_fails_after_valid_resigning(self) -> None:
-        value = copy.deepcopy(self.report)
-        value["source"]["files"][0]["sha256"] = "0" * 64
-        self.resign(value)
-        self.mutation_fails(value, "source identity drifted")
+        def mutate(value: dict[str, object]) -> None:
+            value["source"]["files"][0]["sha256"] = "0" * 64
+            self.resign(value)
+
+        self.run_mutations((fixture_support.MutationCase(
+            "source-sha256", mutate, "source identity drifted",
+        ),))
 
     def test_native_artifact_digest_mutation_fails_live(self) -> None:
         value = copy.deepcopy(self.report)

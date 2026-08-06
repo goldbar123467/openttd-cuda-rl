@@ -52,17 +52,17 @@ LIVE_PROVIDER_AST_SHA256: Mapping[str, str] = MappingProxyType({
     "validate_m20_competition_source": "7dc06fb588893612d775515676b6cde0724367172823fe3d39d5be26769fe5e8",
     "validate_m21_broad_evidence": "7449adca3676790c85deeb8962ee10289f34a3b1d8f8bd57a0243a55a24c3ea0",
     "validate_m21_broad_source": "059c0e39a5fc4de27b16b8dd39ca52d798b9032430d7179f6aca5e02cd787dd4",
-    "validate_m22_final_evaluation": "804006e4b2ec1c3ea185778583013fbe03b6f7f2ef3d9bbdf0e9737970c2f3a8",
+    "validate_m22_final_evaluation": "bdafe580e8ff7adb042c4d2ad03fc051cb69e5d4962caba8ca0660d5d496dbf8",
     "validate_m22_final_runtime_source": "72ce0512e75604e6d3e71de54938f6bb971c2252f52ef01acd11bc026479a085",
-    "validate_m22_followup_evaluation": "b09c2bd902ebf4d610c45978763f5834fd6203e86b003f142393831c6c9bf12f",
+    "validate_m22_followup_evaluation": "54a1c3a0358f0e64f23de7ac8241ce09f78981c7cc9846f826896b1ef28591a9",
     "validate_m22_followup_runtime_source": "0e3a6722748c948c3ff8eedc9df8451a79b8c0aec5b54a119c88c1bcb0e649aa",
-    "validate_m22_followup_v2_evaluation": "450b67db74a392eff315cdb5e659cb51e6c99aa9e7bc4ced58b607a4f6c5768b",
+    "validate_m22_followup_v2_evaluation": "6a2386f60a44c195e577855cd1bd7e1feab4a4745ed1b5d5b5f70cde3eb5029e",
     "validate_m22_qualification_evidence": "bdc1bc0e861915f093d2d1bca79ceddb96e3d939d234df7a2034d0d9a472b445",
     "validate_m22_recovery_evidence": "94c85eca6665d641830a445b8d11edc8269e82e9422f323a74fd09fd3b819a84",
     "validate_m22_training_evidence": "50d1a80a74e9f793894cb7f43ebe68fcba47b4702178658e1a057c7c3cf980ab",
     "validate_opponent_package_evidence": "b1f1fa08b106058b53bf55ba693877c281ee5754516313e024e5b9c6b6d1e804",
     "validate_opponent_runtime_evidence": "ac153e12608c81129005fe64218c7f34f5bd997762ba4abb869bfae9ca754af3",
-    "verify_driver": "decfcaf68298ccfa635c4636db7ae9bc9ed443c79d9ac5f5a6ad413a8b612c1c",
+    "verify_driver": "21f4000abb41c7e3a73fab8465fca6057279d465e5e52709d900b04b36271572",
 })
 LIVE_COMMAND_REGISTRY_SHA256: Mapping[str, str] = MappingProxyType({
     "opponent-package-evidence": "adf4a34ebaec4d05d95dcaf27aea2ff64b532cc52efebcdc3983dd7113e7cf50",
@@ -103,7 +103,7 @@ LIVE_COMMAND_REGISTRY_SHA256: Mapping[str, str] = MappingProxyType({
     "m22-final-v1-evaluation": "0e17ab2f4fb8ad596649d351b40acfd6860954ff0b2e0ce878303132eef9e28b",
     "m22-followup-v1-evaluation": "6c7e03742152a9cb0eb551578b6e9c4a189017cdc7ab57491c7af8d0fa6cb158",
     "m22-followup-v2-evaluation": "e6f00c27038a29f3fce80a4f792e942941c1b29364d0578a10572243136e2e8e",
-    "v2-unit-tests": "8b029d7581d369320a1edb84f1db0cb9c5afd12d80e8c63fcfd876e86af57460",
+    "v2-unit-tests": "bf889f405dcf586bbb3d2b0b40651f5ab1b44c15d99de6b210e48cf727cb8dd2",
 })
 
 

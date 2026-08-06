@@ -13,6 +13,7 @@ import jsonschema
 
 import build_m22_followup_manifest as builder
 import validate_m22_followup_manifest as validator
+from tests.project.v2 import m22_fixture_support as fixture_support
 
 
 class M22FollowupManifestTests(unittest.TestCase):
@@ -33,6 +34,13 @@ class M22FollowupManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.M22FollowupManifestError, pattern):
                 validator.validate(self.root, self.write(pathlib.Path(raw), value))
 
+    def run_mutations(self, cases: tuple[fixture_support.MutationCase, ...]) -> None:
+        def reject(value: dict[str, object], pattern: str, live: bool) -> None:
+            self.assertFalse(live)
+            self.mutation_fails(value, pattern)
+
+        fixture_support.run_named_mutations(self, self.manifest, cases, reject)
+
     def test_schema_is_closed_and_canonical(self) -> None:
         jsonschema.Draft202012Validator.check_schema(self.schema)
         self.assertFalse(self.schema["additionalProperties"])
@@ -50,20 +58,29 @@ class M22FollowupManifestTests(unittest.TestCase):
         self.assertTrue(set(seeds).isdisjoint(builder.EXTERNAL_DIAGNOSTIC_SEEDS))
 
     def test_seed_mutation_fails(self) -> None:
-        value = copy.deepcopy(self.manifest)
-        value["cases"][0]["seed"] += 1
-        self.mutation_fails(value)
+        def mutate(value: dict[str, object]) -> None:
+            value["cases"][0]["seed"] += 1
+
+        self.run_mutations((fixture_support.MutationCase(
+            "seed", mutate, "canonical deterministic build",
+        ),))
 
     def test_case_order_mutation_fails(self) -> None:
-        value = copy.deepcopy(self.manifest)
-        value["cases"][0], value["cases"][1] = value["cases"][1], value["cases"][0]
-        self.mutation_fails(value)
+        def mutate(value: dict[str, object]) -> None:
+            value["cases"][0], value["cases"][1] = value["cases"][1], value["cases"][0]
+
+        self.run_mutations((fixture_support.MutationCase(
+            "case-order", mutate, "canonical deterministic build",
+        ),))
 
     def test_competition_size_mutation_fails(self) -> None:
-        value = copy.deepcopy(self.manifest)
-        case = next(case for case in value["cases"] if case["source_gate"] == "G20")
-        case["map_width"] = case["map_height"] = 64
-        self.mutation_fails(value)
+        def mutate(value: dict[str, object]) -> None:
+            case = next(case for case in value["cases"] if case["source_gate"] == "G20")
+            case["map_width"] = case["map_height"] = 64
+
+        self.run_mutations((fixture_support.MutationCase(
+            "competition-size", mutate, "canonical deterministic build",
+        ),))
 
     def test_final_v1_retry_claim_fails_schema(self) -> None:
         value = copy.deepcopy(self.manifest)
@@ -78,9 +95,12 @@ class M22FollowupManifestTests(unittest.TestCase):
             jsonschema.Draft202012Validator(self.schema).validate(value)
 
     def test_runtime_prerequisite_mutation_fails(self) -> None:
-        value = copy.deepcopy(self.manifest)
-        value["prerequisites"]["corrected_runtime_source_sha256"] = "0" * 64
-        self.mutation_fails(value)
+        def mutate(value: dict[str, object]) -> None:
+            value["prerequisites"]["corrected_runtime_source_sha256"] = "0" * 64
+
+        self.run_mutations((fixture_support.MutationCase(
+            "runtime-prerequisite", mutate, "canonical deterministic build",
+        ),))
 
     def test_seed_source_inventory_is_exact_and_content_addressed(self) -> None:
         records, _ = builder.seed_source_records(self.root)

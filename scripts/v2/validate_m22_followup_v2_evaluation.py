@@ -4,16 +4,12 @@
 from __future__ import annotations
 
 import argparse
-import copy
-import hashlib
 import json
 import pathlib
 import re
 import subprocess
 import sys
 from typing import Any
-
-import jsonschema
 
 import artifact_context
 from artifact_context import (
@@ -25,8 +21,9 @@ from artifact_context import (
     ToolRequirement,
     add_artifact_root_argument,
 )
+import m22_evaluation_validation as evaluation_common
 import run_m22_followup_v2_evaluation as runner
-from source_context import SourceContextError, run_git
+from source_context import SourceContextError
 
 
 CONFIG = pathlib.Path("config/v2/m22-followup-v2-evaluation-evidence.json")
@@ -47,21 +44,11 @@ def require(condition: bool, message: str) -> None:
 
 
 def load(path: pathlib.Path) -> dict[str, Any]:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"), parse_constant=lambda token: (_ for _ in ()).throw(
-            ValueError(f"nonfinite JSON constant: {token}")))
-    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
-        raise M22FollowupV2EvidenceError(f"cannot load JSON {path}: {exc}") from exc
-    require(isinstance(value, dict), f"JSON root is not an object: {path}")
-    return value
+    return evaluation_common.load_json_object(path, error_type=M22FollowupV2EvidenceError)
 
 
 def schema_validate(value: dict[str, Any], schema: dict[str, Any], label: str) -> None:
-    try:
-        jsonschema.Draft202012Validator(schema).validate(value)
-    except jsonschema.ValidationError as exc:
-        where = "/".join(map(str, exc.absolute_path)) or "<root>"
-        raise M22FollowupV2EvidenceError(f"{label} schema failed at {where}: {exc.message}") from exc
+    evaluation_common.validate_schema(value, schema, label, error_type=M22FollowupV2EvidenceError)
 
 
 def _safe_relative(value: str, *, label: str) -> str:
@@ -72,50 +59,10 @@ def _safe_relative(value: str, *, label: str) -> str:
     return value
 
 
-def _historical_blob(root: pathlib.Path, commit: str, relative: str) -> bytes:
-    _safe_relative(relative, label="M22 follow-up-v2 historical source path")
-    try:
-        completed = run_git("show", f"{commit}:{relative}", repository=root)
-    except SourceContextError as exc:
-        raise M22FollowupV2EvidenceError(
-            f"M22 follow-up-v2 historical source is unavailable: {relative}: {exc}"
-        ) from exc
-    require(completed.returncode == 0, f"M22 follow-up-v2 historical source is unavailable: {relative}")
-    return completed.stdout
-
-
-def _commit_tree(root: pathlib.Path, commit: str) -> str:
-    require(re.fullmatch(r"[0-9a-f]{40}", commit) is not None,
-            "M22 follow-up-v2 source commit is malformed")
-    try:
-        exists = run_git("cat-file", "-e", f"{commit}^{{commit}}", repository=root)
-        body = run_git("cat-file", "-p", commit, repository=root)
-    except SourceContextError as exc:
-        raise M22FollowupV2EvidenceError(
-            f"M22 follow-up-v2 source repository identity is unavailable: {exc}"
-        ) from exc
-    first = body.stdout.splitlines()[0] if body.stdout else b""
-    require(exists.returncode == 0 and body.returncode == 0 and first.startswith(b"tree "),
-            "M22 follow-up-v2 source repository identity drifted")
-    return first.removeprefix(b"tree ").decode("ascii")
-
-
 def validate_source(value: dict[str, Any], root: pathlib.Path) -> None:
-    require(isinstance(value, dict) and isinstance(value.get("files"), list),
-            "M22 follow-up-v2 source identity is malformed")
-    require([item.get("path") for item in value["files"] if isinstance(item, dict)] == list(runner.SOURCE_PATHS),
-            "M22 follow-up-v2 source inventory/order drifted")
-    commit = value.get("repository_commit")
-    require(isinstance(commit, str), "M22 follow-up-v2 source commit is malformed")
-    for record in value["files"]:
-        require(set(record) == {"path", "sha256"} and isinstance(record["sha256"], str),
-                "M22 follow-up-v2 source file record is malformed")
-        require(hashlib.sha256(_historical_blob(root, commit, record["path"])).hexdigest() == record["sha256"],
-                f"M22 follow-up-v2 source identity drifted: {record['path']}")
-    require(value["tree_sha256"] == runner.sha256_bytes(runner.canonical_bytes(value["files"])),
-            "M22 follow-up-v2 source inventory digest drifted")
-    require(_commit_tree(root, commit) == value.get("repository_tree") and value.get("main_synchronized") is True,
-            "M22 follow-up-v2 source repository identity drifted")
+    evaluation_common.validate_source_identity(
+        value, root, mechanics=runner, suite_label="M22 follow-up-v2", require=require,
+    )
 
 
 def expected_identity(root: pathlib.Path, report: dict[str, Any]) -> dict[str, Any]:
@@ -338,10 +285,9 @@ def validate_value(
     context = artifact_context or ArtifactContext.offline()
     root = root.resolve()
     schema_validate(report, load(root / runner.EVIDENCE_SCHEMA), "M22 follow-up-v2 evaluation evidence")
-    unsigned = copy.deepcopy(report)
-    claimed = unsigned.pop("report_sha256")
-    require(claimed == runner.sha256_bytes(runner.canonical_bytes(unsigned)),
-            "M22 follow-up-v2 report digest drifted")
+    evaluation_common.validate_report_digest(
+        report, mechanics=runner, suite_label="M22 follow-up-v2", require=require,
+    )
     validate_source(report["source"], root)
     identity = expected_identity(root, report)
     require(report["identity"] == identity, "M22 follow-up-v2 identity binding drifted")
@@ -399,24 +345,13 @@ def validate_value(
             run, case, ordinal, identity, live_files, evaluator_schema,
             root=root, runtime_source=runtime_source, runtime=runtime,
         )
-    expected_protocol = runner.protocol_record(report["runs"], [case["case_id"] for case in cases])
-    require(report["protocol"] == expected_protocol, "M22 follow-up-v2 protocol accounting drifted")
-    expected_statistics = runner.aggregate_statistics(report["runs"])
-    require(report["statistics"] == expected_statistics, "M22 follow-up-v2 statistics drifted")
-    expected_acceptance = runner.acceptance(report["runs"], expected_statistics, expected_protocol)
-    require(report["acceptance"] == expected_acceptance,
-            "M22 follow-up-v2 acceptance recomputation drifted")
-    failure_counts = {category: sum(category in run["failures"] for run in report["runs"])
-                      for category in runner.FAILURES}
-    require(report["failure_counts"] == failure_counts, "M22 follow-up-v2 failure counts drifted")
-    require(report["status"] == ("PASS" if expected_acceptance["overall"] else "FAIL"),
-            "M22 follow-up-v2 status drifted")
-    require(len(cases) == 42 and report["status"] == "PASS" and sum(failure_counts.values()) == 0,
+    result = evaluation_common.validate_aggregate_records(
+        report, cases, mechanics=runner, suite_label="M22 follow-up-v2",
+        live=context.is_live, require=require,
+    )
+    require(len(cases) == 42 and report["status"] == "PASS" and result["failures"] == 0,
             "M22 follow-up-v2 frozen result drifted")
-    return {
-        "cases": len(cases), "failures": sum(failure_counts.values()),
-        "live": context.is_live, "status": report["status"],
-    }
+    return result
 
 
 def validate(

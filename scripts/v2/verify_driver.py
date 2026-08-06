@@ -96,6 +96,7 @@ CONTRACT_UNIT_MODULES = (
     "tests.project.v2.test_v2_m20_competition_source",
     "tests.project.v2.test_v2_m21_broad_evidence",
     "tests.project.v2.test_v2_m21_broad_source",
+    "tests.project.v2.test_v2_m22_evaluation_common",
     "tests.project.v2.test_v2_m22_evaluator",
     "tests.project.v2.test_v2_m22_final_evaluation_source",
     "tests.project.v2.test_v2_m22_final_runtime_preparation",
@@ -512,7 +513,7 @@ _FINGERPRINT_TABLES = frozenset({
 # table, while excluding verify_driver keeps the update order acyclic: update
 # provider hashes, then this anchor, then the verify_driver provider hash.
 _PROVIDER_DEPENDENCY_TRUST_ANCHOR_SHA256 = (
-    "fb96317ca087eb77132a0a49f3eb2730bdaa98ee011ae1089fdd7ed5e7921e89"
+    "f4f9704f77e228317de54b880dc71f1205075ec0b5a621ac4ca44570117853ad"
 )
 _FINGERPRINT_SOURCE_CACHE: dict[
     tuple[str, str, str], tuple[str, tuple[str, ...]]

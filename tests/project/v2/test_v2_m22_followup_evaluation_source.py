@@ -15,6 +15,7 @@ import jsonschema
 from artifact_context import ArtifactContext
 import run_m22_followup_evaluation as runner
 import validate_m22_followup_evaluation as validator
+from tests.project.v2 import m22_fixture_support as fixture_support
 
 
 class M22FollowupEvaluationSourceTests(unittest.TestCase):
@@ -25,84 +26,43 @@ class M22FollowupEvaluationSourceTests(unittest.TestCase):
 
     @staticmethod
     def case(case_id: str = "followup-case-00") -> dict[str, object]:
-        return {
-            "case_id": case_id, "task": "service", "transport_mode": "road", "climate": "temperate",
-            "map_width": 64, "map_height": 64, "cargo": "PASS", "opponent": "not-applicable",
-            "seed": 698564641, "required_program": "road-passenger", "native_probe": "passenger-service",
-            "source_gate": "G15",
-        }
+        return fixture_support.make_case(case_id, private_seed=698564641)
 
     @classmethod
     def fake_run(cls, ordinal: int) -> dict[str, object]:
-        case = cls.case(f"followup-case-{ordinal:02d}")
-        public = runner.public_case(case)
-        evaluator = {
-            "action": "road-passenger", "action_index": 1, "failure_category": None, "failure_detail": None,
-            "legal_active_program": "road-passenger",
-            "process": {
-                "attempt": 1, "exit_code": 0, "fresh_process": True, "launched": True,
-                "network_unshared": True, "stderr_path": "evaluator.stderr", "stderr_sha256": "1" * 64,
-                "stdout_path": "evaluator.stdout", "stdout_sha256": "2" * 64, "timed_out": False,
-                "wall_seconds": 0.1,
-            },
-            "report_path": "evaluator-report.json", "report_sha256": "3" * 64, "status": "PASS",
-        }
-        native_record = {
-            "case": public, "executable_sha256": "4" * 64, "fresh_processes": 1,
-            "manifest_path": "manifest.json", "manifest_sha256": "5" * 64,
-            "metrics": {"delivered": 8, "income": 45, "ticks": 100}, "native_probe": "passenger-service",
-            "network_unshared": True, "openttd_log_path": "openttd.log", "openttd_log_sha256": "6" * 64,
-            "report_path": "report.json", "report_sha256": "7" * 64, "source_tree": "8" * 40,
-            "status": "PASS", "wall_seconds": 0.2,
-        }
-        native_result = {
-            "artifact_inventory": [], "attempt": 1, "failure_category": None, "failure_detail": None,
-            "record": native_record, "status": "PASS",
-        }
-        scores = runner.case_scores(case, evaluator, native_result)
-        return {
-            "artifact_path": f"cases/{ordinal:02d}-followup-case-{ordinal:02d}", "evaluator": evaluator,
-            "failures": [], "native": native_result, "ordinal": ordinal, "private_seed": 698564641,
-            "public_case": public, "required_program": "road-passenger", "scores": scores,
-        }
+        return fixture_support.make_run(runner, cls.case(f"followup-case-{ordinal:02d}"), ordinal)
 
     @classmethod
     def fake_report(cls) -> dict[str, object]:
-        runs = [cls.fake_run(index) for index in range(42)]
-        protocol = runner.protocol_record(runs, [run["public_case"]["case_id"] for run in runs])
-        statistics = runner.aggregate_statistics(runs)
-        acceptance = runner.acceptance(runs, statistics, protocol)
-        report: dict[str, object] = {
-            "acceptance": acceptance, "artifact_root": "/retained/m22-followup", "failure_counts": {
-                category: 0 for category in runner.FAILURES
+        return fixture_support.make_report(runner, {
+            "case_id_prefix": "followup-case", "private_seed": 698564641,
+            "source_file_sha256": "7" * 64,
+            "report": {
+                "artifact_root": "/retained/m22-followup",
+                "identity": {
+                    "aggregate_schema_sha256": "9" * 64, "bubblewrap_sha256": "a" * 64,
+                    "checkpoint_id": "b" * 64, "evaluation_manifest_schema_sha256": "c" * 64,
+                    "evaluator_executable_sha256": "d" * 64, "evaluator_report_schema_sha256": "e" * 64,
+                    "immutable_final_v1_evidence_sha256": "f" * 64, "learning_contract_sha256": "0" * 64,
+                    "native_executable_sha256": "1" * 64, "native_source_tree": "2" * 40,
+                    "qualification_evidence_sha256": "3" * 64, "runtime_source_sha256": "4" * 64,
+                },
+                "immutable_final_v1": {
+                    "cases_attempted": 42, "evidence_path": "config/v2/m22-final-evaluation-evidence.json",
+                    "evidence_sha256": "5" * 64, "followup_replaces_final_v1": False,
+                    "original_cases_reexecuted": 0, "status": "FAIL",
+                },
+                "manifest": {
+                    "case_count": 42, "id": "m22-independent-followup-v1",
+                    "path": "config/v2/m22-followup-manifest.json", "sha256": "6" * 64,
+                },
+                "schema_version": "openttd-rl-v2-m22-followup-evaluation-evidence-1",
+                "source": {
+                    "clean": True, "repository_commit": "8" * 40,
+                    "repository_tree": "9" * 40, "tree_sha256": "a" * 64,
+                },
             },
-            "identity": {
-                "aggregate_schema_sha256": "9" * 64, "bubblewrap_sha256": "a" * 64,
-                "checkpoint_id": "b" * 64, "evaluation_manifest_schema_sha256": "c" * 64,
-                "evaluator_executable_sha256": "d" * 64, "evaluator_report_schema_sha256": "e" * 64,
-                "immutable_final_v1_evidence_sha256": "f" * 64, "learning_contract_sha256": "0" * 64,
-                "native_executable_sha256": "1" * 64, "native_source_tree": "2" * 40,
-                "qualification_evidence_sha256": "3" * 64, "runtime_source_sha256": "4" * 64,
-            },
-            "immutable_final_v1": {
-                "cases_attempted": 42, "evidence_path": "config/v2/m22-final-evaluation-evidence.json",
-                "evidence_sha256": "5" * 64, "followup_replaces_final_v1": False,
-                "original_cases_reexecuted": 0, "status": "FAIL",
-            },
-            "manifest": {"case_count": 42, "id": "m22-independent-followup-v1",
-                         "path": "config/v2/m22-followup-manifest.json", "sha256": "6" * 64},
-            "preflight": {"evaluator": copy.deepcopy(runs[0]["evaluator"]),
-                          "public_case": runner.public_case(runner.PREFLIGHT_CASE)},
-            "protocol": protocol, "runs": runs,
-            "schema_version": "openttd-rl-v2-m22-followup-evaluation-evidence-1",
-            "source": {
-                "clean": True, "files": [{"path": path, "sha256": "7" * 64} for path in runner.SOURCE_PATHS],
-                "repository_commit": "8" * 40, "repository_tree": "9" * 40, "tree_sha256": "a" * 64,
-            },
-            "statistics": statistics, "status": "PASS" if acceptance["overall"] else "FAIL",
-        }
-        report["report_sha256"] = runner.sha256_bytes(runner.canonical_bytes(report))
-        return report
+        })
 
     def test_public_offline_validation_rejects_malformed_result_descriptors_without_artifact_reads(self) -> None:
         original = validator.load(self.root / validator.CONFIG)
