@@ -159,6 +159,68 @@ class V2VerifyDriverTests(unittest.TestCase):
         ])
         self.assertIs(driver.resolve_config(args, {}).tier, driver.Tier.FULL)
 
+    def test_verification_guide_documents_exact_portable_and_full_workflows(self) -> None:
+        guide_path = self.root / "docs/project/V2_VERIFICATION.md"
+        self.assertTrue(guide_path.is_file(), f"missing V2 verification guide: {guide_path}")
+        guide = guide_path.read_text(encoding="utf-8")
+        prose = " ".join(guide.split())
+        for command in (
+            "./scripts/v2/verify.sh --tier fast",
+            "git submodule update --init --recursive",
+            "./scripts/v2/verify.sh --tier contract",
+            "OPENTTD_RL_ARTIFACT_ROOT=/absolute/openttd-rl-artifacts "
+            + "\\\n"
+            + "  ./scripts/v2/verify.sh",
+        ):
+            self.assertIn(command, guide)
+        self.assertIn("Full is the no-argument default", prose)
+        self.assertIn("Fast and contract are offline, portable tiers", prose)
+        self.assertIn("cannot make a G23 or V2 release acceptance claim", prose)
+        self.assertIn("Full is live and fail-closed", prose)
+        self.assertIn("never converts a missing mandatory input into a skip", prose)
+
+    def test_verification_guide_documents_complete_live_preflight_contract(self) -> None:
+        guide_path = self.root / "docs/project/V2_VERIFICATION.md"
+        self.assertTrue(guide_path.is_file(), f"missing V2 verification guide: {guide_path}")
+        guide = guide_path.read_text(encoding="utf-8")
+        prose = " ".join(guide.split())
+        for literal in (
+            "`OPENTTD_RL_ARTIFACT_ROOT`",
+            "`v2-live-inputs.json`",
+            "`openttd-upstream`",
+            f"`{driver.OPENTTD_PIN}`",
+        ):
+            self.assertIn(literal, guide)
+        for role in LIVE_INPUT_ROLE_SPECS:
+            self.assertEqual(guide.count(f"`{role}`"), 1, role)
+        for category in (
+            "source repository",
+            "live-input role",
+            "required tool",
+            "artifact set",
+            "nested file",
+            "SHA-256 digest",
+        ):
+            self.assertIn(category, prose)
+        self.assertIn("aggregate preflight error before any command starts", prose)
+        self.assertIn("final-v1 and follow-up-v1 validators return status `2`", prose)
+        self.assertIn("expected semantic outcomes", prose)
+        self.assertIn("infrastructure or preflight status `2`", prose)
+        self.assertIn("complete relocated live tree", prose)
+
+    def test_readme_links_guide_without_promising_clean_clone_live_validation(self) -> None:
+        readme = (self.root / "README.md").read_text(encoding="utf-8")
+        prose = " ".join(readme.split())
+        self.assertIn(
+            "[`V2 verification guide`](docs/project/V2_VERIFICATION.md)",
+            readme,
+        )
+        self.assertIn(
+            "A clean clone can run the portable tiers, but cannot validate retained live evidence",
+            prose,
+        )
+        self.assertIn("declared artifact cache and live-input roles", prose)
+
     def test_inventory_is_unique_ordered_and_cumulative(self) -> None:
         inventory = driver.build_inventory(self.root, self.python)
         self.assertIsInstance(inventory, tuple)
@@ -509,6 +571,55 @@ class V2VerifyDriverTests(unittest.TestCase):
                 "tests.project.v2.test_v2_source_context",
                 "tests.project.v2.test_v2_verify_driver",
             },
+        )
+        full = next(command for command in unit_commands if command.minimum_tier is driver.Tier.FULL)
+        self.assertEqual(
+            {value for value in full.argv if value.startswith("tests.project.v2.test_v2_")},
+            {"tests.project.v2.test_v2_m23_release_contract"},
+        )
+        self.assertIs(self.command("v1-traceability").minimum_tier, driver.Tier.FULL)
+
+    def test_every_reviewed_standalone_validator_is_invoked_at_its_authoritative_tier(
+        self,
+    ) -> None:
+        validators = tuple(
+            command for command in self.inventory
+            if command.category is driver.CommandCategory.VALIDATOR
+        )
+        self.assertEqual(len(validators), 51)
+        invoked = [pathlib.Path(command.argv[1]).name for command in validators]
+        discovered = {
+            path.name for path in (self.root / "scripts/v2").glob("validate_*.py")
+        }
+        non_authoritative_libraries = {
+            "validate_m23_ingame_equivalence.py",
+            "validate_m23_packages.py",
+        }
+        self.assertEqual(set(invoked), discovered - non_authoritative_libraries)
+        self.assertEqual(discovered - set(invoked), non_authoritative_libraries)
+        for script in set(invoked):
+            expected_count = 2 if script == "validate_m22_recovery_evidence.py" else 1
+            self.assertEqual(invoked.count(script), expected_count, script)
+
+        full_only = {"m23-contract"}
+        expected_status_two = {
+            "m22-final-v1-evaluation",
+            "m22-followup-v1-evaluation",
+        }
+        for command in validators:
+            expected_tier = (
+                driver.Tier.FULL if command.command_id in full_only else driver.Tier.CONTRACT
+            )
+            expected_status = 2 if command.command_id in expected_status_two else 0
+            self.assertIs(command.minimum_tier, expected_tier, command.command_id)
+            self.assertEqual(command.expected_status, expected_status, command.command_id)
+        self.assertEqual(
+            {command.command_id for command in validators if command.minimum_tier is driver.Tier.FULL},
+            full_only,
+        )
+        self.assertEqual(
+            {command.command_id for command in validators if command.expected_status == 2},
+            expected_status_two,
         )
 
     def test_fast_and_contract_summaries_make_no_gate_or_g23_claim(self) -> None:
