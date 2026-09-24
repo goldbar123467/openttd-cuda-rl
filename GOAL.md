@@ -1,5 +1,23 @@
 # OpenTTD Reinforcement Learning Platform
 
+## Current owner direction (2026-09-23)
+
+The practical priority is a locally reproducible loop in which C++/CUDA PPO
+learns from real OpenTTD interactions, exports a neural policy, and demonstrates
+its behavior in the game. Development should help the owner practice PPO and
+CUDA through understandable code, CPU references, and measured experiments.
+
+The research destination is shared-game competition between neural policies and
+LLMs connected through MCP, studying agentic economies and interactions between
+different kinds of AI. Both should use the same public-state and game-command
+boundaries, with explicit simulation-time budgets and complete action/outcome
+logs. The V1 bus setting is the first reproducible local experiment, not a
+reduction of the broader V2 transport/economy scope below.
+
+Use `docs/DEVELOPMENT.md` for the current executable workflow. Historical gates
+remain useful evidence, but new work should prioritize working gameplay and
+measured learning over adding further milestone documents.
+
 ## Document status
 
 - Status: project authority
