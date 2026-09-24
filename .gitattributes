@@ -5,3 +5,5 @@ evidence/p0/** -whitespace
 # source indentation.
 oracle/**/*.patch -whitespace
 integration/**/*.patch -whitespace
+# Preserve shell scripts and content-addressed contracts across Windows/WSL.
+* text=auto eol=lf

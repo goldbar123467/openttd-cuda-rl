@@ -1,4 +1,7 @@
 openttd-build/
+build/
+runs/
+.venv/
 
 .env
 .env.*

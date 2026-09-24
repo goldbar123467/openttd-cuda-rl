@@ -220,11 +220,36 @@ void require_cpu_inputs(const torch::Tensor &structured, const torch::Tensor &sp
     }
 }
 
+// Mirror nn::Module's archive hierarchy using CPU tensors, without moving the
+// live module. Moving a trainer's parameters also invalidates its device contract
+// and can separate them from CUDA optimizer state. Constructing another model
+// would reseed Torch in MultiModalActorCritic's constructor, so avoid that too.
+void save_cpu_snapshot(const torch::nn::Module &module, torch::serialize::OutputArchive &archive)
+{
+    for (const auto &parameter : module.named_parameters(false)) {
+        auto value = parameter.value().detach().to(torch::kCPU, torch::kFloat32);
+        require_finite_tensor(value, "canonical CPU evaluation parameter");
+        value.set_requires_grad(parameter.value().requires_grad());
+        archive.write(parameter.key(), value, false);
+    }
+    for (const auto &buffer : module.named_buffers(false)) {
+        auto value = buffer.value().detach().to(torch::kCPU);
+        if (value.is_floating_point()) value = value.to(torch::kFloat32);
+        if (value.is_floating_point()) require_finite_tensor(value, "canonical CPU evaluation buffer");
+        archive.write(buffer.key(), value, true);
+    }
+    for (const auto &child : module.named_children()) {
+        torch::serialize::OutputArchive nested(archive.compilation_unit());
+        save_cpu_snapshot(*child.value(), nested);
+        archive.write(child.key(), nested);
+    }
+}
+
 } // namespace
 
 SavedEvaluationModel save_evaluation_model(
     const std::filesystem::path &package_root,
-    MultiModalActorCritic &model,
+    const MultiModalActorCritic &model,
     ArchitectureKind architecture,
     const EvaluationModelProvenance &provenance)
 {
@@ -233,11 +258,9 @@ SavedEvaluationModel save_evaluation_model(
     if (model->kind() != architecture) throw std::invalid_argument("evaluation export architecture disagrees with model");
     const auto temporary = temporary_directory(package_root);
     try {
-        model->to(torch::kCPU, torch::kFloat32);
-        require_finite_multimodal_model(model, "canonical CPU evaluation export");
         const auto model_path = temporary / "model.pt";
         torch::serialize::OutputArchive archive;
-        model->save(archive);
+        save_cpu_snapshot(*model, archive);
         archive.save_to(model_path.string());
         sync_file(model_path);
         const auto model_sha = sha256_file(model_path, kMaximumModelBytes);
