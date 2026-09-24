@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export raw live recurrent V2 weights and verify a complete archived episode."""
+"""Export versioned live recurrent V2 weights and verify a complete archived episode."""
 import argparse
 import gzip
 import json
@@ -12,8 +12,8 @@ import torch
 
 from infer_v2 import PolicyClient
 from local import capture_source, source_identity, write_json
-from v2_export_policy import INPUT_NAMES, OUTPUT_NAMES, load_raw_policy, read_native_inputs
-from v2_onnx_package import FORMAT, METADATA, digest
+from v2_export_policy import INPUT_NAMES, OUTPUT_NAMES, load_export_policy, read_native_inputs
+from v2_onnx_package import FORMAT, digest, financial_features_mode, metadata_for
 
 
 def run(args):
@@ -22,8 +22,12 @@ def run(args):
     evaluation = json.loads((args.evaluation / 'run.json').read_text())
     if training.get('status') != 'completed' or training.get('kind') != 'native-v2-live-recurrent-ppo':
         raise ValueError('Export requires completed live V2 training')
-    if training.get('observation_schema_id') != 'v2-m15-public-development-v2' or training.get('financial_features', 'raw') != 'raw':
-        raise ValueError('This export supports only raw public V2 observations')
+    if training.get('observation_schema_id') != 'v2-m15-public-development-v2':
+        raise ValueError('This export requires public V2 observations')
+    financial_features = financial_features_mode(training.get('financial_features', 'raw'))
+    if training['model'].get('financial_features', 'raw') != financial_features or evaluation.get('financial_features', 'raw') != financial_features:
+        raise ValueError('Training/model/evaluation financial preprocessing differs')
+    metadata = metadata_for(financial_features)
     weights = args.training_run.resolve() / 'inference-weights.pt'
     if Path(training['model']['path']).resolve() != weights or digest(weights) != training['model']['sha256']:
         raise ValueError('Source model identity differs')
@@ -38,7 +42,7 @@ def run(args):
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     record = {'status': 'running', 'kind': 'live-v2-onnx-export', 'source': source_identity(),
-        'source_training_run': str(args.training_run.resolve()), 'source_weights_sha256': digest(weights),
+        'financial_features': financial_features, 'source_training_run': str(args.training_run.resolve()), 'source_weights_sha256': digest(weights),
         'source_evaluation': str(args.evaluation.resolve()), 'source_evaluation_sha256': digest(args.evaluation / 'run.json'),
         'policy_sha256': digest(args.policy), 'torch': torch.__version__, 'onnx': onnx.__version__, 'onnxruntime': ort.__version__,
         'tolerances': {'probability_absolute': 1e-5, 'value_absolute': 1e-4},
@@ -47,7 +51,7 @@ def run(args):
     capture_source(output / 'source')
     client = None
     try:
-        model = load_raw_policy(weights)
+        model = load_export_policy(weights, financial_features)
         observation, candidates = output / 'example-observation.bin', output / 'example-candidates.bin'
         def restore(index):
             root = args.evaluation / 'worker/artifacts'
@@ -62,7 +66,7 @@ def run(args):
                 torch.onnx.export(model, example, str(output / name), input_names=list(INPUT_NAMES),
                     output_names=list(OUTPUT_NAMES), opset_version=18, dynamo=False, external_data=False)
                 graph = onnx.load(output / name, load_external_data=False)
-                onnx.helper.set_model_props(graph, {**METADATA, 'openttd_rl.source_weights_sha256': digest(weights),
+                onnx.helper.set_model_props(graph, {**metadata, 'openttd_rl.source_weights_sha256': digest(weights),
                     'openttd_rl.guidance': training.get('guidance', 'none')})
                 onnx.checker.check_model(graph, full_check=True)
                 onnx.save(graph, output / name)
@@ -73,7 +77,9 @@ def run(args):
         session = ort.InferenceSession(str(output / 'model.onnx'), options, providers=['CPUExecutionProvider'])
         if [x.name for x in session.get_inputs()] != list(INPUT_NAMES) or [x.name for x in session.get_outputs()] != list(OUTPUT_NAMES):
             raise ValueError('ONNX graph signature differs')
-        client = PolicyClient(args.policy.resolve(), output / 'native-reference.log', 'cpu', 20260923, 'greedy', weights)
+        client = PolicyClient(args.policy.resolve(), output / 'native-reference.log', 'cpu', 20260923, 'greedy', weights,
+                              financial_features=financial_features)
+        client.check_financial_features()
         records = [json.loads(line) for line in (args.evaluation / 'predictions.jsonl').open()]
         if len(records) != 512:
             raise ValueError('Recorded evaluation is incomplete')
@@ -105,7 +111,7 @@ def run(args):
             'repeat_bytes_exact': True, 'comparison': errors, 'golden_sha256': digest(output / 'golden.jsonl'),
             'native_policy_sha256': digest(args.policy), 'source_evaluation_sha256': record['source_evaluation_sha256']}
         write_json(output / 'verification.json', verification)
-        manifest = {'format': FORMAT, 'status': 'qualified', 'metadata': METADATA,
+        manifest = {'format': FORMAT, 'status': 'qualified', 'metadata': metadata,
             'runtime': 'onnxruntime-1.28.0-cpu', 'model_file': 'model.onnx', 'model_sha256': verification['model_sha256'],
             'source_weights_sha256': digest(weights), 'guidance': training.get('guidance', 'none'),
             'verification_file': 'verification.json', 'verification_sha256': digest(output / 'verification.json'),

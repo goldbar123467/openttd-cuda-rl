@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/dev'))
-from v2_onnx_package import FORMAT, METADATA, checked_package, digest
+from v2_onnx_package import FORMAT, METADATA, checked_package, digest, metadata_for
 
 
 class PackageTests(unittest.TestCase):
@@ -54,6 +54,44 @@ class PackageTests(unittest.TestCase):
         self.save()
         with self.assertRaises(ValueError):
             checked_package(self.root, self.training, 'cpu')
+
+    def test_matching_signed_log_manifest(self):
+        self.training['financial_features'] = 'signed-log-v1'
+        self.training['model']['financial_features'] = 'signed-log-v1'
+        self.manifest['metadata'] = metadata_for('signed-log-v1')
+        self.save()
+        path, manifest = checked_package(self.root, self.training, 'cpu')
+        self.assertEqual(path, self.root / 'model.onnx')
+        self.assertEqual(manifest['metadata']['openttd_rl.preprocessing_location'], 'embedded-onnx-graph-v1')
+
+    def test_signed_log_requires_embedded_preprocessing(self):
+        self.training['financial_features'] = 'signed-log-v1'
+        self.training['model']['financial_features'] = 'signed-log-v1'
+        for location in [None, 'runtime', 'embedded-onnx-graph-v2']:
+            with self.subTest(location=location):
+                self.manifest['metadata'] = metadata_for('signed-log-v1')
+                if location is None:
+                    del self.manifest['metadata']['openttd_rl.preprocessing_location']
+                else:
+                    self.manifest['metadata']['openttd_rl.preprocessing_location'] = location
+                self.save()
+                with self.assertRaisesRegex(ValueError, 'preprocessing'):
+                    checked_package(self.root, self.training, 'cpu')
+
+    def test_training_model_preprocessing_must_agree(self):
+        self.training['financial_features'] = 'signed-log-v1'
+        self.manifest['metadata'] = metadata_for('signed-log-v1')
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'Training/model'):
+            checked_package(self.root, self.training, 'cpu')
+
+    def test_unknown_preprocessing_is_rejected(self):
+        for mode in ['signed-log-v2', '', None]:
+            with self.subTest(mode=mode):
+                self.training['financial_features'] = mode
+                self.training['model']['financial_features'] = mode
+                with self.assertRaisesRegex(ValueError, 'Financial features'):
+                    checked_package(self.root, self.training, 'cpu')
 
     def test_incomplete_verification_rejected_even_with_updated_hash(self):
         self.verification['exact_actions'] = 511

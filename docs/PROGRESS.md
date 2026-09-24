@@ -1,7 +1,13 @@
 # Live OpenTTD development progress
 
-The horizon-256 run is complete. Work resumed in the continuation task; the owner
-requested lossless storage cleanup before the next learning diagnostic. V1 has demonstrated
+The horizon-256 run, requested lossless storage cleanup and missing-depot
+diagnosis are complete. The 8,192-decision continuation sustains service in all
+nine final evaluations and fixes all three greedy stalls, but fails its sampled
+economic advancement criteria. The subsequent fixed-budget entropy .001 trial
+is complete and regresses service to five of nine cases; advancement fails.
+The borrowing-guide retraining also fails (1/9 service), while frozen weights
+with the new guide restore 9/9 service and provide a lead for independent replication.
+V1 has demonstrated
 reproducible sampled bus play;
 strong live V2 neural control is the current blocker. Frozen release contracts,
 held-out selection rules and the user's ordinary game data remain untouched.
@@ -9,6 +15,646 @@ Use [DEVELOPMENT.md](DEVELOPMENT.md) for commands. Detailed prior results and
 failed attempts are preserved in [the history](PROGRESS_HISTORY_2026-09-23.md).
 Run names below are under `~/.local/share/openttd-rl/runs/` in Ubuntu-24.04.
 Readable copies are in the checkout's ignored `runs/2026-09-23/` and `2026-09-24/`.
+
+## Queued: independent training-seed replication of frozen-policy recovery
+
+`v2-recovery-replication-study-01` prospectively tests whether the .001/v2
+policy's inference-time borrowing recovery survives independent training seeds.
+It reuses the immutable, qualified `v2-borrow-guide-01` source and existing
+C++/LibTorch binaries, with no production edit or repeated native qualification.
+Study SHA:
+`653372df52cea80855cc92f433211f8623ab00c4ec8c39957a440d6962ce5c8a`.
+Execution registration SHA:
+`e52b9e241748e856e49f9b749255e8bbaa6df786a01cf471c4a20cdb5363be9d`.
+
+The existing replication driver (PID 6676; session 33556) has validated all
+18 retained original-seed games and 42 competent controls. It is waiting for the
+exact MCP driver identity to exit after all twelve matches, then for the owned
+local Gemma allocation to expire naturally. It does not unload other workloads.
+Follow `v2-recovery-replication-learning-01/comparison.json`; do not start another
+driver. No new training or evaluation has begun at this checkpoint.
+
+Two fresh training seeds, 20260924 and 20260925, each receive 8,192 decisions /
+128 updates with guide v2, entropy .001, eight training maps, horizon 128,
+rollout 64, signed-log inputs, gamma .99, lambda .95 and bootstrap reuse.
+Only each final update-128 model is selected. Each is evaluated with its trained
+v2 guide and the explicit v3 inference override: two development greedy games,
+six sampled games (two fixed maps by three action seeds), and one training-map
+greedy game per guide. This is 36 new full 512-decision evaluations plus the
+18 retained original-seed games, with no held-out access.
+
+Each training seed must pass separately: all nine v3 games sustain service,
+zero invalid actions/bankruptcies, and the six sampled means match or exceed
+all six retained learned controls on passengers, operating profit and cash
+excluding financing, while profit and cash exceed uniform. Pooled means cannot
+hide a failed seed. The paired v2 evaluations measure the recovery mechanism;
+all capital tradeoffs, failures and uncertainty remain visible. The previous
+v3-retraining failure stays failed.
+
+Scheduling is strictly serialized: one CUDA training job, then at most two
+native evaluation jobs, then the next seed. CUDA availability is mandatory;
+there is no CPU fallback or concurrent build. Focused orchestration checks pass
+for original-seed criteria, missing-seed failure, a deliberately injected service
+failure and paired uncertainty calculations; no native experiment was rerun.
+Registration, driver and preparation checks are in the checkout's ignored
+`runs/2026-09-24/v2-recovery-replication-01/`.
+
+## Completed: borrowing recovery works for frozen weights; retraining regresses
+
+`v2-borrow-guide-study-01` changed only the .001 entropy trial's guide from v2
+to v3. Its new option exposes native 10,000 borrowing alongside WAIT when
+construction is complete, the first-bus continuation is unavailable, no public
+owned vehicle exists and cash is below 10,000. It never forces borrowing or
+advances construction on a loan action. The repayment threshold prevents both
+loan directions being offered together. Study SHA:
+`394f68a1d4e467d0692a3b389dba7f01f53424ac814bcc9b663855240d41f61e`.
+
+The isolated `v2-borrow-guide-01` worktree and original criteria remain intact.
+All 144 C++ source files and both native binaries match the qualified entropy
+implementation. Qualification passed 92 development tests, whitespace checks,
+guide/checkpoint guards and a 128-decision CPU/CUDA frozen-policy pair. Probability
+and value differences were 1.19e-7/9.60e-7 within the unchanged 1e-5/1e-4 limits.
+Attempt-01's unrelated missing-split test fixture failure is preserved; attempt-02
+used the existing main fixture fix. Do not repeat these completed checks.
+All 42 retained sampled controls (21,504 frames) lacked a blocked post-construction
+state, so v3 cannot alter their masks on those histories. Their original guide
+labels and failed criteria are preserved, not relabelled as fresh v3 executions.
+
+Fresh CUDA training and all eighteen final games completed in
+`v2-borrow-guide-learning-01`. Training used 8,192 decisions / 128 updates /
+64 episodes, eight training maps, horizon 128, rollout 64, signed-log inputs,
+entropy .001, gamma .99 and lambda .95. It took 5,061.216 seconds; this is not a
+speedup claim. Metrics are finite, behavior replay error and saved-weight reload
+error are zero. The final reset checkpoint records update 128, 8,192 transitions
+and next episode 64; its bytes and the inference model match their recorded hashes.
+Final model SHA:
+`50e9d7f5f17d335c1b2723c04fc752a4d43bb4454e6298cccdd9c28d18c5556c`.
+Execution SHA:
+`cd146fea38adc43cf1a18c1d4f3249625fcefea31e53eaea67b12a4ae8ce9d14`.
+
+**The registered retrained candidate fails advancement.** All eighteen scheduled
+512-decision games finished, with zero invalid actions or bankruptcies. The
+candidate sustains service in only 1/9 games; the previous .001 weights under an
+explicit v3 guide override sustain 9/9. The candidate, control and all full-window
+outcomes were inspected. No action was overridden and no intermediate checkpoint
+or held-out result was used to select a model.
+
+Sampled means cover all six development games per row (two fixed maps, three
+action seeds). The full report includes every retained learned control.
+
+| Controller | Passengers | Operating profit | Cash excluding financing | Sampled service |
+| --- | ---: | ---: | ---: | ---: |
+| Retrained .001, guide v3 | 359.000 | 1,106.500 | -5,068.500 | 1/6 |
+| Frozen .001, guide v3 | 1,230.667 | 4,009.000 | -5,908.500 | 6/6 |
+| Previous .001, guide v2 | 889.667 | 3,117.167 | -5,160.000 | 4/6 |
+| Previous .01, 8,192 decisions | 1,188.333 | 3,440.000 | -6,477.500 | 6/6 |
+| Best retained raw 2,048 model | 1,221.000 | 3,807.000 | -6,110.500 | 6/6 |
+| Uniform with public guide | 1,193.833 | 3,682.167 | -6,235.333 | 6/6 |
+
+All three new-model greedy games repay nine 10,000 increments and then WAIT for
+503 decisions: zero passengers, profit -484 and cash -1,209. On both development
+maps the initial road proposal remains legal and exposed at stage zero, with
+WAIT probability .928..981; this is a policy preference failure before construction,
+not the old unaffordable-bus stall. All three sampled small-map games never buy a
+bus; large-map starts are 227, 211 and 287. Mean capital spending falls to 5,450.
+The apparent cash gain of 1,409 versus the .01/8,192 model decomposes into 3,742.50
+less capital spending and 2,333.50 less profit; other cash flow stays -725.
+`greedy-initial-construction-stall.json` retains complete hashed trace evidence.
+
+The frozen control chooses optional borrowing in four full games: small-map
+greedy at 35, sampled at 36/35, and training-map 1871197196 at 27. The small greedy
+case buys at 36, starts at 38 and delivers 1,023 passengers / 2,182 profit; the
+training case starts at 30 and delivers 791 / 3,281. All four old service failures
+are restored. The other five histories do not require recovery. This establishes
+the guide's recovery mechanism in these games, not successful retraining.
+
+The complete training audit also regresses: starts 54/64 to 50/64, delivering
+episodes 53 to 48, mean passengers 160.031 to 114.156 and mean profit 450.188 to
+259.594. Multi-choice WAIT selections rise from 1,547 to 3,077 despite fewer
+blocked frames (436 to 188). Independent scalar GAE matches native explained
+variance within 4.99e-10, below the unchanged 1e-5 tolerance. This rejects a
+return-arithmetic discrepancy, not all possible learning or representation issues.
+The first 1,728 decisions / 27 updates exactly match the old v2 control before
+recovery can apply. Its first exercised recovery is episode 23 on training map
+1871197196: WAIT at 45, borrowing at 46, BUY at 47, START at 62, delivery at 100.
+Only two eligible decisions and one borrowing action occur in all training.
+The first changed bootstrap is at global step 2,988 because it evaluates the next
+mask at 2,989; predictions first differ at 2,989 and actual actions at 2,990.
+The prefix, recovery and bootstrap diagnostics are retained in the run.
+
+The frozen-v3 control is a **development lead for a separate training-seed
+replication**, not a retroactive pass for this failed candidate. Its point means
+exceed all six retained learned controls and uniform. However, the paired profit
+and cash advantage over uniform is +326.83 with approximate 95% interval
+[-18.82, 672.48]; versus the best retained raw model it is +202.00 with interval
+[-120.76, 524.76]. These use three action seeds averaged across two fixed maps
+(df=2), not training-seed or map generalization. Next learning work should test
+whether this inference-time recovery lead survives independent training seeds
+before changing the working playback reference. Keep the retraining failure failed.
+
+The completed driver and analysis follower have exited. Reports are in the
+checkout's ignored `runs/2026-09-24/v2-borrow-guide-01/completed/` and
+`training-audit/`; `completed-plot/` contains PNG/SVG, plotted data and a passed
+visual review. `frozen-control-development-lead.json` records the supplemental
+paired comparisons. All eighteen outcome audits pass. No rerun is pending.
+
+A retained development reset also establishes a material representation limit
+(`loan-input-inspection-01.json` and `candidate-alias-inspection-01.json`). Borrow
+and repay have different uint32 command parameters and priorities, but identical
+32-float feature bytes and the same family. Their priorities 4,294,967,294 and
+4,294,967,293 both normalize to float32 1.0. The live input reader consumes only
+the family word as a separate neural input; the candidate encoder has no row
+position embedding. Thus their unmasked scores cannot distinguish direction.
+The same snapshot contains feature aliases among 856/1,024 road rows,
+765/768 stop rows and 509/512 depot rows, with distinct native parameters.
+This is a one-state public-input inspection, not a new gameplay result. The guide
+chooses one geometric proposal and excludes joint borrow/repay options, preserving
+the validity of this guided comparison. Explicit action-parameter representation
+is a concrete unresolved prerequisite for broader unguided geometry/debt claims;
+do not mistake successful guided service for learning those distinctions.
+No active source, mask, training criterion or model changed for these inspections.
+
+## Active: matched public guides for MCP economics
+
+`v2-mcp-matched-guide-study-01` fixes the completed .01/8,192 neural weights,
+the installed local Gemma digest, two development maps and swapped MCP company
+roles before inspecting the borrowing study's final results. Study SHA:
+`8c0f5afc6dce9e6a63832b4d7914f1bd6eaeb667cdc092a563ec3aa8fa80d9f3`.
+The isolated `v2-mcp-matched-guide-01` worktree gives each company an independent
+instance of the same public guide and restricts the MCP player to its own current
+filtered native candidates. No action is selected automatically. Defaults retain
+their original behavior; these optional changes are not integrated in main yet.
+
+All 16 MCP-environment tests pass (12 matched-guide and four financial-input
+tests), as do 102 other development tests and all 136 portable tests. The latter
+development environment explicitly skips those 16 separately executed MCP tests.
+All five registered native qualifications now pass: the unchanged eight-step
+default reproduces retained native transitions and neural predictions exactly,
+and four sixteen-step matched map/role cases pass masks, actor/tick order,
+read/rejection immutability, guide advancement, private-finance redaction and
+snapshot archival. This is 72 global decisions, explicitly on CPU, with no LLM
+participation or new build. Qualification record:
+`v2-mcp-matched-guide-checks-01/verification.json`, SHA
+`2d065f5ce53730a466db212bb09850370fa52fafaccfcf420cb56cb9c87970b6`.
+The qualification process has exited; do not repeat it without a new concern.
+
+The existing `experiment.py` driver (PID 3484) is now running twelve complete
+512-global-step / 256-actions-per-company matches: four actual LLM, four uniform
+script and four proposal-priority script. It started only after the completed
+borrowing comparison and all five native checks. Source, prompt, model and binary
+hashes remain frozen. Execution registration SHA:
+`b79865caaa23948c5b43fc1b90eaa845b1674b14ca0870cbf3ddcfddc71c8aa4`.
+Follow `v2-mcp-matched-guide-economics-01/comparison.json` and the existing process;
+do not launch duplicate jobs or edit its frozen source. Two sequential lanes
+permit one LLM game alongside one scripted game, at most two native jobs, and
+no concurrent CUDA training or builds. Every scheduled case is attempted once;
+failed or aborted cases remain recorded. At this checkpoint, all four uniform and four proposal-priority full baselines
+have completed and passed their 512-frame native/mask/privacy audits. The first
+actual LLM role pair is complete and reviewed below; two small-map cases remain pending.
+
+A read-only diagnosis of the first seven completed baselines finds zero
+passengers for both companies in all seven, despite passing execution audits.
+Both guides chose the same stop endpoints and depot. All fourteen company
+histories stall permanently by global decision 12..46. Every remaining planned
+primitive at the first blocked frame is either a public road already satisfying
+the requested road bits, or an exclusive stop/depot built by the other company;
+none remains an exposed legal candidate. Each guide records only its own
+construction, so shared completed roads remain outstanding in its stage counter.
+Even skipping those roads would leave the exclusive-site conflicts unresolved.
+This is an identified shared-planner limitation, not evidence that either model
+can run a competitive transport service or intentionally sabotage the other.
+
+The diagnosis uses complete native traces plus each actor's recorded public map
+and owned infrastructure at its first blocked frame. All fourteen stages remain
+unchanged through decision 512. Detailed residual primitives, full economic
+windows and hashes are retained in the checkout's ignored
+`runs/2026-09-24/v2-mcp-matched-guide-01/completed-baseline-construction-01/`.
+The report JSON SHA is
+`1b116e886aaaf4f51e3e107d130103e4aa6d3f7adbbeffb6ddcf3f171e1f8d82`.
+It starts no game and changes no active controller, prompt, model or criterion.
+This seven-case snapshot remains intact; the eighth baseline is addressed in
+the supplement below. Both large-map LLM outcomes are reviewed below; two small-map cases remain pending.
+
+The eighth baseline subsequently completed and passed its native audit, with
+zero passengers for both companies. It stalls at global decisions 29/30 with the
+same fully explained residual primitives; stages remain fixed through 512.
+Thus all eight completed baselines have the shared construction failure.
+The supplemental `completed-baseline-construction-02/` record preserves its
+full windows and diagnoses, without rerunning earlier cases.
+
+A bounded read-only feasibility probe also calls the unchanged public graph
+planner on both actors' first blocked large-map snapshots. Each finds another
+plan whose primitives are currently exposed; both choose new stop tiles
+2284/2533, with different depots. This rules out a lack of all currently legal
+plans at those two snapshots. The identical new endpoints retain a potential
+ownership collision, so merely resetting the plan is not established as a fix.
+No proposed alternative was executed. Finish the active LLM cases before any
+follow-up experiment; their source, prompt and criteria remain frozen.
+
+The model-choice audit passes read-only on the retained earlier full LLM match:
+1,272 model responses, 767 tool calls and 256 native player actions match. Two
+in-memory action substitutions are rejected. No old game was rerun or changed.
+The new study additionally audits each actual model response through MCP to its
+native action. These are planner-assisted comparisons; identical plans may
+collide or favor the first mover. Preserve those effects and all failed criteria.
+No automatic route repair, replacement model choice, hidden information,
+training-model reselection or held-out access is permitted. The fixed neural
+model retains its failed single-company economic gate.
+
+## Completed: lower entropy regresses service
+
+`v2-entropy-study-01` tests one change: native PPO entropy coefficient .01 to
+.001 at a fresh, fixed 8,192-decision budget. Registration SHA-256 is
+`8b6119ad9eb888b6b2454fb562f400cc38cc274e30872d163acf562361294e9c`.
+The .01 reference's greedy profit exceeds its sampled profit, and the public
+history audit below does not support extra late-game idling. Lower entropy may
+concentrate early choices, but could instead reduce useful exploration or make
+bad choices more confident. This is a test, not a causal conclusion.
+
+Seed 20260923, eight maps, horizon 128, rollout 64, 128 updates, signed-log
+features, guide v2, gamma .99, lambda .95, four epochs, BPTT eight, bootstrap
+reuse and checkpoint interval eight remain fixed. Inference keeps the ordinary
+softmax sampler. Only the final model receives the usual nine 512-decision
+evaluations. Forty-two completed sampled control games are reused. Advancement
+requires all nine service cases, zero invalid actions/bankruptcy, sampled
+passenger/profit/cash means at least all six learned controls, and sampled
+profit/cash strictly above uniform. A pass still needs training-seed replication.
+No intermediate selection, held-out access or relaxed failed criterion is allowed.
+
+The isolated worktree `v2-entropy-01` was reconstructed exactly from the qualified
+`v2-guide-blocked-wait-01` source before adding the optional parameter. Main and
+the original qualified worktree are preserved. Native/Python argument validation,
+effective-configuration reporting and checkpoint compatibility now bind the
+coefficient; native checkpoint identity already contained it. The native build
+passes with compiler parallelism two, as do 35 focused tests and whitespace
+checking. Source/build records are under `v2-entropy-source-01` and
+`v2-entropy-checks-01`. The first implementation-script pattern mismatch was
+retained; the corrected change touches seven files only in the new worktree.
+
+Native qualification **passes** over the registered 896 new decisions. Sixteen
+zero-update CLI cases pass. Omitted/default .01 exactly reproduces 128 archived
+CUDA decisions, both PPO updates, final weights and logical checkpoint state.
+The .001 CPU/CUDA pair matches all 128 decisions, six time limits and seven
+recurrent resets; maximum metric difference is 2.69e-5, below the unchanged
+absolute 1e-4 tolerance. CUDA recovery exactly matches 256 versus 128+128
+decisions, metrics, final weights and all 66 model/Adam states plus native/Torch
+RNG, hidden state and counters. Python and native cross-coefficient restore
+reject; the native identity guard precedes model/optimizer loading. No expected
+checkpoint hash or manifest was edited. CPU was an explicit correctness oracle.
+Reports are under `runs/2026-09-24/v2-entropy-01/qualification/`.
+
+The qualified fresh CUDA run `v2-entropy-learning-01` completed training and all
+nine final evaluations with effective coefficient .001. Training
+took 5,032.12 seconds for all 128 updates / 8,192 decisions and 64 episodes.
+Every update is finite with zero behavior-replay error. Checkpoint 128 records
+next_episode=64, and saved inference weights reload with zero output error.
+Final model SHA-256:
+`e4cd3ea03a81a50125bbd94ec19c487f962568184144faccaf8f5f39c65af17a`.
+**Registered advancement fails; the policy is not adopted or replicated.**
+Its execution registration is
+`8f03ead9bc88c31d18961e7467f843c8907d4e9498d5c11bd1cf92fb8a9ff736`;
+trainer SHA-256 is
+`d7ad7d310034c868d0df2f6692df75f7a918189ef321086607ce0d17e314872a`.
+The driver captured source/binaries, revalidated all 42 control traces, ran one
+CUDA trainer, then at most two evaluations concurrently. All nine final cases
+completed, with zero invalid actions or bankruptcy. The completed-run report,
+full outcome timelines and training-choice/GAE audit are reviewed. Both full
+8,192-decision training histories reproduce their native explained variance
+within 4.96e-10. Drivers and readable results are in
+`runs/2026-09-24/v2-entropy-01/`; no trial or qualification rerun is needed.
+
+The experiment and `finish_analysis.py` follower both exited successfully.
+Their complete execution records and frozen scripts remain under
+`v2-entropy-learning-01/analysis-execution/`. Visual inspection found overlapping
+category labels in the first plot; that original is retained. The presentation
+revision `plot-review-02/comparison.png` is visually reviewed and has byte-identical
+plot data. `plot-visual-review.json` records both images and the correction;
+the original pending-review status records are also preserved.
+
+Sampled service falls from 6/6 to 4/6 versus entropy .01 at the same budget.
+Development greedy falls 2/2 to 1/2; training-map greedy falls 1/1 to 0/1.
+The larger development map's greedy result is 1,433 passengers / 5,969 operating
+profit / -2,124 cash. The smaller greedy map and its sampled seeds 23 and 24
+deliver none / -484 profit / -7,305 cash; none buys a bus. Sampled seed 25
+recovers ordinary service: 1,449/5,569/-2,524 on the larger map and
+1,023/2,164/-9,578 on the smaller. Training-map greedy 1871197196 also never
+buys a bus: zero passengers / -484 profit / -7,275 cash.
+
+Across all six sampled games, means are **889.67 passengers / 3,117.17 operating
+profit / -5,160 cash**. Reference .01 gives 1,188.33/3,440/-6,477.50; uniform
+gives 1,193.83/3,682.17/-6,235.33. Profit differences are -322.83 versus .01
+(action-seed interval [-2,720.92, 2,075.25]) and -565 versus uniform
+([-2,171.62, 1,041.62]). These are conditional on one model and two maps,
+not training-seed or map generalization. Better cash does not rescue failed
+transport: the +1,317.50 cash difference versus .01 decomposes into 1,640.33
+less mean capital spending offset by 322.83 less operating profit; other cash
+flow is unchanged at -725. Failed games avoid purchasing buses.
+
+During training, 54/64 episodes start service and 53/64 deliver, versus 63/64
+and 62/64 for .01. Mean passengers fall 190.61 to 160.03 and blocked decisions
+rise 152 to 436. Familiar map 1871197196 starts/delivers in only 4/8 visits.
+The failure is therefore not confined to unfamiliar evaluation geometry.
+
+The retrospective public-candidate diagnostic `v2-entropy-liquidity-audit-01`
+(registration `32dea0bc114598381ed9f591ed6f0aea37712f2d7be076299cdff1c67475ecdf`)
+accepts all 478 registered snapshots, decisions 35..512 of the completed failed
+game. Nine initial repayments remove 90,000; cash is 3,862 after depot construction.
+Every subsequent frame has zero native BUY_BUS candidates, including zero
+omitted by quota, and an exposed native 10,000 borrowing action excluded by
+the guide. WAIT is the only guided action and is chosen throughout. Thus this
+tail is not a voluntary refusal of an available guided purchase. The .01
+reference buys the same engine/depot for 4,921 with 13,712 available, but its
+history differs. At this audit stage, no native borrowing intervention or failed-command query
+had established that cash was the only purchase blocker; the subsequent probe
+below tests recovery directly. All inputs stayed byte-identical; no guide, policy, failed
+criterion or active run changed. Readable evidence is under
+`runs/2026-09-24/v2-entropy-liquidity-audit-01/completed/`.
+
+The single-action recovery probe `v2-entropy-borrow-probe-01` **passes**,
+registration SHA `de82df74b81d1a02ae7888f4c213467909bf3c584d9f023d65174036a0d9baac`.
+Its driver is `runs/2026-09-24/v2-entropy-borrow-probe-01/probe.py`. It runs one
+new 512-decision game against the retained failed greedy control. Only ACT 35
+changes from WAIT
+to an already-exposed native 10,000 borrowing action; the original guided input,
+neural prediction, recurrent update and all subsequent policy choices stay in
+the existing collector. It requires exact first-34 transitions and first-35
+tokens/candidates/guide decisions, the established output tolerances, precisely
+one override, restored native BUY_BUS availability at 36, and sustained service.
+Its run metadata explicitly marks a counterfactual. All 512 decisions and prefix
+checks pass: first 34 transitions and first 35 tokens/candidates/guide decisions
+are exact, with maximum probability/value errors 1.19e-7/2.40e-7. There is exactly
+one successful borrowing override. BUY_BUS becomes available and is selected at
+36; route and START follow at 37/38. First delivery is at 81. Final results are
+**1,023 passengers / 2,182 operating profit / -9,560 cash**, versus 0/-484/-7,305
+without intervention. All final three windows sustain profitable service; invalid
+actions and bankruptcy remain zero. Buying the 4,921 bus improves operating
+profit by 2,666 but worsens cash after capital by 2,255 over this horizon.
+All source/model/reference hashes remain unchanged. Full report:
+`runs/2026-09-24/v2-entropy-borrow-probe-01/completed/report.md`.
+The scheduling plan changed before registration after confirming that the
+deployment build and paired oracles had completed: one sequential CPU playback
+job may run alongside this CUDA inference job, staying within two native game
+jobs. Exact concurrent process/parent identities are recorded. No training,
+new build or additional native checks were started while both ran. The probe is
+now finished; the earlier idle-only draft is retained. This establishes recovery
+from that state/history, not learned borrowing or economic advancement. The next
+learning hypothesis is to expose the same native borrowing action as an option
+alongside WAIT in a separately versioned guide, then test actual policy choices
+and complete outcomes with matched baseline masks. The failed entropy gate stays
+failed.
+
+## Completed: signed-log ONNX compatibility extension
+
+A read-only acceptance review found a concrete lifecycle gap: current live
+learning uses `signed-log-v1`, while the otherwise qualified V2 ONNX converter,
+package checks and runtime accept only raw features. The completed budget8192
+policy starts service in all nine cases but cannot use that portable deployment
+route. Its failed sampled economic gate remains failed.
+
+`v2-financial-export-study-01` registers a compatibility-only extension, SHA
+`a6df985b2fa384392e6f9b012965e1c8d573804a1e7ce6be6241e9399112322c`.
+It uses the completed budget8192 weights
+`8abd3777722a35fdd4b5c0d20093ed05b3dc2518c880db528dbac7f41f44e1a6`,
+not intermediate entropy weights. The isolated `v2-financial-export-01` worktree
+reconstructs main exactly before porting three qualified financial reader/native
+inference files byte for byte. The inference-only converter now embeds the same
+signed-log transform on structured cash/loan, company financial columns and
+candidate cost. Raw public tensors enter the ONNX graph; the native runtime does
+not apply the transform again. Package/training/model modes must agree, and
+signed-log metadata explicitly binds embedded preprocessing. Raw defaults and
+the original qualified raw package are retained. No PPO or training changes are
+part of this extension; the active entropy worktree/build/run are untouched.
+
+Forty-one focused Python tests and whitespace checks pass, including four new
+preprocessing compatibility checks. The three native targets built successfully
+with compiler parallelism two. Archive qualification accepts raw and signed-log
+66-tensor models and rejects all eleven mismatched/malformed archives and four
+bad argument cases; original weights remain unchanged. Repeated signed-log ONNX
+exports are byte-identical (model SHA
+`d0fcdee081fd4c083a002c92c10b67203e2ed70da5cf47e950b11a35231249b6`).
+All first-map 512 archived actions match, with maximum probability/value errors
+4.17e-7/4.77e-6. Offline qualification also passes both full histories (1,024
+frames, all five outputs), 64 unmasked recurrent steps and twelve malformed
+input rejections. The adapter matches the native CPU oracle exactly on those
+full histories; ONNX remains within the registered tolerances. Runtime checks
+pass 256 paired sampled actions, 128 unchanged raw-policy regression actions,
+and sixteen rejection cases. All four fresh 512-decision headless games match
+the original native actions, complete guide records and economics. Maximum
+probability/value errors are 4.17e-7/5.25e-6. Both 512-decision visible greedy
+replays match headless outputs and transitions exactly. The native 1280x800
+screenshots were manually reviewed: maps/UI render normally, bank balances
+17,515/10,286 and loans 20,000 agree with the recorded economy.
+**All six deployment stages and visual review pass.**
+The registered checks retain the existing probability 1e-5 and other-output
+1e-4 tolerances: both archived 512-step greedy histories, unmasked recurrent and
+reset cases, malformed/mismatched-input rejection, a raw 128-step regression,
+four fresh headless ONNX games and two visible greedy games with screenshots.
+Repeated exports must have identical bytes. This proves compatibility only;
+no stronger play, economic advancement or GPU deployment claim follows.
+
+Source preparation/change records are in `v2-financial-export-source-01`.
+The build and qualification followers have completed; do not relaunch them.
+Final verification and manual screenshot review are retained under
+`v2-financial-export-qualification-01`, with Windows copies in
+`runs/2026-09-24/v2-financial-export-01/completed/`. Original pending-review
+records remain preserved. The ten qualified deployment files have been applied
+to main without staging or committing, and all ten hashes match the isolated
+source. Original main files and the exact patch remain in
+`integration-preparation/`; main verification is recorded in
+`integration-checks/`. All 102 main development tests pass. All 136 portable tests and git diff --check also pass. The raw package and failed learning criteria remain unchanged.
+
+The new replay comparator checks every guide field, normalizing only the run's
+absolute storage root. A read-only applicability check matched all 1,024
+candidate/guide records in the two retained raw headless/visible episodes. This
+validates the stricter comparison procedure without rerunning games or claiming
+signed-log deployment parity. The guide, route, tensor archival and economic
+summary helpers are byte-identical to the financial model's qualified source;
+the bridge difference is the already qualified optional view-only SDL path.
+
+## Completed: public service-history audit rejects extra idling
+
+`v2-budget8192-service-history-audit-01` compares the saved large-map greedy
+case with all three sampled cases. Registration SHA-256:
+`fffb58c35982b13d2e94c23122286d34115936ce96f2b5f6c151b03d7ccc399b`.
+It verifies every public state token and economic observation against all four
+512-decision traces. No native game reruns or private/redacted fields are used.
+The hypothesis required both weaker sampled cases to have more running,
+zero-speed observations with queued passengers and at least the greedy mean
+queue during decisions 64..511. **Both conditions fail; the hypothesis is rejected.**
+
+| Large-map case | Final deliveries | Mean station queue | Zero-speed observations with queue | Mean bus load |
+| --- | ---: | ---: | ---: | ---: |
+| Greedy, seed 23 | 1,457 | 156.46 | 99 | 27.59 |
+| Sampled, seed 23 | 1,448 | 123.52 | 97 | 26.98 |
+| Sampled, seed 24 | 1,322 | 94.25 | 88 | 24.60 |
+| Sampled, seed 25 | 1,260 | 41.38 | 82 | 22.83 |
+
+All use the same public route plan, retain a running bus and choose WAIT from
+decision 64 onward. Weaker cases have lower queues/loads and higher mean speed,
+not extra observed idling. Mean station ratings remain about 147–151. Final town
+populations and road-network hashes differ despite identical initial towns and
+route plan. This is consistent with different passenger supply after early
+action differences, but does not prove a causal mechanism. Delivered+waiting+
+onboard cargo is not total generation; whole-town population is not catchment
+population. Coarse 128-tick observations cannot separate loading, traffic and
+breakdowns. Hidden breakdown countdown/delay fields remain excluded. Reports
+and the four reduced public histories are in the budget8192 Windows run's
+`service-history-audit/`; original observations and hashes remain native.
+
+## Completed: eight-map horizon-128 budget extension
+
+v2-financial-eight-maps-budget8192-01 resumes the qualified eight-map
+horizon-128 update-64 checkpoint, preserving native model, Adam and RNG state.
+It adds 64 updates / 4,096 decisions, reaching 128 updates / 8,192 decisions and
+eight visits per training map. Source, binaries, map order, signed-log features,
+guide version 2, reward, rollout 64, gamma .99, lambda .95 and optimizer settings
+are fixed. The hypothesis is that four more construction/initiation visits per
+map can resolve the greedy stalls; more experience could also reinforce them.
+
+Registration SHA-256:
+`a5e26d91a2245897ff213ca0288b2f4c2b9be754adb5a5f44ad372a9ba100d90`.
+All checkpoint/source/contract/binary identity checks passed before launch.
+The native CUDA trainer resumed at update 65 / decision 4,160 and completed
+update 128 / decision 8,192 in 2,578.36 seconds. All 64 new updates are finite
+with zero behavior-policy replay error. The final reset checkpoint has
+next_episode=64. The final inference model hash was independently verified:
+`8abd3777722a35fdd4b5c0d20093ed05b3dc2518c880db528dbac7f41f44e1a6`.
+The driver passed its complete continuation checks and launched evaluation.
+Training completion alone does not satisfy learning advancement.
+
+The final model alone received nine full 512-decision cases: two development
+greedy, six development sampled (two maps crossed with three action seeds), and
+one greedy diagnostic on training map 1871197196. Thirty-six completed sampled
+controls are reused after native trace/hash and full economic-summary checks;
+no completed game evaluation is repeated. Advance requires all nine cases to
+sustain service with zero invalid actions/bankruptcy, sampled passenger/profit/
+cash means at least all five learned controls, and sampled profit/cash strictly
+above uniform. Failed earlier criteria remain failed. No intermediate selection
+or held-out use is allowed; a pass still requires training-seed replication.
+
+Execution uses the unchanged qualified `v2-guide-blocked-wait-01` worktree and
+`v2-financial-features-02` native trainer/inference binaries. One CUDA training
+job runs first; at most two evaluations run after it exits. Registration,
+source capture, logs and evolving `comparison.json` are in the native run;
+the driver is `runs/2026-09-24/v2-eight-map-budget8192-01/experiment.py` in the
+Windows checkout. Training and all nine evaluations are finished; no native
+job from this experiment remains active. Preserve the final model and checkpoint.
+
+The final economic report, visually reviewed seven-controller plot and completed
+training choice/GAE audit are complete beside the driver. `audit_outcomes.py`
+records all nine full
+action timelines and four-window outcomes, separating choice WAIT, forced WAIT,
+construction blockage, bus purchase, routing and START. Its joins match all
+4,608 decisions in the previous nine saved games and reproduce the diagnosed
+196 blocked decisions starting at 317. This validates the new read-only analysis,
+without rerunning any native qualification or inspecting unfinished evaluation
+outcomes. Full-game reports wait for the complete registered comparison;
+training-only audits require completed training.
+
+The completed-training audits are now available. All 32 new episodes buy, route
+and start a bus and deliver passengers, versus 31 starts and 30 delivery episodes
+in the parent. Mean first START among started episodes moves from 47.32 to 27.34;
+mean training deliveries increase from 161.28 to 219.94. All four new visits to
+expensive training map 1871197196 deliver. The added experience contains 853
+choice decisions and 3,243 forced WAITs, versus 1,590 choices in the parent;
+31/64 new rollouts contain no choice. All 32 START actions have mean normalized
+advantage +.4167, with 26 positive, versus 12/31 positive in the parent. Native
+explained variances agree with independent target reconstruction within 4.8e-10.
+These changing-policy training results do not establish final-policy strength
+or a causal credit mechanism. Both periods retain 76 temporarily blocked
+construction steps on training map 583478638; they do not prevent those episodes
+from starting service. Full accounting and per-map data are in `training-audit/`
+and `choice-audit/` beside the Windows driver. All 64 compared episode boundaries
+retain time-limit bootstrap and stop GAE continuation across resets.
+
+All nine full games complete with sustained service, zero invalid actions and
+zero bankruptcy. Development greedy improves 0/2 to 2/2: map 1630856436 delivers
+1,457 passengers / 5,608 operating profit / -2,485 cash after capital, and map
+155097162 delivers 1,028 / 2,028 / -9,714. The expensive training-map greedy case
+also improves from no service to 715 / 2,693 / -9,019. Greedy START occurs at
+decisions 22, 36 and 28 respectively, with no pre-service WAIT or construction
+blockage in any of the three. These results establish service initiation for
+this one model under the public route guide, which still supplies geometry.
+
+**Registered advancement fails.** All six sampled episodes sustain service,
+but their means are 1,188.33 passengers / 3,440 operating profit / -6,477.50 cash
+after capital. They exceed the parent eight-map trial (1,144.83 / 3,062.83 /
+-6,854.67), while profit/cash remain below horizon 256, raw 2,048, raw 4,096,
+four-map signed-log and uniform (1,193.83 / 3,682.17 / -6,235.33). Paired
+profit/cash difference is +377.17 against the parent, approximate 95% interval
+[-584.41, 1,338.74], and -242.17 against uniform, [-1,161.94, 677.60]. These
+three-action-seed intervals condition on one model and two maps; they do not
+measure training-seed or map generalization. No replication or deployment
+adoption is claimed, and no failed criterion is changed.
+
+The remaining economic failure is not simply slower initial service. On map
+1630856436, the worst sampled case starts at decision 15 with no pre-service
+WAIT, yet delivers 1,260 passengers / 4,485 profit, versus greedy START at 22
+and 1,457 / 5,608. Sampled repayment/construction timing and native income versus
+expense need separate accounting before another learning change. Full nine-case
+timelines and four-window outcomes are in `outcome-audit/`; the report, exact
+checks, paired differences and reviewed plot are in `completed/` beside the driver.
+
+The follow-up `v2-budget8192-income-expense-audit-02` rejects expense dominance:
+the sampled-versus-same-map-greedy mean profit shortfall of 378 consists of 274.67
+lower income (72.66%) and 103.33 additional operating expense (27.34%). On map
+1630856436, income per passenger stays about 5.19, so lower delivery quantity is
+the larger issue. On the other map, action seed 25 postpones its eighth repayment
+until decision 510, with 459 additional operating expenses despite 26 more
+passengers than greedy. These totals do not attribute all expenses to interest
+or causally explain service differences. This unblinded retrospective audit uses
+all six sampled and both greedy full games and no held-out evidence. Audit-01's
+failed identity assumption is retained: native expenses are signed negative and
+the pinned source defines operating_profit=income+expenses. The corrected audit
+keeps its hypothesis and majority threshold; no learning criterion changes.
+Report/registration: `economic-audit/` beside the driver.
+
+Next inspect retained public station cargo/ratings, vehicle movement and delivery
+timing on the large map to distinguish weaker service from lower passenger supply.
+Do not consume redacted breakdown delay/countdown fields or alter the guide,
+reward or curriculum based on the aggregate income gap alone. No new training
+experiment is registered yet. Main now points to local commit `67d89ea`, created
+outside this task; the isolated execution source still exactly matches the
+trial registration. The source-identity check is in `completed/source-preservation.json`.
+
+## Completed: missing-depot diagnosis
+
+v2-depot-candidate-audit-01 reads all 512 saved observations in the three
+horizon-256 greedy cases without rerunning a game. Its registered clear-site/
+candidate-quota hypothesis is **rejected**. The expensive training map's depot
+tile 3096 starts clear and flat, becomes road after decision 304, remains an
+exposed depot through the observation after decision 315, and disappears after
+decision 316. The largest-town priority anchor is unchanged. Every one of the
+196 absent snapshots still exposes strictly lower-priority depots farther from
+that anchor. The native enumerator tests every tile/direction and retains the
+best 512 successful tests, so quota cannot explain omitting this target if it
+were legal. Its native command predicate must fail. This is a source-and-snapshot
+inference; the exact road-removal error has not been directly queried.
+
+The learner had 290 depot-stage decisions with the depot available (27 through
+316), choosing WAIT 282 times and repayment eight times. Immediately before the
+depot disappears, WAIT probability is .84794414 and depot probability .152055904.
+Only decision 317 onward is forced WAIT. Both development depots remain legal
+throughout their 512-decision failures. Prolonged neural waiting precedes the
+training-map blockage; the evidence does not justify a quota or guide patch.
+
+Full saved outcomes on the same training map are rederived from all 512 native
+transitions and checked against trace hashes:
+
+| Controller | Passengers | Operating profit | Cash after capital | Sustained service |
+| --- | ---: | ---: | ---: | --- |
+| Horizon-256 greedy | 0 | -1,184 | -7,225 | no |
+| Build first | 758 | 2,632 | -9,080 | yes |
+| Repay eight first | 715 | 2,760 | -8,952 | yes |
+| Repay nine first | 0 | -484 | -7,275 | no |
+| Repay and WAIT | 0 | -484 | -1,209 | no |
+
+All finish with zero invalid actions/bankruptcy. These are descriptive controls,
+not a counterfactual isolation of action timing. Priority witnesses, per-state
+hashes, registration, timelines and limitations are retained in the native run
+and `runs/2026-09-24/v2-depot-candidate-audit-01/` on Windows. No held-out results
+were consulted. The diagnosis permits the already suggested fixed-settings
+budget extension; it does not establish that more exposure will work.
 
 ## Completed: lossless completed-run storage cleanup
 
@@ -60,9 +706,8 @@ the interrupted prefix and batched remainder exactly cover the registration
 without overlap. Full report and verification are copied to
 `runs/2026-09-24/storage-cleanup-01/` on Windows.
 
-The next learning step remains the handoff's missing-depot diagnosis on the
-retained horizon-256 training-map case. Storage cleanup has not changed its
-failed advancement criteria or any learning setting.
+Storage cleanup has not changed any failed advancement criterion or learning
+setting. The subsequent diagnosis and registered continuation are recorded above.
 
 ## Completed experiment: extend training episodes to 256 decisions
 
@@ -110,13 +755,14 @@ Final checkpoint is train/checkpoints/update-000064. Full report, JSON, reviewed
 PNG/SVG plot, final greedy distributions and the training guide diagnostic are
 in v2-horizon256-01/completed on Windows; training audits are adjacent.
 
-The user requested pausing after this run and moving to a new chat. No new
-experiment has started. [The handoff](../handoff.md) and
+The user requested pausing after this run and moving to a new chat. The original
+task stopped at that boundary; the continuation task's later work is recorded
+above. [The handoff](../handoff.md) and
 [continuation prompt](../continuation-prompt.md) identify source/worktrees,
 reproduction commands, qualified deployment, failures, and the recommended next
-bounded diagnostic. First distinguish the blocked training depot from the
-available-but-rejected development depots. A later horizon-128 budget extension
-could test construction exposure, but remains an unexecuted hypothesis.
+bounded diagnostic. The completed diagnosis now distinguishes the blocked
+training depot from the available-but-rejected development depots; the later
+horizon-128 budget extension is running with no outcome yet.
 
 ## Completed experiment: eight training maps at fixed budget
 
@@ -515,6 +1161,22 @@ inference assertion failure remains preserved.
 
 ## Retained performance and recovery improvements
 
+The retrospective `v2-reference-timing-audit-01` rejects the hypothesis that
+PPO UPDATE roundtrips dominate the completed 8,192-decision reference's recorded
+wall time. Registration SHA is
+`897864ef530ee489531cfc2ca4c4733f0d369e079954ab8fc0ef3487ce7b552e`.
+Both run/metrics records and all 8,192 trajectory rows agree; input hashes remain
+unchanged. Across 5,100.77 seconds, UPDATE accounts for 1,711.28 (33.55%), ACT
+requests for 416.34 (8.16%), and the unattributed remainder for 2,973.15 (58.29%).
+UPDATE is host roundtrip time including CPU/CUDA work and replay validation,
+not GPU kernel time. Initial source capture is outside the wall timer; REWARD,
+game requests, archival, checkpoints and resets have no separate attribution.
+Native response emission precedes some UPDATE cleanup. Halving UPDATE alone
+would imply a conditional 1.202x whole-run speedup, with an ideal zero-cost
+UPDATE bound of 1.505x if everything else stayed fixed. No speedup was measured.
+This used completed development records only and does not change the live trial.
+Readable results: `runs/2026-09-24/v2-reference-timing-audit-01/completed/`.
+
 Optional --reuse-bootstrap-tensors passes exact actor/mask/feedback/native/PPO,
 logical checkpoint and CUDA continuation checks, plus CPU/CUDA agreement across
 real time limits. It caches input frames at the same state token/company, clears
@@ -541,7 +1203,91 @@ V2 reset checkpoints retain Adam, three native RNGs, Torch CPU/CUDA RNG, hidden
 state and counters. Strict deterministic algorithms plus the cuBLAS workspace
 fixed the tested CUDA recovery failure. Source/configuration/contract identities
 remain strict; use archived source to resume older runs. Arbitrary mid-game
-recovery and V2 ONNX export are still unsupported.
+recovery remains unsupported. Live V2 ONNX export and visible playback were
+subsequently qualified for the raw-feature reference policy, as recorded above.
+
+The first actual LLM match has now completed and passed both full audits:
+large map 1630856436, LLM company 0, neural company 1, 512 global decisions /
+256 per company. The LLM chooses WAIT on all 256 turns, delivering zero with
+profit -4,834 and cash excluding financing -5,559. Its guide-scoped legal queries
+expose construction on the first 17 turns (global 1..33, odd), and repayment on
+all 256. Thus initial inaction is a model choice. Its unused construction guide
+becomes blocked for the remaining 239 turns as the neural company builds.
+The logs do not explain the preference, and list-order bias is not established.
+
+The fixed neural actor buys at 36, routes at 38, starts at 40 and first delivers
+at 70. It delivers 1,290 passengers, earns 4,592 operating profit, spends 7,368
+capital and has cash excluding financing -3,501. All final three windows sustain
+positive cargo, operating profit and cash before capital. Against this idle
+opponent, its plan avoids the collisions seen in all eight active-construction
+baselines. This establishes neural service in one shared game, not useful LLM
+transport or broad neural superiority. The role-pair completion is recorded below.
+
+The 1,025 model responses map exactly to 1,025 MCP calls and 256 native actions,
+with zero tool/native errors and no replaced choice. Model time is 2,840.434 s;
+driver wall time is 3,122.656 s including startup and other overhead. A read-only
+response-history sum reproduces 8,399,560 processed prompt tokens, 41,691 output
+tokens, elapsed time and error counters. Provider cost is zero; energy/hardware
+cost remains unknown. Full windows, audits, counters and input hashes are in
+`runs/2026-09-24/v2-mcp-matched-guide-01/first-llm-completed-review/`.
+
+A follow-up provider-request audit verifies the exact system prompt in all
+1,025 requests and the exact current guide-scoped legal list before all 256
+submissions. The model requests `observe(include_map=true)` every turn despite
+instructions to use compact observations; all 256 oversized map responses are
+replaced with explicit context-limit feedback asking for smaller queries.
+The compact initial start result and all 255 subsequent step results preceding
+another model request remain exact and visible, as do legal/submission results.
+Thus useful state and the current choices remain available; map truncation alone
+does not explain the WAIT preference. Recorded prompt lengths are 1,222..8,741
+tokens (median 8,291). This says nothing about provider-internal attention.
+The visibility audit, and its corrected protocol-wrapper analysis assumption,
+are preserved beside the first LLM review. No current prompt or action changed.
+
+The second LLM game completes the large-map role pair: LLM company 1 again
+chooses 256 WAITs, with zero deliveries, profit -4,834 and cash -5,559. The neural
+company 0 buys at global 35, routes at 37, starts at 39 and first delivers at 69;
+it sustains all final windows with 1,421 passengers / 5,272 operating profit /
+7,368 capital / -2,821 cash excluding financing. Both native and model-choice
+audits pass, with zero errors or bankruptcies. Both large-map roles now show
+neural service against an idle LLM; useful LLM transport is still unproven.
+
+This role uses 262 model calls: initial start/observe/three legal lists/submit/
+step, then 255 explicit `wait_turns(count=1)` calls. Each of the three legal
+lists includes WAIT, road construction and repayment; the first submitted action
+is WAIT. All later single-turn waits are actual model choices. Recorded model
+time is 668.237 s, driver wall time 890.491 s, processed prompt tokens 2,215,105
+and output tokens 4,451. Independent sums match all counters, and the prompt is
+exact in every recorded request. The reduced wall time reflects a different
+chosen tool sequence; it is not a CUDA optimization measurement.
+`second-llm-completed-review/` preserves full outcomes and input hashes.
+Two small-map LLM cases remain under unchanged settings; replication is queued.
+
+## Completed: signed-log neural policy through actual MCP
+
+`v2-mcp-financial-01` closes an adapter gap: `Match.start` previously constructed
+its policy with default raw inputs even for signed-log archives. It now validates
+training/model preprocessing before creating output, forwards the mode to the
+existing PolicyClient, verifies native mode before creating the game, and records
+`neural_financial_features`. The C++ reader, company scheduler, public information,
+action masks, tools and budgets are unchanged.
+
+Registration SHA:
+`3e8650e0db9220362afa664a33f71bf4a9575823140e0d38af5aa698f9bcf91b`.
+All four focused tests pass in the separate MCP 2.2.0 environment. The unchanged
+actual stdio smoke completes eight global decisions for the budget8192 signed-log
+policy and eight for the raw4096 reference. Each company receives four actions;
+all native steps are 128 ticks. Saved neural choices agree with native actions,
+and all existing stale/pending/read-only/region/wait-budget and archival checks
+pass. This is scripted compatibility, not an LLM match or useful economic test.
+CPU was explicit for these short inference checks; one separate CUDA trainer
+continued within the two-native-job limit. No build or training settings changed.
+
+Main has the adapter and focused tests without staging/commit. The original
+adapter and registration are preserved in
+`runs/2026-09-24/v2-mcp-financial-01/`; native reports are under the same run name.
+The failed policy economic criteria and stronger shared-game comparison remain
+open. The qualified raw and signed-log models remain unchanged.
 
 ## Established V1 and broader integration
 

@@ -1,6 +1,8 @@
 #include "v2_live_input.h"
+#include "checkpoint_io.h"
 
 #include <bit>
+#include <cmath>
 #include <cstring>
 #include <fstream>
 #include <limits>
@@ -65,8 +67,83 @@ private:
 };
 } // namespace
 
+FinancialFeatures parse_financial_features(std::string_view name)
+{
+    if (name == "raw") return FinancialFeatures::Raw;
+    if (name == "signed-log-v1") return FinancialFeatures::SignedLogV1;
+    throw std::invalid_argument("financial features must be raw or signed-log-v1");
+}
+
+const char *financial_features_name(FinancialFeatures mode)
+{
+    if (mode == FinancialFeatures::Raw) return "raw";
+    if (mode == FinancialFeatures::SignedLogV1) return "signed-log-v1";
+    throw std::invalid_argument("unknown financial feature mode");
+}
+
+void transform_live_v2_finances(ScalablePolicyInput &input, FinancialFeatures mode)
+{
+    if (mode == FinancialFeatures::Raw) return;
+    if (mode != FinancialFeatures::SignedLogV1) throw std::invalid_argument("unknown financial feature mode");
+    // Native financial fields use different linear divisors. Recover their
+    // bounded currency units and apply one signed logarithmic scale. Zero and
+    // redacted/padded fields remain zero; no extra information enters the model.
+    auto transform = [](const torch::Tensor &values, double native_divisor) {
+        return torch::sign(values) * torch::log1p(values.abs() * native_divisor) / std::log1p(1.0e9);
+    };
+    auto cash_loan = input.structured.slice(1, 8, 10);
+    cash_loan.copy_(transform(cash_loan, 1.0e9));
+    auto company_money = input.companies.features.slice(2, 2, 5);
+    company_money.copy_(transform(company_money, 1.0e9));
+    auto candidate_cost = input.candidate_features.select(2, 13);
+    candidate_cost.copy_(transform(candidate_cost, 1.0e6));
+}
+
+void write_financial_features(torch::serialize::OutputArchive &archive, FinancialFeatures mode)
+{
+    // Omit the tag for legacy raw models, preserving their inference archives.
+    if (mode != FinancialFeatures::Raw) checkpoint_string(archive, kFinancialFeaturesArchiveKey, financial_features_name(mode));
+}
+
+FinancialFeatures read_financial_features(torch::serialize::InputArchive &archive)
+{
+    torch::Tensor value;
+    if (!archive.try_read(kFinancialFeaturesArchiveKey, value, true)) return FinancialFeatures::Raw;
+    if (value.scalar_type() != torch::kUInt8 || value.dim() != 1 || value.numel() == 0 || value.numel() > 64)
+        throw std::invalid_argument("financial feature metadata shape/type differs");
+    value = value.cpu().contiguous();
+    return parse_financial_features(std::string_view(static_cast<const char *>(value.const_data_ptr()), static_cast<size_t>(value.numel())));
+}
+
+void write_live_v2_weights(torch::serialize::OutputArchive &archive, const ScalablePolicy &model, FinancialFeatures mode)
+{
+    if (mode == FinancialFeatures::Raw) {
+        model->save(archive);
+    } else {
+        // A tag alone is insufficient: legacy Module::load ignores extra keys.
+        // Nest preprocessed weights so raw-only readers fail on missing weights.
+        torch::serialize::OutputArchive policy;
+        model->save(policy);
+        archive.write("development_preprocessed_policy", policy);
+        write_financial_features(archive, mode);
+    }
+}
+
+void read_live_v2_weights(torch::serialize::InputArchive &archive, ScalablePolicy &model, FinancialFeatures mode)
+{
+    if (read_financial_features(archive) != mode)
+        throw std::invalid_argument("inference weights require different financial preprocessing");
+    if (mode == FinancialFeatures::Raw) {
+        model->load(archive);
+    } else {
+        torch::serialize::InputArchive policy;
+        archive.read("development_preprocessed_policy", policy);
+        model->load(policy);
+    }
+}
+
 openttd_rl::v2::ScalablePolicyInput read_live_v2_input(
-    const std::filesystem::path &observation, const std::filesystem::path &candidates)
+    const std::filesystem::path &observation, const std::filesystem::path &candidates, FinancialFeatures financial_features)
 {
     Reader reader(observation, 2182927);
     ScalablePolicyInput input;
@@ -119,6 +196,7 @@ openttd_rl::v2::ScalablePolicyInput read_live_v2_input(
     actions.finished();
     input.hidden_state = torch::zeros({1, kHiddenSize}, torch::kFloat32);
     input.recurrent_reset = torch::zeros({1}, torch::kBool);
+    transform_live_v2_finances(input, financial_features);
     return input;
 }
 

@@ -9,6 +9,23 @@ METADATA = {'openttd_rl.kind': 'development-v2-live-recurrent-policy-1',
     'openttd_rl.observation_schema': 'v2-m15-public-development-v2',
     'openttd_rl.financial_features': 'raw'}
 
+FINANCIAL_FEATURES = ('raw', 'signed-log-v1')
+
+
+def financial_features_mode(value):
+    if value not in FINANCIAL_FEATURES:
+        raise ValueError('Financial features must be raw or signed-log-v1')
+    return value
+
+
+def metadata_for(financial_features):
+    mode = financial_features_mode(financial_features)
+    metadata = {**METADATA, 'openttd_rl.financial_features': mode}
+    if mode != 'raw':
+        metadata['openttd_rl.preprocessing_location'] = 'embedded-onnx-graph-v1'
+    return metadata
+
+
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -16,10 +33,13 @@ def checked_package(path, training, device):
     path = Path(path).resolve()
     if device != 'cpu':
         raise ValueError('V2 ONNX playback requires explicit CPU; no device fallback')
+    mode = financial_features_mode(training.get('financial_features', 'raw'))
+    if training['model'].get('financial_features', 'raw') != mode:
+        raise ValueError('Training/model financial preprocessing differs')
     manifest = json.loads((path / 'manifest.json').read_text())
     if manifest.get('format') != FORMAT or manifest.get('status') != 'qualified':
         raise ValueError('A qualified live V2 ONNX package is required')
-    if manifest.get('metadata') != METADATA or manifest.get('runtime') != 'onnxruntime-1.28.0-cpu':
+    if manifest.get('metadata') != metadata_for(mode) or manifest.get('runtime') != 'onnxruntime-1.28.0-cpu':
         raise ValueError('ONNX observation/preprocessing/runtime compatibility differs')
     if manifest.get('source_weights_sha256') != training['model']['sha256'] or manifest.get('guidance') != training.get('guidance', 'none'):
         raise ValueError('ONNX package belongs to different weights or guide')

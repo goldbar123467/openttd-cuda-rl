@@ -15,6 +15,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from infer_v2 import PolicyClient, checked_tensors
+from v2_onnx_package import financial_features_mode
 from guide_v2 import GUIDANCES, PublicPlanGuide
 from live_v2 import LiveV2, SHARED_SCHEMA
 from local import capture_source, source_identity, write_json
@@ -29,6 +30,9 @@ class Match:
         training = json.loads((args.training_run / "run.json").read_text())
         if training["kind"] != "native-v2-live-recurrent-ppo" or training["status"] != "completed" or training.get("observation_schema_id") != "v2-m15-public-development-v2":
             raise ValueError("Opponent requires completed compatible live PPO weights")
+        self.financial_features = financial_features_mode(training.get("financial_features", "raw"))
+        if training["model"].get("financial_features", "raw") != self.financial_features:
+            raise ValueError("Opponent training/model financial preprocessing differs")
         self.guidance_name = training.get("guidance", "none")
         if self.guidance_name not in ("none", *GUIDANCES):
             raise ValueError("MCP opponent weights use an unsupported planner curriculum")
@@ -44,6 +48,7 @@ class Match:
             "controllers": {str(args.company): args.player_label, str(1 - args.company):
                 "native-recurrent-neural" + ("+public-planner" if self.guidance_name != "none" else "")},
             "neural_guidance": self.guidance_name,
+            "neural_financial_features": self.financial_features,
             "global_decisions": args.decisions, "per_company_action_budget": args.decisions // 2,
             "ticks_per_global_decision": 128, "first_company": args.first_company,
             "split": args.split, "map_seed": args.map_seed, "sampling_seed": args.sampling_seed,
@@ -110,7 +115,8 @@ class Match:
         self.started = True
         try:
             self.policy = PolicyClient(self.args.policy.resolve(), self.root / "neural.log", self.args.device,
-                self.args.sampling_seed, "sampled", self.weights)
+                self.args.sampling_seed, "sampled", self.weights, financial_features=self.financial_features)
+            self.policy.check_financial_features()
             self.game = LiveV2(self.args.openttd, self.root / "worker", seed=self.args.map_seed,
                 split=self.args.split, companies=2, first_company=self.current, decisions=self.args.decisions)
             self.record["status"] = "running"

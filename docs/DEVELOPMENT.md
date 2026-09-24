@@ -841,7 +841,7 @@ The qualified local display engine already exists at
 map seed 155097162 and a fresh output directory for the second development map.
 The original headless engine remains available for training. The display build
 uses SDL2 and a real X11/Wayland display (WSLg locally); dummy/offscreen drivers
-are rejected. It currently supports one company and raw-input weights.
+are rejected. It currently supports one company and raw or signed-log weights.
 
 Mouse and keyboard game commands are disabled in this viewer so they cannot
 bypass the agent's action budget. Redrawing while waiting for requests preserves
@@ -852,13 +852,16 @@ local paths, preserving the user's ordinary game data.
 
 ### Export and watch a live V2 ONNX policy
 
-The development exporter supports the existing raw-input recurrent V2 weights.
+The development exporter supports raw and `signed-log-v1` recurrent V2 weights.
 It converts the C++ model's saved parameters, exports twice with identical
 bytes, and checks all 512 archived inputs against native C++ inference. A package
 binds the graph, source weights, observation schema, preprocessing and guide.
 The optional C++ deployment target uses ONNX Runtime 1.28.0 on CPU for the neural
 forward pass and retains LibTorch for input validation, masking and sampling.
-Signed-log weights and CUDA ONNX inference are currently rejected explicitly.
+Raw public tensors enter the graph; signed-log preprocessing is embedded once
+inside the exported graph. Training, archive and package modes must agree.
+The wrapper selects the recorded mode automatically. CUDA ONNX inference is
+still rejected explicitly; CUDA PPO training remains separate.
 
 To watch the already qualified local raw 4,096-decision model:
 
@@ -880,6 +883,22 @@ development scenario. For headless evaluation, omit `--visible` and use
 `$RL_ROOT/v2-live-engine/build/openttd`. `--mode sampled` uses the same native
 seeded action sampler. The ONNX option requires `--training-run` and explicit
 `--device cpu`; omit `--onnx-package` for the existing LibTorch path.
+
+The completed signed-log 8,192-decision model also has a qualified package:
+
+```bash
+python scripts/dev/infer_v2.py \
+  --openttd "$RL_ROOT/v2-visible-engine-01/build/openttd" \
+  --policy "$RL_ROOT/build/v2-financial-export-01/rl_dev_v2_onnx_infer" \
+  --training-run "$RL_ROOT/runs/v2-financial-eight-maps-budget8192-01/train" \
+  --onnx-package "$RL_ROOT/runs/v2-financial-onnx-package-01" \
+  --device cpu --mode greedy --seed 20260923 --split development \
+  --map-seed 1630856436 --decisions 512 --visible \
+  --output "$RL_ROOT/runs/v2-financial-onnx-visible-new"
+```
+
+This model still fails its learning economic gate. Its deployment qualification
+does not replace the raw reference or establish stronger play.
 
 For a new build, use the dependency versions and official ONNX Runtime archive
 from the V1 export section above. Configure a fresh directory in the existing
@@ -905,7 +924,7 @@ python scripts/dev/export_v2.py \
   --output "$RL_ROOT/runs/v2-onnx-package-new"
 ```
 
-To export another raw-input model, supply its completed training directory and
+To export another raw or signed-log model, supply its completed training directory and
 a complete 512-step greedy development evaluation of those exact weights with
 the same guide. Export reads retained tensor archives and never enters a final
 evaluation split. `export.json`, `verification.json` and `golden.jsonl` record
@@ -994,6 +1013,15 @@ and `wait_turns`, plus `map_region` for a public rectangle up to 32 by 32 tiles.
 Company identity is fixed at launch. Stepping also executes the opponent's equal
 turn. WAIT batches are limited to eight own turns and still consume every native
 action/tick.
+The adapter accepts raw and `signed-log-v1` weights. It validates the saved
+training/model modes and checks the native policy's preprocessing before starting
+the game. For the completed financial-feature policy, use
+`--policy "$RL_ROOT/build/v2-financial-export-01/rl_dev_v2_infer"` and
+`--training-run "$RL_ROOT/runs/v2-financial-eight-maps-budget8192-01/train"`.
+This is LibTorch inference; the MCP adapter does not load an ONNX package.
+Both preprocessing modes passed the actual eight-step scripted MCP checks.
+The optional focused tests run in the SDK environment:
+`"$RL_ROOT/mcp-venv/bin/python" -m unittest discover -s tests/dev -p test_mcp_financial_features.py -v`.
 `start_match` and `observe` include the public map; `observe(include_map=false)`
 and step results omit its large tile arrays while retaining own state and token.
 `start_match(include_map=false)` also permits a compact first observation.

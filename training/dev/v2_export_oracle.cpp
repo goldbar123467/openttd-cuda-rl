@@ -26,8 +26,10 @@ void write_tensor(const char *name, const torch::Tensor &tensor)
 int main(int argc, char **argv)
 {
     try {
-        if (argc != 3 || std::string(argv[1]) != "--weights")
-            throw std::invalid_argument("required: --weights ABSOLUTE_FILE (CPU conversion oracle)");
+        if ((argc != 3 && argc != 5) || std::string(argv[1]) != "--weights" ||
+            (argc == 5 && std::string(argv[3]) != "--financial-features"))
+            throw std::invalid_argument("required: --weights ABSOLUTE_FILE [--financial-features raw|signed-log-v1] (CPU conversion oracle)");
+        const auto financial_features = openttd_rl::development::parse_financial_features(argc == 5 ? argv[4] : "raw");
         const std::filesystem::path path(argv[2]);
         if (!path.is_absolute() || !std::filesystem::is_regular_file(path))
             throw std::invalid_argument("oracle weights must be an existing absolute file");
@@ -35,7 +37,7 @@ int main(int argc, char **argv)
         openttd_rl::v2::ScalablePolicy model(20260923);
         torch::serialize::InputArchive archive;
         archive.load_from(path.string(), torch::Device(torch::kCPU));
-        model->load(archive);
+        openttd_rl::development::read_live_v2_weights(archive, model, financial_features);
         openttd_rl::v2::require_finite_policy(model, "export oracle weights");
         model->eval();
         auto hidden = torch::zeros({1, openttd_rl::v2::kHiddenSize}, torch::kFloat32);
@@ -49,7 +51,7 @@ int main(int argc, char **argv)
             const auto delimiter = line.find('\t');
             if (line.size() > 8192 || delimiter == std::string::npos || line.find('\t', delimiter + 1) != std::string::npos)
                 throw std::invalid_argument("oracle expects observation.bin TAB candidates.bin");
-            auto input = openttd_rl::development::read_live_v2_input(line.substr(0, delimiter), line.substr(delimiter + 1));
+            auto input = openttd_rl::development::read_live_v2_input(line.substr(0, delimiter), line.substr(delimiter + 1), financial_features);
             input.hidden_state = hidden;
             input.recurrent_reset.fill_(reset);
             reset = false;

@@ -15,7 +15,7 @@ from live_v2_artifacts import archive_tensors
 from local import capture_source, positive, source_identity, write_json
 from service_v2 import summarize
 from guide_v2 import GUIDANCES, PublicPlanGuide
-from v2_onnx_package import checked_package
+from v2_onnx_package import FINANCIAL_FEATURES, checked_package, financial_features_mode
 from play_live import native_screenshot
 
 TENSOR_SCHEMA = "openttd-rl-development-v2-public-tensors-1"
@@ -78,7 +78,8 @@ def checked_tensors(response, observation, *, bootstrap_only=False):
 
 
 class PolicyClient:
-    def __init__(self, executable, output, device, seed, mode=None, weights=None, rollout_length=None, gae_lambda=None):
+    def __init__(self, executable, output, device, seed, mode=None, weights=None, rollout_length=None, gae_lambda=None, financial_features="raw"):
+        self.financial_features = financial_features_mode(financial_features)
         self.log = Path(output).open("x")
         command = [str(executable), "--device", device, "--seed", str(seed)]
         if mode is not None:
@@ -89,9 +90,15 @@ class PolicyClient:
             command += ["--rollout-length", str(rollout_length)]
         if gae_lambda is not None:
             command += ["--gae-lambda", str(gae_lambda)]
+        if self.financial_features != "raw":
+            command += ["--financial-features", self.financial_features]
         self.process = subprocess.Popen(command,
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log,
                                         text=True, bufsize=1)
+
+    def check_financial_features(self):
+        if self.financial_features != "raw" and self.request("FINANCIAL_FEATURES_INFO") != {"financial_features": self.financial_features}:
+            raise ValueError("Native policy financial preprocessing differs")
 
     def request(self, line):
         self.process.stdin.write(line + "\n")
@@ -128,14 +135,16 @@ def run(args):
     training = None
     onnx_manifest = None
     guidance_name = "none"
+    financial_features = "raw"
     if args.training_run:
         training = json.loads((args.training_run / "run.json").read_text())
         if training["kind"] != "native-v2-live-recurrent-ppo" or training["status"] != "completed":
             raise ValueError("Inference requires a completed live V2 training run")
         if training.get("observation_schema_id") != "v2-m15-public-development-v2":
             raise ValueError("Saved weights use an incompatible public observation version")
-        if training.get("financial_features", "raw") != "raw" or training["model"].get("financial_features", "raw") != "raw":
-            raise ValueError("This playback prototype supports the existing raw-input weights only")
+        financial_features = financial_features_mode(training.get("financial_features", "raw"))
+        if training["model"].get("financial_features", "raw") != financial_features:
+            raise ValueError("Training/model financial preprocessing differs")
         guidance_name = training.get("guidance", "none")
         if guidance_name not in ("none", *GUIDANCES):
             raise ValueError("Saved weights use an unsupported planner curriculum")
@@ -160,6 +169,7 @@ def run(args):
               "claim": "Live recurrent policy inference check; short interaction does not establish learned competence",
               "training_run": str(args.training_run.resolve()) if args.training_run else None,
               "model": training["model"] if training else {"initialization_only": True},
+              "financial_features": financial_features,
               "guidance": guidance_name, "trained_guidance": trained_guidance, "guidance_override": override,
               "policy_sha256": hashlib.sha256(args.policy.read_bytes()).hexdigest(),
               "engine_sha256": hashlib.sha256(args.openttd.read_bytes()).hexdigest(),
@@ -172,9 +182,13 @@ def run(args):
     game, policy, reference = None, None, None
     errors = {"probability_max_abs": 0.0, "value_max_abs": 0.0}
     try:
-        policy = PolicyClient(args.policy.resolve(), root / "policy.log", args.device, args.seed, args.mode, weights)
+        policy = PolicyClient(args.policy.resolve(), root / "policy.log", args.device, args.seed, args.mode, weights,
+                              financial_features=financial_features)
+        policy.check_financial_features()
         if args.compare_cpu:
-            reference = PolicyClient(args.policy.resolve(), root / "cpu-reference.log", "cpu", args.seed, args.mode, weights)
+            reference = PolicyClient(args.policy.resolve(), root / "cpu-reference.log", "cpu", args.seed, args.mode, weights,
+                                     financial_features=financial_features)
+            reference.check_financial_features()
         game = LiveV2(args.openttd, root / "worker", decisions=args.decisions, split=args.split, seed=args.map_seed, visible=visible)
         initial = game.request("OBSERVE")["observation"]
         guide = PublicPlanGuide(initial, root / "worker", guidance=guidance_name) if guidance_name in GUIDANCES else None

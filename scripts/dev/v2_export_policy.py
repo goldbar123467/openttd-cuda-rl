@@ -1,4 +1,4 @@
-"""Inference-only export adapter for the native raw-input ScalablePolicy.
+"""Inference-only export adapter for the native ScalablePolicy and its versioned financial inputs.
 
 The C++ model and live distribution remain authoritative. This module exists
 only to convert their saved parameters to ONNX, with independent native checks.
@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch import nn
+from v2_onnx_package import financial_features_mode
 
 
 INPUT_NAMES = ('structured', 'global_spatial', 'regional_spatial', 'local_spatial',
@@ -22,9 +23,14 @@ TABLES = (('company', 15, 32), ('town', 128, 24), ('industry', 256, 24),
           ('station', 512, 32), ('vehicle', 1024, 40))
 
 
+def signed_log(values, native_divisor):
+    return torch.sign(values) * torch.log1p(values.abs() * native_divisor) / math.log1p(1e9)
+
+
 class ExportPolicy(nn.Module):
-    def __init__(self):
+    def __init__(self, financial_features="raw"):
         super().__init__()
+        self.financial_features = financial_features_mode(financial_features)
         self.structured_1 = nn.Linear(512, 256)
         self.structured_2 = nn.Linear(256, 128)
         self.spatial_1 = nn.Conv2d(32, 32, 5, stride=2, padding=2)
@@ -73,6 +79,12 @@ class ExportPolicy(nn.Module):
                 stations, station_mask, vehicles, vehicle_mask, graph_nodes, graph_node_mask,
                 graph_edge_index, graph_edges, graph_edge_mask, candidate_features, candidate_family,
                 candidate_mask, family_mask, hidden_state, recurrent_reset):
+        if self.financial_features == 'signed-log-v1':
+            # The graph accepts original public tensors. Apply exactly the
+            # native signed-log fields once, before any policy encoder.
+            structured = torch.cat((structured[:, :8], signed_log(structured[:, 8:10], 1e9), structured[:, 10:]), 1)
+            companies = torch.cat((companies[:, :, :2], signed_log(companies[:, :, 2:5], 1e9), companies[:, :, 5:]), 2)
+            candidate_features = torch.cat((candidate_features[:, :, :13], signed_log(candidate_features[:, :, 13:14], 1e6), candidate_features[:, :, 14:]), 2)
         structured_hidden = torch.tanh(self.structured_2(torch.tanh(self.structured_1(structured))))
         spatial_hidden = torch.tanh(self.spatial_projection(torch.cat([
             self.spatial(global_spatial), self.spatial(regional_spatial), self.spatial(local_spatial)], 1)))
@@ -127,15 +139,33 @@ class ExportPolicy(nn.Module):
         return family_logits, candidate_logits, value, next_hidden, probabilities
 
 
-def load_raw_policy(weights):
+def load_export_policy(weights, financial_features='raw'):
+    mode = financial_features_mode(financial_features)
     state = torch.jit.load(str(weights), map_location='cpu').state_dict()
-    if 'development_financial_features' in state or any(k.startswith('development_preprocessed_policy.') for k in state):
-        raise ValueError('The initial V2 exporter accepts raw-input weights only')
+    key, prefix = 'development_financial_features', 'development_preprocessed_policy.'
+    if mode == 'raw':
+        if key in state or any(k.startswith(prefix) for k in state):
+            raise ValueError('Raw-input export refuses tagged/preprocessed weights')
+    else:
+        tag = state.pop(key, None)
+        if tag is None or tag.dtype != torch.uint8 or tag.dim() != 1 or not 1 <= tag.numel() <= 64:
+            raise ValueError('Financial feature metadata shape/type differs')
+        try:
+            actual = bytes(tag.cpu().tolist()).decode('ascii')
+        except UnicodeDecodeError as exc:
+            raise ValueError('Financial feature metadata encoding differs') from exc
+        if actual != mode or not state or any(not k.startswith(prefix) for k in state):
+            raise ValueError('Export weights require different financial preprocessing or archive layout')
+        state = {k[len(prefix):]: value for k, value in state.items()}
     if not all(t.dtype == torch.float32 and torch.isfinite(t).all() for t in state.values()):
         raise ValueError('Export weights must be finite float32 parameters')
-    model = ExportPolicy().eval()
+    model = ExportPolicy(mode).eval()
     model.load_state_dict(state, strict=True)
     return model
+
+
+def load_raw_policy(weights):
+    return load_export_policy(weights, 'raw')
 
 
 def read_native_inputs(observation, candidates, *, hidden=None, reset=False):

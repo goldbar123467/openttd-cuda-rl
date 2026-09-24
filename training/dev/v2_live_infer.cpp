@@ -17,11 +17,13 @@ int main(int argc, char **argv)
             if (index + 1 >= argc || !args.emplace(argv[index], argv[index + 1]).second)
                 throw std::invalid_argument("expected unique --device, --seed, --mode arguments");
         }
-        if ((args.size() != 3 && !(args.size() == 4 && args.contains("--weights"))) ||
-            !args.contains("--device") || !args.contains("--seed") || !args.contains("--mode"))
-            throw std::invalid_argument("required: --device cpu|cuda:0 --seed INTEGER --mode greedy|sampled [--weights FILE]");
+        if (!args.contains("--device") || !args.contains("--seed") || !args.contains("--mode") ||
+            args.size() != 3 + args.count("--weights") + args.count("--financial-features"))
+            throw std::invalid_argument("required: --device cpu|cuda:0 --seed INTEGER --mode greedy|sampled [--weights FILE] [--financial-features raw|signed-log-v1]");
         if (args.at("--device") != "cpu" && args.at("--device") != "cuda:0") throw std::invalid_argument("unsupported device");
         if (args.at("--mode") != "greedy" && args.at("--mode") != "sampled") throw std::invalid_argument("unsupported mode");
+        const auto financial_features = openttd_rl::development::parse_financial_features(
+            args.contains("--financial-features") ? args.at("--financial-features") : "raw");
         const torch::Device device(args.at("--device"));
         if (device.is_cuda() && !torch::cuda::is_available()) throw std::runtime_error("CUDA requested but unavailable; no fallback");
         torch::set_num_threads(1);
@@ -33,7 +35,7 @@ int main(int argc, char **argv)
                 throw std::invalid_argument("inference weights must be an existing absolute file");
             torch::serialize::InputArchive archive;
             archive.load_from(path.string(), torch::Device(torch::kCPU));
-            model->load(archive);
+            openttd_rl::development::read_live_v2_weights(archive, model, financial_features);
             openttd_rl::v2::require_finite_policy(model, "loaded inference weights");
         }
         model->to(device); model->eval();
@@ -44,10 +46,14 @@ int main(int argc, char **argv)
         while (std::getline(std::cin, line)) {
             if (line == "CLOSE") { std::cout << "{\"status\":\"CLOSED\"}" << std::endl; break; }
             if (line == "RESET") { hidden.zero_(); std::cout << "{\"status\":\"RESET\"}" << std::endl; continue; }
+            if (line == "FINANCIAL_FEATURES_INFO") {
+                std::cout << "{\"financial_features\":\"" << openttd_rl::development::financial_features_name(financial_features) << "\"}" << std::endl;
+                continue;
+            }
             const auto delimiter = line.find('\t');
             if (line.size() > 8192 || delimiter == std::string::npos || line.find('\t', delimiter + 1) != std::string::npos)
                 throw std::invalid_argument("inference expects observation.bin TAB candidates.bin");
-            auto cpu = openttd_rl::development::read_live_v2_input(line.substr(0, delimiter), line.substr(delimiter + 1));
+            auto cpu = openttd_rl::development::read_live_v2_input(line.substr(0, delimiter), line.substr(delimiter + 1), financial_features);
             auto input = openttd_rl::development::live_v2_to(cpu, device);
             input.hidden_state = hidden;
             const auto output = model->forward(input);

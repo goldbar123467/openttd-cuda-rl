@@ -47,10 +47,12 @@ int main(int argc, char **argv)
             if (index + 1 >= argc || !args.emplace(argv[index], argv[index + 1]).second)
                 throw std::invalid_argument("expected unique --device, --seed, --mode, --weights arguments");
         }
-        if (args.size() != 4 || !args.contains("--device") || !args.contains("--seed") || !args.contains("--mode") || !args.contains("--weights"))
+        if (args.size() != 4 + args.count("--financial-features") || !args.contains("--device") || !args.contains("--seed") || !args.contains("--mode") || !args.contains("--weights"))
             throw std::invalid_argument("required: --device cpu --seed INTEGER --mode greedy|sampled --weights MODEL.onnx");
         if (args.at("--device") != "cpu") throw std::invalid_argument("V2 ONNX deployment supports explicit CPU only; no device fallback");
         if (args.at("--mode") != "greedy" && args.at("--mode") != "sampled") throw std::invalid_argument("unsupported inference mode");
+        const auto financial_features = openttd_rl::development::parse_financial_features(
+            args.contains("--financial-features") ? args.at("--financial-features") : "raw");
         const std::filesystem::path path(args.at("--weights"));
         if (!path.is_absolute() || !std::filesystem::is_regular_file(path)) throw std::invalid_argument("ONNX weights require an existing absolute file");
         if (std::string(OrtGetApiBase()->GetVersionString()) != "1.28.0") throw std::runtime_error("development ONNX Runtime must be 1.28.0");
@@ -67,9 +69,14 @@ int main(int argc, char **argv)
             {"openttd_rl.kind", "development-v2-live-recurrent-policy-1"},
             {"openttd_rl.tensor_schema", openttd_rl::development::kLiveV2TensorSchema},
             {"openttd_rl.observation_schema", "v2-m15-public-development-v2"},
-            {"openttd_rl.financial_features", "raw"}}) {
+            {"openttd_rl.financial_features", openttd_rl::development::financial_features_name(financial_features)}}) {
             const auto value = metadata.LookupCustomMetadataMapAllocated(key.c_str(), allocator);
             if (!value || value.get() != expected) throw std::invalid_argument("ONNX compatibility metadata differs: " + key);
+        }
+        if (financial_features != openttd_rl::development::FinancialFeatures::Raw) {
+            const auto location = metadata.LookupCustomMetadataMapAllocated("openttd_rl.preprocessing_location", allocator);
+            if (!location || std::string(location.get()) != "embedded-onnx-graph-v1")
+                throw std::invalid_argument("ONNX financial preprocessing must be embedded in the graph");
         }
         if (session.GetInputCount() != input_names.size() || session.GetOutputCount() != output_names.size())
             throw std::invalid_argument("ONNX input/output inventory differs");
@@ -89,10 +96,16 @@ int main(int argc, char **argv)
         std::cout << std::setprecision(9);
         while (std::getline(std::cin, line)) {
             if (line == "CLOSE") { std::cout << "{\"status\":\"CLOSED\"}" << std::endl; break; }
+            if (line == "FINANCIAL_FEATURES_INFO") {
+                std::cout << "{\"financial_features\":\"" << openttd_rl::development::financial_features_name(financial_features) << "\"}" << std::endl;
+                continue;
+            }
             if (line == "RESET") { hidden.zero_(); std::cout << "{\"status\":\"RESET\"}" << std::endl; continue; }
             const auto delimiter = line.find('\t');
             if (line.size() > 8192 || delimiter == std::string::npos || line.find('\t', delimiter + 1) != std::string::npos)
                 throw std::invalid_argument("inference expects observation.bin TAB candidates.bin");
+            // Always pass original public inputs. Signed-log preprocessing is
+            // embedded in the qualified ONNX graph, never applied twice here.
             auto input = openttd_rl::development::read_live_v2_input(line.substr(0, delimiter), line.substr(delimiter + 1));
             input.hidden_state = hidden;
             if (!input.candidate_mask.any().item<bool>()) throw std::invalid_argument("all-illegal candidate mask");
