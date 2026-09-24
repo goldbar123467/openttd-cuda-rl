@@ -1,5 +1,27 @@
 # OpenTTD Reinforcement Learning Platform
 
+## Local development: start here
+
+The current owner objective is to train neural networks that play OpenTTD, then
+study shared economies with neural policies and LLM opponents connected through
+MCP. C++/CUDA and PPO remain the core learning stack.
+
+- [Development guide](docs/DEVELOPMENT.md): build the existing trainer on your
+  machine, collect live game rollouts, save a model, and see the next milestones.
+- [Agent instructions](AGENTS.md): project boundaries and how to continue work.
+- [Project goal](GOAL.md): broader game and research scope.
+
+The portable development entry point is `training/dev`; it compiles the existing
+`training/v1` implementation. Release builds remain in `training/v1` and
+`training/v2`. The M22 corpus trainer is a program-selection experiment; its
+reward-table updates must not be described as interactive OpenTTD training.
+
+## Historical release and milestone record
+
+The following records describe earlier campaigns and their original dependency
+profiles. They do not establish that those campaigns have been reproduced on a
+new local machine. Current development checks and limitations are in the guide.
+
 OpenTTD RL is a source-integrated C++/CUDA reinforcement-learning platform that
 trains PPO policies for controlled passenger-bus games, exports them to ONNX, and
 runs them as a visible neural company inside normal OpenTTD.

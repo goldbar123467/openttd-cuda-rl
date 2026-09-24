@@ -7,6 +7,9 @@
 
 #include <torch/cuda.h>
 #include <torch/nn/utils/clip_grad.h>
+#ifdef RL_DEV_FUSED_POLICY
+#include "fused_policy.h"
+#endif
 
 namespace openttd_rl::training {
 
@@ -107,7 +110,15 @@ ActionBatch MultiModalPpoTrainer::act(
     model_->eval();
     torch::NoGradGuard guard;
     auto [device_logits, device_values] = model_->forward(structured.to(device_), spatial.to(device_));
+#ifdef RL_DEV_FUSED_POLICY
+    // Experimental development build only. The update/autograd path below
+    // retains the trusted masked_categorical implementation.
+    auto device_policy = device_.is_cuda()
+        ? openttd_rl::development::fused_policy(device_logits, legal_masks.to(device_))
+        : masked_categorical(device_logits, legal_masks.to(device_));
+#else
     auto device_policy = masked_categorical(device_logits, legal_masks.to(device_));
+#endif
     const auto logits = device_logits.cpu();
     const auto values = device_values.cpu();
     const auto log_probabilities = device_policy.log_probabilities.cpu();

@@ -2,6 +2,7 @@
 #include <bit>
 #include <cerrno>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -20,6 +21,9 @@
 #include "openttd_rl/training/checkpoint.h"
 #include "openttd_rl/training/evaluation_model.h"
 #include "openttd_rl/training/multimodal_trainer.h"
+#ifdef RL_DEVELOPMENT_CHECKPOINTS
+#include "live_checkpoint.h"
+#endif
 
 namespace {
 
@@ -361,6 +365,14 @@ int run_service(
             if (type == kAct) response = handle_act(trainer, reader);
             else if (type == kUpdate) response = handle_update(trainer, reader);
             else if (type == kExport) response = handle_export(trainer, reader);
+#ifdef RL_DEVELOPMENT_CHECKPOINTS
+            else if (type == 5 || type == 6) {
+                const std::filesystem::path path(reader.string(4096));
+                reader.finish();
+                if (type == 5) openttd_rl::development::save_live_checkpoint(path, trainer);
+                else openttd_rl::development::load_live_checkpoint(path, trainer);
+            }
+#endif
             else if (type == kExit) {
                 reader.finish();
                 send_response(STDOUT_FILENO, type, 0, {});
@@ -385,6 +397,9 @@ int run_service(
             Writer writer;
             writer.string(error_message);
             send_response(STDOUT_FILENO, type, 1, writer.data());
+#ifdef RL_DEVELOPMENT_CHECKPOINTS
+            if (type == 6) return 1; // Never continue after a partially applied restore.
+#endif
             if (numerical_failure) return 1;
         }
     }
@@ -411,6 +426,9 @@ int main(int argc, char **argv)
         std::filesystem::path diagnostic_root;
         std::string architecture;
         std::string device_name;
+#ifdef RL_DEVELOPMENT_CHECKPOINTS
+        bool deterministic_cudnn = false;
+#endif
         for (int index = 1; index < argc; index += 2) {
             if (index + 1 >= argc) throw std::invalid_argument("service option is missing its value");
             const std::string_view option(argv[index]);
@@ -432,6 +450,27 @@ int main(int argc, char **argv)
                 architecture = value;
             } else if (option == "--device") {
                 device_name = value;
+#ifdef RL_DEVELOPMENT_CHECKPOINTS
+            } else if (option == "--deterministic-cudnn") {
+                if (value != "1" && value != "0") throw std::invalid_argument("deterministic-cudnn must be 0 or 1");
+                deterministic_cudnn = value == "1";
+            } else if (option == "--entropy-coefficient") {
+                double coefficient = 0.0;
+                const auto parsed = std::from_chars(value.data(), value.data() + value.size(), coefficient);
+                if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() ||
+                    !std::isfinite(coefficient) || coefficient < 0.0) {
+                    throw std::invalid_argument("entropy-coefficient must be finite and nonnegative");
+                }
+                config.entropy_coefficient = coefficient;
+            } else if (option == "--gae-lambda") {
+                double coefficient = 0.0;
+                const auto parsed = std::from_chars(value.data(), value.data() + value.size(), coefficient);
+                if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() ||
+                    !std::isfinite(coefficient) || coefficient < 0.0 || coefficient > 1.0) {
+                    throw std::invalid_argument("gae-lambda must be finite and in [0,1]");
+                }
+                config.gae_lambda = coefficient;
+#endif
             } else {
                 throw std::invalid_argument("unknown service option: " + std::string(option));
             }
@@ -444,6 +483,10 @@ int main(int argc, char **argv)
         if (device_name == "cuda:0") device = torch::Device(torch::kCUDA, 0);
         else if (device_name != "cpu") throw std::invalid_argument("device must be cpu or cuda:0");
         torch::set_num_threads(device.is_cpu() ? 6 : 1);
+#ifdef RL_DEVELOPMENT_CHECKPOINTS
+        at::globalContext().setDeterministicCuDNN(deterministic_cudnn);
+        at::globalContext().setBenchmarkCuDNN(false);
+#endif
         openttd_rl::training::MultiModalPpoTrainer trainer(config, run_seed, kind, device);
         return run_service(trainer, diagnostic_root);
     } catch (const std::exception &error) {
