@@ -1,0 +1,148 @@
+cmake_minimum_required(VERSION 3.28)
+project(openttd_rl_development LANGUAGES CXX)
+
+include(CTest)
+option(RL_DEV_CUDA_TESTS "Run regression tests that require a CUDA GPU" OFF)
+option(RL_DEV_FUSED_POLICY "Experimental CUDA inference masked distribution; PPO gradients unchanged" OFF)
+option(RL_DEV_V2_POLICY "Build the existing scalable V2 policy with the local Torch runtime" OFF)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT UNIX)
+  message(FATAL_ERROR "The trainer service uses POSIX pipes. Build under Linux or WSL2.")
+endif()
+
+# This development entry point deliberately does not modify the historical
+# LibTorch/CUDA/RTX 5070 release profile. Torch supplies its own runtime libraries.
+find_package(Torch 2.9 CONFIG REQUIRED)
+find_package(OpenSSL 3.0 REQUIRED COMPONENTS Crypto)
+find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
+separate_arguments(TORCH_FLAGS NATIVE_COMMAND "${TORCH_CXX_FLAGS}")
+
+add_library(rl_dev_options INTERFACE)
+target_compile_options(rl_dev_options INTERFACE
+  ${TORCH_FLAGS} -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror)
+
+set(V1 "${CMAKE_CURRENT_SOURCE_DIR}/../v1")
+add_library(rl_dev_training
+  live_checkpoint.cpp
+  ${V1}/src/checkpoint.cpp
+  ${V1}/src/evaluation_model.cpp
+  ${V1}/src/learning.cpp
+  ${V1}/src/metrics.cpp
+  ${V1}/src/model.cpp
+  ${V1}/src/multimodal_model.cpp
+  ${V1}/src/multimodal_trainer.cpp
+  ${V1}/src/ppo.cpp
+  ${V1}/src/rng.cpp
+  ${V1}/src/service.cpp
+  ${V1}/src/trainer.cpp)
+target_include_directories(rl_dev_training PUBLIC "${V1}/include")
+target_include_directories(rl_dev_training PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+# GCC must resolve filesystem operations from its own standard library before
+# the wheel's libtorch.so compatibility symbols. Otherwise checkpoint directory
+# iteration/removal can crash on Ubuntu 24.04 with the 2.9.1 wheel.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_link_libraries(rl_dev_training PUBLIC stdc++)
+endif()
+target_link_libraries(rl_dev_training PUBLIC ${TORCH_LIBRARIES} OpenSSL::Crypto rl_dev_options)
+if(RL_DEV_FUSED_POLICY)
+  if(NOT TARGET torch_cuda)
+    message(FATAL_ERROR "The fused policy requires CUDA-enabled LibTorch; no CPU fallback")
+  endif()
+  enable_language(CUDA)
+  find_package(CUDAToolkit REQUIRED)
+  add_library(rl_fused_policy_kernel STATIC fused_policy_kernel.cu)
+  target_link_libraries(rl_fused_policy_kernel PUBLIC CUDA::cudart)
+  set_target_properties(rl_fused_policy_kernel PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
+  target_sources(rl_dev_training PRIVATE fused_policy.cpp)
+  target_link_libraries(rl_dev_training PUBLIC rl_fused_policy_kernel CUDA::cudart)
+  target_compile_definitions(rl_dev_training PUBLIC RL_DEV_FUSED_POLICY=1)
+endif()
+
+function(rl_dev_executable target source)
+  add_executable(${target} "${V1}/${source}")
+  target_link_libraries(${target} PRIVATE rl_dev_training)
+endfunction()
+
+rl_dev_executable(rl_trainer src/trainer_main.cpp)
+rl_dev_executable(m08_trainer src/m08_trainer_main.cpp)
+target_compile_definitions(m08_trainer PRIVATE RL_DEVELOPMENT_CHECKPOINTS=1)
+rl_dev_executable(m08_architecture_smoke src/m08_architecture_smoke_main.cpp)
+rl_dev_executable(m09_evaluator src/m09_evaluator_main.cpp)
+add_executable(rl_policy_benchmark policy_benchmark.cpp)
+target_link_libraries(rl_policy_benchmark PRIVATE rl_dev_training)
+
+if(RL_DEV_V2_POLICY)
+  set(V2 "${CMAKE_CURRENT_SOURCE_DIR}/../v2")
+  add_library(rl_dev_v2_policy ${V2}/src/scalable_policy.cpp ${V2}/src/checkpoint.cpp v2_live_input.cpp)
+  target_include_directories(rl_dev_v2_policy PUBLIC "${V2}/include")
+  target_link_libraries(rl_dev_v2_policy PUBLIC rl_dev_training)
+  add_executable(rl_dev_v2_policy_gate ${V2}/tests/m15_policy_gate.cpp)
+  target_link_libraries(rl_dev_v2_policy_gate PRIVATE rl_dev_v2_policy)
+  add_executable(rl_dev_v2_infer v2_live_infer.cpp)
+  target_link_libraries(rl_dev_v2_infer PRIVATE rl_dev_v2_policy)
+  add_executable(rl_dev_v2_export_oracle v2_export_oracle.cpp)
+  target_link_libraries(rl_dev_v2_export_oracle PRIVATE rl_dev_v2_policy)
+  if(DEFINED RL_DEV_ONNXRUNTIME_ROOT)
+    find_path(RL_DEV_ORT_INCLUDE NAMES onnxruntime_cxx_api.h
+      PATHS "${RL_DEV_ONNXRUNTIME_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+    find_library(RL_DEV_ORT_LIBRARY NAMES onnxruntime
+      PATHS "${RL_DEV_ONNXRUNTIME_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+    add_executable(rl_dev_v2_onnx_infer v2_onnx_infer.cpp)
+    target_include_directories(rl_dev_v2_onnx_infer SYSTEM PRIVATE "${RL_DEV_ORT_INCLUDE}")
+    target_link_libraries(rl_dev_v2_onnx_infer PRIVATE rl_dev_v2_policy "${RL_DEV_ORT_LIBRARY}")
+    set_target_properties(rl_dev_v2_onnx_infer PROPERTIES BUILD_RPATH "${RL_DEV_ONNXRUNTIME_ROOT}/lib")
+  endif()
+  add_executable(rl_dev_v2_train v2_live_train.cpp)
+  target_link_libraries(rl_dev_v2_train PRIVATE rl_dev_v2_policy)
+  add_executable(rl_dev_v2_distribution_test v2_live_distribution_test.cpp)
+  target_link_libraries(rl_dev_v2_distribution_test PRIVATE rl_dev_v2_policy)
+  if(BUILD_TESTING)
+    add_test(NAME rl_dev_v2_policy_cpu COMMAND rl_dev_v2_policy_gate --device cpu)
+    add_test(NAME rl_dev_v2_distribution_cpu COMMAND rl_dev_v2_distribution_test cpu)
+    set_tests_properties(rl_dev_v2_policy_cpu PROPERTIES TIMEOUT 300 LABELS "development;v2;cpu")
+    if(RL_DEV_CUDA_TESTS)
+      add_test(NAME rl_dev_v2_policy_cuda COMMAND rl_dev_v2_policy_gate --device cuda:0)
+      add_test(NAME rl_dev_v2_distribution_cuda COMMAND rl_dev_v2_distribution_test cuda:0)
+      set_tests_properties(rl_dev_v2_policy_cuda PROPERTIES TIMEOUT 300 LABELS "development;v2;cuda")
+    endif()
+  endif()
+endif()
+
+if(BUILD_TESTING)
+  if(RL_DEV_FUSED_POLICY)
+    add_executable(rl_fused_policy_test fused_policy_test.cpp)
+    target_link_libraries(rl_fused_policy_test PRIVATE rl_dev_training)
+    add_test(NAME rl_fused_policy_test COMMAND rl_fused_policy_test)
+    set_tests_properties(rl_fused_policy_test PROPERTIES TIMEOUT 120 LABELS "development;cuda")
+  endif()
+  rl_dev_executable(rl_native_tests tests/native_tests.cpp)
+  rl_dev_executable(rl_m08_native_tests tests/m08_native_tests.cpp)
+  rl_dev_executable(rl_m09_native_tests tests/m09_native_tests.cpp)
+  foreach(target rl_native_tests rl_m08_native_tests rl_m09_native_tests)
+    add_test(NAME ${target} COMMAND ${target})
+    set_tests_properties(${target} PROPERTIES TIMEOUT 300 LABELS "development;cpu")
+  endforeach()
+  add_test(NAME rl_tiny_bandit COMMAND rl_trainer --tiny-bandit)
+  add_test(NAME rl_reference_differential COMMAND "${Python3_EXECUTABLE}"
+    "${V1}/../../scripts/v1/m07_ppo_reference.py" --trainer "$<TARGET_FILE:rl_trainer>")
+  set_tests_properties(rl_tiny_bandit rl_reference_differential
+    PROPERTIES TIMEOUT 120 LABELS "development;cpu")
+  add_executable(rl_export_preserves_trainer export_preserves_trainer.cpp)
+  target_link_libraries(rl_export_preserves_trainer PRIVATE rl_dev_training)
+  add_executable(rl_checkpoint_roundtrip checkpoint_roundtrip.cpp)
+  target_link_libraries(rl_checkpoint_roundtrip PRIVATE rl_dev_training)
+  add_test(NAME rl_checkpoint_roundtrip_cpu COMMAND rl_checkpoint_roundtrip cpu)
+  set_tests_properties(rl_checkpoint_roundtrip_cpu PROPERTIES TIMEOUT 120 LABELS "development;cpu")
+  add_test(NAME rl_export_preserves_trainer_cpu COMMAND rl_export_preserves_trainer cpu)
+  set_tests_properties(rl_export_preserves_trainer_cpu PROPERTIES TIMEOUT 120 LABELS "development;cpu")
+  if(RL_DEV_CUDA_TESTS)
+    add_test(NAME rl_checkpoint_roundtrip_cuda COMMAND rl_checkpoint_roundtrip cuda:0)
+    set_tests_properties(rl_checkpoint_roundtrip_cuda PROPERTIES TIMEOUT 120 LABELS "development;cuda")
+    add_test(NAME rl_export_preserves_trainer_cuda COMMAND rl_export_preserves_trainer cuda:0)
+    set_tests_properties(rl_export_preserves_trainer_cuda PROPERTIES TIMEOUT 120 LABELS "development;cuda")
+  endif()
+endif()

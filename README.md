@@ -1,5 +1,87 @@
 # OpenTTD Reinforcement Learning Platform
 
+## Current development snapshot — September 24, 2026
+
+This repository contains a working C++/LibTorch PPO pipeline for real OpenTTD
+interactions, CUDA training, checkpoint recovery, ONNX export, visible playback,
+and company-scoped MCP control. **It is not yet a neural agent that plays all
+transport modes well.** Historical capability gates below must not be confused
+with demonstrated end-to-end neural gameplay.
+
+| Area | Executed result and limitation |
+| --- | --- |
+| V1 passenger buses | Sampled policies sustain service in 18/18 registered held-out episodes; greedy service succeeds in 4/6. The one-bus script remains more cash-efficient. |
+| Live V2 recurrent PPO | Real sequential CUDA training works. Current experiments use a public route planner; learned control has not reliably beaten uniform choices using the same guide. |
+| Latest V2 trial | 4,096 decisions with a 256-decision training horizon; all nine evaluations completed. Sampled service succeeds 6/6, but greedy service fails 0/3 and the trial fails its advancement criteria. |
+| Deployment | V1 and raw-input V2 ONNX paths have native parity and visible replay evidence. Experimental signed-log financial inputs remain isolated; use the handoff's matching source and binaries. |
+| Shared games / MCP | A local Gemma LLM completed a match against an earlier neural policy. Neither delivered passengers; this demonstrates integration, not competitive skill. |
+| Other transport | Scripted passenger/mail service is demonstrated. General neural mastery of trucks, rail, ships, aircraft, and multimodal economics remains unfinished. |
+
+Start with [the development guide](docs/DEVELOPMENT.md),
+[the latest results](docs/PROGRESS.md), and [the continuation handoff](handoff.md).
+The next recorded learning task is to diagnose a planned depot missing from the
+bounded V2 candidate list before attributing that failure to PPO.
+
+### Source backup and local artifacts
+
+The current development source is on `codex/local-training-foundation`.
+Separate `backup/2026-09-24/<worktree-name>` branches preserve isolated experiment
+source snapshots; they are backups, not merged or newly qualified releases.
+Historical worktree paths and run identities in the handoff describe the local
+execution environment and must be adapted on another machine.
+
+Git contains source, tests, documentation, and existing compact evidence.
+Large runs, model weights, checkpoints, downloaded dependencies, and builds are
+local artifacts and are **not included in this source backup**. The standard WSL
+artifact root is `~/.local/share/openttd-rl/`; follow the development guide to build
+and run locally. Preserve model packages separately if moving machines.
+
+Completed-run lossless compression saved 149.65 GiB while retaining model and
+checkpoint hashes. See [storage retention and exact restoration](docs/STORAGE.md)
+before reading archived logs or pruning artifacts. The cleanup did not compact
+the Windows WSL virtual disk.
+
+## Local development: start here
+
+The current owner objective is to train neural networks that play OpenTTD, then
+study shared economies with neural policies and LLM opponents connected through
+MCP. C++/CUDA and PPO remain the core learning stack.
+
+- [Development guide](docs/DEVELOPMENT.md): build the existing trainer on your
+  machine, collect live game rollouts, save a model, and see the next milestones.
+- [Current results and failures](docs/PROGRESS.md): actual local learning,
+  checkpoint, replay, CUDA, transport and MCP evidence.
+- [Watch the demonstrated neural policy](docs/DEVELOPMENT.md#export-and-watch-a-development-policy):
+  launch the exported V1 model in an isolated OpenTTD window.
+- [Watch the live V2 recurrent policy](docs/DEVELOPMENT.md#export-and-watch-a-live-v2-onnx-policy):
+  use the qualified ONNX package with its public route planner.
+- [Agent instructions](AGENTS.md): project boundaries and how to continue work.
+- [Project goal](GOAL.md): broader game and research scope.
+
+The portable development entry point is `training/dev`; it compiles the existing
+`training/v1` implementation. Release builds remain in `training/v1` and
+`training/v2`. The M22 corpus trainer is a program-selection experiment; its
+reward-table updates must not be described as interactive OpenTTD training.
+
+The local V1 MLP now sustains passenger service in all 18 preregistered sampled
+held-out episodes, with positive operating profit. It still spends more net cash
+than the one-bus script, and greedy play fails on two of six cases. Exact reset
+recovery, ONNX replay and visible play have been verified. These are constrained
+bus results, not general OpenTTD competence.
+
+Live V2 recurrent PPO, shared company control and an actual MCP-connected local
+LLM match also run. Useful V2 neural control remains unresolved: extra training
+did not beat uniform choices under the same public route guide. Scripted native
+passenger/mail service works on two development maps, with construction costs
+still leaving cumulative cash losses. The progress log separates these executed
+results from the historical milestone records below.
+
+## Historical release and milestone record
+
+The following records describe earlier campaigns and their original dependency
+profiles. They do not establish that those campaigns have been reproduced on a
+new local machine. Current development checks and limitations are in the guide.
+
 OpenTTD RL is a source-integrated C++/CUDA reinforcement-learning platform that
 trains PPO policies for controlled passenger-bus games, exports them to ONNX, and
 runs them as a visible neural company inside normal OpenTTD.
