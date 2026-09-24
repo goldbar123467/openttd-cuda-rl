@@ -37,7 +37,7 @@ struct EvaluationActionBatch {
 
 [[nodiscard]] SavedEvaluationModel save_evaluation_model(
     const std::filesystem::path &package_root,
-    MultiModalActorCritic &model,
+    const MultiModalActorCritic &model,
     ArchitectureKind architecture,
     const EvaluationModelProvenance &provenance);
 

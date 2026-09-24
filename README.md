@@ -1,5 +1,44 @@
 # OpenTTD Reinforcement Learning Platform
 
+## Local development: start here
+
+The current owner objective is to train neural networks that play OpenTTD, then
+study shared economies with neural policies and LLM opponents connected through
+MCP. C++/CUDA and PPO remain the core learning stack.
+
+- [Development guide](docs/DEVELOPMENT.md): build the existing trainer on your
+  machine, collect live game rollouts, save a model, and see the next milestones.
+- [Current results and failures](docs/PROGRESS.md): actual local learning,
+  checkpoint, replay, CUDA, transport and MCP evidence.
+- [Watch the demonstrated neural policy](docs/DEVELOPMENT.md#export-and-watch-a-development-policy):
+  launch the exported V1 model in an isolated OpenTTD window.
+- [Agent instructions](AGENTS.md): project boundaries and how to continue work.
+- [Project goal](GOAL.md): broader game and research scope.
+
+The portable development entry point is `training/dev`; it compiles the existing
+`training/v1` implementation. Release builds remain in `training/v1` and
+`training/v2`. The M22 corpus trainer is a program-selection experiment; its
+reward-table updates must not be described as interactive OpenTTD training.
+
+The local V1 MLP now sustains passenger service in all 18 preregistered sampled
+held-out episodes, with positive operating profit. It still spends more net cash
+than the one-bus script, and greedy play fails on two of six cases. Exact reset
+recovery, ONNX replay and visible play have been verified. These are constrained
+bus results, not general OpenTTD competence.
+
+Live V2 recurrent PPO, shared company control and an actual MCP-connected local
+LLM match also run. Useful V2 neural control remains unresolved: extra training
+did not beat uniform choices under the same public route guide. Scripted native
+passenger/mail service works on two development maps, with construction costs
+still leaving cumulative cash losses. The progress log separates these executed
+results from the historical milestone records below.
+
+## Historical release and milestone record
+
+The following records describe earlier campaigns and their original dependency
+profiles. They do not establish that those campaigns have been reproduced on a
+new local machine. Current development checks and limitations are in the guide.
+
 OpenTTD RL is a source-integrated C++/CUDA reinforcement-learning platform that
 trains PPO policies for controlled passenger-bus games, exports them to ONNX, and
 runs them as a visible neural company inside normal OpenTTD.
