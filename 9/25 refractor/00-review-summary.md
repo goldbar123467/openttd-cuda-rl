@@ -14,7 +14,12 @@ repository's own recorded measurements, with citations. Byte counts are arithmet
 on code constants.
 
 Two versions of the brief were supplied. This set follows the second, which adds the
-custom-kernel review. The reports are 00–07 in this folder.
+custom-kernel review. The reports are 00–07 in this folder. Later additions:
+
+- **08** gives specific PPO advice to get V2 training back on track;
+- **09** records coverage limits, ten additional findings and a findings register
+  with IDs;
+- **README.md** gives the reading order, label definitions and a PPO/CUDA glossary.
 
 ## Overall assessment
 
@@ -59,6 +64,21 @@ The project's weaknesses are elsewhere:
 Ranked. Labels are Confirmed (in code), Risk (plausible) or Recorded (from the
 repository's measurements).
 
+0. **Why V2 training stalls (see 08). Confirmed mechanism plus recorded evidence.**
+   - `ppo_loss` averages the policy, entropy and KL terms over **every** step
+     (`ppo.cpp:191-196`), but 61–83% of recorded V2 training decisions are forced
+     single-action WAITs that carry no policy gradient (`PROGRESS.md:558-560, 743-745`).
+     That cuts the effective entropy coefficient to about .002 at a nominal .01, and
+     makes value regression dominate the shared network.
+   - Construction is charged its capital cost immediately, while payoff arrives about
+     59 decisions later. Recorded construction advantages are negative.
+   - On main, the policy cannot see cash (divided by 1e9), and the guide allows a
+     repayment trap.
+
+   Together these explain the recorded collapse toward WAIT. 08 gives the fix order:
+   instrument; choice-only loss averaging; capital-amortizing potential shaping;
+   signed-log inputs and no pre-service repayment; then optimizer granularity.
+   Each step comes with code sketches, settings and a 3-seed protocol.
 1. **Main cannot reproduce the current V2 recipe. Confirmed.** Entropy .001,
    signed-log *training* inputs and guide v3 exist only in worktrees:
    - `v2_live_train.cpp` has no entropy option and reads raw finances (84, 112);
@@ -112,35 +132,47 @@ Full detail in 07.
 
 1. **S1-1:** port the worktree V2 features into main behind default-off flags, with
    default-equivalence proofs.
-2. **S1-2:** add a V1 behavior-replay audit (read-only; the frozen wire format stays
+2. **08 Steps 0–2:** V2 choice-step instrumentation, choice-only loss averaging and
+   the asset-potential reward. Run the 08 §3 study (arms A0–A2, 3 seeds each,
+   8,192 decisions) before any other V2 learning experiment.
+3. **S1-2:** add a V1 behavior-replay audit (read-only; the frozen wire format stays
    unchanged).
-3. **S1-6:** offline audits of existing runs (V2 reward clips and terminal reasons,
+4. **S1-6:** offline audits of existing runs (V2 reward clips and terminal reasons,
    V1 time-feature ranges, V2 advantage and KL statistics).
-4. **S2-1 / S2-2:** commit study drivers; add per-map and hierarchical uncertainty
+5. **S2-1 / S2-2:** commit study drivers; add per-map and hierarchical uncertainty
    to the report tools.
-5. **S2-3 / S2-4:** V2 evaluation on all 8 development maps; register a V2 held-out
+6. **S2-3 / S2-4:** V2 evaluation on all 8 development maps; register a V2 held-out
    protocol before more tuning.
-6. **S3-0:** stage timers written to separate files, so traces stay byte-identical.
-7. **S3-1:** evaluation quick wins (vectorized spatial validation and the fast
+7. **S3-0:** stage timers written to separate files, so traces stay byte-identical.
+8. **S3-1:** evaluation quick wins (vectorized spatial validation and the fast
    bridge mode already exist but are not defaults in `evaluate_live.py`).
-8. **S3-4 / S3-5:** a development collector (deferred bootstrap, structured-only MLP
+9. **S3-4 / S3-5:** a development collector (deferred bootstrap, structured-only MLP
    protocol, concurrent stepping); V2 UPDATE with device-resident inputs and
    sync-free checks.
-9. **S3-2 / S3-3 / S3-8:** C++ ACT transfer fixes; kernel internals as a learning
-   exercise only.
-10. **Stage 4:** registered 3-seed studies, starting with forced-step masking and
+10. **S3-2 / S3-3 / S3-8:** C++ ACT transfer fixes; kernel internals as a learning
+    exercise only.
+11. **Stage 4:** registered 3-seed studies, starting with forced-step masking and
     candidate parameter features.
 
 ## The three findings to read first
 
-1. **05 §7.2–§8: the kernel's context.** The kernel is correct, but the pipeline
+Updated after the follow-up request.
+
+1. **08 §1 (M1–M4): why V2 training collapses toward WAIT.**
+   - Forced-step dilution of the entropy and policy terms, about 3–6×.
+   - An immediate capital charge against a 59-decision payoff.
+   - Cash blindness and the repayment trap.
+
+   §2 gives the ordered fixes.
+2. **05 §7.2–§8: the kernel's context.** The kernel is correct, but the pipeline
    around it erases its gain. The changes that could matter are at the call site
    and in the collector, not inside the kernel.
-2. **01 §5.1 and 02 §2.14: the reproducibility gap.** Main cannot retrain the
-   current V2 recipe, and the study logic is outside the repository.
-3. **03 §6 N1–N4: evaluation reliability.** Two maps, single training seeds and
-   heavily reused development maps. V2 has 8 development seeds and a held-out
-   split it does not use yet.
+3. **01 §5.1, 02 §2.14 and 03 §6 N1–N4: reproducibility and evaluation
+   reliability.**
+   - Main cannot retrain the current V2 recipe, and the study logic is outside the
+     repository.
+   - Comparisons rest on two maps and single training seeds, although V2 has 8
+     development seeds and an unused held-out split.
 
 ## Open questions
 
