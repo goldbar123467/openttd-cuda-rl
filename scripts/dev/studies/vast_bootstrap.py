@@ -49,7 +49,10 @@ def assets(root):
     target = root / "opengfx-8.0.tar"
     if not target.exists():
         download = root / "opengfx-8.0-all.zip"
-        with urllib.request.urlopen("https://cdn.openttd.org/opengfx-releases/8.0/opengfx-8.0-all.zip", timeout=120) as response, download.open("xb") as output:
+        request = urllib.request.Request(
+            "https://cdn.openttd.org/opengfx-releases/8.0/opengfx-8.0-all.zip",
+            headers={"User-Agent": "openttd-cuda-rl-study/1.0 (+https://github.com/goldbar123467/openttd-cuda-rl)"})
+        with urllib.request.urlopen(request, timeout=120) as response, download.open("xb") as output:
             shutil.copyfileobj(response, output)
         with zipfile.ZipFile(download) as archive:
             members = [n for n in archive.namelist() if Path(n).name == "opengfx-8.0.tar"]

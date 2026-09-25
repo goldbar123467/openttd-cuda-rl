@@ -1,6 +1,7 @@
 """Failure/restart tests use temporary files and never open game splits."""
 import contextlib
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -9,6 +10,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+import zipfile
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,7 +19,7 @@ from local import write_json
 from studies.evidence_v2 import Inputs
 from studies.execution_v2 import artifact, check_qualification, CORRECTNESS_CHECKS
 from studies.protocol_v2 import load_protocol, PROTOCOL_SHA256
-from studies import recovery_v2, unattended_v2 as runner
+from studies import recovery_v2, unattended_v2 as runner, vast_bootstrap
 from studies.training_result_v2 import training_history
 
 spec = importlib.util.spec_from_file_location("vast_entrypoint", ROOT / "deployment/vast/entrypoint.py")
@@ -45,6 +47,38 @@ def training_record(reg):
 
 
 class PackageTests(unittest.TestCase):
+    def test_asset_download_verifies_content_before_publish_and_cache_reuse(self):
+        content = b"independent baseset fixture"
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as bundle:
+            bundle.writestr("opengfx-8.0.tar", content)
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(vast_bootstrap, "OPEN_GFX_SHA256", hashlib.sha256(content).hexdigest()):
+            root = Path(directory)
+            with patch.object(vast_bootstrap.urllib.request, "urlopen", return_value=io.BytesIO(archive.getvalue())) as request:
+                result = vast_bootstrap.assets(root)
+                self.assertEqual(result.read_bytes(), content)
+                self.assertIn("openttd-cuda-rl", request.call_args.args[0].get_header("User-agent"))
+            with patch.object(vast_bootstrap.urllib.request, "urlopen", side_effect=AssertionError("cached content")):
+                self.assertEqual(vast_bootstrap.assets(root), result)
+                result.write_bytes(b"changed cache")
+                with self.assertRaisesRegex(ValueError, "Cached OpenGFX asset changed"):
+                    vast_bootstrap.assets(root)
+
+    def test_asset_download_rejects_wrong_content_or_ambiguous_archive(self):
+        for members in ({"opengfx-8.0.tar": b"wrong bytes"},
+                        {"a/opengfx-8.0.tar": b"a", "b/opengfx-8.0.tar": b"b"}):
+            with self.subTest(members=list(members)), tempfile.TemporaryDirectory() as directory:
+                archive = io.BytesIO()
+                with zipfile.ZipFile(archive, "w") as bundle:
+                    for name, data in members.items():
+                        bundle.writestr(name, data)
+                with patch.object(vast_bootstrap.urllib.request, "urlopen", return_value=io.BytesIO(archive.getvalue())):
+                    with self.assertRaises(ValueError):
+                        vast_bootstrap.assets(Path(directory))
+                self.assertFalse((Path(directory) / "opengfx-8.0.tar").exists())
+                self.assertEqual((Path(directory) / "opengfx-8.0-all.zip").read_bytes(), archive.getvalue())
+
     def test_revision_mount_and_space_refuse_unsafe_defaults(self):
         for value in (None, "main", "a" * 39, "A" * 40):
             with self.assertRaises(ValueError):

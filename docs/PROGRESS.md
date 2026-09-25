@@ -4,12 +4,16 @@
 
 Added the opt-in existing-C++ PPO recovery mechanisms, guide v4, exact read-only
 probe checks, durable reset-resume records, and portable single-GPU study runner.
-CPU/CUDA probe neutrality and 256 versus 128+128 reset recovery passed; the
-registered scientific protocol remains fixed. The final A0 CPU/CUDA gate failed
-on a .00011946 gradient-norm difference against the unchanged .0001 bound; the
-launcher refuses registration, and minimum qualification remains incomplete. Training/development/held-out
-execution is packaged but has not been run as a full study. A 1,500 GB persistent
-volume is the capacity target. No Docker image, paid instance or Git push exists
+The full local minimum correctness bundle passed, including historical equivalence,
+CPU/CUDA agreement, probe neutrality and exact 256 versus 128+128 reset recovery.
+Read-only investigation traced the earlier A0 agreement failure to float32 norm
+accumulation. Prospective protocol 2 applies the qualified FP64 clipping-norm mode
+to every arm while preserving all scientific settings and the .0001 bound.
+The model, gradients and Adam remain float32; historical mode remains available.
+Training/development/held-out execution is packaged but has not run as a full
+study. A 1,500 GB persistent volume is the capacity target. The pinned Docker image
+built locally and passed actual CUDA execution and launcher refusal checks;
+native container qualification is in progress. No paid instance or Git push exists
 from this work. See [the evidence record](REFACTOR_2026-09-25_STATUS.md) and
 [launch instructions](../deployment/vast/README.md) for checks and remaining limits.
 
@@ -17,8 +21,8 @@ from this work. See [the evidence record](REFACTOR_2026-09-25_STATUS.md) and
 The September 25 review execution is active. The complete coverage and current
 verification record is in [REFACTOR_2026-09-25_STATUS.md](REFACTOR_2026-09-25_STATUS.md).
 Missing V2 options are integrated and match original/retained behavior exactly
-on each device. A retained CPU/CUDA gradient-norm discrepancy exceeds the fixed
-comparison bound and remains an explicit failed check. Offline reward/time
+on each device. The historical CPU/CUDA gradient-norm failure remains retained;
+the prospective numerical correction passes the original bound. Offline reward/time
 audits are complete; new recovery tuning has not started. This work resumes under
 the new refactor goal; the historical stopped study below remains preserved.
 V1 replay and kernel checks now pass in reference/fused builds and real-game

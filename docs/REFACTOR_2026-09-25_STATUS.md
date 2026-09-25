@@ -56,10 +56,21 @@ The qualified trainer SHA-256 is
 This is a local WSL qualification; the target still runs its own complete bundle.
 No training registration or held-out access has been issued.
 
-A project-scoped Docker daemon is building the pinned image locally. No global
-Docker service or configuration was installed. Container build/runtime qualification
-is pending; Docker is no longer an unavailable prerequisite. No remote instance
-or paid study has been launched.
+The numerical correction and full local qualification are committed at `ab090de`.
+A project-scoped Docker daemon built the pinned image locally; no global Docker
+service or configuration was installed. Image ID:
+`sha256:a32d872071adeffab7fdb5ff493b07163b2c8c1a9dfeb1ff5467f6ffeea2c2fb`,
+size 16,830,062,411 bytes. `refactor-container-runtime-01/verification.json` passed
+missing-revision/missing-volume refusal and an actual Torch CUDA matrix operation
+in the image on the RTX 2070. Its entrypoint matches the committed bytes.
+
+The first clean container native-build attempt, `refactor-container-native-01`,
+stopped before compilation because the OpenGFX CDN returned HTTP 403/error 1010
+to Python's default User-Agent. The retained same-container diagnostic received
+HTTP 200 with the project-identifying User-Agent. The downloader now identifies
+itself and retains the exact pinned content digest; malformed, mismatched and
+changed cached assets are rejected. Container native qualification remains pending.
+No remote instance, paid study or source publication has occurred.
 
 ## Package and recovery checkpoint at 6285087
 
