@@ -57,11 +57,16 @@ struct Transition {
 
 class Trainer {
 public:
-    Trainer(uint64_t seed, torch::Device device, int64_t rollout_length = 32, double gae_lambda = 0.95) : device_(std::move(device)), rng_(seed), model_(rng_.initialization_seed())
+    Trainer(uint64_t seed, torch::Device device, int64_t rollout_length = 32, double gae_lambda = 0.95,
+        dev::FinancialFeatures financial_features = dev::FinancialFeatures::Raw, double entropy_coefficient = 0.01) :
+        device_(std::move(device)), financial_features_(financial_features), rng_(seed), model_(rng_.initialization_seed())
     {
         if (device_.is_cuda() && !torch::cuda::is_available()) throw std::runtime_error("CUDA unavailable; no fallback");
         if (rollout_length != 32 && rollout_length != 64 && rollout_length != 128) throw std::invalid_argument("rollout length must be 32, 64 or 128");
         if (!std::isfinite(gae_lambda) || gae_lambda < 0.0 || gae_lambda > 1.0) throw std::invalid_argument("gae-lambda must be finite and in [0,1]");
+        if (!std::isfinite(entropy_coefficient) || entropy_coefficient < 0.0 || entropy_coefficient > 1.0)
+            throw std::invalid_argument("entropy-coefficient must be finite and in [0,1]");
+        config_.entropy_coefficient = entropy_coefficient;
         config_.rollout_length = rollout_length;
         config_.gae_lambda = gae_lambda;
         config_.environment_count = 1;
@@ -81,7 +86,7 @@ public:
         if (reset != expected_reset_) throw std::invalid_argument("recurrent reset flag disagrees with episode boundary");
         torch::NoGradGuard guard;
         model_->eval();
-        auto cpu = dev::read_live_v2_input(request[1], request[2]);
+        auto cpu = dev::read_live_v2_input(request[1], request[2], financial_features_);
         if (reset) hidden_.zero_();
         cpu.hidden_state = hidden_.cpu().clone();
         cpu.recurrent_reset.fill_(reset);
@@ -109,7 +114,7 @@ public:
         float next_value = 0;
         if (bootstrap) {
             torch::NoGradGuard guard;
-            auto input = dev::live_v2_to(dev::read_live_v2_input(request[4], request[5]), device_);
+            auto input = dev::live_v2_to(dev::read_live_v2_input(request[4], request[5], financial_features_), device_);
             input.hidden_state = hidden_;
             // Bootstrap inference must not advance the recurrent actor state.
             next_value = model_->forward(input).value.item<float>();
@@ -224,6 +229,8 @@ public:
             << at::globalContext().benchmarkCuDNN() << ' ' << torch::get_num_threads() << '\n'
             << at::globalContext().deterministicAlgorithms() << ' ' << at::globalContext().deterministicAlgorithmsWarnOnly()
             << "\ncublas-workspace=:4096:8";
+        if (financial_features_ != dev::FinancialFeatures::Raw)
+            out << "\nfinancial-features=" << dev::financial_features_name(financial_features_);
         return out.str();
     }
 
@@ -239,7 +246,13 @@ public:
         std::cout << "{\"rollout_steps\":" << config_.rollout_length << ",\"sequence_length\":" << kSequence
             << ",\"optimization_epochs\":" << config_.optimization_epochs << std::setprecision(17)
             << ",\"gamma\":" << config_.gamma << ",\"gae_lambda\":" << config_.gae_lambda
+            << ",\"entropy_coefficient\":" << config_.entropy_coefficient
             << "}" << std::setprecision(9) << std::endl;
+    }
+
+    void financial_features_info() const
+    {
+        std::cout << "{\"financial_features\":\"" << dev::financial_features_name(financial_features_) << "\"}" << std::endl;
     }
 
     void check_checkpoint_state()
@@ -325,7 +338,7 @@ public:
         if (pending_ || !rollout_.empty() || !save_probe_ || !path.is_absolute() || std::filesystem::exists(path))
             throw std::invalid_argument("SAVE needs a fresh absolute file at an update boundary");
         torch::serialize::OutputArchive archive;
-        model_->save(archive);
+        dev::write_live_v2_weights(archive, model_, financial_features_);
         archive.save_to(path.string());
         // Reload into a separate module and check the current trained policy
         // on an actual collected input before declaring the weights usable.
@@ -334,7 +347,7 @@ public:
         torch::serialize::InputArchive saved;
         saved.load_from(path.string(), device_);
         reloaded->to(device_);
-        reloaded->load(saved);
+        dev::read_live_v2_weights(saved, reloaded, financial_features_);
         reloaded->eval();
         v2::require_finite_policy(reloaded, "saved inference weights");
         const auto input = dev::live_v2_to(*save_probe_, device_);
@@ -350,6 +363,7 @@ public:
 
 private:
     torch::Device device_;
+    dev::FinancialFeatures financial_features_;
     train::PpoConfig config_;
     train::RngStreams rng_;
     v2::ScalablePolicy model_;
@@ -366,12 +380,14 @@ private:
 int main(int argc, char **argv)
 {
     try {
-        if ((argc != 5 && argc != 7 && argc != 9) || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--seed")
-            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER]");
+        if ((argc != 5 && argc != 7 && argc != 9 && argc != 11 && argc != 13) || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--seed")
+            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1] [--entropy-coefficient NUMBER]");
         if (std::string(argv[2]) != "cpu" && std::string(argv[2]) != "cuda:0") throw std::invalid_argument("unsupported device");
         int64_t rollout_length = 32;
         double gae_lambda = 0.95;
-        bool has_rollout = false, has_lambda = false;
+        double entropy_coefficient = 0.01;
+        auto financial_features = dev::FinancialFeatures::Raw;
+        bool has_rollout = false, has_lambda = false, has_financial_features = false, has_entropy = false;
         for (int index = 5; index < argc; index += 2) {
             const std::string option(argv[index]), value(argv[index + 1]);
             if (option == "--rollout-length" && !has_rollout) {
@@ -385,6 +401,15 @@ int main(int argc, char **argv)
                     !std::isfinite(gae_lambda) || gae_lambda < 0.0 || gae_lambda > 1.0)
                     throw std::invalid_argument("gae-lambda must be finite and in [0,1]");
                 has_lambda = true;
+            } else if (option == "--entropy-coefficient" && !has_entropy) {
+                const auto parsed = std::from_chars(value.data(), value.data() + value.size(), entropy_coefficient);
+                if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() ||
+                    !std::isfinite(entropy_coefficient) || entropy_coefficient < 0.0 || entropy_coefficient > 1.0)
+                    throw std::invalid_argument("entropy-coefficient must be finite and in [0,1]");
+                has_entropy = true;
+            } else if (option == "--financial-features" && !has_financial_features) {
+                financial_features = dev::parse_financial_features(value);
+                has_financial_features = true;
             } else {
                 throw std::invalid_argument("unknown or duplicate trainer option");
             }
@@ -398,7 +423,7 @@ int main(int argc, char **argv)
         at::globalContext().setDeterministicAlgorithms(true, false);
         at::globalContext().setDeterministicCuDNN(true);
         at::globalContext().setBenchmarkCuDNN(false);
-        Trainer trainer(std::stoull(argv[4]), torch::Device(argv[2]), rollout_length, gae_lambda);
+        Trainer trainer(std::stoull(argv[4]), torch::Device(argv[2]), rollout_length, gae_lambda, financial_features, entropy_coefficient);
         std::cout << std::setprecision(9);
         std::string line;
         while (std::getline(std::cin, line)) {
@@ -411,6 +436,7 @@ int main(int argc, char **argv)
             else if (request[0] == "RESTORE" && request.size() == 2) trainer.restore(request[1]);
             else if (request[0] == "CHECKPOINT_INFO" && request.size() == 1) trainer.checkpoint_info();
             else if (request[0] == "TRAINING_INFO" && request.size() == 1) trainer.training_info();
+            else if (request[0] == "FINANCIAL_FEATURES_INFO" && request.size() == 1) trainer.financial_features_info();
             else if (request[0] == "CLOSE" && request.size() == 1) { std::cout << "{\"status\":\"CLOSED\"}" << std::endl; break; }
             else throw std::invalid_argument("unknown live PPO request");
         }

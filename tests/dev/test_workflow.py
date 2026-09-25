@@ -1,6 +1,7 @@
 """Regression tests for local experiment safety and failure provenance."""
 from argparse import ArgumentTypeError, Namespace
 import json
+import struct
 from pathlib import Path
 import sys
 import tempfile
@@ -59,6 +60,7 @@ class LiveWorkflowTests(unittest.TestCase):
                               architecture="structured-mlp-v1", device="cpu", seed=17,
                               updates=2, evaluation_steps=8, timeout=30)
         self.client = Mock()
+        self.client._request.return_value = struct.pack("<II", 1, 9) + b"reference"
         self.client.export_evaluation_model.return_value = ("b" * 64, self.root / "model")
         self.training = {"updates": [{"mean_rollout_reward": 0.25}], "accepted_samples": 256}
         for target, value in (
@@ -68,7 +70,7 @@ class LiveWorkflowTests(unittest.TestCase):
             ("train_live.validate_m06_reward_contract.validate", {}),
             ("train_live.m08_trainer_client.TrainerClient.start", self.client),
             ("train_live.m08.train_architecture", self.training),
-            ("train_live.m08.evaluate_architecture", {"return": 1.0}),
+            ("train_live.m08.evaluate_architecture", {"return": 1.0, "income": 73}),
         ):
             patcher = patch(target, return_value=value)
             mock = patcher.start()
@@ -86,7 +88,15 @@ class LiveWorkflowTests(unittest.TestCase):
         record = self.record()
         self.assertEqual(record["status"], "completed")
         self.assertEqual(record["training"]["accepted_samples"], 256)
-        self.assertEqual(len(record["development"]), 2)
+        self.assertEqual(record["act_distribution"], "reference")
+        self.assertEqual(record["trainer_diagnostics"]["provenance"], "native-info-v1")
+        self.assertNotIn("development", record)
+        self.assertEqual(record["pipeline_probe"]["claim"], "not an evaluation")
+        self.assertEqual(record["pipeline_probe"]["device"], "cpu")
+        self.assertEqual(len(record["pipeline_probe"]["episodes"]), 2)
+        for episode in record["pipeline_probe"]["episodes"]:
+            self.assertNotIn("income", episode)
+            self.assertEqual(episode["quarter_income"], 73)
         self.assertEqual(self.evaluate.call_count, 2)
         self.assertIn("not an optimizer-resume", record["model"]["purpose"])
         self.client.close.assert_called_once()

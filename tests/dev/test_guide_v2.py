@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/dev"))
-from guide_v2 import GUIDANCE, WAIT_GUIDANCE, PublicPlanGuide
+from guide_v2 import GUIDANCE, WAIT_GUIDANCE, BORROW_GUIDANCE, PublicPlanGuide
 
 
 class FakePlan:
@@ -118,6 +118,57 @@ class GuideTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "guidance version"):
                 PublicPlanGuide(self.obs, self.root, guidance="unknown")
             policy.assert_not_called()
+
+
+    def recovery_frame(self, *, version=BORROW_GUIDANCE, balance=3862, buses=None,
+                       finished=True, expose_borrow=True):
+        obs = {"economy": {"balance": balance, "loan": 10000}, "vehicles": buses or []}
+        records = {0: {"family_index": 0, "stable_key": "wait", "parameters": [0, 0, 0, 0], "cost": 0},
+                   7: {"family_index": 11, "stable_key": "repay", "parameters": [11, 2, 10000, 0], "cost": 0}}
+        if expose_borrow:
+            records[9] = {"family_index": 11, "stable_key": "borrow", "parameters": [11, 1, 10000, 0], "cost": 0}
+        mask = bytes(int(i in records) for i in range(4096))
+        path = self.root / f"recovery-{version}-{balance}-{bool(buses)}-{finished}-{expose_borrow}.bin"
+        path.write_bytes(bytes(790528 - 4096) + mask)
+        with patch("guide_v2.ServicePolicy", FakePlan):
+            guide = PublicPlanGuide(obs, self.root, guidance=version)
+        guide.policy.stage = 1 if finished else 0
+        error = "Planned service continuation has no exposed legal candidate" if finished else "Planned primitive is no longer exposed/legal at stage 0"
+        with patch.object(guide.policy, "choose", side_effect=RuntimeError(error)):
+            first = guide.prepare(obs, path, records, mask)
+            stage = guide.policy.stage
+            guide.commit("borrow")
+            self.assertEqual(guide.policy.stage, stage)
+            again = guide.prepare(obs, path, records, mask)
+            self.assertEqual(first, again)
+        self.assertEqual(path.read_bytes(), bytes(790528 - 4096) + mask)
+        self.assertTrue(all(not value or mask[i] for i, value in enumerate(first[1])))
+        return first[2]
+
+    def test_v3_recovery_is_optional_and_cannot_advance_plan(self):
+        info = self.recovery_frame()
+        self.assertEqual(info["allowed_keys"], ["borrow", "wait"])
+        self.assertEqual(info["proposed_key"], "wait")
+        self.assertTrue(info["borrowing_recovery_eligible"])
+
+    def test_v3_preserves_native_legality_and_limits_recovery_scope(self):
+        for options in ({"expose_borrow": False}, {"balance": 10000}, {"balance": 20000},
+                        {"buses": [{"id": 1}]}, {"finished": False}):
+            with self.subTest(options=options):
+                info = self.recovery_frame(**options)
+                self.assertNotIn("borrow", info["allowed_keys"])
+        self.assertEqual(self.recovery_frame(balance=20000)["allowed_keys"], ["repay", "wait"])
+
+    def test_v2_still_excludes_borrowing_with_native_option_present(self):
+        info = self.recovery_frame(version=WAIT_GUIDANCE)
+        self.assertEqual(info["allowed_keys"], ["wait"])
+        self.assertNotIn("borrowing_recovery_eligible", info)
+
+    def test_v3_unrelated_failure_still_raises(self):
+        self.guide.guidance = BORROW_GUIDANCE
+        with patch.object(self.guide.policy, "choose", side_effect=RuntimeError("unrelated defect")):
+            with self.assertRaisesRegex(RuntimeError, "unrelated defect"):
+                self.guide.prepare(self.obs, self.native, self.records, self.mask)
 
 
 if __name__ == "__main__":

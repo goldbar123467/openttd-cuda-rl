@@ -29,6 +29,7 @@ from training_reward import BalancedEconomicReward, EconomicReward, ServicePoten
 from live_checkpoint import checkpoint_collection, compatibility, start_trainer  # noqa: E402
 from credit_trace import CreditTrace  # noqa: E402
 from policy_inputs import spatial_validation  # noqa: E402
+from trainer_diagnostics import AuditedClient, backend_info  # noqa: E402
 
 
 class ProgressLog:
@@ -120,6 +121,12 @@ def run(args: argparse.Namespace) -> None:
             rollout_length=rollout_length, environment_count=m08.ENVIRONMENT_COUNT,
             minibatch_size=m08.MINIBATCH_SIZE, optimization_epochs=m08.OPTIMIZATION_EPOCHS,
             diagnostic_root=output / "diagnostics")
+        record["trainer_diagnostics"] = backend_info(client, record.get("trainer_build", {}), args.device)
+        record["act_distribution"] = record["trainer_diagnostics"]["act_distribution"]
+        if record["trainer_diagnostics"]["behavior_replay_query"]:
+            record["behavior_replay"] = []
+            client = AuditedClient(client, record["behavior_replay"])
+        write_json(output / "run.json", record)
         # The existing collector retains old log probabilities/masks and handles
         # terminal/truncated bootstrapping; do not duplicate PPO or rollout math.
         collection_started = time.monotonic_ns()
@@ -148,11 +155,12 @@ def run(args: argparse.Namespace) -> None:
         record["model"] = {"id": package_id, "path": str(package_path),
                            "purpose": "inference weights; not an optimizer-resume checkpoint"}
         write_json(output / "run.json", record)
-        record["development"] = [
-            m08.evaluate_architecture(client, engine, template, output / f"development-{index}",
-                                      reward, args.evaluation_steps, args.timeout)
+        from pipeline_probe import run_probe
+        record["pipeline_probe"] = {"claim": "not an evaluation", "device": args.device, "episodes": [
+            run_probe(m08.evaluate_architecture, client, engine, template, output / f"development-{index}",
+                      reward, args.evaluation_steps, args.timeout)
             for index, template in enumerate(development)
-        ]
+        ]}
         client.close()
         client = None
         record["status"] = "completed"

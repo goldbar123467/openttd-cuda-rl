@@ -78,7 +78,8 @@ def checked_tensors(response, observation, *, bootstrap_only=False):
 
 
 class PolicyClient:
-    def __init__(self, executable, output, device, seed, mode=None, weights=None, rollout_length=None, gae_lambda=None, financial_features="raw"):
+    def __init__(self, executable, output, device, seed, mode=None, weights=None, rollout_length=None, gae_lambda=None,
+                 financial_features="raw", entropy_coefficient=None):
         self.financial_features = financial_features_mode(financial_features)
         self.log = Path(output).open("x")
         command = [str(executable), "--device", device, "--seed", str(seed)]
@@ -90,6 +91,8 @@ class PolicyClient:
             command += ["--rollout-length", str(rollout_length)]
         if gae_lambda is not None:
             command += ["--gae-lambda", str(gae_lambda)]
+        if entropy_coefficient is not None:
+            command += ["--entropy-coefficient", str(entropy_coefficient)]
         if self.financial_features != "raw":
             command += ["--financial-features", self.financial_features]
         self.process = subprocess.Popen(command,

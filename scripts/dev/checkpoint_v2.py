@@ -22,7 +22,9 @@ def compatibility(record):
         "device", "run_seed", "rollout_steps", "environments", "sequence_length", "optimization_epochs",
         "episode_horizon", "training_map_seeds", "reward_schema", "observation_schema_id", "guidance",
         "trainer_sha256", "engine_sha256")} | {"reuse_bootstrap_tensors": record.get("reuse_bootstrap_tensors", False),
-            "gamma": record.get("gamma", .99), "gae_lambda": record.get("gae_lambda", .95)},
+            "gamma": record.get("gamma", .99), "gae_lambda": record.get("gae_lambda", .95),
+            "financial_features": record.get("financial_features", "raw"),
+            "entropy_coefficient": record.get("entropy_coefficient", .01)},
         "collector_sources": {name: digest(ROOT / "scripts/dev" / name) for name in scripts},
         "contracts": {name: digest(ROOT / "config/v2" / name) for name in contracts}}
 

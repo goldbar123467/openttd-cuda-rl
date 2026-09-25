@@ -7,7 +7,8 @@ from service_v2 import ServicePolicy
 
 GUIDANCE = "one-bus-public-plan-v1"
 WAIT_GUIDANCE = "one-bus-public-plan-v2"
-GUIDANCES = (GUIDANCE, WAIT_GUIDANCE)
+BORROW_GUIDANCE = "one-bus-public-plan-v3"
+GUIDANCES = (GUIDANCE, WAIT_GUIDANCE, BORROW_GUIDANCE)
 
 
 class PublicPlanGuide:
@@ -22,7 +23,7 @@ class PublicPlanGuide:
         self.next_stage = None
         self.next_actions = None
         write_json(output / "planner-guide.json", {"guidance": self.guidance, "plan": self.policy.plan,
-            "claim": "Planner supplies route construction choices; neural policy controls execution timing and debt repayment"})
+            "claim": "Planner supplies route construction choices; neural policy controls execution timing and debt repayment and, in v3, optional first-bus borrowing recovery"})
 
     def prepare(self, observation, candidate_path, records, native_mask):
         # A time-limit bootstrap has physical candidates in TENSORS but no ACT
@@ -38,7 +39,7 @@ class PublicPlanGuide:
                 proposal = self.policy.choose(preview)
                 next_stage = self.policy.stage
             except RuntimeError as exc:
-                unavailable_service = (self.guidance == WAIT_GUIDANCE and
+                unavailable_service = (self.guidance in (WAIT_GUIDANCE, BORROW_GUIDANCE) and
                     str(exc) == "Planned service continuation has no exposed legal candidate" and
                     stage >= len(self.policy.plan["actions"]))
                 if not (unavailable_service or str(exc).startswith("Planned primitive is no longer exposed/legal at stage ")):
@@ -66,11 +67,20 @@ class PublicPlanGuide:
             # Evaluating the next value or choosing WAIT must not advance the
             # construction plan. Commit only the actual chosen proposal.
             self.policy.stage = stage
+        # Expose recovery as a choice only after first-bus construction.
+        # The low-cash threshold is below the existing repayment threshold,
+        # so the policy never has indistinguishable borrow/repay alternatives.
+        borrowing_recovery = (self.guidance == BORROW_GUIDANCE and blocked and
+            stage >= len(self.policy.plan["actions"]) and not observation["vehicles"] and
+            observation["economy"]["balance"] < 10000)
         allowed = {proposal["key"]}
         for candidate in exposed:
             if candidate["family"] == "WAIT" or (candidate["family"] == "MANAGE_LOAN" and
                 candidate["parameters"][1:3] == [2, 10000] and observation["economy"]["balance"] >= 20000 and
                 observation["economy"]["loan"] >= 10000):
+                allowed.add(candidate["key"])
+            elif (borrowing_recovery and candidate["family"] == "MANAGE_LOAN" and
+                  candidate["parameters"][1:3] == [1, 10000]):
                 allowed.add(candidate["key"])
         present = {value["stable_key"] for value in records.values()}
         if not allowed <= present:
@@ -90,11 +100,14 @@ class PublicPlanGuide:
             with path.open("xb") as stream:
                 stream.write(guided)
         self.proposal, self.next_stage, self.next_actions = proposal["key"], next_stage, next_actions
-        return path, mask, {"guidance": self.guidance, "stage": stage, "proposed_key": self.proposal,
+        info = {"guidance": self.guidance, "stage": stage, "proposed_key": self.proposal,
             "construction_blocked": blocked, "construction_reordered": next_actions is not None,
             "allowed_keys": sorted(allowed), "native_legal_count": sum(native_mask), "sampling_legal_count": sum(mask),
             "sampling_binary": str(path), "sampling_binary_sha256": hashlib.sha256(guided).hexdigest(),
             "native_binary_sha256": hashlib.sha256(original).hexdigest()}
+        if self.guidance == BORROW_GUIDANCE:
+            info["borrowing_recovery_eligible"] = borrowing_recovery
+        return path, mask, info
 
     def commit(self, candidate_key):
         if self.proposal is None:

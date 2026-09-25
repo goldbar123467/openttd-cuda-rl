@@ -1,5 +1,6 @@
 #include "openttd_rl/training/multimodal_trainer.h"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -14,6 +15,18 @@
 namespace openttd_rl::training {
 
 namespace {
+
+class EvaluationModeGuard {
+public:
+    explicit EvaluationModeGuard(MultiModalActorCritic &model)
+        : model_(model), was_training_(model->is_training()) { model_->eval(); }
+    ~EvaluationModeGuard() { model_->train(was_training_); }
+    EvaluationModeGuard(const EvaluationModeGuard &) = delete;
+    EvaluationModeGuard &operator=(const EvaluationModeGuard &) = delete;
+private:
+    MultiModalActorCritic &model_;
+    bool was_training_;
+};
 
 torch::Tensor indices_tensor(const std::vector<std::int64_t> &indices)
 {
@@ -106,15 +119,14 @@ ActionBatch MultiModalPpoTrainer::act(
     require_cpu_tensor(structured, "structured inference batch");
     require_cpu_tensor(spatial, "spatial inference batch");
     require_cpu_tensor(legal_masks, "legal-mask inference batch");
-    const bool was_training = model_->is_training();
-    model_->eval();
+    EvaluationModeGuard mode(model_);
     torch::NoGradGuard guard;
     auto [device_logits, device_values] = model_->forward(structured.to(device_), spatial.to(device_));
 #ifdef RL_DEV_FUSED_POLICY
     // Experimental development build only. The update/autograd path below
     // retains the trusted masked_categorical implementation.
     auto device_policy = device_.is_cuda()
-        ? openttd_rl::development::fused_policy(device_logits, legal_masks.to(device_))
+        ? openttd_rl::development::fused_policy(device_logits, legal_masks.to(device_, torch::kBool))
         : masked_categorical(device_logits, legal_masks.to(device_));
 #else
     auto device_policy = masked_categorical(device_logits, legal_masks.to(device_));
@@ -130,8 +142,34 @@ ActionBatch MultiModalPpoTrainer::act(
     }
     auto selected = log_probabilities.gather(1, actions.unsqueeze(1)).squeeze(1);
     require_finite_tensor(selected, "selected multimodal log probabilities");
-    if (was_training) model_->train();
     return {actions, selected, values, logits};
+}
+
+double MultiModalPpoTrainer::audit_behavior(const MultiModalRolloutBatch &rollout)
+{
+    rollout.validate();
+    EvaluationModeGuard mode(model_);
+    torch::NoGradGuard guard;
+    behavior_replay_max_error_ = 0.0;
+    behavior_replay_samples_ = 0;
+    for (std::int64_t start = 0; start < rollout.size(); start += config_.minibatch_size) {
+        const auto count = std::min(config_.minibatch_size, rollout.size() - start);
+        const auto structured = rollout.structured.narrow(0, start, count).to(device_);
+        const auto spatial = rollout.spatial.narrow(0, start, count).to(device_);
+        const auto masks = rollout.legal_masks.narrow(0, start, count).to(device_);
+        const auto actions = rollout.actions.narrow(0, start, count).to(device_);
+        const auto old_logp = rollout.old_log_probabilities.narrow(0, start, count).to(device_);
+        const auto output = model_->forward(structured, spatial);
+        const auto policy = masked_categorical(output.first, masks);
+        const auto selected = policy.log_probabilities.gather(1, actions.unsqueeze(1)).squeeze(1);
+        const auto error = (selected - old_logp).abs().max().item<double>();
+        behavior_replay_max_error_ = std::max(behavior_replay_max_error_, error);
+        behavior_replay_samples_ += count;
+        if (!std::isfinite(error) || error > 1e-4) {
+            throw std::runtime_error("behavior replay changed log probabilities");
+        }
+    }
+    return behavior_replay_max_error_;
 }
 
 UpdateMetrics MultiModalPpoTrainer::update(const MultiModalRolloutBatch &rollout)
@@ -140,6 +178,7 @@ UpdateMetrics MultiModalPpoTrainer::update(const MultiModalRolloutBatch &rollout
     rollout.validate();
     const auto expected_samples = config_.rollout_length * config_.environment_count;
     if (rollout.size() != expected_samples) throw std::invalid_argument("rollout sample count disagrees with configuration");
+    (void)audit_behavior(rollout);
     model_->train();
 
     UpdateMetrics metrics;

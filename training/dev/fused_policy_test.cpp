@@ -16,6 +16,14 @@ template<typename Function> void rejects(Function &&function)
     try { function(); } catch (const std::exception &) { rejected = true; }
     check(rejected, "invalid fused-policy input accepted");
 }
+template<typename Function> void rejects_with(Function &&function, const std::string &expected)
+{
+    try { function(); } catch (const std::exception &error) {
+        if (error.what() == expected) return;
+        throw std::runtime_error("wrong diagnostic: " + std::string(error.what()));
+    }
+    throw std::runtime_error("invalid fused-policy input accepted");
+}
 }
 int main()
 {
@@ -61,15 +69,44 @@ int main()
         rejects([&] { (void)fused_policy(logits.to(torch::kFloat64), mask); });
         rejects([&] { (void)fused_policy(logits, mask.to(torch::kInt32)); });
         rejects([&] { (void)fused_policy(torch::zeros({41, 4}, logits.options()).transpose(0, 1), mask); });
+        rejects([&] { (void)fused_policy(logits, torch::ones({41, 4}, mask.options()).transpose(0, 1)); });
         logits.set_requires_grad(true);
         rejects([&] { (void)fused_policy(logits, mask); });
         logits.set_requires_grad(false);
-        for (const float invalid : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()}) {
-            logits[2][17] = invalid;
-            mask[2][17] = false; // The CPU oracle rejects nonfinite illegal logits, too.
-            rejects([&] { (void)fused_policy(logits, mask); });
-            logits[2][17] = 0;
+        for (const float invalid : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity(),
+                                    -std::numeric_limits<float>::infinity()}) {
+            for (const bool legal : {false, true}) {
+                logits[2][17] = invalid;
+                mask[2][17] = legal; // Reject illegal nonfinite logits as the oracle does.
+                rejects_with([&] { (void)fused_policy(logits, mask); }, "nonfinite fused policy input at row 2");
+                rejects([&] { (void)masked_categorical(logits.cpu(), mask.cpu()); });
+                logits[2][17] = 0;
+            }
         }
+        mask[1].fill_(false);
+        logits[2][17] = std::numeric_limits<float>::quiet_NaN();
+        rejects_with([&] { (void)fused_policy(logits, mask); }, "all-illegal action mask at row 1");
+        mask.fill_(true);
+        logits.zero_();
+        logits[0][0] = 1e38F;
+        logits[0][1] = -1e38F;
+        auto extreme = fused_policy(logits, mask);
+        auto extreme_reference = masked_categorical(logits.cpu(), mask.cpu());
+        check(torch::allclose(extreme.log_probabilities.cpu(), extreme_reference.log_probabilities, 1e-5, 1e-5), "extreme finite logp");
+        check(torch::allclose(extreme.entropy.cpu(), extreme_reference.entropy, 1e-5, 1e-5), "extreme finite entropy");
+        // Finite inputs can still overflow their subtraction; distinguish this
+        // result failure from input rejection (and retain oracle fail-closed behavior).
+        logits[0][0] = std::numeric_limits<float>::max();
+        logits[0][1] = -std::numeric_limits<float>::max();
+        rejects_with([&] { (void)fused_policy(logits, mask); }, "nonfinite fused policy entropy at row 0");
+        rejects([&] { (void)masked_categorical(logits.cpu(), mask.cpu()); });
+        const auto boundary_logits = torch::zeros({65535, 41}, logits.options());
+        const auto boundary_mask = torch::ones({65535, 41}, mask.options());
+        const auto boundary = fused_policy(boundary_logits, boundary_mask);
+        const auto boundary_reference = masked_categorical(boundary_logits.cpu(), boundary_mask.cpu());
+        check(torch::allclose(boundary.log_probabilities.cpu(), boundary_reference.log_probabilities, 1e-5, 1e-5), "boundary logp");
+        check(torch::allclose(boundary.entropy.cpu(), boundary_reference.entropy, 1e-5, 1e-5), "boundary entropy");
+        rejects([&] { (void)fused_policy(torch::zeros({65536, 41}, logits.options()), torch::ones({65536, 41}, mask.options())); });
         std::cout << "FUSED_POLICY=PASS rows=" << cases << " max_logp=" << maximum_logp
                   << " max_probability=" << maximum_probability << " max_entropy=" << maximum_entropy
                   << " nondefault_stream=true\n";

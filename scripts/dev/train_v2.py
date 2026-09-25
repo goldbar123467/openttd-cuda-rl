@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 import time
 
-from infer_v2 import PolicyClient, checked_tensors
+from infer_v2 import FINANCIAL_FEATURES, PolicyClient, checked_tensors, financial_features_mode
 from guide_v2 import GUIDANCES, PublicPlanGuide
 from live_v2 import LiveV2
 from live_v2_artifacts import archive_tensors
@@ -32,12 +32,29 @@ def reward_components(transition):
             "raw_capital": capital}
 
 
+def entropy_coefficient_value(value):
+    result = float(value)
+    if not math.isfinite(result) or not 0 <= result <= 1:
+        raise ValueError("entropy-coefficient must be finite and in [0,1]")
+    return result
+
+
+class UniqueEntropyOption(argparse.Action):
+    def __call__(self, parser, namespace, value, option_string=None):
+        if getattr(namespace, "_entropy_coefficient_seen", False):
+            parser.error("duplicate --entropy-coefficient")
+        namespace._entropy_coefficient_seen = True
+        setattr(namespace, self.dest, value)
+
+
 def run(args):
+    financial_features = financial_features_mode(getattr(args, "financial_features", "raw"))
     if not 1 <= args.episode_horizon <= 512:
         raise ValueError("V2 episode horizon must be 1..512 decisions")
     gae_lambda = getattr(args, "gae_lambda", .95)
     if not math.isfinite(gae_lambda) or not 0 <= gae_lambda <= 1:
         raise ValueError("V2 gae-lambda must be finite and in [0,1]")
+    entropy_coefficient = entropy_coefficient_value(getattr(args, "entropy_coefficient", .01))
     checkpoint_interval = getattr(args, "checkpoint_interval", 0)
     resume = getattr(args, "resume", None)
     rollout = getattr(args, "rollout_length", 32)
@@ -52,7 +69,8 @@ def run(args):
     root.mkdir(parents=True, exist_ok=False)
     record = {"kind": "native-v2-live-recurrent-ppo", "status": "running", "source": source_identity(),
               "device": args.device, "run_seed": args.seed, "requested_updates": args.updates,
-              "rollout_steps": rollout, "gamma": .99, "gae_lambda": gae_lambda, "environments": 1, "sequence_length": 8, "optimization_epochs": 4,
+              "rollout_steps": rollout, "gamma": .99, "gae_lambda": gae_lambda, "financial_features": financial_features,
+              "entropy_coefficient": entropy_coefficient, "environments": 1, "sequence_length": 8, "optimization_epochs": 4,
               "episode_horizon": args.episode_horizon, "training_map_seeds": seeds,
               "reuse_bootstrap_tensors": reuse_bootstrap_tensors,
               "reward_schema": "development-v2-live-reward-1", "episodes": [], "updates": [],
@@ -77,17 +95,15 @@ def run(args):
     try:
         trainer = PolicyClient(args.trainer.resolve(), root / "trainer.log", args.device, args.seed,
                                rollout_length=rollout if rollout != 32 else None,
-                               gae_lambda=gae_lambda if gae_lambda != .95 else None)
-        if rollout != 32 or gae_lambda != .95:
-            info = trainer.request("TRAINING_INFO")
-            expected_info = {"rollout_steps": rollout, "sequence_length": 8, "optimization_epochs": 4}
-            if "gamma" in info or "gae_lambda" in info:
-                expected_info.update(gamma=.99, gae_lambda=gae_lambda)
-            elif gae_lambda != .95:
-                raise ValueError("Native V2 trainer does not report the requested GAE configuration")
-            if info != expected_info:
-                raise ValueError("Native V2 trainer configuration differs from the requested rollout or GAE")
-            record["native_training_runtime"] = info
+                               gae_lambda=gae_lambda if gae_lambda != .95 else None, financial_features=financial_features,
+                               entropy_coefficient=entropy_coefficient)
+        trainer.check_financial_features()
+        info = trainer.request("TRAINING_INFO")
+        expected_info = {"rollout_steps": rollout, "sequence_length": 8, "optimization_epochs": 4,
+                         "gamma": .99, "gae_lambda": gae_lambda, "entropy_coefficient": entropy_coefficient}
+        if info != expected_info:
+            raise ValueError("Native V2 trainer configuration differs from requested PPO settings")
+        record["native_training_runtime"] = info
         if checkpoint_interval or resume:
             info = trainer.request("CHECKPOINT_INFO")
             if info != {"format": "openttd-rl-development-v2-reset-checkpoint-1", "reset_only": True, "updates": 0,
@@ -192,7 +208,7 @@ def run(args):
                     print(json.dumps(update), flush=True)
         model = root / "inference-weights.pt"
         record["save_validation"] = trainer.request(f"SAVE\t{model}")
-        record["model"] = {"path": str(model), "sha256": hashlib.sha256(model.read_bytes()).hexdigest(),
+        record["model"] = {"path": str(model), "sha256": hashlib.sha256(model.read_bytes()).hexdigest(), "financial_features": financial_features,
                            "purpose": "Inference weights only; optimizer/RNG recovery uses separate reset checkpoints"}
         if game:
             game.close(); game = None
@@ -218,10 +234,14 @@ if __name__ == "__main__":
     parser.add_argument("--trainer", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", choices=("cpu", "cuda:0"), required=True)
+    parser.add_argument("--financial-features", choices=FINANCIAL_FEATURES, default="raw",
+                        help="Optional signed-log currency preprocessing shared by native training and inference")
     parser.add_argument("--seed", type=positive, default=20260923)
     parser.add_argument("--updates", type=positive, default=2)
     parser.add_argument("--rollout-length", type=int, choices=(32, 64, 128), default=32)
     parser.add_argument("--gae-lambda", type=float, default=.95, help="GAE trace weight in [0,1]; default .95")
+    parser.add_argument("--entropy-coefficient", type=entropy_coefficient_value, action=UniqueEntropyOption, default=.01,
+                        help="Native PPO entropy bonus in [0,1]; default .01, bound to reset checkpoints")
     parser.add_argument("--episode-horizon", type=positive, default=128)
     parser.add_argument("--training-map-count", type=positive, default=4,
                         help="Use the first N training-ledger seeds in fixed order; default 4, recorded in checkpoint compatibility")

@@ -5,6 +5,7 @@
 #include <c10/cuda/CUDAStream.h>
 #include <limits>
 #include <stdexcept>
+#include <string>
 
 namespace openttd_rl::development {
 openttd_rl::training::MaskedPolicy fused_policy(const torch::Tensor &logits, const torch::Tensor &mask)
@@ -30,8 +31,11 @@ openttd_rl::training::MaskedPolicy fused_policy(const torch::Tensor &logits, con
     const auto host_status = status.cpu();
     const auto *errors = host_status.const_data_ptr<int>();
     for (std::int64_t row = 0; row < logits.size(0); ++row) {
-        if (errors[row] == 2) throw std::invalid_argument("all-illegal action mask");
-        if (errors[row] != 0) throw std::runtime_error("nonfinite fused policy input or result");
+        const auto location = " at row " + std::to_string(row);
+        if (errors[row] == 1) throw std::runtime_error("nonfinite fused policy input" + location);
+        if (errors[row] == 2) throw std::invalid_argument("all-illegal action mask" + location);
+        if (errors[row] == 3) throw std::runtime_error("nonfinite fused policy entropy" + location);
+        if (errors[row] != 0) throw std::runtime_error("unknown fused policy status" + location);
     }
     return {logp, probabilities, entropy};
 }

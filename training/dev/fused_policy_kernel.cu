@@ -58,7 +58,7 @@ __global__ void policy_kernel(const float *logits, const bool *mask, float *logp
     }
     if (lane == 0) {
         entropy[row] = reduction[0];
-        status[row] = isfinite(reduction[0]) ? 0 : 1;
+        status[row] = isfinite(reduction[0]) ? 0 : 3;
     }
 }
 }

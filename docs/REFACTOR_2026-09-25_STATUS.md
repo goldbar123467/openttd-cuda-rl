@@ -1,0 +1,182 @@
+# September 25 refactor execution status
+
+Goal: [complete refactor and PPO recovery](REFACTOR_GOAL_2026-09-25.md).
+Review: `9/25 refractor/`, fetched at `ec5a3f6`; reviewed source was `0595a72`.
+Execution starts from `8ffc5bd` on `codex/local-training-foundation`.
+All eleven original reports were read. This is an implementation record, not a
+replacement for their requirements or a claim that their static findings passed.
+
+## Current state
+
+- **Active; incomplete.** First goal turn is making implementation progress.
+- Existing current-branch source is newer than the review in documentation and
+  ONNX/visible inference support. The missing V2 training options are now integrated.
+- WSL Ubuntu 24.04 is available; RTX 2070, 8 GiB, driver 610.88, approximately
+  674 GiB free on Linux and 323 GiB on the Windows volume at initial inspection.
+- Historical Linux worktrees exist. Windows Git's `prunable` labels reflect Linux
+  paths; these worktrees must not be pruned. No training process was found running.
+- No held-out games have been accessed, new tuning study launched, or source pushed.
+
+## Evidence and continuation
+
+`runs/2026-09-25/refactor-reconcile-01/source-comparison.json` binds pre-edit source
+hashes to the retained `v2-borrow-guide-01` implementation, with per-file diffs.
+Eight reviewed files were ported (trainer, collection, guide, checkpoint/recovery,
+and tests); only the entropy client argument was added to current `infer_v2.py`,
+preserving its newer ONNX/visible behavior.
+The imported trainer always reports/verifies gamma and entropy before collection.
+
+All run names below are under `/home/imsa/.local/share/openttd-rl/runs/` in WSL.
+Builds are under its sibling `build/`; local command logs are in the reconciliation
+directory above. Failed attempts are retained.
+
+- `refactor-v2-reference-01` (clean `8ffc5bd` worktree) and
+  `refactor-v2-integration-01` built successfully; candidate CTest **13/13 passed**.
+  Latest development Python suite **136 passed, 4 skipped** in the Torch
+  environment; the four unchanged MCP tests separately **passed** in `mcp-venv`.
+  Repository fast suite **136/136 passed** with `/usr/bin/python3`. The first
+  fast-suite attempt used the unsuitable UV environment and failed to find Git
+  and jsonschema; both attempts' logs are retained. `git diff --check` passed.
+- `refactor-v2-options-01/verification.json`: **all four same-device comparisons
+  passed exactly** (default CPU/CUDA, retained CPU/CUDA), including causal traces,
+  tensor hashes, PPO metrics, and inference weights. The retained recipe is signed
+  log, entropy .001, guide v3, rollout 64, eight maps, bootstrap reuse.
+  Default CPU/CUDA comparison passed its 1e-4 absolute bound. The retained
+  CPU/CUDA comparison **failed**, so the aggregate report remains failed:
+  update 2 gradient norm is 3.08823111 vs 3.08836046 (difference .00012935).
+  Log-probability/value errors are at most 8.34e-7. Exact agreement with the
+  retained implementation on each device establishes that this discrepancy is
+  pre-existing. The bound has not been relaxed; numerical follow-up remains open.
+- `refactor-v2-reward-audit-01/audit.json`: **passed**, 20,480 retained transitions.
+  Native reward accounting and reconstructed GAE match; maximum explained-variance
+  error <5e-10. Capital clips occur 32/61/58 times in the financial/entropy/borrow
+  runs, each removing 825 currency units. No profit/delivery clips or terminal
+  rows were found. Choice fractions are .20825/.36450/.54541. Choice road-building
+  advantages average -.05856/-.19190/-.22158; all-step KL maxima
+  .02506/.05491/.05491. Historical choice-only KL cannot be reconstructed from
+  all-step summaries and remains explicitly unavailable.
+- `refactor-v1-time-audit-02/audit.json`: **passed**. Reconstructed clocks for
+  16,384 horizon-128 training transitions span [0,.248046875] for features 16/18;
+  3,072/4,096 observed full-development transitions lie outside that range.
+  Training observations themselves were not logged; this limitation is explicit.
+  Attempt 01 rejected four empty, unused reset traces; attempt 02 accepts only
+  declared partial episodes with zero actions, with a regression test.
+- S1-4 labels new embedded results `pipeline_probe`, `quarter_income`, and
+  `claim: not an evaluation`. Historical records and frozen collectors are intact.
+- V1 replay auditing, exception-safe ACT mode restoration, separate development
+  INFO/replay queries, build-derived fallback identity, kernel diagnostics/edge
+  tests, and explicit cross-binary exact comparison are verified. Fresh
+  `refactor-v1-reference-01`/`refactor-v1-fused-01` builds passed **11/11** and
+  **12/12** CTest checks. All three architectures exercise clean/corrupt replay,
+  RNG/parameter preservation and mode restoration on CPU/CUDA.
+- `refactor-v1-audit-exact-01/comparison.json`: old versus audited V1 reference
+  trainer passes exact native trace, PPO metric and final model equality for two
+  live updates (256 decisions). `refactor-v1-fused-audit-01` also passes; all
+  measured metric differences happened to be zero, with replay error at most
+  2.384185791015625e-7 (below kernel test error 3.8147e-6). These runs overlapped
+  other qualification work, so their timings are **not performance evidence**.
+  New native INFO reports `reference`/`fused-cuda` correctly in real run records;
+  older baseline identity comes from its explicit build configure flag.
+- Kernel tests pass the new invalid-row/dtype/boundary/noncontiguous/extreme-value
+  cases and the existing nondefault-stream oracle. At ordinary tested scales,
+  max errors are logp 3.8147e-6, probability 1.78814e-7, entropy 9.53674e-7.
+  `refactor-v1-sanitizers-01`: all four sanitizer commands were attempted and
+  **failed to initialize the host WDDM debugger interface / unsupported device**.
+  This is unavailable instrumentation, not a sanitizer pass or a kernel defect.
+  Enabling an administrator-level host debugger was not part of this check.
+- Signed-log guide-v3 exact reset recovery **passed on CPU and CUDA** in
+  `refactor-v2-resume-{cpu,cuda}-01`: 256 uninterrupted vs 128+128 resumed decisions,
+  exact actor/feedback, metrics, native traces and weights. Both
+  `refactor-v2-checkpoint-{cpu,cuda}-01` pass **15 rejection cases**, including
+  wrong entropy/financial mode, partial rollout and publication boundaries.
+- `refactor-v2-cli-02` passes **15 cases**: malformed/duplicate/unknown options
+  and verified native gamma/entropy/financial configuration at valid boundaries.
+  Attempt 01 used the wrong close verb in its harness and failed; it is retained.
+  A mistyped guide name was also rejected before a resume run started.
+- `refactor-legacy-advancement-01`: `studies/legacy_advancement.py` independently
+  rederives all **51** original entropy-study cases from hashed native traces and
+  reproduces its summaries, paired t intervals and **failed advancement** exactly.
+  Four fixture tests cover pairing, failures, duplicates, missing cases and strict
+  uniform comparisons. Historical controls actually mix guides v1/v2; reproducing
+  their old decision does not qualify them for new same-guide studies.
+- `eval_stats.py` adds balanced per-seed/per-map paired differences, sign counts,
+  and fixed-seed nested bootstrap. Four tests cover known intervals, training-seed
+  dependence, ordering and missing/duplicate/nonfinite cases. Report integration,
+  registration schema and prospective full-map drivers remain outstanding.
+
+Next: Stage 2 registrations, full-map drivers/report integration and held-out
+access safeguards; investigate the V2 cross-device bound and remaining offline
+questions. No experiment processes remain running. Do not run A0-A3 until
+registrations and evaluation safeguards are ready.
+
+## Mandatory coverage and dependencies
+
+IDs below refer to report 07 unless prefixed otherwise. Grouped entries share a
+deliverable; no member is complete until its own evidence is recorded.
+
+| Work | Review findings / extra references | Status | Required evidence |
+| --- | --- | --- | --- |
+| S1-1 reproducible V2 options | F02/F07/F30; X2/X7; 06:K2; 08:3a | Default/retained/recovery verified; cross-device discrepancy open | See results above |
+| S1-2 V1 behavior replay | F01/F22 | Verified | Clean/corrupt native tests; read-only live equality |
+| S1-3 kernel hygiene | F24/F25; 05:K9 | Functional GPU checks verified; sanitizer unavailable | Edge cases/oracle pass; host debugger failure recorded |
+| S1-4 honest probes | F23; 03:N10 | Verified by focused tests and live runs | Recorded quarter-income fixture and probe labeling |
+| S1-5 backend identity | F26 | Verified | Native/build-derived provenance tests and live records |
+| S1-6 offline audits | F18/F20/F21; X6; 03:N9/N13; 06:R2/R3/O2 | Reward/time audit verified; remaining historical questions pending | Hashed input reports; clips/terminal/time/advantages/KL |
+| S2-1 study drivers/schema | F03; 06:K3 | Historical rederivation verified; prospective schema/driver pending | 51 hashed cases; full-map registration still required |
+| S2-2 statistics | F08; 03:N1/N2/N5/N12; 04:B12; 06:K5 | Shared helper/tests verified; report integration pending | Per-map/seed/window, paired/nested uncertainty and fixtures |
+| S2-3 eight development maps | F09/F29; X1; 03:N3/N6/N7 | Pending | Explicit split/map matrix, guide/control provenance |
+| S2-4 held-out protocol | F09; 03:N4 | Pending | Frozen protocol before tuning; fail-closed access tests |
+| S2-5 device agreement | F28; 03:N8 | Pending | Reference/fused CPU-CUDA replay; perturbed-model rejection |
+| S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Pending | Reproduce interval width, document screening/confirmation |
+| S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Pending | Solo/concurrent native action/economic trace identity |
+| S3-0 timers | 04:section 6; 05:section 11; 03:N14 | Pending | Separate timings, unchanged canonical traces, 3 paired runs |
+| S3-1 evaluation quick wins | F13; 04:B1/B2/B7 | Pending | Full replay equality and paired timing |
+| S3-2 MLP spatial transfers | F12/F32; X10; 05:K1; 06:O3 | Pending | Cross-binary exact mode; all architecture regressions |
+| S3-3 ACT copies/backend | F10; 05:K4/K12 | Pending | Exact consolidated copies; measured/toleranced backend |
+| S3-4 development collector | F11/F12/F27; 05:K2/K3/K5; 06:K1/K6 | Pending | Injection, deferred values, structured protocol, concurrent traces/payloads |
+| S3-5 V2 UPDATE | F14; 06:K4 | Pending | Exact CPU/CUDA updates; finite-input failures; audit tolerance; timing |
+| S3-6 V2 I/O | F15; 04:B8/B9/B10 | Pending | Replay/integrity/storage/failure handling and paired timing |
+| S3-7 evaluator reuse/tuning | 04:B5/B6 | Pending, profiling conditional | Stage-timing trigger, exact traces or distinct backend |
+| S3-8 kernel learning exercise | 05:K7/K8 | Pending, optional | Oracle, CUDA events vs wrapper vs full run; reasoned disposition |
+| Recovery 08:0 | F04/F06; X3/X4; 06:P4/A3 | Pending | Choice/proposal/gradient metrics and training-only probes are read-only |
+| Recovery 08:1 / S4-1 | F04; X3/X4/X9; 06:P2a | Pending | Weighted loss, singleton rule, CPU/CUDA, actor-drift audit |
+| Recovery 08:2 | F05/F06 | Pending | Versioned potential; telescoping, boundary and recovery tests |
+| Recovery 08:3b | F07; X5; 06:R4 | Pending | Guide v4 legality/no pre-service repayment; matched controls |
+| Recovery A0-A3 | 08:section 3 | Pending; Stage 2 and Steps 0-3 required | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
+| S4-2 / 08:4 / A4 | F16; 06:P1 | Pending, after A0-A3 | Sequence batching k=1 exact; registered k>1/KL study |
+| S4-3 / A5 | F17; 06:P4/A3 | Pending, conditional | Entropy decomposition before coefficient studies |
+| S4-4 | F20/F21; X6; 06:R1/R2/R3 | Pending, audit conditional | New reward objective explicitly separate; offline recomputation |
+| S4-5 | 06:O1/R4 | Pending, recovery decision tree | Versioned parameters, alias audit, native/CUDA/export/live checks |
+| S4-6 | F18; 06:O2/C1 | Pending, audit conditional | Registered horizon schedule, input coverage/window outcomes |
+| S4-7 | 06:C2 | Pending, S4-5 required | Guide annealing and same-mask controls |
+| S4-8 | F19; 06:P3 | Pending, critic-evidence conditional | Value-scale/critic study; exact recovery for new state |
+| S4-9 / 08:4-5 | 06:P5 | Pending, KL/credit conditional | Choice-KL evidence; gamma/shaping/value-scale consistency |
+| Exception-safe V1 mode | F31; X8 | Verified | All architectures CPU/CUDA, initial train/eval modes |
+
+## Remaining option catalogue and open questions
+
+All below are **pending assessment**, not silently omitted. Close optional options
+only with evidence for the reported condition, not with a generic "out of scope".
+
+- 04:B3 native CRC; B4 structured-only evaluator; B11 screening; B13 engine reuse.
+- 05:K6 pinned staging; K10 CUDA Graphs; K11 batch-bound relaxation. No new V2
+  custom backward before the report's profiling prerequisites.
+- 06:P2b/A2 semi-MDP compression; P6 larger V1 rollouts; A1 compound selection;
+  C3 map diversity/visits; C4 mid-game starts. These require their specified
+  semantics, protocol/engine support, and registered evidence.
+- 00/01/03/04/05 questions: which models used fused builds; V1 observation bytes
+  and stage costs; simulation time by map; actual validation modes; storage
+  filesystem; terminal reasons; rationale for the two development seeds; retained
+  control identities; supported GPU/tooling scope; and whether profiling supports
+  broader kernel use. Preserve unknown historical rationale as unknown when it
+  cannot be established, and document the prospective replacement policy.
+- 02:2.1-2.14 correctness coverage maps to the table above; F01 is a preservation
+  requirement, not permission to skip verification of changed math. 03:N11 keeps
+  privileged scripted baseline labels separate from public-information controls.
+
+## Completion gate
+
+Required stage, native, Python, live recovery/equality, deployment, fast repository,
+and whitespace checks remain outstanding. No learning or speedup claim is made.
+Engineering completion, study execution, and demonstrated learning improvement
+will be reported separately. The active goal remains the entire pasted objective.

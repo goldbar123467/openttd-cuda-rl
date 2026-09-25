@@ -5,6 +5,19 @@ trainer and all PPO losses, gradients, Adam updates and CPU reference calculatio
 retain their existing LibTorch implementations. It is a performance experiment,
 not a new learning algorithm or a claim of better gameplay.
 
+September 25 hygiene checks are recorded in
+[the refactor status](REFACTOR_2026-09-25_STATUS.md). The kernel now distinguishes
+nonfinite input (status 1), an all-illegal mask (2), and nonfinite entropy (3),
+and reports the first failing row. The trainer normalizes its mask to bool;
+the kernel's contiguous float32/bool contract remains explicit. New tests cover
+mixed invalid rows, legal and illegal nonfinite logits, the 65,535/65,536 batch
+boundary, extreme finite spreads and noncontiguous masks. Reference/fused native
+suites and bounded live comparisons pass. This is correctness evidence, not a
+new speedup measurement. Compute Sanitizer 12.6 was attempted for memcheck,
+racecheck, synccheck and initcheck; all failed to initialize this WSL host's WDDM
+debugger interface and reported unsupported-device errors. Sanitizer coverage
+therefore remains unavailable, with logs under `refactor-v1-sanitizers-01`.
+
 ## Why this operation
 
 The measured 128-update live MLP run spent 1,216.8 seconds collecting/updating,

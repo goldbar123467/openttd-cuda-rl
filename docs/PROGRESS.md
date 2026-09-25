@@ -1,5 +1,18 @@
 # Live OpenTTD development progress
 
+The September 25 review execution is active. The complete coverage and current
+verification record is in [REFACTOR_2026-09-25_STATUS.md](REFACTOR_2026-09-25_STATUS.md).
+Missing V2 options are integrated and match original/retained behavior exactly
+on each device. A retained CPU/CUDA gradient-norm discrepancy exceeds the fixed
+comparison bound and remains an explicit failed check. Offline reward/time
+audits are complete; new recovery tuning has not started. This work resumes under
+the new refactor goal; the historical stopped study below remains preserved.
+V1 replay and kernel checks now pass in reference/fused builds and real-game
+comparisons. V2 reset recovery and checkpoint rejection pass on CPU/CUDA. Host
+sanitizer instrumentation is unavailable. The entropy study's failed advancement
+has been independently reproduced from 51 hashed cases; full-map registrations
+and reporting are the next implementation work.
+
 The horizon-256 run, requested lossless storage cleanup and missing-depot
 diagnosis are complete. The 8,192-decision continuation sustains service in all
 nine final evaluations and fixes all three greedy stalls, but fails its sampled

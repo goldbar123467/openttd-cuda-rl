@@ -366,6 +366,25 @@ int run_service(
             else if (type == kUpdate) response = handle_update(trainer, reader);
             else if (type == kExport) response = handle_export(trainer, reader);
 #ifdef RL_DEVELOPMENT_CHECKPOINTS
+            else if (type == 7) {
+                reader.finish();
+                Writer writer;
+                writer.u32(1); // Development INFO schema, independent of UPDATE.
+#ifdef RL_DEV_FUSED_POLICY
+                writer.string(trainer.device().is_cuda() ? "fused-cuda" : "reference");
+#else
+                writer.string("reference");
+#endif
+                response = writer.data();
+            }
+            else if (type == 8) {
+                reader.finish();
+                Writer writer;
+                writer.u32(1);
+                writer.f64(trainer.behavior_replay_max_error());
+                writer.i64(trainer.behavior_replay_samples());
+                response = writer.data();
+            }
             else if (type == 5 || type == 6) {
                 const std::filesystem::path path(reader.string(4096));
                 reader.finish();

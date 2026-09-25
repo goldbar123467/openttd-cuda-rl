@@ -178,12 +178,25 @@ Start small: each update collects 128 transitions across four real games. Use
 to exercise the existing spatial networks. More GPU work does not necessarily
 mean faster end-to-end training; report collection and update time separately.
 
-Each successful run retains the training metrics, development returns/deliveries/
-income on both scenarios, and inference weights under `models/`. The exported
+Each successful run retains training metrics, embedded pipeline probes on both
+development scenarios, and inference weights under `models/`. New records name
+the probes `pipeline_probe` with `claim: "not an evaluation"`; `quarter_income`
+is the native quarter counter, not lifetime income. Use `evaluate_live.py` for
+full economic evaluation. The exported
 model is not an optimizer-resume checkpoint; use the separate native reset
 checkpoints below to continue training. Failed runs retain a failure
 record, `training.log`, and available diagnostics. This developer route does not run any held-out
 final manifest or claim a release gate.
+
+New development trainers audit behavior log probabilities before each update,
+rejecting maximum absolute error above 1e-4 before optimizer or shuffle mutation.
+The frozen UPDATE response remains unchanged. Separate development requests
+7 (versioned ACT backend INFO) and 8 (versioned last replay error/sample count)
+populate `act_distribution`, `trainer_diagnostics`, and `behavior_replay` in
+`run.json`. Older binaries require an explicit fused-policy configure flag in
+their adjacent build record; their unavailable replay query is recorded as such.
+`compare_training_backends.py --require-exact` requires identical traces, update
+metrics and final model identities even when comparing different binaries.
 
 ## Checkpoint and resume at native resets
 

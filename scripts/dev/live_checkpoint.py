@@ -50,7 +50,7 @@ def compatibility(record, templates):
     # need not invalidate a recoverable run. Full source identity stays in run.json.
     scripts = sorted((ROOT / "scripts/v1").glob("*.py")) + [
         ROOT / "scripts/dev" / name for name in
-        ("train_live.py", "training_environment.py", "training_reward.py", "bridge_validation.py", "live_checkpoint.py", "credit_trace.py", "policy_inputs.py")]
+        ("train_live.py", "training_environment.py", "training_reward.py", "bridge_validation.py", "live_checkpoint.py", "credit_trace.py", "policy_inputs.py", "trainer_diagnostics.py")]
     return {"configuration": {key: record[key] for key in
             ("architecture", "device", "seed", "episode_action_horizon", "training_reward", "rollout_length",
              "environments", "minibatch_size", "epochs", "trainer_sha256", "openttd_sha256", "deterministic_cudnn", "entropy_coefficient", "gae_lambda")}

@@ -37,7 +37,8 @@ def run(args):
                 "trainer_sha256", "engine_sha256", "rollout_steps", "sequence_length", "optimization_epochs"):
         if cpu[key] != gpu[key]:
             raise ValueError(f"Training comparison configuration differs: {key}")
-    for key, default in (("gamma", .99), ("gae_lambda", .95), ("reuse_bootstrap_tensors", False)):
+    for key, default in (("gamma", .99), ("gae_lambda", .95), ("reuse_bootstrap_tensors", False),
+                         ("financial_features", "raw"), ("entropy_coefficient", .01)):
         if cpu.get(key, default) != gpu.get(key, default):
             raise ValueError(f"Training comparison configuration differs: {key}")
     if cpu.get("observation_schema_id") != gpu.get("observation_schema_id"):
