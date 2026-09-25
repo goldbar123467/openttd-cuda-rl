@@ -8,7 +8,7 @@ from pathlib import Path
 import statistics
 
 from local import capture_source, source_identity, write_json
-from report_learning import load, summarize
+from report_learning import load, matrix, paired_statistics, summarize
 
 METRICS = ("passengers", "operating_profit", "operating_profit_less_capital", "balance_change")
 
@@ -75,10 +75,6 @@ def interval(values):
     return {"mean": center, "conditional_t_interval_95": [center - margin, center + margin] if margin is not None else None}
 
 
-def matrix(rows):
-    return sorted((row["template_id"], row["sampling_seed"], row["scenario"]["identity"]["scenario_sha256"]) for row in rows)
-
-
 def run(args):
     groups, inputs = {}, list(args.default_equivalence)
     for label, paths in (("reference", args.reference), ("candidate", args.candidate)):
@@ -96,7 +92,7 @@ def run(args):
         raise ValueError("Requires one diagnostic pair or three matched training seeds")
     report = {"axis": args.axis, "training_seeds": seeds, "source": source_identity(), "summaries": {},
         "claim": "Development maps only. Sampling repetitions are not independent training seeds. Three-seed intervals are imprecise and conditional on these maps.",
-        "matched_settings": [], "paired_differences": {}}
+        "matched_settings": [], "paired_differences": {}, "per_map": {}, "episodes": {}, "hierarchical_paired_differences": {}}
     all_evaluations = [evaluation for group in groups.values() for evaluation, _ in group.values()]
     controls = [("baselines", load(args.baseline)), ("one-bus", load(args.one_bus))]
     all_evaluations += [evaluation for _, evaluation in controls]
@@ -134,8 +130,16 @@ def run(args):
                 paired[metric][seed] = statistics.mean(r[metric] for r in rows["candidate"]) - statistics.mean(r[metric] for r in rows["reference"])
         report["paired_differences"][policy] = {metric: {"candidate_minus_reference_by_seed": values, **interval(list(values.values()))}
                                                  for metric, values in paired.items()}
+        report["hierarchical_paired_differences"][policy] = paired_statistics(
+            [[r for r in groups["candidate"][seed][0]["episodes"] if r["policy"] == policy] for seed in seeds],
+            [[r for r in groups["reference"][seed][0]["episodes"] if r["policy"] == policy] for seed in seeds],
+            seeds, iterations=getattr(args, "bootstrap_iterations", 10000))
         for label in groups:
-            report["summaries"][label + "-" + policy] = summarize([row for seed in seeds for row in groups[label][seed][0]["episodes"] if row["policy"] == policy])
+            rows = [{**r, "training_seed": seed} for seed in seeds for r in groups[label][seed][0]["episodes"] if r["policy"] == policy]
+            name = label + "-" + policy
+            report["summaries"][name] = summarize(rows)
+            report["episodes"][name] = rows
+            report["per_map"][name] = {template: summarize([r for r in rows if r["template_id"] == template]) for template in sorted({r["template_id"] for r in rows})}
     for label, evaluation in controls:
         for policy in (("wait", "random", "scripted") if label == "baselines" else ("one-bus",)):
             report["summaries"][policy] = summarize([row for row in evaluation["episodes"] if row["policy"] == policy])
@@ -143,7 +147,7 @@ def run(args):
     report["input_sha256"] = {str(path.resolve()): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
     report["limitations"] = ["Rollout changes also alter update frequency and within-update normalization; temporal credit alone is not isolated.",
         "Different trainer binaries are admitted only with recorded exact default checks; those finite fixtures are not universal equivalence proofs.",
-        "A single seed receives no confidence interval. Full-episode cash can remain negative despite sustained operating service."]
+        "A single seed receives no training-seed t interval; nested map/action intervals are conditional on that one model. Full-episode cash can remain negative despite sustained operating service."]
     args.output.mkdir(parents=True, exist_ok=False)
     report["source_archive"] = capture_source(args.output / "source")
     write_json(args.output / "comparison.json", report)
@@ -164,4 +168,5 @@ if __name__ == "__main__":
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--axis", choices=("rollout", "lambda"), required=True)
     parser.add_argument("--default-equivalence", type=Path, nargs="*", default=[])
+    parser.add_argument("--bootstrap-iterations", type=int, default=10000)
     run(parser.parse_args())

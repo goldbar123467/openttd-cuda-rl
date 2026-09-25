@@ -18,6 +18,14 @@ racecheck, synccheck and initcheck; all failed to initialize this WSL host's WDD
 debugger interface and reported unsupported-device errors. Sanitizer coverage
 therefore remains unavailable, with logs under `refactor-v1-sanitizers-01`.
 
+The September 25 offline workload estimate in `refactor-study-cost-01` projects
+about 41-42 sequential hours as a lower bound for the mandatory recovery matrix,
+with 654-656 GiB retained artifacts and roughly 500 GiB in request logs. These
+are extrapolations from retained whole-run/game-loop records, not a new CUDA
+benchmark or a concurrency speedup. Storage and host I/O are practical constraints
+to resolve through S3 profiling and equality checks before the large study.
+Per-stage timing and three counterbalanced performance pairs remain outstanding.
+
 ## Why this operation
 
 The measured 128-update live MLP run spent 1,216.8 seconds collecting/updating,

@@ -260,7 +260,7 @@ def run(args):
         write_json(root / "run.json", record)
 
 
-if __name__ == "__main__":
+def argument_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--openttd", type=Path, required=True)
     parser.add_argument("--policy", type=Path, required=True)
@@ -273,8 +273,13 @@ if __name__ == "__main__":
     parser.add_argument("--visible", action="store_true", help="View-only native SDL window; requires the isolated V2 playback engine")
     parser.add_argument("--training-run", type=Path, help="Load hash-verified inference weights from a completed live V2 PPO run")
     parser.add_argument("--onnx-package", type=Path, help="Qualified live V2 ONNX package; requires the native ONNX executable and explicit CPU")
-    parser.add_argument("--split", choices=("training", "development"), default="training")
+    parser.add_argument("--split", choices=("training", "development"), default="development",
+                        help="Development maps by default; training-map diagnostics require an explicit override")
     parser.add_argument("--map-seed", type=int)
     parser.add_argument("--guidance-override", choices=GUIDANCES,
                         help="Explicit development diagnostic with a different public guide; recorded separately from training")
-    run(parser.parse_args())
+    return parser
+
+
+if __name__ == "__main__":
+    run(argument_parser().parse_args())

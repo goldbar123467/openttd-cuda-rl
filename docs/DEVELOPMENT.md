@@ -35,6 +35,65 @@ narrow V1 results on fixed maps, not general OpenTTD competence.
 [PROGRESS.md](PROGRESS.md) retains the comparisons,
 failed experiments and current hypotheses. The initial smoke below is historical.
 
+## September 25 evaluation and study preparation
+
+The full recovery program remains active; see
+[its coverage/evidence record](REFACTOR_2026-09-25_STATUS.md) and
+[the frozen protocol](V2_RECOVERY_PROTOCOL.md). Do not launch A0-A3 until the
+execution and held-out safeguards, recovery mechanisms and resource checks pass.
+The protocol's source identity and thresholds have not changed.
+
+`infer_v2.py` now defaults to `--split development`. Training-map diagnostics
+require `--split training`; ordinary launchers still forbid held-out splits.
+For prospective evaluations always pass both `--split development --map-seed N`.
+The registered matrix is eight maps times one greedy and three sampled games
+per final model. `evaluate_guide_v2.py --mode sampled` preserves historical uniform
+sampling. `--mode greedy` takes the lowest legal candidate row when uniform
+probabilities tie. Public scripted controls preserve their fixed ordering in both
+modes; repeated deterministic controls are not independent trained models.
+
+`report_learning.py`, `report_credit_experiment.py` and `report_v2_learning.py`
+now retain per-map, per-training-seed and continuous-window outcomes, exact paired
+differences, signs and a fixed-seed nested bootstrap. Original V1 t intervals are
+unchanged. The V2 reader rederives economics from hash-identified native traces,
+checks reset projection/state continuity/final weights, and pairs only identical
+guide/source/reset/action-mode controls. Historical controls without explicit mode
+require `report_v2_learning.py --legacy-sampled-controls`; this does not qualify
+them for the new protocol. Missing and duplicate cases fail. A one-model nested
+interval describes map/action variation only. The privileged M09 script remains
+distinct from public-information controls.
+
+Reproduce the retained report migration in WSL, from this checkout:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+python scripts/dev/studies/verify_report_migration.py \
+  --v1-comparison "$RL_ROOT/runs/balanced-three-seed-comparison-01/comparison.json" \
+  --credit-comparison "$RL_ROOT/runs/balanced-roll64-three-seed-comparison-01/comparison.json" \
+  --v2-comparison "$RL_ROOT/runs/v2-entropy-learning-01/comparison.json" \
+  --candidate entropy001 --output "$RL_ROOT/runs/report-migration-new"
+python scripts/dev/power_table.py \
+  --comparison "$RL_ROOT/runs/report-migration-new/v1/comparison.json" \
+  --output "$RL_ROOT/runs/power-table-new"
+```
+
+The planning table reproduces the observed paired t width and estimates effects
+for 3/5 training seeds, 2/8 maps and three action seeds. Its random-effects and
+noncentral-t assumptions are explicit; it does not establish V2 power or change
+acceptance thresholds. `studies/estimate_cost_v2.py` takes `--training`, `--neural`
+and `--controls` lists of completed retained run directories, `--power` pointing
+to `power.json`, and a new `--output`. It streams large request logs and records
+every input hash, observed runtime and artifact size in `cost.json`/`cost.md`.
+
+The completed `refactor-study-cost-01` estimate used the entropy study's one
+8,192-decision training run, all eight development neural games and six uniform
+controls. Its exact input paths are in `cost.json`. The mandatory 12-model,
+512-game matrix with verified control reuse has a sequential lower bound of
+about 41-42 hours and projects 654-656 GiB retained storage, versus 670 GiB free
+at audit. It excludes an eligible 160-game held-out confirmation and unrecorded
+neural startup/archive time. Lossless I/O reduction and measured performance
+work therefore precede the large study. Existing models and evidence are retained.
+
 ## Initial local validation (2026-09-23)
 
 The RTX 2070/WSL2 setup completed `live-cuda-02`: eight PPO updates, 1,024 real

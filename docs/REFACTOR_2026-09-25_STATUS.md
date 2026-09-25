@@ -9,7 +9,7 @@ replacement for their requirements or a claim that their static findings passed.
 
 ## Current state
 
-- **Active; incomplete.** First goal turn is making implementation progress.
+- **Active; incomplete.** Successive goal turns are making implementation progress.
 - Existing current-branch source is newer than the review in documentation and
   ONNX/visible inference support. The missing V2 training options are now integrated.
 - WSL Ubuntu 24.04 is available; RTX 2070, 8 GiB, driver 610.88, approximately
@@ -102,8 +102,9 @@ directory above. Failed attempts are retained.
   their old decision does not qualify them for new same-guide studies.
 - `eval_stats.py` adds balanced per-seed/per-map paired differences, sign counts,
   and fixed-seed nested bootstrap. Four tests cover known intervals, training-seed
-  dependence, ordering and missing/duplicate/nonfinite cases. Report integration
-  and prospective full-map execution drivers remain outstanding.
+  dependence, ordering and missing/duplicate/nonfinite cases. It now feeds all
+  three required reports; one-model intervals explicitly omit training-seed
+  uncertainty. Prospective full-map execution drivers remain outstanding.
 - [The prospective protocol](V2_RECOVERY_PROTOCOL.md) is now frozen before new
   tuning, binding the complete eight-map development matrix and reserving the
   eight generalization maps. Its identity is
@@ -119,13 +120,54 @@ directory above. Failed attempts are retained.
   first-eligible-arm selection. **Six fixture tests pass**, including the
   same-two-seeds profit/cash condition, seven-map service threshold, retained
   stopped seeds, failed games, guide mismatch and complete-arm selection. It
-  consumes identity-verified cases; native trace loading, execution registration
-  preflight and the actual study runner are the next required integration work.
+  consumes identity-verified cases. The native reader is now implemented/tested;
+  execution registration preflight and the actual study runner still need wiring.
+- `studies/evidence_v2.py` hashes raw/compressed native evidence, checks the reset
+  projection, clock/state/economics chain, true terminal or complete time limit,
+  and completed training/final-model identities. It rejects changed summaries,
+  ambiguous traces and mismatched registered case/source/backend identities.
+  Historical controls lacking mode require an explicit legacy option and cannot
+  pass prospective verification. Fixtures and 14 retained games pass.
+- `refactor-evaluation-reports-04/verification.json`: **passed**. All three
+  reports now include per-map/seed/window outcomes, exact pairs, signs and nested
+  intervals. V1 averages and both sets of historical t intervals remain exact;
+  credit-study matched settings and all 14 V2 native summaries remain exact.
+  Mixed v1/v2 guide controls are explicitly unpaired. Attempt 01 rejected added
+  default metadata (lambda/spatial validation); 02 passed before credit-report
+  integration; 03 exposed a harness misclassification of the baseline batch's
+  unused neural package. All attempts are retained; 04 corrects the classification.
+- `infer_v2.py` now defaults to development maps; explicit training diagnostics
+  remain available, and the ordinary parser/native launcher still reject held-out
+  splits. The control evaluator records mode and supports the registered greedy
+  uniform lowest-row tie break without consuming RNG. Sampled RNG behavior and
+  public-script ordering are preserved by fixtures. Full live matrix still pending.
+- `refactor-power-table-01/power.{json,md}`: **passed**, all four historical
+  paired t half-widths reproduced within 1e-9. Tables cover 3/5 training seeds,
+  2/8 maps and three action seeds using explicit nested variance assumptions and
+  noncentral-t 80% planning power. Negative component estimates remain visible.
+  This is a retained V1 planning estimate, **not measured V2 recovery power**.
+  In the operating-profit contrast, seed SD is 5,116.27 and the old half-width
+  12,709.53; increasing maps alone barely reduces the projected width.
+- `refactor-study-cost-01/cost.{json,md}`: **passed offline estimate**, using one
+  matched-budget training run, eight neural games and six controls. A0-A3 require
+  12 models, 98,304 training decisions, 384 candidate and 128 reused-control games
+  (256 control games without reuse). Retained medians/maxima imply 40.97/41.54
+  sequential hours **as lower bounds** and 653.97/655.56 GiB of artifacts with
+  reuse; request logs alone account for 501.33/502.80 GiB. Free space was 670.33
+  GiB. An eligible held-out confirmation adds 160 games, excluded from these
+  totals. Lossless I/O reduction is needed before the full study; a numerical
+  storage fit is not adequate headroom. No concurrency speedup is assumed.
+- Current Python verification: **165 tests run, 161 passed, four known MCP-env
+  skips** (`refactor-report-tests-01/python-tests.log`); all **22** final focused
+  report/evidence/planning checks pass after credit-report integration. Fast
+  repository suite **136/136 passed** (`refactor-report-fast-01/fast.log`). No
+  native PPO math changed in this reporting pass; prior native results stand.
 
-Next: Stage 2 registrations, full-map drivers/report integration and held-out
-access safeguards; investigate the V2 cross-device bound and remaining offline
-questions. No experiment processes remain running. Do not run A0-A3 until
-registrations and evaluation safeguards are ready.
+Next: wire execution registrations/full-map drivers and held-out access safeguards;
+complete V1 device and actual concurrency checks, remaining audits and the recovery
+mechanisms. Address storage with S3 profiling/equality gates before the large
+matrix. The V2 cross-device bound remains unresolved. No experiment processes
+remain running. Do not run A0-A3 until their prerequisites are verified.
 
 ## Mandatory coverage and dependencies
 
@@ -141,11 +183,11 @@ deliverable; no member is complete until its own evidence is recorded.
 | S1-5 backend identity | F26 | Verified | Native/build-derived provenance tests and live records |
 | S1-6 offline audits | F18/F20/F21; X6; 03:N9/N13; 06:R2/R3/O2 | Reward/time audit verified; remaining historical questions pending | Hashed input reports; clips/terminal/time/advantages/KL |
 | S2-1 study drivers/schema | F03; 06:K3 | Historical rederivation and registration validation verified; execution driver pending | 51 hashed cases; executable full-map study still required |
-| S2-2 statistics | F08; 03:N1/N2/N5/N12; 04:B12; 06:K5 | Shared helper/tests verified; report integration pending | Per-map/seed/window, paired/nested uncertainty and fixtures |
-| S2-3 eight development maps | F09/F29; X1; 03:N3/N6/N7 | Frozen matrix and identity tests verified; launch/report integration pending | Explicit split/map matrix, guide/control provenance |
+| S2-2 statistics | F08; 03:N1/N2/N5/N12; 04:B12; 06:K5 | Verified in all three reports | Fixtures, retained V1/credit exact t intervals and V2 native summaries |
+| S2-3 eight development maps | F09/F29; X1; 03:N3/N6/N7 | Frozen matrix, modes, evidence reader/default split verified; study launch pending | Explicit split/map matrix, guide/control provenance; cost estimated |
 | S2-4 held-out protocol | F09; 03:N4 | Protocol frozen; access implementation/refusal tests pending | No held-out access; model registration after development eligibility |
 | S2-5 device agreement | F28; 03:N8 | Pending | Reference/fused CPU-CUDA replay; perturbed-model rejection |
-| S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Pending | Reproduce interval width, document screening/confirmation |
+| S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Verified, scoped to retained V1 contrasts | Exact historical half-width; explicit extrapolation assumptions and V2 limit |
 | S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Pending | Solo/concurrent native action/economic trace identity |
 | S3-0 timers | 04:section 6; 05:section 11; 03:N14 | Pending | Separate timings, unchanged canonical traces, 3 paired runs |
 | S3-1 evaluation quick wins | F13; 04:B1/B2/B7 | Pending | Full replay equality and paired timing |

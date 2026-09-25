@@ -88,4 +88,7 @@ def nested_bootstrap(rows, *, iterations=10000, seed=20260925):
             "nested_percentile_95_interval": [quantile(samples, .025), quantile(samples, .975)],
             "training_seeds": len(training_seeds), "maps_per_training_seed": len(maps),
             "action_seeds_per_map": len(actions), "iterations": iterations, "bootstrap_seed": seed,
+            "training_seed_uncertainty_identified": len(training_seeds) > 1,
+            "interval_scope": "Training seed, map and paired action resampling" if len(training_seeds) > 1 else
+                              "Map/action variation conditional on one observed model; training-seed uncertainty is unavailable",
             "claim": "Descriptive nested uncertainty; action seeds are not independent trained models"}

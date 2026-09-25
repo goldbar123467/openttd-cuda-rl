@@ -11,7 +11,15 @@ V1 replay and kernel checks now pass in reference/fused builds and real-game
 comparisons. V2 reset recovery and checkpoint rejection pass on CPU/CUDA. Host
 sanitizer instrumentation is unavailable. The entropy study's failed advancement
 has been independently reproduced from 51 hashed cases; full-map registrations
-and reporting are the next implementation work.
+are frozen before tuning. All three comparison reports now preserve historical
+statistics while adding per-map/seed/window and paired nested results. Native V2
+evidence verification, explicit control modes and development-default inference
+are tested. The retained-data estimate is about 41-42 sequential hours (a lower
+bound) and 654-656 GiB for the mandatory recovery study, nearly filling Linux
+storage before any held-out confirmation. Lossless I/O improvements, executable
+study/held-out safeguards and recovery mechanisms remain prerequisites; no new
+recovery tuning or held-out game has run. Evidence and failed attempts are in the
+refactor status linked above.
 
 The horizon-256 run, requested lossless storage cleanup and missing-depot
 diagnosis are complete. The 8,192-decision continuation sustains service in all
