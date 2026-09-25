@@ -38,6 +38,44 @@ passed locally in a container, including exact checkpoint resume. The selected
 Vast host still runs its own qualification before registration; no study learning
 result is claimed here.
 
+## V1 CPU/training-device agreement
+
+`scripts/dev/verify_device_agreement.py` replays all neural rows in a completed
+native development evaluation. It imports the content-addressed model into a fresh
+trainer for inference only, compares exact greedy choices and the actual ACT
+backend probabilities, and verifies normal ACT equals development INSPECT.
+It records source/build/runtime identities, hashes inputs before/after, and retains
+failures. A different `--candidate-package` is a negative-control diagnostic and
+can never pass even if its numerical outputs happen to match.
+
+From the checkout with the Torch venv active, build separate reference and fused
+trainers with `local.py build` (add `--fused-policy` for the latter), then run:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+python scripts/dev/verify_device_agreement.py \
+  --evaluation "$RL_ROOT/runs/policy-balanced-roll64-lambda095-64u-s20260923" \
+  --trainer "$RL_ROOT/build/refactor-v1-agreement-reference-01/m08_trainer" \
+  --device cuda:0 --expected-backend reference \
+  --output "$RL_ROOT/runs/device-agreement-reference-new"
+```
+
+Repeat with the fused binary, `--expected-backend fused-cuda`, and a new output
+path. Default batch size 1 reproduces the CPU evaluator's call shape. CUDA never
+falls back to CPU. `--device cpu --expected-backend reference` is explicit CPU
+operation. Reference/fused runs each passed 4,096 retained observations and rejected
+a deliberately perturbed valid package; see the refactor status for evidence.
+
+Historical MLP traces use an explicit unused zero spatial placeholder. CNN and
+combined policies require full `spatial_before`; collect it prospectively with
+`evaluate_live.py --retain-spatial-inputs`. This option adds storage and is off by
+default. Missing CNN inputs cause refusal, not a fabricated observation. Native
+fixtures check all three architectures, both devices, and inspection neutrality.
+`tests/dev/check_device_agreement_service.py --trainer ... --package ... --device
+cuda:0 --output ...` checks the real service boundaries against an existing package.
+The reviewed Vast image predates this isolated follow-up; it retains its separate
+qualification identity at `43b15fe`.
+
 ## What we are continuing
 
 Keep the existing C++ PPO and source-integrated OpenTTD environment. The immediate

@@ -18,6 +18,61 @@ replacement for their requirements or a claim that their static findings passed.
   paths; these worktrees must not be pruned. No training process was found running.
 - No held-out games have been accessed, new tuning study launched, or source pushed.
 
+## V1 training-device agreement (S2-5 / F28 / 03:N8)
+
+**Verified for the retained known-good MLP package, reference and fused CUDA.**
+This follow-up lives on `codex/refactor-v1-agreement`, based on `43b15fe`, in
+`/home/imsa/.local/share/openttd-rl/worktrees/refactor-v1-agreement-01`. The original
+checkout and its qualified Vast package remain at `43b15fe`; this branch has not
+been merged, pushed, or included in that container qualification.
+
+`verify_device_agreement.py` replays every retained development observation through
+both the unchanged deterministic ACT request and a new development-only INSPECT
+request. INSPECT exposes the actual backend's probabilities, including the fused
+CUDA kernel; it does not recompute them on CPU. A validated evaluation package is
+copied into a fresh trainer without replacing parameter storage. The imported
+service refuses UPDATE, export, checkpoint save/restore and subsequent imports.
+Frozen ACT/UPDATE layouts and ordinary training behavior remain unchanged.
+
+All eight complete episodes (two development maps, one greedy and three sampled
+seeds) from `policy-balanced-roll64-lambda095-64u-s20260923` passed: **4,096 rows per
+backend, zero argmax mismatches**, maximum probability error
+`1.7881393432617188e-7` and comparable selected-logp error `2.086162567138672e-7`.
+The fixed probability tolerance is `1e-6 + 1e-5 * abs(reference)`; illegal entries
+must equal zero exactly. Sampled actions are not confused with greedy argmax.
+
+A separately copied, valid content-addressed package with
+`policy_head.bias[0] += 10000` was numerically rejected on every row by both
+backends, including **171 argmax mismatches**. The source package and all retained
+inputs remained unchanged. Native fixtures cover all three architectures on CPU
+and CUDA, proving inspection preserves ACT outputs, weights, Adam state, counters,
+RNG streams and model mode (including exceptions). Each binary also passed eleven
+service boundary checks, including batch limits and forbidden mutations.
+
+Evidence under `/home/imsa/.local/share/openttd-rl/runs/refactor-v1-device-agreement-01`:
+
+- `verification.json`: aggregate, SHA-256
+  `13f5c696aa8e74a40f0b1b2829cf659313cf4f4b8b3cde2ae5b4044001bfa383`.
+- `reference-live-02/verification.json` and `fused-live-01/verification.json`:
+  complete positive replays with source/runtime/build identities and input hashes.
+- `reference-negative-01/` and `fused-negative-01/`: expected numerical failures;
+  `negative-control.json` and `make_negative_control.py` retain the perturbation.
+- `reference-service-01/`, `fused-service-01/`, native and Python logs: **203 Python
+  passes, four existing MCP skips; 136/136 portable checks; 17 reference native
+  checks and 18 fused checks passed after correcting the new spatial fixture**.
+
+The first fixture used negative spatial values and was correctly rejected; its
+failure log remains. The first portable invocation selected the training venv;
+rerunning with the documented `/usr/bin/python3` resolved missing tool dependencies.
+An early positive replay predates the corrected fixture build metadata; the final
+`reference-live-02` binds the retained final build record.
+
+Historical CNN traces omit spatial inputs and are explicitly refused. New CNN
+replays require `evaluate_live.py --retain-spatial-inputs`; a test verifies these
+are the pre-action observations. Zero spatial placeholders are used only for the
+MLP, which ignores them. This gate establishes finite-workload numerical agreement,
+not new gameplay competence, universal cross-device identity, or a speedup.
+
 ## Current numerical qualification
 
 The [gradient investigation](V2_GRADIENT_NORM_2026-09-25.md) identified float32
@@ -337,11 +392,12 @@ directory above. Failed attempts are retained.
   repository suite **136/136 passed** (`refactor-report-fast-01/fast.log`). No
   native PPO math changed in this reporting pass; prior native results stand.
 
-Next: finish container validation and retain its image/runtime identities.
-The portable package supplies capacity and sequential execution; paid provisioning,
-publication and study execution remain outstanding. The broader V1 agreement,
-concurrency, profiling and strategy work remains on the original goal checklist.
-Do not run A0-A3 until their prerequisite bundle passes.
+Current next work: verify V1/V2 concurrency determinism, then continue the measured
+pipeline work and remaining audits/strategy dispositions. Container qualification
+and V1 device agreement have now passed as recorded above. The portable package
+supplies capacity and sequential execution; publication, paid provisioning and the
+registered study remain outstanding. A Vast host must pass its own prerequisite
+bundle before running A0-A3.
 
 ## Mandatory coverage and dependencies
 
@@ -360,7 +416,7 @@ deliverable; no member is complete until its own evidence is recorded.
 | S2-2 statistics | F08; 03:N1/N2/N5/N12; 04:B12; 06:K5 | Verified in all three reports | Fixtures, retained V1/credit exact t intervals and V2 native summaries |
 | S2-3 eight development maps | F09/F29; X1; 03:N3/N6/N7 | Frozen matrix, modes, evidence reader/default split verified; study launch pending | Explicit split/map matrix, guide/control provenance; cost estimated |
 | S2-4 held-out protocol | F09; 03:N4 | Frozen protocol and registered access implemented; refusal/one-use tests verified | No held-out access; model registration after development eligibility |
-| S2-5 device agreement | F28; 03:N8 | Pending | Reference/fused CPU-CUDA replay; perturbed-model rejection |
+| S2-5 device agreement | F28; 03:N8 | Verified on retained MLP; all-architecture native fixtures | 4096 rows/backend, exact argmax, fixed tolerances; valid perturbed package rejected; old CNN spatial-data limit explicit |
 | S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Verified, scoped to retained V1 contrasts | Exact historical half-width; explicit extrapolation assumptions and V2 limit |
 | S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Pending | Solo/concurrent native action/economic trace identity |
 | S3-0 timers | 04:section 6; 05:section 11; 03:N14 | Pending | Separate timings, unchanged canonical traces, 3 paired runs |
@@ -376,7 +432,7 @@ deliverable; no member is complete until its own evidence is recorded.
 | Recovery 08:1 / S4-1 | F04; X3/X4/X9; 06:P2a | Mechanism verified; learning study pending | Float64 oracle, zero/one/mixed choices, CPU/CUDA and measured actor drift |
 | Recovery 08:2 | F05/F06 | Verified for the explicit bounded history ledger | Telescoping to 1e-9, terminal/truncation boundaries and native reset recovery |
 | Recovery 08:3b | F07; X5; 06:R4 | Guide mechanism verified; full matched controls pending study | No repayment before START; existing guide behavior/legality preserved |
-| Recovery A0-A3 | 08:section 3 | Packaged; local minimum bundle passed; container qualification and study pending | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
+| Recovery A0-A3 | 08:section 3 | Packaged; local and container minimum bundles passed; study pending | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
 | S4-2 / 08:4 / A4 | F16; 06:P1 | Pending, after A0-A3 | Sequence batching k=1 exact; registered k>1/KL study |
 | S4-3 / A5 | F17; 06:P4/A3 | Pending, conditional | Entropy decomposition before coefficient studies |
 | S4-4 | F20/F21; X6; 06:R1/R2/R3 | Pending, audit conditional | New reward objective explicitly separate; offline recomputation |

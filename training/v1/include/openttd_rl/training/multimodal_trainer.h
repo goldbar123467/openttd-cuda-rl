@@ -37,7 +37,8 @@ public:
         const torch::Tensor &structured,
         const torch::Tensor &spatial,
         const torch::Tensor &legal_masks,
-        bool deterministic);
+        bool deterministic,
+        torch::Tensor *device_probabilities = nullptr);
     [[nodiscard]] UpdateMetrics update(const MultiModalRolloutBatch &rollout);
     // Read-only pre-update replay against the learner distribution. No sampling
     // or optimizer/RNG mutation; the development service reports this separately.

@@ -1,5 +1,23 @@
 # Live OpenTTD development progress
 
+## 2026-09-25: V1 training-device agreement follow-up
+
+S2-5 now passes on the retained balanced-roll64 MLP: all 4,096 development
+observations match exact greedy choices on reference and fused CUDA. Maximum
+probability error is 1.79e-7 within the unchanged kernel tolerance. A valid copied
+package with an altered policy bias fails numerically on all 4,096 rows in both
+builds. Native fixtures cover MLP, CNN and combined architectures on CPU/CUDA and
+prove inspection preserves model, optimizer, RNG and counters. Old CNN traces
+lack spatial inputs; the checker refuses them, and optional prospective retention
+is tested. Native suites and 203 Python/136 portable checks pass; four existing
+MCP-environment skips remain. Evidence is in `refactor-v1-device-agreement-01` and
+[the status record](REFACTOR_2026-09-25_STATUS.md).
+
+This work is isolated on `codex/refactor-v1-agreement`. The qualified Vast package
+and original checkout remain at `43b15fe`; no merge, push, paid compute, new learning
+study or held-out access occurred. Concurrency determinism is the next open Stage 2
+item, followed by the outstanding profiling and strategy work.
+
 ## 2026-09-25: minimum recovery correctness and Vast packaging
 
 Added the opt-in existing-C++ PPO recovery mechanisms, guide v4, exact read-only

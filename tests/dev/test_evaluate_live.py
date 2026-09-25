@@ -68,6 +68,41 @@ class EpisodeTests(unittest.TestCase):
             environment.controller.close.assert_called_once()
             environment.controller.abort.assert_not_called()
 
+    def test_spatial_retention_records_pre_action_input_only_when_requested(self):
+        for retain in (False, True):
+            with tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                template, environment = self.fixture(root)
+                first = dict(environment.observation, spatial={"data": [.25] * 32768})
+                after = dict(environment.observation, spatial={"data": [.75] * 32768})
+                environment.observation = first
+                environment.controller.observe.return_value = after
+                package = root / "model"
+                client = Mock()
+                import dataclasses
+                @dataclasses.dataclass
+                class Prediction:
+                    action: int = 0
+                    log_probability: float = 0.
+                    value: float = 0.
+                    logits: tuple = (0.,) * 41
+                    probabilities: tuple = (1.,) + (0.,) * 40
+                client.inspect.return_value = [Prediction()]
+                client.close.return_value = (package.name, "state")
+                with patch.object(evaluate.m07, "start_environment", return_value=environment), \
+                        patch.object(evaluate.m08, "spatial", side_effect=lambda obs: obs["spatial"]["data"]), \
+                        patch.object(evaluate, "package_snapshot", return_value={}), \
+                        patch.object(evaluate.m09_evaluator_client.EvaluatorClient, "start", return_value=client):
+                    evaluate.episode(engine=root / "engine", template=template, output=root / "run", reward={},
+                                     policy="greedy", seed=1, evaluator=root / "evaluator", package=package,
+                                     retain_spatial_inputs=retain)
+                rows = [json.loads(line) for line in (root / "run/actions.jsonl").read_text().splitlines()]
+                if retain:
+                    self.assertEqual(rows[0]["spatial_before"], [.25] * 32768)
+                    self.assertEqual(rows[1]["spatial_before"], [.75] * 32768)
+                else:
+                    self.assertTrue(all("spatial_before" not in row for row in rows))
+
     def test_nonterminal_cutoff_is_failure_and_retains_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
