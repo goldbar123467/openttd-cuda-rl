@@ -184,6 +184,9 @@ S1-3 tests pass on the GPU; audit reports S1-6 are committed as run artifacts
 - **Why:** 03 N1 and N4. The seeds exist in `config/v2/m15-scalable-contract.json`.
 - **Verify:** the matrix check in the driver. Estimate the cost first from the
   existing `wall_seconds` records (no new runs needed for the estimate).
+- **Also:** `infer_v2.py` defaults to `--split training` and to the split's first
+  seed (09 X1). The driver must pass `--split development --map-seed` explicitly
+  and assert both in each `run.json`.
 
 ### S2-4. V2 held-out registration.
 
@@ -372,6 +375,14 @@ record plus a paired timing report under `runs/`, summarized in
 
 ## Stage 4: optional strategy experiments
 
+**Update:** for the V2 learning track, `08-ppo-training-recovery.md` supersedes this
+ordering. Its Steps 0–1 (instrumentation, choice-only loss) turn S4-1 into a
+prerequisite rather than an option. Its Step 2 (capital-amortizing potential) and
+Step 3 (signed-log inputs and guide v4, no repayment before service) are new items
+with their own protocol (08 §3). Before relying on γ in any Step 5 experiment,
+verify the native γ against the record (09 X7). The table below remains the
+catalogue of further options.
+
 Each item is a registered study with ≥ 3 training seeds, a matched decision budget,
 and the Stage 2 evaluation protocol. Report service, profit, cash, invalid actions
 and bankruptcy with uncertainty. Stop and record a failure without retuning on the
@@ -394,6 +405,9 @@ same maps.
 ## Summary ordering
 
 1. S1-1 (reproducibility)
+   - Immediately after it: 08 Steps 0–2 and the 08 §3 study (arms A0–A2), which is
+     the V2 training recovery. It needs S1-1 for signed-log inputs, and 08 Step 0
+     instrumentation first.
 2. S1-2 (behavior audit)
 3. S1-6 (offline audits)
 4. S2-1 (study code in repo)
