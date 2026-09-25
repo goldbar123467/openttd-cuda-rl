@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openttd-rl.local/schema/dev-study-registration.schema.json",
+  "title": "Prospective V2 development recovery execution registration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "study_id", "registered_utc", "protocol_sha256", "arm", "training_seeds", "training", "runtime", "source", "source_archive", "driver", "code_sha256", "binaries", "qualification_reports", "cost_estimate", "maximum_native_jobs", "maximum_cuda_training_jobs"],
+  "properties": {
+    "format": {"const": "openttd-rl-dev-study-registration-1"},
+    "study_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,95}$"},
+    "registered_utc": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "protocol_sha256": {"$ref": "#/$defs/sha256"},
+    "arm": {"enum": ["A0", "A1", "A2", "A3"]},
+    "training_seeds": {"const": [20260923, 20260924, 20260925]},
+    "training": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Must equal the frozen fixed_training object merged with the named arm, excluding its id; checked by the driver."
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["device", "python", "torch", "torch_cuda", "cuda_available", "gpu", "compute_capability"],
+      "properties": {
+        "device": {"const": "cuda:0"},
+        "python": {"type": "string", "minLength": 1},
+        "torch": {"type": "string", "minLength": 1},
+        "torch_cuda": {"type": "string", "minLength": 1},
+        "cuda_available": {"const": true},
+        "gpu": {"type": "string", "minLength": 1},
+        "compute_capability": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer", "minimum": 0}}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "status", "working_files_sha256"],
+      "properties": {
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "status": {"type": "string"},
+        "working_files_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "source_archive": {"type": "string", "minLength": 1},
+    "driver": {"type": "string", "pattern": "^scripts/dev/studies/[a-z0-9_]+\\.py$"},
+    "code_sha256": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    },
+    "binaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "trainer", "policy"],
+      "properties": {
+        "engine": {"$ref": "#/$defs/artifact"},
+        "trainer": {"$ref": "#/$defs/artifact"},
+        "policy": {"$ref": "#/$defs/artifact"}
+      }
+    },
+    "qualification_reports": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+    "cost_estimate": {"$ref": "#/$defs/artifact"},
+    "maximum_native_jobs": {"type": "integer", "minimum": 1, "maximum": 2},
+    "maximum_cuda_training_jobs": {"const": 1}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@
 Goal: [complete refactor and PPO recovery](REFACTOR_GOAL_2026-09-25.md).
 Review: `9/25 refractor/`, fetched at `ec5a3f6`; reviewed source was `0595a72`.
 Execution starts from `8ffc5bd` on `codex/local-training-foundation`.
+The first implementation checkpoint is local commit `c8f585b`; nothing was pushed.
 All eleven original reports were read. This is an implementation record, not a
 replacement for their requirements or a claim that their static findings passed.
 
@@ -101,8 +102,19 @@ directory above. Failed attempts are retained.
   their old decision does not qualify them for new same-guide studies.
 - `eval_stats.py` adds balanced per-seed/per-map paired differences, sign counts,
   and fixed-seed nested bootstrap. Four tests cover known intervals, training-seed
-  dependence, ordering and missing/duplicate/nonfinite cases. Report integration,
-  registration schema and prospective full-map drivers remain outstanding.
+  dependence, ordering and missing/duplicate/nonfinite cases. Report integration
+  and prospective full-map execution drivers remain outstanding.
+- [The prospective protocol](V2_RECOVERY_PROTOCOL.md) is now frozen before new
+  tuning, binding the complete eight-map development matrix and reserving the
+  eight generalization maps. Its identity is
+  `50b27a8d31b54485af847ae2478454a401efe9d0f0f8ab16c8a84398aa26f3d0`.
+  `protocol_v2.py` and the execution-registration schema bind seeds, exact arm
+  settings, driver/source/binary/runtime identities and cost/qualification inputs.
+  Four tests pass, covering altered protocols, wrong splits/maps/modes, missing
+  matrix entries and changed settings. The schema initially depended on an
+  unavailable optional date-time checker; explicit standard-library validation
+  corrected that failed test. No execution registration or held-out permission
+  has been issued. Driver execution and held-out preflight/refusal tests remain.
 
 Next: Stage 2 registrations, full-map drivers/report integration and held-out
 access safeguards; investigate the V2 cross-device bound and remaining offline
@@ -122,10 +134,10 @@ deliverable; no member is complete until its own evidence is recorded.
 | S1-4 honest probes | F23; 03:N10 | Verified by focused tests and live runs | Recorded quarter-income fixture and probe labeling |
 | S1-5 backend identity | F26 | Verified | Native/build-derived provenance tests and live records |
 | S1-6 offline audits | F18/F20/F21; X6; 03:N9/N13; 06:R2/R3/O2 | Reward/time audit verified; remaining historical questions pending | Hashed input reports; clips/terminal/time/advantages/KL |
-| S2-1 study drivers/schema | F03; 06:K3 | Historical rederivation verified; prospective schema/driver pending | 51 hashed cases; full-map registration still required |
+| S2-1 study drivers/schema | F03; 06:K3 | Historical rederivation and registration validation verified; execution driver pending | 51 hashed cases; executable full-map study still required |
 | S2-2 statistics | F08; 03:N1/N2/N5/N12; 04:B12; 06:K5 | Shared helper/tests verified; report integration pending | Per-map/seed/window, paired/nested uncertainty and fixtures |
-| S2-3 eight development maps | F09/F29; X1; 03:N3/N6/N7 | Pending | Explicit split/map matrix, guide/control provenance |
-| S2-4 held-out protocol | F09; 03:N4 | Pending | Frozen protocol before tuning; fail-closed access tests |
+| S2-3 eight development maps | F09/F29; X1; 03:N3/N6/N7 | Frozen matrix and identity tests verified; launch/report integration pending | Explicit split/map matrix, guide/control provenance |
+| S2-4 held-out protocol | F09; 03:N4 | Protocol frozen; access implementation/refusal tests pending | No held-out access; model registration after development eligibility |
 | S2-5 device agreement | F28; 03:N8 | Pending | Reference/fused CPU-CUDA replay; perturbed-model rejection |
 | S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Pending | Reproduce interval width, document screening/confirmation |
 | S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Pending | Solo/concurrent native action/economic trace identity |
