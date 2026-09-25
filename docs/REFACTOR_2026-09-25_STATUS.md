@@ -115,6 +115,12 @@ directory above. Failed attempts are retained.
   unavailable optional date-time checker; explicit standard-library validation
   corrected that failed test. No execution registration or held-out permission
   has been issued. Driver execution and held-out preflight/refusal tests remain.
+- `studies/recovery_decision.py` implements the frozen A0-A3 advancement and
+  first-eligible-arm selection. **Six fixture tests pass**, including the
+  same-two-seeds profit/cash condition, seven-map service threshold, retained
+  stopped seeds, failed games, guide mismatch and complete-arm selection. It
+  consumes identity-verified cases; native trace loading, execution registration
+  preflight and the actual study runner are the next required integration work.
 
 Next: Stage 2 registrations, full-map drivers/report integration and held-out
 access safeguards; investigate the V2 cross-device bound and remaining offline
