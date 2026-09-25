@@ -22,6 +22,66 @@ replacement for their requirements or a claim that their static findings passed.
   now verifies concurrency and corrects V2 inference determinism; no paid computation
   is launched.
 
+## V1 evaluation stage timing (S3-0 partial / 04:B1-B3)
+
+**V1 evaluation slice verified; native ACT/UPDATE and V2 timing remain pending.**
+`evaluate_live.py --stage-timing` writes optional host wall spans to a separate
+`timing.jsonl`. Canonical action rows are unchanged. Disabled spans do not read a
+clock or create a timing file. Failed spans are retained, and the ordinary episode
+failure/cleanup behavior is preserved. These spans include synchronous work and
+waits; they are not CUDA-event or kernel measurements. Unmeasured bookkeeping and
+instrumentation overhead are reported separately rather than attributed to a stage.
+
+`profile_evaluation.py` first checks disabled timing against the retained prior
+source and enabled against disabled. Only then does it run four balanced pairs:
+off/on, on/off, on/off, off/on. The fixed workload uses the retained balanced-roll64
+MLP, native CPU evaluator, fast bridge, one process worker, both V1 development
+maps, sampled seed 20260925 and all 512 decisions. The 20 complete games total
+10,240 decisions. All 12 comparisons preserve byte-identical action traces and
+all summary fields except elapsed time; inputs and source remain unchanged.
+No native build or policy/training settings changed in this slice.
+
+All durations below are seconds, median [minimum, maximum] across the four pairs,
+excluding qualification. Host: Ubuntu 24.04/WSL2, Python 3.12.13, LibTorch 2.9.1;
+the host has an RTX 2070 but this evaluator uses CPU inference.
+
+| Map | Timing disabled | Timing enabled | Paired enabled minus disabled |
+| --- | --- | --- | --- |
+| 05 | 25.512 [25.445, 25.543] | 25.774 [25.473, 26.086] | 0.290 [-0.070, 0.586] |
+| 06 | 25.435 [25.318, 25.616] | 25.804 [25.593, 26.020] | 0.326 [0.254, 0.511] |
+
+Complete two-map command medians are 51.716 [51.666, 51.871] disabled and
+52.364 [51.864, 52.876] enabled. This measures instrumentation overhead, not an
+optimization speedup. Observation reads dominate the timed workload: medians
+20.827/20.840 seconds for maps 05/06, versus 2.140/2.148 for policy-input preparation,
+1.072/1.080 for the policy request and 1.025/1.024 for native game stepping.
+Trace serialization is 0.040/0.041 and flushing 0.015/0.014 seconds; unmeasured
+wall time is 0.090/0.103 seconds. Full ranges and per-call statistics are retained.
+
+A separate complete map-05 cProfile diagnostic also preserves actions and summary
+semantics. It records 11.279 seconds cumulative in regex substitution for canonical
+validation, 7.534 in table CRC, and 7.474 in the spatial-validation generator.
+Its 37.940-second profiled episode is affected by profiler overhead, so these are
+function-attribution leads, not estimates of ordinary wall-time savings. This
+supports measuring validation/vectorization and native CRC candidates; it does
+not yet justify adopting them or relaxing any integrity check.
+
+Evidence below is under `/home/imsa/.local/share/openttd-rl/runs/`:
+
+- `refactor-v1-stage-timing-01/profile.json`, SHA-256 `79eb032fb2f15bad9f8adebe00b04adef5dad9a71d00c1cd7d11c34e893f15a9`:
+  archived source, binary/package/input hashes, exact comparisons and four pairs.
+- `refactor-v1-call-profile-01/profile.json`, SHA-256 `c7c3d85ac3bfd978df55323a76bb790f2f64c9650f186a4cc776698a3f8d43f8`:
+  one full-game function profile, command, archived source and neutrality check.
+- `refactor-v1-timing-checks-01/`: **216 Python passes, four existing MCP-environment
+  skips, 136/136 portable checks**. Five focused timing tests cover disabled I/O,
+  units, action/economic neutrality, exception retention and incomplete/overlapping
+  timing evidence. Tests ran before the isolated timing workload.
+
+Reproduction commands are in [DEVELOPMENT.md](DEVELOPMENT.md). This slice does not
+qualify the latest source's full Vast bundle, launch learning, access held-out games
+or change bridge defaults. Next complete native ACT/UPDATE and V2 phase attribution,
+then gate any selected optimization on equality and counterbalanced measurements.
+
 ## Concurrent execution and deterministic V2 inference (S2-7 / F33)
 
 **Verified on the retained workload after correcting V2 inference.** The first
@@ -463,8 +523,9 @@ directory above. Failed attempts are retained.
   repository suite **136/136 passed** (`refactor-report-fast-01/fast.log`). No
   native PPO math changed in this reporting pass; prior native results stand.
 
-Current next work: add neutral stage timers (S3-0), then continue the measured
-pipeline work and remaining audits/strategy dispositions. Container qualification
+Current next work: complete native ACT/UPDATE and V2 stage timers (S3-0); the V1
+evaluation slice now passes as recorded above. Continue measured pipeline work
+and remaining audits/strategy dispositions. Container qualification
 and V1 device agreement have now passed as recorded above. The portable package
 supplies capacity and sequential execution; image publication, paid provisioning and the
 registered study remain outstanding. A Vast host must pass its own prerequisite
@@ -490,7 +551,7 @@ deliverable; no member is complete until its own evidence is recorded.
 | S2-5 device agreement | F28; 03:N8 | Verified on retained MLP; all-architecture native fixtures | 4096 rows/backend, exact argmax, fixed tolerances; valid perturbed package rejected; old CNN spatial-data limit explicit |
 | S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Verified, scoped to retained V1 contrasts | Exact historical half-width; explicit extrapolation assumptions and V2 limit |
 | S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Verified for retained full workload after V2 inference fix | 13 exact comparisons; actual overlap; first CUDA prediction failure preserved |
-| S3-0 timers | 04:section 6; 05:section 11; 03:N14 | Pending | Separate timings, unchanged canonical traces, 3 paired runs |
+| S3-0 timers | 04:section 6; 05:section 11; 03:N14 | V1 evaluation verified; native ACT/UPDATE and V2 pending | Separate timings, 12 exact comparisons, four balanced full-episode pairs; one diagnostic call profile |
 | S3-1 evaluation quick wins | F13; 04:B1/B2/B7 | Pending | Full replay equality and paired timing |
 | S3-2 MLP spatial transfers | F12/F32; X10; 05:K1; 06:O3 | Pending | Cross-binary exact mode; all architecture regressions |
 | S3-3 ACT copies/backend | F10; 05:K4/K12 | Pending | Exact consolidated copies; measured/toleranced backend |
@@ -519,7 +580,9 @@ deliverable; no member is complete until its own evidence is recorded.
 All below are **pending assessment**, not silently omitted. Close optional options
 only with evidence for the reported condition, not with a generic "out of scope".
 
-- 04:B3 native CRC; B4 structured-only evaluator; B11 screening; B13 engine reuse.
+- 04:B3 native CRC: V1 call profiling establishes a measurable CRC cost; candidate
+  implementation and equality/end-to-end timing gates remain pending.
+- 04:B4 structured-only evaluator; B11 screening; B13 engine reuse.
 - 05:K6 pinned staging; K10 CUDA Graphs; K11 batch-bound relaxation. No new V2
   custom backward before the report's profiling prerequisites.
 - 06:P2b/A2 semi-MDP compression; P6 larger V1 rollouts; A1 compound selection;

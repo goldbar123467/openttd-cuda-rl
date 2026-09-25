@@ -512,6 +512,38 @@ implementation of the same checksum and canonical-response checks. The default
 is also supported by `train_live.py`; it changes validation cost, not PPO or game
 semantics. Full-episode byte-equivalence evidence is recorded in the progress log.
 
+`--stage-timing` independently records per-episode host wall spans in
+`timing.jsonl`, separate from `actions.jsonl`. It covers environment startup,
+input preparation, policy request, step, observation, legal-mask requests, trace
+assembly/serialization/write/flush and cleanup. Disabled timing reads no clocks
+and creates no timing file. Failed spans remain visible. Logging overhead and
+other bookkeeping are outside these spans. Policy-request time includes its
+synchronous service/wait cost; none of these measurements is a CUDA kernel time.
+
+To qualify timing against a retained evaluation and measure its overhead, use a
+new output directory and the same actual engine/evaluator/package identities:
+
+```bash
+python scripts/dev/profile_evaluation.py \
+  --engine ~/.local/share/openttd-rl/engine/build/openttd \
+  --instance-dir ~/.local/share/openttd-rl/engine/instances \
+  --evaluator ~/.local/share/openttd-rl/build/refactor-v1-agreement-reference-01/m09_evaluator \
+  --package /absolute/path/to/retained/model-package \
+  --reference ~/.local/share/openttd-rl/runs/refactor-concurrency-02/v1-workers4 \
+  --output ~/.local/share/openttd-rl/runs/v1-stage-profile-new
+```
+
+The driver fixes both development maps, sampled seed 20260925, 512 decisions,
+CPU native inference, fast bridge and one process worker. It checks prior/default
+and enabled/default trace and summary equality before four balanced timing pairs.
+Run without competing work. It retains source/input hashes, stage distributions,
+episode/command medians and ranges, paired overhead and unmeasured wall time.
+The retained reference must contain both matching sampled games. For function
+attribution, add `--profile --stage-timing` to a separate `evaluate_live.py` run;
+cProfile overhead makes that run unsuitable for ordinary performance estimates.
+See [the verified measurements](REFACTOR_2026-09-25_STATUS.md). Native ACT/UPDATE and
+V2 phase timing remain separate unfinished work.
+
 To replay saved neural weights, supply `--evaluator`, `--package` using the
 `model.path` from a successful training `run.json`, and `--policies greedy sampled`:
 

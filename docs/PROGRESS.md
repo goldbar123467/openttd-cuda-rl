@@ -1,5 +1,20 @@
 # Live OpenTTD development progress
 
+## 2026-09-25: neutral V1 evaluation timing
+
+Optional `--stage-timing` now records wall spans outside canonical action traces.
+Qualification plus four balanced on/off pairs passes all 12 exact comparisons
+across 20 complete games. The fixed sampled MLP/CPU workload takes median 51.716
+seconds per two-map command with timing disabled and 52.364 enabled. Observation
+reads dominate; a separate exact-trace cProfile run identifies canonical JSON,
+CRC and spatial validation as optimization candidates. This is instrumentation
+and attribution, not a demonstrated optimization or learning improvement.
+
+Checks pass: 216 Python tests with four existing environment skips and all 136
+portable checks. Native ACT/UPDATE and V2 timers still need implementation.
+See [the measurements and evidence](REFACTOR_2026-09-25_STATUS.md) and
+[the profiling command](DEVELOPMENT.md). The full registered study remains pending.
+
 ## 2026-09-25: concurrent-game determinism and V2 inference fix
 
 The strict concurrency check found small V2 CUDA prediction differences despite

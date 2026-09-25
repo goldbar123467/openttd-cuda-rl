@@ -21,6 +21,7 @@ import time
 
 from local import ROOT, positive, source_identity, write_json
 import bridge_validation
+from stage_timing import StageTimings
 
 sys.path.insert(0, str(ROOT / "scripts/v1"))
 import m09_evaluator_client
@@ -74,7 +75,7 @@ def economic_window(rows: list[dict]) -> dict:
 def episode(*, engine: Path, template: Path, output: Path, reward: dict,
             policy: str, seed: int, evaluator: Path | None, package: Path | None,
             timeout: float = 60, backend: str = "native", evaluation_split: str | None = None,
-            retain_spatial_inputs: bool = False) -> dict:
+            retain_spatial_inputs: bool = False, stage_timing: bool = False) -> dict:
     if template.stem in ("m02-template-07", "m02-template-08") and evaluation_split != "final-evaluation":
         raise ValueError("Final cases require the dedicated registered evaluation runner")
     scenario = json.loads(template.read_text())
@@ -96,109 +97,131 @@ def episode(*, engine: Path, template: Path, output: Path, reward: dict,
     client = None
     rows = []
     try:
-        if actual_split == "final-evaluation":
-            # The ordinary native reset owns the 512-action budget. M09 reset
-            # overrides deliberately allow only the old 64/128/256 matrix.
-            environment = m07.start_environment(engine, [template], output, reward, 0, 0, timeout, "final")
-        else:
-            environment = m07.start_environment(engine, [template], output, reward, 0, 0, timeout, "development")
-        initial = environment.controller.snapshot()
-        if actual_split == "final-evaluation" and (initial["company"]["balance"] != 100_000 or
-                environment.controller.action_horizon != 512 or environment.controller.tick_horizon != 65_536):
-            raise ValueError("Registered final cash/action/tick budget differs from native reset")
-        write_json(output / "initial.json", initial)
-        rng = random.Random(seed)
-        package_before = package_snapshot(package, backend) if package is not None else None
-        if policy in ("greedy", "sampled"):
-            if backend == "native":
-                client = m09_evaluator_client.EvaluatorClient.start(evaluator, package=package, sampling_seed=seed)
-            else:
-                client = m10_deployment_client.DeploymentClient.start(evaluator, package=package, sampling_seed=seed, mode="ingame")
-        with (output / "actions.jsonl").open("w") as trace:
-            for step in range(1, environment.controller.action_horizon + 1):
-                legal = m07.legal_mask(environment.mask)
-                prediction = None
-                if client is not None:
-                    prediction = client.inspect([m07.structured(environment.observation)],
-                                                [m08.spatial(environment.observation)], [legal],
-                                                deterministic=policy == "greedy")[0]
-                    action = prediction.action
-                elif policy == "wait":
-                    action = 0
-                elif policy == "random":
-                    action = rng.choice([i for i, valid in enumerate(legal) if valid])
-                elif policy == "scripted":
-                    action = m09.scripted_action(environment)
-                    legal = m07.legal_mask(environment.mask)
-                elif policy in FLEET_SIZES:
-                    action = service_action(environment.observation, legal, FLEET_SIZES[policy])
+        with StageTimings(output / "timing.jsonl" if stage_timing else None) as timing:
+            with timing.measure("environment_start"):
+                if actual_split == "final-evaluation":
+                    # The ordinary native reset owns the 512-action budget. M09 reset
+                    # overrides deliberately allow only the old 64/128/256 matrix.
+                    environment = m07.start_environment(engine, [template], output, reward, 0, 0, timeout, "final")
                 else:
-                    raise ValueError(f"Unknown policy: {policy}")
-                if not legal[action]:
-                    raise RuntimeError(f"Policy selected masked action {action}")
-                before = m07.structured(environment.observation)
-                spatial_before = m08.spatial(environment.observation) if retain_spatial_inputs and client is not None else None
-                result = environment.controller.step(action)
-                if not result["termination"]["trainable"]:
-                    raise RuntimeError(f"Untrainable transition: {result['termination']}")
-                environment.episode_length += 1
-                environment.episode_return += result["reward"]["scalar"]
-                environment.observation = environment.controller.observe()
-                row = {"step": step, "action": action, "legal": legal, "structured_before": before,
-                       "prediction": dataclasses.asdict(prediction) if prediction else None,
-                       "outcome": result["action_outcome"], "raw": result["reward"]["raw"],
-                       "reward": result["reward"]["scalar"], "source": result["reward"]["source"],
-                       "snapshot": result["snapshot"], "termination": result["termination"],
-                       "buses": round(environment.observation["structured"]["data"][6] * 8),
-                       "routes": round(environment.observation["structured"]["data"][9] * 8)}
-                if spatial_before is not None:
-                    row["spatial_before"] = spatial_before
-                trace.write(json.dumps(row, allow_nan=False) + "\n")
-                trace.flush()
-                rows.append(row)
-                if step % 128 == 0:
-                    window = economic_window(rows[-128:])
-                    label = "FINAL_EPISODE" if actual_split == "final-evaluation" else "DEV_EPISODE"
-                    print(f"{label} policy={policy} template={template.stem} seed={seed} "
-                          f"step={step} window_passengers={window['passengers']} "
-                          f"window_profit={window['operating_profit']}", flush=True)
-                if result["termination"]["reason"] != "NONE":
-                    break
-                environment.mask = environment.controller.mask()
-        if result["termination"]["reason"] == "NONE":
-            raise RuntimeError("Episode ended without an engine termination")
-        total = economic_window(rows)
-        windows = [economic_window(rows[i:i + 128]) for i in range(0, len(rows), 128)]
-        source = rows[-1]["source"]["post"]
-        capital = total["capital_spend"]
-        profit = total["operating_profit"]
-        first_delivery = next((row["step"] for row in rows if row["raw"]["delivered_passengers_delta"] > 0), None)
-        first_running = next((row["step"] for row in rows if row["source"]["post"]["primary_bus_count"] >
-                              row["source"]["post"]["stopped_primary_bus_count"]), None)
-        status.update(status="completed", actions=len(rows), return_=environment.episode_return,
-                      termination=result["termination"], bankruptcy=result["termination"]["reason"] == "BANKRUPTCY",
-                      passengers=total["passengers"], operating_profit=profit,
-                      operating_income=source["operating_income_total"], operating_expenses=source["operating_expenses_total"],
-                      capital_spend=capital, operating_profit_less_capital=profit - capital,
-                      final_balance=result["snapshot"]["company"]["balance"],
-                      balance_change=result["snapshot"]["company"]["balance"] - initial["company"]["balance"],
-                      invalid_actions=sum(row["raw"]["native_rejected"] for row in rows),
-                      vehicle_losses=sum(row["raw"]["vehicle_loss_count"] for row in rows),
-                      idle_bus_ticks=sum(row["raw"]["idle_bus_ticks"] for row in rows),
-                      first_delivery_action=first_delivery, first_running_action=first_running,
-                      final_buses=rows[-1]["buses"], final_routes=rows[-1]["routes"],
-                      action_counts=dict(sorted(Counter(row["action"] for row in rows).items())), windows=windows,
-                      service_in_all_final_three_windows=len(windows) == 4 and all(
-                          w["passengers"] > 0 and w["operating_profit"] > 0 for w in windows[-3:]))
-        environment.controller.close(timeout)
-        environment = None
-        if client is not None:
-            package_id, state_hash = client.close(timeout)
-            client = None
-            if package_id != package.name or package_snapshot(package, backend) != package_before:
-                raise RuntimeError("Evaluation package identity changed")
-            status.update(package_id=package_id, model_state_sha256=state_hash)
-        return status
+                    environment = m07.start_environment(engine, [template], output, reward, 0, 0, timeout, "development")
+            with timing.measure("initial_snapshot"):
+                initial = environment.controller.snapshot()
+            if actual_split == "final-evaluation" and (initial["company"]["balance"] != 100_000 or
+                    environment.controller.action_horizon != 512 or environment.controller.tick_horizon != 65_536):
+                raise ValueError("Registered final cash/action/tick budget differs from native reset")
+            with timing.measure("initial_write"):
+                write_json(output / "initial.json", initial)
+            rng = random.Random(seed)
+            with timing.measure("package_before"):
+                package_before = package_snapshot(package, backend) if package is not None else None
+            with timing.measure("policy_start"):
+                if policy in ("greedy", "sampled"):
+                    if backend == "native":
+                        client = m09_evaluator_client.EvaluatorClient.start(evaluator, package=package, sampling_seed=seed)
+                    else:
+                        client = m10_deployment_client.DeploymentClient.start(evaluator, package=package, sampling_seed=seed, mode="ingame")
+            with (output / "actions.jsonl").open("w") as trace:
+                for step in range(1, environment.controller.action_horizon + 1):
+                    with timing.measure("legal_mask", step=step):
+                        legal = m07.legal_mask(environment.mask)
+                        prediction = None
+                    if client is not None:
+                        with timing.measure("policy_inputs", step=step):
+                            structured_input = m07.structured(environment.observation)
+                            spatial_input = m08.spatial(environment.observation)
+                        with timing.measure("policy_request", step=step):
+                            prediction = client.inspect([structured_input], [spatial_input], [legal],
+                                                        deterministic=policy == "greedy")[0]
+                        action = prediction.action
+                    elif policy == "wait":
+                        action = 0
+                    elif policy == "random":
+                        action = rng.choice([i for i, valid in enumerate(legal) if valid])
+                    elif policy == "scripted":
+                        action = m09.scripted_action(environment)
+                        legal = m07.legal_mask(environment.mask)
+                    elif policy in FLEET_SIZES:
+                        action = service_action(environment.observation, legal, FLEET_SIZES[policy])
+                    else:
+                        raise ValueError(f"Unknown policy: {policy}")
+                    if not legal[action]:
+                        raise RuntimeError(f"Policy selected masked action {action}")
+                    with timing.measure("trace_inputs", step=step):
+                        before = m07.structured(environment.observation)
+                        spatial_before = m08.spatial(environment.observation) if retain_spatial_inputs and client is not None else None
+                    with timing.measure("game_step", step=step):
+                        result = environment.controller.step(action)
+                    if not result["termination"]["trainable"]:
+                        raise RuntimeError(f"Untrainable transition: {result['termination']}")
+                    environment.episode_length += 1
+                    environment.episode_return += result["reward"]["scalar"]
+                    with timing.measure("observe", step=step):
+                        environment.observation = environment.controller.observe()
+                    with timing.measure("trace_assemble", step=step):
+                        row = {"step": step, "action": action, "legal": legal, "structured_before": before,
+                               "prediction": dataclasses.asdict(prediction) if prediction else None,
+                               "outcome": result["action_outcome"], "raw": result["reward"]["raw"],
+                               "reward": result["reward"]["scalar"], "source": result["reward"]["source"],
+                               "snapshot": result["snapshot"], "termination": result["termination"],
+                               "buses": round(environment.observation["structured"]["data"][6] * 8),
+                               "routes": round(environment.observation["structured"]["data"][9] * 8)}
+                        if spatial_before is not None:
+                            row["spatial_before"] = spatial_before
+                    with timing.measure("trace_serialize", step=step):
+                        encoded_row = json.dumps(row, allow_nan=False) + "\n"
+                    with timing.measure("trace_write", step=step):
+                        trace.write(encoded_row)
+                    with timing.measure("trace_flush", step=step):
+                        trace.flush()
+                    rows.append(row)
+                    if step % 128 == 0:
+                        window = economic_window(rows[-128:])
+                        label = "FINAL_EPISODE" if actual_split == "final-evaluation" else "DEV_EPISODE"
+                        print(f"{label} policy={policy} template={template.stem} seed={seed} "
+                              f"step={step} window_passengers={window['passengers']} "
+                              f"window_profit={window['operating_profit']}", flush=True)
+                    if result["termination"]["reason"] != "NONE":
+                        break
+                    with timing.measure("legal_actions_request", step=step):
+                        environment.mask = environment.controller.mask()
+            if result["termination"]["reason"] == "NONE":
+                raise RuntimeError("Episode ended without an engine termination")
+            total = economic_window(rows)
+            windows = [economic_window(rows[i:i + 128]) for i in range(0, len(rows), 128)]
+            source = rows[-1]["source"]["post"]
+            capital = total["capital_spend"]
+            profit = total["operating_profit"]
+            first_delivery = next((row["step"] for row in rows if row["raw"]["delivered_passengers_delta"] > 0), None)
+            first_running = next((row["step"] for row in rows if row["source"]["post"]["primary_bus_count"] >
+                                  row["source"]["post"]["stopped_primary_bus_count"]), None)
+            status.update(status="completed", actions=len(rows), return_=environment.episode_return,
+                          termination=result["termination"], bankruptcy=result["termination"]["reason"] == "BANKRUPTCY",
+                          passengers=total["passengers"], operating_profit=profit,
+                          operating_income=source["operating_income_total"], operating_expenses=source["operating_expenses_total"],
+                          capital_spend=capital, operating_profit_less_capital=profit - capital,
+                          final_balance=result["snapshot"]["company"]["balance"],
+                          balance_change=result["snapshot"]["company"]["balance"] - initial["company"]["balance"],
+                          invalid_actions=sum(row["raw"]["native_rejected"] for row in rows),
+                          vehicle_losses=sum(row["raw"]["vehicle_loss_count"] for row in rows),
+                          idle_bus_ticks=sum(row["raw"]["idle_bus_ticks"] for row in rows),
+                          first_delivery_action=first_delivery, first_running_action=first_running,
+                          final_buses=rows[-1]["buses"], final_routes=rows[-1]["routes"],
+                          action_counts=dict(sorted(Counter(row["action"] for row in rows).items())), windows=windows,
+                          service_in_all_final_three_windows=len(windows) == 4 and all(
+                              w["passengers"] > 0 and w["operating_profit"] > 0 for w in windows[-3:]))
+            with timing.measure("environment_close"):
+                environment.controller.close(timeout)
+            environment = None
+            if client is not None:
+                with timing.measure("policy_close"):
+                    package_id, state_hash = client.close(timeout)
+                client = None
+                with timing.measure("package_after"):
+                    if package_id != package.name or package_snapshot(package, backend) != package_before:
+                        raise RuntimeError("Evaluation package identity changed")
+                status.update(package_id=package_id, model_state_sha256=state_hash)
+            return status
     except BaseException as exc:
         status.update(status="failed", error=str(exc), completed_actions=len(rows))
         raise
@@ -258,6 +281,7 @@ def run(args) -> None:
               "policies": args.policies, "sampling_seeds": args.seeds,
               "deterministic_baselines_repeated": False, "workers": args.workers,
               "executor": args.executor, "profile": args.profile,
+              "stage_timing": getattr(args, "stage_timing", False),
               "bridge_validation": args.bridge_validation, "episodes": []}
     jobs = [(policy, template, seed) for policy in args.policies for template in templates
             for seed in (args.seeds if policy in ("random", "sampled") else args.seeds[:1])]
@@ -265,7 +289,8 @@ def run(args) -> None:
     jobs = [(dict(engine=engine, template=template, reward=reward, policy=policy, seed=seed,
                   evaluator=evaluator, package=package, timeout=args.timeout, backend=args.backend, evaluation_split=args.split,
                   output=output / f"{policy}-{template.stem}-s{seed}",
-                  retain_spatial_inputs=getattr(args, "retain_spatial_inputs", False)), args.profile, args.bridge_validation)
+                  retain_spatial_inputs=getattr(args, "retain_spatial_inputs", False),
+                  stage_timing=getattr(args, "stage_timing", False)), args.profile, args.bridge_validation)
             for policy, template, seed in jobs]
     try:
         executor = ProcessPoolExecutor if args.executor == "process" else ThreadPoolExecutor
@@ -300,6 +325,8 @@ def main() -> int:
     parser.add_argument("--executor", choices=("thread", "process"), default="process")
     parser.add_argument("--retain-spatial-inputs", action="store_true",
                         help="Retain full CNN inputs for device replay (increases trace storage)")
+    parser.add_argument("--stage-timing", action="store_true",
+                        help="Write separate per-episode stage wall times; does not time GPU kernels")
     parser.add_argument("--profile", action="store_true", help="Save per-episode cProfile data; affects timing")
     parser.add_argument("--bridge-validation", choices=("reference", "fast"), default="reference")
     parser.add_argument("--timeout", type=positive, default=60)
