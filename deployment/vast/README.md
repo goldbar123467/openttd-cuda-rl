@@ -1,10 +1,11 @@
 # Portable single-GPU registered study
 
-**Qualification status:** the full local correctness bundle passed, including
+**Qualification status:** the full local and container correctness bundles passed, including
 historical equivalence, A0/guide-v3/recovery CPU/CUDA agreement at the unchanged
 .0001 limit, probe neutrality and exact CPU/CUDA checkpoint resume. Protocol 2
-uses the qualified FP64 clipping-norm mode. The pinned Docker image is being
-built locally; container validation remains pending. The launcher reruns its
+uses the qualified FP64 clipping-norm mode. The pinned image built successfully,
+and its native engine, current trainer and historical reference were compiled
+and exercised inside the container. The launcher reruns its
 complete qualification on the target and refuses registration on failed or
 mismatched results.
 
@@ -148,5 +149,12 @@ and matching environment. Preserve the image digest alongside the copied archive
 
 The local validation record and remaining limitations are in
 [`REFACTOR_2026-09-25_STATUS.md`](../../docs/REFACTOR_2026-09-25_STATUS.md).
-The Docker image and a remote Vast launch must be validated on a Docker-equipped
-host; local WSL native tests do not substitute for that container check.
+The container bundle passed 189 Python tests (four additional MCP-environment
+skips), 136 portable checks, 19 native CPU/CUDA tests, held-out refusal, exact
+historical comparisons, CPU/CUDA agreement, probe neutrality and exact reset
+resume. The local image ID is
+`sha256:02fa976708fea6c80868bb029de591dd283b41d85fe25f5b10a84f6d66ba361b`;
+this is a local image identity, not a published registry reference.
+Testing used WSL2's RTX 2070 driver bindings. Actual Vast provisioning, its GPU
+runtime and volume attachment remain untested; the selected host must pass its
+own complete bundle before registration. The full learning study has not run.

@@ -33,8 +33,10 @@ inference/control CLIs still reject held-out splits. The isolated
 `studies/heldout_v2.py` path requires frozen, reverified eligibility from every arm.
 
 See [the refactor evidence record](REFACTOR_2026-09-25_STATUS.md) for actual local
-checks and limitations. Building/running the Docker image on its target host
-remains a separate qualification; no study learning result is claimed here.
+checks and limitations. The pinned image and its complete native CPU/CUDA bundle
+passed locally in a container, including exact checkpoint resume. The selected
+Vast host still runs its own qualification before registration; no study learning
+result is claimed here.
 
 ## What we are continuing
 

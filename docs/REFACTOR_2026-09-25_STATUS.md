@@ -56,32 +56,66 @@ The qualified trainer SHA-256 is
 This is a local WSL qualification; the target still runs its own complete bundle.
 No training registration or held-out access has been issued.
 
-The numerical correction and full local qualification are committed at `ab090de`.
-A project-scoped Docker daemon built the pinned image locally; no global Docker
-service or configuration was installed. Image ID:
-`sha256:a32d872071adeffab7fdb5ff493b07163b2c8c1a9dfeb1ff5467f6ffeea2c2fb`,
-size 16,830,062,411 bytes. `refactor-container-runtime-01/verification.json` passed
-missing-revision/missing-volume refusal and an actual Torch CUDA matrix operation
-in the image on the RTX 2070. Its entrypoint matches the committed bytes.
+## Container qualification
 
-The first clean container native-build attempt, `refactor-container-native-01`,
-stopped before compilation because the OpenGFX CDN returned HTTP 403/error 1010
-to Python's default User-Agent. The retained same-container diagnostic received
-HTTP 200 with the project-identifying User-Agent. The downloader now identifies
-itself and retains the exact pinned content digest; malformed, mismatched and
-changed cached assets are rejected.
+**The complete minimum container bundle passed.** The numerical correction is
+committed at `ab090de`; the clean native checkout is `0e05f34`. Image build
+`dd85054` adds the required Bubblewrap package. Its Dockerfile and entrypoint
+match the reviewed image; the executable source closure matches the clean
+qualified checkout. No scientific source changed during qualification.
 
-At `0e05f34`, `refactor-container-native-02` completed the engine, live adapter,
-current trainer and historical reference builds inside the image. The initial
-local-mirror attempt needed its upstream origin restored to the canonical URL;
-that harness correction and failed attempt remain recorded. Python qualification
-ran 193 tests: 189 passed and four MCP-environment skips. Portable qualification
-then exposed missing Bubblewrap, which two full-tier inventory tests exercise.
-The image now installs that dependency; the original failure remains retained.
-The actual entrypoint also correctly refused a full study on the local volume's
-686,954,680,320 free bytes against the unchanged 1.25 TB minimum, before any
-registration or training. Container live qualification remains pending.
-No remote instance, paid study or source publication has occurred.
+Local image ID:
+`sha256:02fa976708fea6c80868bb029de591dd283b41d85fe25f5b10a84f6d66ba361b`,
+size 16,831,958,635 bytes. The engine, live adapter, current trainer and pinned
+historical reference were built inside the image. Runtime: Ubuntu 24.04,
+Python 3.12.3, Torch 2.9.1+cu128, CUDA toolkit 12.8, RTX 2070 under WSL2.
+The image passed real CUDA execution and missing-revision/missing-volume refusal.
+
+The bundle ran **193 Python tests: 189 passed and four MCP-environment skips;
+136/136 portable checks; 19/19 native tests, with no native skips**. All seven
+historical/default agreement checks passed. A0 and guide-v3 CPU/CUDA maximum
+update differences are .00001930 and .00003568 against the unchanged .0001 gate.
+Recovery/probe neutrality passed exactly on both devices, including Adam/RNG
+state and mismatched-loss/norm checkpoint refusal. Recovery CPU/CUDA maximum
+update difference is 2.9000000001389026e-7. Exact 256 versus 128+128 reset resume
+passed separately on CPU and CUDA, including final weights and native traces.
+The production qualification validator accepted the complete nested bundle.
+
+Artifacts below are under `/home/imsa/.local/share/openttd-rl/runs/`:
+
+- `refactor-container-build-02/build.json`: image build command and source hashes.
+- `refactor-container-runtime-02/verification.json`: image identity and CUDA/guard checks.
+- `refactor-container-native-02/container-run-03.json`: exact container invocation.
+- `refactor-container-native-02/run_native_retry2.py`: bounded build/qualification driver.
+- `refactor-container-native-02/native-verification-03.json`: completed validation,
+  SHA-256 `8a11e328030cbc8e832a1e79543f6d059ba9b0547166c2df4445682df38771fa`.
+- `refactor-container-native-02/qualification/qualification.json`: full bundle,
+  SHA-256 `7271437799b4ea58b7fde1f359cbdd1ab4474eb63076db7a40898534c6586137`.
+- `refactor-container-native-02/qualification/qualifications/attempt-002/`: stage logs/results.
+
+The container trainer SHA-256 is
+`d6ae7aa6eb8b041b1a2e1a66ed2afc3cc74f09f9edd5ea22697b12795d2fbd76`;
+engine SHA-256 is
+`9d1eda3d06126def0c6b3f6d5d1871967c77ffc5fedbd3db8ddd805320b052de`.
+Container artifact paths use `/data`; mount the retained
+`refactor-container-native-02` directory there when inspecting them in the image.
+
+Failed attempts are preserved: `refactor-container-native-01` exposed the CDN's
+HTTP 403 for Python's default User-Agent, fixed by identifying the project while
+retaining the pinned asset digest. The initial local-mirror build in attempt 02
+needed its upstream origin restored to the canonical URL. Its first qualification
+then exposed missing Bubblewrap through two full-tier inventory tests; installing
+the actual dependency resolved both failures without changing those tests.
+The actual entrypoint also refused the full study on 686,954,680,320 free local
+bytes against the unchanged 1.25 TB minimum, before registration or training.
+
+The task-scoped Docker daemon was stopped after qualification; its cache, tools
+and evidence remain retained. No global Docker service/configuration was installed.
+The portable package is ready for source/image publication review and provisioning.
+Actual Vast orchestration and its GPU/volume attachment remain untested; the target
+reruns qualification before registering A0-A3. No remote instance, paid study,
+held-out access or source/image publication has occurred. The broader refactor and
+the registered learning study remain incomplete.
 
 ## Package and recovery checkpoint at 6285087
 

@@ -12,8 +12,11 @@ to every arm while preserving all scientific settings and the .0001 bound.
 The model, gradients and Adam remain float32; historical mode remains available.
 Training/development/held-out execution is packaged but has not run as a full
 study. A 1,500 GB persistent volume is the capacity target. The pinned Docker image
-built locally and passed actual CUDA execution and launcher refusal checks;
-native container qualification is in progress. No paid instance or Git push exists
+built locally and passed actual CUDA execution, launcher refusal and the complete
+native correctness bundle, including exact CPU/CUDA reset resume. Container checks
+passed 189 Python tests with four MCP-environment skips, 136 portable tests and all
+19 native tests. The temporary Docker daemon has been stopped. The selected Vast
+host still reruns qualification before registration. No paid instance or Git push exists
 from this work. See [the evidence record](REFACTOR_2026-09-25_STATUS.md) and
 [launch instructions](../deployment/vast/README.md) for checks and remaining limits.
 
