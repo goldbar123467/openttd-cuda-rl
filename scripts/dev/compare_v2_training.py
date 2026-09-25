@@ -38,7 +38,8 @@ def run(args):
         if cpu[key] != gpu[key]:
             raise ValueError(f"Training comparison configuration differs: {key}")
     for key, default in (("gamma", .99), ("gae_lambda", .95), ("reuse_bootstrap_tensors", False),
-                         ("financial_features", "raw"), ("entropy_coefficient", .01)):
+                         ("financial_features", "raw"), ("entropy_coefficient", .01),
+                         ("choice_weighted", False), ("asset_potential", False)):
         if cpu.get(key, default) != gpu.get(key, default):
             raise ValueError(f"Training comparison configuration differs: {key}")
     if cpu.get("observation_schema_id") != gpu.get("observation_schema_id"):
@@ -58,23 +59,28 @@ def run(args):
         for key in ("log_probability", "value"):
             errors[key] = max(errors[key], abs(left["prediction"][key] - right["prediction"][key]))
         errors["next_value"] = max(errors["next_value"], abs(left["feedback"]["next_value"] - right["feedback"]["next_value"]))
+    metric_errors = {}
     for left, right in zip(cpu["updates"], gpu["updates"], strict=True):
         for key in ("policy_loss", "value_loss", "entropy", "approximate_kl", "gradient_norm", "explained_variance"):
-            errors["update_metric"] = max(errors["update_metric"], abs(left[key] - right[key]))
+            delta = abs(left[key] - right[key])
+            errors["update_metric"] = max(errors["update_metric"], delta)
+            metric_errors[key] = max(metric_errors.get(key, 0.0), delta)
         if max(left["behavior_replay_max_error"], right["behavior_replay_max_error"]) > 1e-4:
             raise ValueError("Behavior replay exceeded its pre-optimization tolerance")
-    if max(errors.values()) > 1e-4:
-        raise ValueError(f"CPU/CUDA absolute numeric tolerance 1e-4 exceeded: {errors}")
+    passed = max(errors.values()) <= 1e-4
     normalized = json.dumps([row["transition"] for row in a], sort_keys=True, separators=(",", ":")).encode()
-    report = {"status": "passed", "inputs": [str(args.cpu.resolve()), str(args.cuda.resolve())],
+    report = {"status": "passed" if passed else "failed", "inputs": [str(args.cpu.resolve()), str(args.cuda.resolve())],
               "native_transitions_identical": len(a), "native_trace_sha256": hashlib.sha256(normalized).hexdigest(),
-              "max_abs_errors": errors, "numeric_atol": 1e-4,
+              "max_abs_errors": errors, "update_metric_errors": metric_errors, "numeric_atol": 1e-4,
+              "input_record_sha256": {str(p.resolve() / "run.json"): hashlib.sha256((p / "run.json").read_bytes()).hexdigest() for p in (args.cpu, args.cuda)},
               "time_limit_bootstraps": sum(row["transition"]["truncated"] for row in a),
               "recurrent_resets": sum(row["reset"] for row in a),
               "claim": "Bounded live PPO correctness; not playing competence, generalization or a performance benchmark"}
     args.output.mkdir(parents=True, exist_ok=False)
     write_json(args.output / "comparison.json", report)
     print(json.dumps(report, indent=2))
+    if not passed:
+        raise ValueError(f"CPU/CUDA absolute numeric tolerance 1e-4 exceeded: {errors}")
 
 
 if __name__ == "__main__":

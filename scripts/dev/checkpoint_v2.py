@@ -16,7 +16,7 @@ def digest(path):
 
 def compatibility(record):
     scripts = ["train_v2.py", "checkpoint_v2.py", "infer_v2.py", "live_v2.py", "live_v2_artifacts.py",
-               "guide_v2.py", "service_v2.py", "route_v2.py"]
+               "guide_v2.py", "service_v2.py", "route_v2.py", "asset_potential_v2.py"]
     contracts = ["m15-scalable-contract.json", "m15-native-source.json", "setting-inventory.json"]
     return {"configuration": {key: record[key] for key in (
         "device", "run_seed", "rollout_steps", "environments", "sequence_length", "optimization_epochs",
@@ -24,7 +24,11 @@ def compatibility(record):
         "trainer_sha256", "engine_sha256")} | {"reuse_bootstrap_tensors": record.get("reuse_bootstrap_tensors", False),
             "gamma": record.get("gamma", .99), "gae_lambda": record.get("gae_lambda", .95),
             "financial_features": record.get("financial_features", "raw"),
-            "entropy_coefficient": record.get("entropy_coefficient", .01)},
+            "entropy_coefficient": record.get("entropy_coefficient", .01),
+            "choice_weighted": record.get("choice_weighted", False),
+            "asset_potential": record.get("asset_potential", False),
+            "potential_ledger": record.get("potential_ledger"),
+            "potential_at_reset": 0.0},
         "collector_sources": {name: digest(ROOT / "scripts/dev" / name) for name in scripts},
         "contracts": {name: digest(ROOT / "config/v2" / name) for name in contracts}}
 

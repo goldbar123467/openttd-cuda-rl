@@ -30,7 +30,12 @@ def select_row(controller, mode, rows, candidates, guide, rng):
     return row, 1.0
 
 
-def run(args):
+def run(args, *, heldout_permit=None):
+    if heldout_permit is None:
+        if args.split not in ("training", "development"):
+            raise ValueError("Ordinary controls forbid held-out splits")
+    else:
+        heldout_permit.validate(args, args.controller)
     guidance_name = getattr(args, "guidance", GUIDANCE)
     mode = getattr(args, "mode", "sampled")
     root = args.output.resolve()
@@ -38,16 +43,19 @@ def run(args):
     record = {"kind": "native-v2-guided-baseline", "status": "running",
               "source": source_identity(), "guidance": guidance_name, "controller": args.controller,
               "sampling_seed": args.seed, "mode": mode, "map_seed": args.map_seed, "split": args.split,
-              "decisions": args.decisions, "final_evaluation_accessed": False,
+              "decisions": args.decisions, "final_evaluation_accessed": heldout_permit is not None,
               "engine_sha256": hashlib.sha256(args.openttd.read_bytes()).hexdigest(),
               "claim": "Planner-assisted baseline; no learned route construction or policy optimization"}
+    if heldout_permit is not None:
+        record["held_out_registration"] = heldout_permit.reference
     capture_source(root / "source")
     write_json(root / "run.json", record)
     game = None
     started = time.monotonic()
     rng = random.Random(args.seed)
     try:
-        game = LiveV2(args.openttd, root / "worker", seed=args.map_seed,
+        factory = LiveV2 if heldout_permit is None else heldout_permit.live
+        game = factory(args.openttd, root / "worker", seed=args.map_seed,
                       split=args.split, decisions=args.decisions)
         initial = game.request("OBSERVE")["observation"]
         guide = PublicPlanGuide(initial, root / "worker", guidance=guidance_name)

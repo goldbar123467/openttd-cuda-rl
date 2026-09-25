@@ -1,5 +1,19 @@
 # Live OpenTTD development progress
 
+## 2026-09-25: minimum recovery correctness and Vast packaging
+
+Added the opt-in existing-C++ PPO recovery mechanisms, guide v4, exact read-only
+probe checks, durable reset-resume records, and portable single-GPU study runner.
+CPU/CUDA probe neutrality and 256 versus 128+128 reset recovery passed; the
+registered scientific protocol remains fixed. The final A0 CPU/CUDA gate failed
+on a .00011946 gradient-norm difference against the unchanged .0001 bound; the
+launcher refuses registration, and minimum qualification remains incomplete. Training/development/held-out
+execution is packaged but has not been run as a full study. A 1,500 GB persistent
+volume is the capacity target. No Docker image, paid instance or Git push exists
+from this work. See [the evidence record](REFACTOR_2026-09-25_STATUS.md) and
+[launch instructions](../deployment/vast/README.md) for checks and remaining limits.
+
+
 The September 25 review execution is active. The complete coverage and current
 verification record is in [REFACTOR_2026-09-25_STATUS.md](REFACTOR_2026-09-25_STATUS.md).
 Missing V2 options are integrated and match original/retained behavior exactly

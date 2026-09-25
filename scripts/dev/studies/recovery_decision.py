@@ -5,7 +5,7 @@ from eval_stats import nested_bootstrap, pair_episodes
 from studies.protocol_v2 import require_development_matrix
 
 
-def decide_arm(arm_id, training, candidates, controls, protocol, *, bootstrap_iterations=10000):
+def decide_arm(arm_id, training, candidates, controls, protocol, *, bootstrap_iterations=10000, split="development"):
     arm = next((a for a in protocol["arms"] if a["id"] == arm_id), None)
     if arm is None:
         raise ValueError("Arm has no prospective execution protocol")
@@ -23,12 +23,12 @@ def decide_arm(arm_id, training, candidates, controls, protocol, *, bootstrap_it
     if any(c["training_seed"] not in completed for c in candidates):
         raise ValueError("Failed or unregistered seeds cannot contribute selected intermediate models")
     for seed in completed:
-        require_development_matrix([c for c in candidates if c["training_seed"] == seed], protocol)
+        require_development_matrix([c for c in candidates if c["training_seed"] == seed], protocol, split=split)
     names = protocol["controls"]["controllers"]
     if any(c["controller"] not in names for c in controls):
         raise ValueError("Unregistered control")
     for name in names:
-        require_development_matrix([c for c in controls if c["controller"] == name], protocol)
+        require_development_matrix([c for c in controls if c["controller"] == name], protocol, split=split)
     for case in [*candidates, *controls]:
         if case["guidance"] != arm["guide"]:
             raise ValueError("Study controls and policies must use the exact same guide")

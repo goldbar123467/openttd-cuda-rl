@@ -84,13 +84,16 @@ def verify_trace(rows, final, reset, projection, live, *, decisions=512):
     return result
 
 
-def load_episode(root, inputs, *, legacy_sampled_control=False):
+def load_episode(root, inputs, *, legacy_sampled_control=False, heldout_registration=None):
     """Load a full development episode; this function never launches a game."""
     root = Path(root).resolve()
     run = inputs.json(root / "run.json")
     reset = inputs.json(root / "worker/reset.json")
-    if (run["status"] not in ("passed", "completed") or run["split"] != "development" or
-            reset["split"] != "development" or run.get("final_evaluation_accessed") is not False or
+    split = "generalization" if heldout_registration is not None else "development"
+    if heldout_registration is not None and run.get("held_out_registration") != heldout_registration:
+        raise ValueError("Held-out episode identifies another immutable registration")
+    if (run["status"] not in ("passed", "completed") or run["split"] != split or
+            reset["split"] != split or run.get("final_evaluation_accessed") is not (heldout_registration is not None) or
             run["decisions"] != 512 or run["engine_sha256"] != reset["executable_sha256"] or
             run["map_seed"] != reset["map_seed"] or type(run["map_seed"]) is not int):
         raise ValueError("Full development run identity differs from the native reset")
@@ -108,7 +111,7 @@ def load_episode(root, inputs, *, legacy_sampled_control=False):
     seed = run["run_seed"] if neural else run["sampling_seed"]
     if type(seed) is not int:
         raise ValueError("Action seed must be an explicit integer")
-    entry = {"source": str(root), "split": "development", "map_seed": run["map_seed"], "mode": mode,
+    entry = {"source": str(root), "split": split, "map_seed": run["map_seed"], "mode": mode,
              "sampling_seed": seed, "guidance": run["guidance"], "execution_status": "passed", "summary": summary,
              "controller": "neural" if neural else run["controller"], "record": run, "reset": reset,
              "legacy_assumed_sampled_mode": "mode" not in run}
@@ -128,11 +131,11 @@ def load_episode(root, inputs, *, legacy_sampled_control=False):
     return entry
 
 
-def verify_registered_episode(entry, case, registration, *, training_run=None):
+def verify_registered_episode(entry, case, registration, *, training_run=None, split="development"):
     """Additional prospective checks; legacy mode assumptions are never accepted."""
     run, reset = entry["record"], entry["reset"]
     require_episode_identity(run, reset, case, engine_sha256=registration["binaries"]["engine"]["sha256"],
-                             guidance=registration["training"]["guide"])
+                             guidance=registration["training"]["guide"], split=split)
     if entry["legacy_assumed_sampled_mode"] or run["source"] != registration["source"]:
         raise ValueError("Registered evaluation source or explicit mode differs")
     if training_run is None:

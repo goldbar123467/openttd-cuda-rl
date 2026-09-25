@@ -1,5 +1,34 @@
 # Local training and the path to agentic economies
 
+## Portable Vast.ai recovery study (September 25)
+
+The [single-GPU package](../deployment/vast/README.md) builds and qualifies the
+native engine/trainer before registering A0-A3. It preserves three fixed seeds,
+the 8,192-decision budget, complete development matrices, failures/early stops,
+and a conditional one-access generalization confirmation. Use a 1,500 GB
+persistent volume; initial execution requires 1.25 TB free. Source and runtime
+must remain fixed after registration. No instance rental, publication, or push
+is part of the launcher.
+
+`train_v2.py` now supports opt-in `--policy-loss choice-weighted`,
+`--asset-potential`, `--recovery-diagnostics`, `--training-reset-probes`, and guide
+`one-bus-public-plan-v4`. Historical defaults retain their original loss and UPDATE
+fields. The asset potential is an explicit finite-episode clipped-capital history
+ledger, not a state-only resale valuation. Only the supported one-bus action set
+is accepted. Value loss still uses all transitions; choices-only policy loss does
+not eliminate Adam momentum or shared-trunk drift.
+
+`studies/unattended_v2.py` orchestrates build, correctness, registration, training,
+development selection and conditional held-out confirmation. Training checkpoints
+are episode-reset boundaries. Interrupted segments preserve their ancestry and
+resume optimizer/RNG state; failed learning seeds cannot be replaced. Ordinary
+inference/control CLIs still reject held-out splits. The isolated
+`studies/heldout_v2.py` path requires frozen, reverified eligibility from every arm.
+
+See [the refactor evidence record](REFACTOR_2026-09-25_STATUS.md) for actual local
+checks and limitations. Building/running the Docker image on its target host
+remains a separate qualification; no study learning result is claimed here.
+
 ## What we are continuing
 
 Keep the existing C++ PPO and source-integrated OpenTTD environment. The immediate

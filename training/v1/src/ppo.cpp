@@ -31,6 +31,15 @@ void require_same_shape(const torch::Tensor &left, const torch::Tensor &right, c
     if (left.sizes() != right.sizes()) throw std::invalid_argument(message);
 }
 
+void require_choice_weights(const torch::Tensor &weights, const torch::Tensor &values)
+{
+    if (!weights.defined() || weights.dim() != 1 || weights.sizes() != values.sizes() ||
+        weights.device() != values.device() || weights.requires_grad())
+        throw std::invalid_argument("choice weights must be detached aligned same-device vectors");
+    if (!((weights == 0).logical_or(weights == 1)).all().item<bool>())
+        throw std::invalid_argument("choice weights must be finite binary values");
+}
+
 } // namespace
 
 void PpoConfig::validate() const
@@ -141,6 +150,22 @@ torch::Tensor normalize_advantages(const torch::Tensor &advantages, double epsil
     return normalized;
 }
 
+torch::Tensor normalize_choice_advantages(const torch::Tensor &advantages, const torch::Tensor &choices, double epsilon)
+{
+    require_cpu(advantages, "advantages");
+    require_finite_tensor(advantages, "advantages");
+    if (advantages.dim() != 1 || advantages.numel() == 0 || !std::isfinite(epsilon) || epsilon <= 0)
+        throw std::invalid_argument("invalid choice advantage normalization input");
+    require_choice_weights(choices, advantages);
+    const auto mask = choices.to(torch::kBool);
+    auto result = advantages.to(torch::kFloat64).clone();
+    // A lone choice retains its advantage. The ordinary zero-variance rule
+    // would erase its only actor signal. Forced rows cannot enter actor loss.
+    if (mask.sum().item<int64_t>() >= 2)
+        result.masked_scatter_(mask, normalize_advantages(result.masked_select(mask), epsilon));
+    return result;
+}
+
 MaskedPolicy masked_categorical(const torch::Tensor &logits, const torch::Tensor &legal_mask)
 {
     require_defined(logits, "policy logits");
@@ -171,7 +196,7 @@ LossResult ppo_loss(
     const torch::Tensor &new_values,
     const torch::Tensor &returns,
     const torch::Tensor &entropy,
-    const PpoConfig &config)
+    const PpoConfig &config, const torch::Tensor &policy_weights)
 {
     config.validate();
     for (const auto *tensor : {&new_log_probabilities, &old_log_probabilities, &advantages, &new_values, &returns, &entropy}) {
@@ -183,17 +208,24 @@ LossResult ppo_loss(
         }
         require_finite_tensor(*tensor, "PPO loss input");
     }
+    if (policy_weights.defined()) require_choice_weights(policy_weights, new_log_probabilities);
+    const auto average = [&policy_weights](const torch::Tensor &terms) {
+        // Preserve the original operation/reduction when weighting is disabled.
+        if (!policy_weights.defined()) return terms.mean();
+        const auto weights = policy_weights.to(terms.scalar_type());
+        return (terms * weights).sum() / weights.sum().clamp_min(1);
+    };
     const auto log_ratio = new_log_probabilities - old_log_probabilities;
     const auto ratio = torch::exp(log_ratio);
     require_finite_tensor(ratio, "probability ratio");
     const auto unclipped = ratio * advantages;
     const auto clipped_ratio = torch::clamp(ratio, 1.0 - config.clip_epsilon, 1.0 + config.clip_epsilon);
-    const auto policy = -torch::minimum(unclipped, clipped_ratio * advantages).mean();
+    const auto policy = -average(torch::minimum(unclipped, clipped_ratio * advantages));
     const auto value = torch::mean(torch::square(new_values - returns));
-    const auto entropy_mean = entropy.mean();
+    const auto entropy_mean = average(entropy);
     const auto total = policy + config.value_coefficient * value - config.entropy_coefficient * entropy_mean;
-    const auto approximate_kl = torch::mean((ratio - 1.0) - log_ratio);
-    const auto clip_fraction = torch::mean((torch::abs(ratio - 1.0) > config.clip_epsilon).to(torch::kFloat64));
+    const auto approximate_kl = average((ratio - 1.0) - log_ratio);
+    const auto clip_fraction = average((torch::abs(ratio - 1.0) > config.clip_epsilon).to(torch::kFloat64));
     for (const auto *tensor : {&total, &policy, &value, &entropy_mean, &approximate_kl, &clip_fraction}) {
         require_finite_tensor(*tensor, "PPO loss component");
     }

@@ -4,7 +4,7 @@
   "title": "Prospective V2 development recovery execution registration",
   "type": "object",
   "additionalProperties": false,
-  "required": ["format", "study_id", "registered_utc", "protocol_sha256", "arm", "training_seeds", "training", "runtime", "source", "source_archive", "driver", "code_sha256", "binaries", "qualification_reports", "cost_estimate", "maximum_native_jobs", "maximum_cuda_training_jobs"],
+  "required": ["format", "study_id", "registered_utc", "protocol_sha256", "arm", "training_seeds", "training", "runtime", "source", "source_archive", "driver", "code_sha256", "binaries", "content", "qualification_reports", "cost_estimate", "maximum_native_jobs", "maximum_cuda_training_jobs"],
   "properties": {
     "format": {"const": "openttd-rl-dev-study-registration-1"},
     "study_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,95}$"},
@@ -58,6 +58,7 @@
       }
     },
     "qualification_reports": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+    "content": {"$ref": "#/$defs/artifact"},
     "cost_estimate": {"$ref": "#/$defs/artifact"},
     "maximum_native_jobs": {"type": "integer", "minimum": 1, "maximum": 2},
     "maximum_cuda_training_jobs": {"const": 1}

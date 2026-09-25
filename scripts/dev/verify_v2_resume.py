@@ -47,6 +47,9 @@ def compare_completed(root):
         for key, default in (("gamma", .99), ("gae_lambda", .95)):
             if record.get(key, default) != full.get(key, default):
                 raise ValueError("V2 comparison requires identical return configuration")
+        for key in ("choice_weighted", "asset_potential"):
+            if record.get(key, False) != full.get(key, False):
+                raise ValueError("V2 comparison requires identical recovery mechanisms")
         if record["requested_updates"] != prefix_updates * (2 if name == "uninterrupted" else 1):
             raise ValueError("V2 comparison requires 256 uninterrupted versus 128 plus 128 decisions")
     if Path(resumed["resume_from"]).resolve() != (root / f"prefix/checkpoints/update-{prefix_updates:06d}").resolve():
@@ -87,6 +90,7 @@ def run(args):
               "training_map_count": args.training_map_count, "gae_lambda": args.gae_lambda,
               "financial_features": financial_features, "entropy_coefficient": entropy_coefficient,
               "reuse_bootstrap_tensors": args.reuse_bootstrap_tensors,
+              "policy_loss": getattr(args, "policy_loss", "historical"), "asset_potential": bool(getattr(args, "asset_potential", False)),
               "claim": "Exact same-host continuation at a native episode reset, not arbitrary mid-game recovery or gameplay strength",
               "trainer_sha256": hashlib.sha256(args.trainer.read_bytes()).hexdigest(),
               "engine_sha256": hashlib.sha256(args.openttd.read_bytes()).hexdigest()}
@@ -103,6 +107,9 @@ def run(args):
         if args.gae_lambda != .95:
             command.extend(["--gae-lambda", str(args.gae_lambda)])
         command.extend(["--entropy-coefficient", str(entropy_coefficient)])
+        command.extend(["--policy-loss", getattr(args, "policy_loss", "historical")])
+        if getattr(args, "asset_potential", False):
+            command.append("--asset-potential")
         if args.reuse_bootstrap_tensors:
             command.append("--reuse-bootstrap-tensors")
         if financial_features != "raw":
@@ -137,6 +144,9 @@ def run(args):
             for key in ("device", "guidance", "seed", "trainer_sha256", "engine_sha256"):
                 if original[key] != report[key]:
                     raise ValueError("Existing verification differs from requested native configuration")
+            for key, default in (("policy_loss", "historical"), ("asset_potential", False)):
+                if original.get(key, default) != report[key]:
+                    raise ValueError("Existing verification uses another recovery mechanism")
             report["existing_run_root"] = str(compared)
             report["original_verification_sha256"] = hashlib.sha256((compared / "verification.json").read_bytes()).hexdigest()
         report.update(status="passed", **compare_completed(compared))
@@ -161,5 +171,7 @@ if __name__ == "__main__":
     parser.add_argument("--financial-features", choices=FINANCIAL_FEATURES, default="raw")
     parser.add_argument("--training-map-count", type=int, default=4)
     parser.add_argument("--reuse-bootstrap-tensors", action="store_true")
+    parser.add_argument("--policy-loss", choices=("historical", "choice-weighted"), default="historical")
+    parser.add_argument("--asset-potential", action="store_true")
     parser.add_argument("--existing", type=Path, help="Audit already completed full/prefix/resumed runs into a fresh output directory")
     run(parser.parse_args())

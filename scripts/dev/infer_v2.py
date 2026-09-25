@@ -79,7 +79,7 @@ def checked_tensors(response, observation, *, bootstrap_only=False):
 
 class PolicyClient:
     def __init__(self, executable, output, device, seed, mode=None, weights=None, rollout_length=None, gae_lambda=None,
-                 financial_features="raw", entropy_coefficient=None):
+                 financial_features="raw", entropy_coefficient=None, choice_weighted=False, recovery_diagnostics=False):
         self.financial_features = financial_features_mode(financial_features)
         self.log = Path(output).open("x")
         command = [str(executable), "--device", device, "--seed", str(seed)]
@@ -93,6 +93,10 @@ class PolicyClient:
             command += ["--gae-lambda", str(gae_lambda)]
         if entropy_coefficient is not None:
             command += ["--entropy-coefficient", str(entropy_coefficient)]
+        if choice_weighted:
+            command += ["--policy-loss", "choice-weighted"]
+        if recovery_diagnostics:
+            command += ["--recovery-diagnostics", "1"]
         if self.financial_features != "raw":
             command += ["--financial-features", self.financial_features]
         self.process = subprocess.Popen(command,
@@ -132,7 +136,12 @@ class PolicyClient:
         self.log.close()
 
 
-def run(args):
+def run(args, *, heldout_permit=None):
+    if heldout_permit is None:
+        if args.split not in ("training", "development"):
+            raise ValueError("Ordinary inference forbids held-out splits")
+    else:
+        heldout_permit.validate(args, "neural")
     visible = bool(getattr(args, "visible", False))
     weights = None
     training = None
@@ -168,7 +177,7 @@ def run(args):
     root.mkdir(parents=True, exist_ok=False)
     record = {"kind": "native-v2-neural-live-inference-smoke", "status": "running", "source": source_identity(),
               "device": args.device, "run_seed": args.seed, "mode": args.mode, "decisions": args.decisions,
-              "split": args.split, "map_seed": args.map_seed, "final_evaluation_accessed": False, "visible": visible,
+              "split": args.split, "map_seed": args.map_seed, "final_evaluation_accessed": heldout_permit is not None, "visible": visible,
               "claim": "Live recurrent policy inference check; short interaction does not establish learned competence",
               "training_run": str(args.training_run.resolve()) if args.training_run else None,
               "model": training["model"] if training else {"initialization_only": True},
@@ -180,6 +189,8 @@ def run(args):
     if onnx_manifest is not None:
         record.update(inference_backend="native-onnxruntime-1.28.0-cpu", onnx_package=onnx_manifest,
                       onnx_package_path=str(args.onnx_package.resolve()))
+    if heldout_permit is not None:
+        record["held_out_registration"] = heldout_permit.reference
     capture_source(root / "source")
     write_json(root / "run.json", record)
     game, policy, reference = None, None, None
@@ -192,7 +203,8 @@ def run(args):
             reference = PolicyClient(args.policy.resolve(), root / "cpu-reference.log", "cpu", args.seed, args.mode, weights,
                                      financial_features=financial_features)
             reference.check_financial_features()
-        game = LiveV2(args.openttd, root / "worker", decisions=args.decisions, split=args.split, seed=args.map_seed, visible=visible)
+        factory = LiveV2 if heldout_permit is None else heldout_permit.live
+        game = factory(args.openttd, root / "worker", decisions=args.decisions, split=args.split, seed=args.map_seed, visible=visible)
         initial = game.request("OBSERVE")["observation"]
         guide = PublicPlanGuide(initial, root / "worker", guidance=guidance_name) if guidance_name in GUIDANCES else None
         transitions = []

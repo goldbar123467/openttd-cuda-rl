@@ -18,6 +18,79 @@ replacement for their requirements or a claim that their static findings passed.
   paths; these worktrees must not be pruned. No training process was found running.
 - No held-out games have been accessed, new tuning study launched, or source pushed.
 
+## Immediate scope: correctness and portable Vast package
+
+The owner narrowed this handoff to minimum correctness gates and a portable
+single-GPU registered-study package, leaving paid execution and publication for
+later. The broader refactor remains active and incomplete.
+
+Implemented recovery Steps 0-3: opt-in choice-weighted loss/normalization through
+the existing C++ PPO, finite clipped-capital history potential, guide-v4 repayment
+only after START, diagnostics and read-only eight-map reset probes. The historical
+default UPDATE fields are preserved unless diagnostics are enabled. Native loss
+oracles cover all/zero/one/mixed choices, malformed weights, clipping, constant
+advantages and shared-trunk/Adam behavior. Measured zero-policy-loss actor-head
+momentum drift is .000670058, trunk drift .000999077 and policy-logit drift
+.000428992 on both tested devices; the implementation does not claim no actor drift.
+
+`refactor-recovery-core-03/verification.json` passed exact probe neutrality on CPU
+and CUDA, including actions, native updates, weights, RNG and Adam state (276/277
+fields). LibTorch Adam archive bytes contain process-local pointer keys; the
+comparison resolves parameter-group ordering and checks every state value exactly.
+Attempt 02 correctly failed its initial raw-archive comparison and remains retained;
+attempt 01 was interrupted. Cross-device maximum update difference is
+2.2659999999952163e-05, below the unchanged 1e-4 bound. This does not resolve the
+separate older guide-v3 discrepancy recorded below.
+
+`refactor-recovery-resume-{cpu,cuda}-01/verification.json` passed 256 uninterrupted
+versus 128+128 resumed decisions under guide v4, choice-weighted loss and potential.
+Actions, rewards, native traces, metrics and final weights match exactly on each
+device. Potential telescoping tests pass to 1e-9, preserving truncation versus true
+terminal semantics. The refreshed native build is `refactor-recovery-01`.
+
+The package provides a pinned CUDA/Torch Dockerfile, persistent-volume launcher,
+source/build/runtime qualification, immutable arm registration, sequential training,
+resume journals, complete development scheduling and matched control reuse, and
+held-out permits after all mandatory arms finish. It preserves failed/stopped seeds,
+rejects changed inputs, gates disk capacity before work, and consumes held-out
+reservations once even after interruption. The frozen protocol is unchanged.
+The final package gate found a separate **A0 CPU/CUDA failure** in
+`refactor-package-qualification-01/default/verification.json`: second update
+pre-clipping gradient norms 3.07306422 (CPU) and 3.07318368 (CUDA), difference
+.00011946 against the fixed .0001 limit. All 128 native transitions match; value
+error is at most 1.013e-6 and every other compared update metric is below the bound.
+`refactor-a0-numeric-audit-01/comparison.json` retains per-metric differences and
+input hashes with status **failed**. Numeric comparisons now write their failure
+report before raising. The gate remains mandatory; registration cannot bypass it.
+This means minimum qualification is **not complete** and the package must not be
+called ready for training. Exact default/reference CPU and CUDA comparisons and
+the default CPU/CUDA agreement passed within the same failed aggregate run.
+`refactor-a0-reference-01/verification.json` then confirmed exact old/new A0
+actions, metrics and final weights on **both CPU and CUDA**, reproducing the
+cross-device discrepancy in the unchanged pre-recovery binary. It is a retained
+baseline numerical limitation, not evidence of a newly introduced loss defect.
+The fixed gate still fails; neither the tolerance nor registered arm was changed.
+The refreshed `refactor-package-recovery-01/verification.json` separately passed
+exact probe/RNG/optimizer equality, wrong-loss checkpoint refusal and CPU/CUDA
+agreement with the final native diagnostics flag (maximum update delta 2.266e-5).
+
+Final Python suite: **188 tests, 184 passed and four unchanged MCP-environment
+skips**. This includes the numeric-failure-report regression test. Portable
+fast checks passed **136/136**, and refreshed native CTest passed **17/17**.
+Logs: `refactor-package-final-tests-02/python.log`,
+`refactor-package-final-tests-01/fast.log`, and
+`refactor-package-qualification-01/native-tests.xml`. Tests of the supervisor's
+complete A0-A3 schedule, restart ancestry, no failed-seed replacement, qualification
+rejection, and one-use held-out receipts use temporary fixtures, not held-out games.
+
+Read [deployment/vast/README.md](../deployment/vast/README.md) for exact commands,
+capacity estimates, retained paths and Vast SSH on-start setup.
+
+Docker is unavailable on this host. No image build, remote Vast execution, paid
+rental, held-out access or full A0-A3 learning study has occurred. The remote
+launcher reruns mandatory checks on its actual GPU before learning. WSL results
+must not be described as a container qualification or a successful learning study.
+
 ## Evidence and continuation
 
 `runs/2026-09-25/refactor-reconcile-01/source-comparison.json` binds pre-edit source
@@ -26,6 +99,8 @@ Eight reviewed files were ported (trainer, collection, guide, checkpoint/recover
 and tests); only the entropy client argument was added to current `infer_v2.py`,
 preserving its newer ONNX/visible behavior.
 The imported trainer always reports/verifies gamma and entropy before collection.
+
+Earlier entries below preserve the prior checkpoints; the coverage table reflects the current state.
 
 All run names below are under `/home/imsa/.local/share/openttd-rl/runs/` in WSL.
 Builds are under its sibling `build/`; local command logs are in the reconciliation
@@ -163,11 +238,12 @@ directory above. Failed attempts are retained.
   repository suite **136/136 passed** (`refactor-report-fast-01/fast.log`). No
   native PPO math changed in this reporting pass; prior native results stand.
 
-Next: wire execution registrations/full-map drivers and held-out access safeguards;
-complete V1 device and actual concurrency checks, remaining audits and the recovery
-mechanisms. Address storage with S3 profiling/equality gates before the large
-matrix. The V2 cross-device bound remains unresolved. No experiment processes
-remain running. Do not run A0-A3 until their prerequisites are verified.
+Next: resolve the retained A0/guide-v3 numerical agreement failures without
+weakening their fixed bounds, then qualify the container on its actual target.
+The portable package supplies capacity and sequential execution; paid provisioning,
+publication and study execution remain outstanding. The broader V1 agreement,
+concurrency, profiling and strategy work remains on the original goal checklist.
+Do not run A0-A3 until their prerequisite bundle passes.
 
 ## Mandatory coverage and dependencies
 
@@ -182,10 +258,10 @@ deliverable; no member is complete until its own evidence is recorded.
 | S1-4 honest probes | F23; 03:N10 | Verified by focused tests and live runs | Recorded quarter-income fixture and probe labeling |
 | S1-5 backend identity | F26 | Verified | Native/build-derived provenance tests and live records |
 | S1-6 offline audits | F18/F20/F21; X6; 03:N9/N13; 06:R2/R3/O2 | Reward/time audit verified; remaining historical questions pending | Hashed input reports; clips/terminal/time/advantages/KL |
-| S2-1 study drivers/schema | F03; 06:K3 | Historical rederivation and registration validation verified; execution driver pending | 51 hashed cases; executable full-map study still required |
+| S2-1 study drivers/schema | F03; 06:K3 | Historical rederivation verified; full execution driver implemented/fixture-tested; live study pending | 51 hashed cases; executable full-map study still required |
 | S2-2 statistics | F08; 03:N1/N2/N5/N12; 04:B12; 06:K5 | Verified in all three reports | Fixtures, retained V1/credit exact t intervals and V2 native summaries |
 | S2-3 eight development maps | F09/F29; X1; 03:N3/N6/N7 | Frozen matrix, modes, evidence reader/default split verified; study launch pending | Explicit split/map matrix, guide/control provenance; cost estimated |
-| S2-4 held-out protocol | F09; 03:N4 | Protocol frozen; access implementation/refusal tests pending | No held-out access; model registration after development eligibility |
+| S2-4 held-out protocol | F09; 03:N4 | Frozen protocol and registered access implemented; refusal/one-use tests verified | No held-out access; model registration after development eligibility |
 | S2-5 device agreement | F28; 03:N8 | Pending | Reference/fused CPU-CUDA replay; perturbed-model rejection |
 | S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Verified, scoped to retained V1 contrasts | Exact historical half-width; explicit extrapolation assumptions and V2 limit |
 | S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Pending | Solo/concurrent native action/economic trace identity |
@@ -198,11 +274,11 @@ deliverable; no member is complete until its own evidence is recorded.
 | S3-6 V2 I/O | F15; 04:B8/B9/B10 | Pending | Replay/integrity/storage/failure handling and paired timing |
 | S3-7 evaluator reuse/tuning | 04:B5/B6 | Pending, profiling conditional | Stage-timing trigger, exact traces or distinct backend |
 | S3-8 kernel learning exercise | 05:K7/K8 | Pending, optional | Oracle, CUDA events vs wrapper vs full run; reasoned disposition |
-| Recovery 08:0 | F04/F06; X3/X4; 06:P4/A3 | Pending | Choice/proposal/gradient metrics and training-only probes are read-only |
-| Recovery 08:1 / S4-1 | F04; X3/X4/X9; 06:P2a | Pending | Weighted loss, singleton rule, CPU/CUDA, actor-drift audit |
-| Recovery 08:2 | F05/F06 | Pending | Versioned potential; telescoping, boundary and recovery tests |
-| Recovery 08:3b | F07; X5; 06:R4 | Pending | Guide v4 legality/no pre-service repayment; matched controls |
-| Recovery A0-A3 | 08:section 3 | Pending; Stage 2 and Steps 0-3 required | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
+| Recovery 08:0 | F04/F06; X3/X4; 06:P4/A3 | Required instrumentation/probes verified; optional separate gradient diagnostics not added | Exact CPU/CUDA actions, updates, weights, optimizer and RNG with probes |
+| Recovery 08:1 / S4-1 | F04; X3/X4/X9; 06:P2a | Mechanism verified; learning study pending | Float64 oracle, zero/one/mixed choices, CPU/CUDA and measured actor drift |
+| Recovery 08:2 | F05/F06 | Verified for the explicit bounded history ledger | Telescoping to 1e-9, terminal/truncation boundaries and native reset recovery |
+| Recovery 08:3b | F07; X5; 06:R4 | Guide mechanism verified; full matched controls pending study | No repayment before START; existing guide behavior/legality preserved |
+| Recovery A0-A3 | 08:section 3 | Packaged; blocked by A0 qualification and target-container verification | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
 | S4-2 / 08:4 / A4 | F16; 06:P1 | Pending, after A0-A3 | Sequence batching k=1 exact; registered k>1/KL study |
 | S4-3 / A5 | F17; 06:P4/A3 | Pending, conditional | Entropy decomposition before coefficient studies |
 | S4-4 | F20/F21; X6; 06:R1/R2/R3 | Pending, audit conditional | New reward objective explicitly separate; offline recomputation |

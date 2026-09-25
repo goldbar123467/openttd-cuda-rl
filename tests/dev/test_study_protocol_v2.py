@@ -66,6 +66,7 @@ class ProtocolTests(unittest.TestCase):
             "source_archive": str(Path.cwd() / "fixture-source"), "driver": "scripts/dev/studies/recovery_v2.py",
             "code_sha256": {"scripts/dev/studies/recovery_v2.py": "d" * 64},
             "binaries": {name: artifact for name in ("engine", "trainer", "policy")},
+            "content": artifact,
             "qualification_reports": [artifact], "cost_estimate": artifact, "maximum_native_jobs": 2,
             "maximum_cuda_training_jobs": 1,
         }

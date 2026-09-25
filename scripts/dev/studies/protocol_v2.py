@@ -30,10 +30,13 @@ def load_protocol(path=PROTOCOL_PATH):
     return protocol
 
 
-def development_matrix(protocol):
+def development_matrix(protocol, *, split="development"):
+    if split not in ("development", "generalization"):
+        raise ValueError("Unregistered study split")
     settings = protocol["development"]
-    return [{"split": "development", "map_seed": m, "mode": mode, "sampling_seed": seed}
-            for m in settings["maps"]
+    maps = settings["maps"] if split == "development" else protocol["held_out"]["maps"]
+    return [{"split": split, "map_seed": m, "mode": mode, "sampling_seed": seed}
+            for m in maps
             for mode, seeds in (("greedy", [settings["greedy_action_seed"]]), ("sampled", settings["sampled_action_seeds"]))
             for seed in seeds]
 
@@ -58,7 +61,7 @@ def validate_registration(registration, protocol):
             raise ValueError("Registered code identity must be a repository source path")
     if not Path(registration["source_archive"]).is_absolute():
         raise ValueError("Source archive must use an absolute path")
-    for artifact in [*registration["binaries"].values(), *registration["qualification_reports"], registration["cost_estimate"]]:
+    for artifact in [*registration["binaries"].values(), registration["content"], *registration["qualification_reports"], registration["cost_estimate"]]:
         if not Path(artifact["path"]).is_absolute():
             raise ValueError("Registered artifacts must use absolute paths")
 
@@ -69,20 +72,22 @@ def case_key(row):
     return row["split"], row["map_seed"], row["mode"], row["sampling_seed"]
 
 
-def require_development_matrix(rows, protocol):
-    expected = {case_key(r) for r in development_matrix(protocol)}
+def require_development_matrix(rows, protocol, *, split="development"):
+    expected = {case_key(r) for r in development_matrix(protocol, split=split)}
     actual = [case_key(row) for row in rows]
     if len(actual) != len(set(actual)) or set(actual) != expected:
         raise ValueError("Development comparison requires all eight maps, one greedy and three sampled seeds, without duplicates")
 
 
-def require_episode_identity(record, reset, case, *, engine_sha256, guidance, decisions=512):
-    if (record["status"] not in ("passed", "completed") or record["split"] != "development" or
-            reset["split"] != "development" or reset["map_seed"] != case["map_seed"] or
+def require_episode_identity(record, reset, case, *, engine_sha256, guidance, decisions=512, split="development"):
+    if split not in ("development", "generalization"):
+        raise ValueError("Unregistered evaluation split")
+    if (record["status"] not in ("passed", "completed") or record["split"] != split or
+            reset["split"] != split or case["split"] != split or reset["map_seed"] != case["map_seed"] or
             record["map_seed"] != case["map_seed"] or record["mode"] != case["mode"] or
             record.get("run_seed", record.get("sampling_seed")) != case["sampling_seed"] or
             record["engine_sha256"] != engine_sha256 or record["guidance"] != guidance or
-            record["decisions"] != decisions or record.get("final_evaluation_accessed") is not False):
+            record["decisions"] != decisions or record.get("final_evaluation_accessed") is not (split == "generalization")):
         raise ValueError("Completed episode differs from its registered development split/map/guide/mode/seed/budget/engine")
     # Completion includes early true terminals; never call a short nonterminal
     # smoke a full-horizon evaluation. Failed outcomes remain in the study report.

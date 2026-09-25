@@ -58,8 +58,10 @@ struct Transition {
 class Trainer {
 public:
     Trainer(uint64_t seed, torch::Device device, int64_t rollout_length = 32, double gae_lambda = 0.95,
-        dev::FinancialFeatures financial_features = dev::FinancialFeatures::Raw, double entropy_coefficient = 0.01) :
-        device_(std::move(device)), financial_features_(financial_features), rng_(seed), model_(rng_.initialization_seed())
+        dev::FinancialFeatures financial_features = dev::FinancialFeatures::Raw, double entropy_coefficient = 0.01,
+        bool choice_weighted = false, bool diagnostics = false) :
+        device_(std::move(device)), financial_features_(financial_features), choice_weighted_(choice_weighted),
+        diagnostics_(diagnostics), rng_(seed), model_(rng_.initialization_seed())
     {
         if (device_.is_cuda() && !torch::cuda::is_available()) throw std::runtime_error("CUDA unavailable; no fallback");
         if (rollout_length != 32 && rollout_length != 64 && rollout_length != 128) throw std::invalid_argument("rollout length must be 32, 64 or 128");
@@ -81,7 +83,7 @@ public:
 
     void act(const std::vector<std::string> &request)
     {
-        if (request.size() != 4 || pending_ || rollout_.size() >= static_cast<size_t>(config_.rollout_length)) throw std::invalid_argument("ACT at invalid rollout boundary");
+        if ((request.size() != 4 && request.size() != 5) || pending_ || rollout_.size() >= static_cast<size_t>(config_.rollout_length)) throw std::invalid_argument("ACT at invalid rollout boundary");
         const bool reset = flag(request[3]);
         if (reset != expected_reset_) throw std::invalid_argument("recurrent reset flag disagrees with episode boundary");
         torch::NoGradGuard guard;
@@ -100,7 +102,47 @@ public:
         hidden_ = output.next_hidden.detach();
         pending_ = true;
         std::cout << "{\"row\":" << action << ",\"log_probability\":" << rollout_.back().log_probability
-            << ",\"value\":" << rollout_.back().value << "}" << std::endl;
+            << ",\"value\":" << rollout_.back().value;
+        if (request.size() == 5) {
+            const auto row = proposal_row(request[4], cpu.candidate_mask);
+            std::cout << ",\"proposal_probability\":" << policy.probabilities[0][row].item<float>()
+                << ",\"sampling_legal_count\":" << cpu.candidate_mask.sum().item<int64_t>()
+                << ",\"entropy\":" << policy.entropy.item<float>();
+        }
+        std::cout << "}" << std::endl;
+    }
+
+    static int64_t proposal_row(const std::string &text, const torch::Tensor &mask)
+    {
+        int64_t row = -1;
+        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), row);
+        if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() || row < 0 ||
+            row >= mask.size(1) || !mask[0][row].item<bool>())
+            throw std::invalid_argument("proposal row must be a legal candidate");
+        return row;
+    }
+
+    void probe(const std::vector<std::string> &request)
+    {
+        if (request.size() != 4 || pending_ || !rollout_.empty())
+            throw std::invalid_argument("PROBE requires a completed update");
+        torch::NoGradGuard guard;
+        struct ModeGuard {
+            v2::ScalablePolicy &model;
+            bool training;
+            ~ModeGuard() { model->train(training); }
+        } mode{model_, model_->is_training()};
+        model_->eval();
+        auto input = dev::live_v2_to(dev::read_live_v2_input(request[1], request[2], financial_features_), device_);
+        input.hidden_state = torch::zeros_like(hidden_);
+        input.recurrent_reset.fill_(true);
+        const auto row = proposal_row(request[3], input.candidate_mask);
+        const auto output = model_->forward(input);
+        const auto policy = dev::live_v2_distribution(output, input);
+        // No actor hidden-state assignment, sampling, shuffle or optimizer step.
+        std::cout << "{\"proposal_probability\":" << policy.probabilities[0][row].item<float>()
+            << ",\"value\":" << output.value.item<float>() << ",\"entropy\":" << policy.entropy.item<float>()
+            << ",\"sampling_legal_count\":" << input.candidate_mask.sum().item<int64_t>() << "}" << std::endl;
     }
 
     void reward(const std::vector<std::string> &request)
@@ -135,18 +177,27 @@ public:
         auto floats = [this](const std::vector<float> &values) {
             return torch::tensor(values, torch::kFloat32).reshape({config_.rollout_length, 1});
         };
-        std::vector<float> rewards, values, next_values, bootstrap, continuation, old_logs;
+        std::vector<float> rewards, values, next_values, bootstrap, continuation, old_logs, choices;
         for (const auto &t : rollout_) {
             rewards.push_back(t.reward); values.push_back(t.value); next_values.push_back(t.next_value);
             bootstrap.push_back(t.bootstrap ? 1.0F : 0.0F); continuation.push_back(t.continuation ? 1.0F : 0.0F);
             old_logs.push_back(t.log_probability);
+            choices.push_back(t.input.candidate_mask.sum().item<int64_t>() >= 2 ? 1.0F : 0.0F);
         }
         auto gae = train::compute_gae(floats(rewards), floats(values), floats(next_values),
             floats(bootstrap).to(torch::kBool), floats(continuation).to(torch::kBool), config_.gamma, config_.gae_lambda);
-        const auto advantages = train::normalize_advantages(gae.advantages.flatten()).to(torch::kFloat32);
+        const auto choice_weights = floats(choices).flatten();
+        const auto raw_advantages = gae.advantages.flatten();
+        const auto advantages = (choice_weighted_ ? train::normalize_choice_advantages(raw_advantages, choice_weights) :
+            train::normalize_advantages(raw_advantages)).to(torch::kFloat32);
         const auto returns = gae.returns.flatten().to(torch::kFloat32);
         const auto old_log_probabilities = floats(old_logs).flatten();
         double policy_loss = 0, value_loss = 0, entropy = 0, kl = 0, gradient = 0, behavior_error = 0;
+        double choice_entropy = 0, choice_kl = 0, choice_clip = 0;
+        const auto choice_count = choice_weights.sum().item<int64_t>();
+        const auto choice_advantages = raw_advantages.masked_select(choice_weights.to(torch::kBool));
+        const double choice_mean = choice_count ? choice_advantages.mean().item<double>() : 0;
+        const double choice_std = choice_count ? torch::sqrt(torch::square(choice_advantages - choice_mean).mean()).item<double>() : 0;
         uint64_t batches = 0;
         model_->train();
         {
@@ -189,8 +240,16 @@ public:
                 }
                 auto new_logs = torch::cat(log_parts);
                 auto old = old_log_probabilities.slice(0, begin, begin + kSequence).to(device_);
+                const auto batch_weights = choice_weights.slice(0, begin, begin + kSequence).to(device_);
+                const auto batch_entropy = torch::cat(entropy_parts);
                 auto losses = train::ppo_loss(new_logs, old, advantages.slice(0, begin, begin + kSequence).to(device_),
-                    torch::cat(value_parts), returns.slice(0, begin, begin + kSequence).to(device_), torch::cat(entropy_parts), config_);
+                    torch::cat(value_parts), returns.slice(0, begin, begin + kSequence).to(device_), batch_entropy, config_,
+                    choice_weighted_ ? batch_weights : torch::Tensor{});
+                const auto log_ratio = new_logs.detach() - old;
+                const auto ratio = log_ratio.exp();
+                choice_entropy += (batch_entropy.detach() * batch_weights).sum().item<double>();
+                choice_kl += (((ratio - 1) - log_ratio) * batch_weights).sum().item<double>();
+                choice_clip += ((torch::abs(ratio - 1) > config_.clip_epsilon).to(torch::kFloat64) * batch_weights).sum().item<double>();
                 optimizer_->zero_grad();
                 losses.total.backward();
                 for (const auto &parameter : model_->named_parameters(true)) {
@@ -208,11 +267,18 @@ public:
         }
         ++updates_;
         const double denominator = static_cast<double>(batches);
+        const double choice_denominator = std::max(1.0, static_cast<double>(choice_count * config_.optimization_epochs));
         std::cout << "{\"update\":" << updates_ << ",\"transitions\":" << updates_ * static_cast<uint64_t>(config_.rollout_length)
             << ",\"policy_loss\":" << policy_loss / denominator << ",\"value_loss\":" << value_loss / denominator
             << ",\"entropy\":" << entropy / denominator << ",\"approximate_kl\":" << kl / denominator
             << ",\"gradient_norm\":" << gradient / denominator << ",\"behavior_replay_max_error\":" << behavior_error
-            << ",\"explained_variance\":" << train::explained_variance(floats(values).flatten(), returns) << "}" << std::endl;
+            << ",\"explained_variance\":" << train::explained_variance(floats(values).flatten(), returns);
+        if (diagnostics_) std::cout << ",\"choice_steps\":" << choice_count << ",\"forced_steps\":" << config_.rollout_length - choice_count
+            << ",\"entropy_choice\":" << choice_entropy / choice_denominator
+            << ",\"approx_kl_choice\":" << choice_kl / choice_denominator
+            << ",\"clip_fraction_choice\":" << choice_clip / choice_denominator
+            << ",\"advantage_choice_mean\":" << choice_mean << ",\"advantage_choice_std\":" << choice_std;
+        std::cout << "}" << std::endl;
         save_probe_ = rollout_.back().input;
         rollout_.clear();
     }
@@ -231,6 +297,7 @@ public:
             << "\ncublas-workspace=:4096:8";
         if (financial_features_ != dev::FinancialFeatures::Raw)
             out << "\nfinancial-features=" << dev::financial_features_name(financial_features_);
+        if (choice_weighted_) out << "\npolicy-loss=choice-weighted-v1";
         return out.str();
     }
 
@@ -247,6 +314,9 @@ public:
             << ",\"optimization_epochs\":" << config_.optimization_epochs << std::setprecision(17)
             << ",\"gamma\":" << config_.gamma << ",\"gae_lambda\":" << config_.gae_lambda
             << ",\"entropy_coefficient\":" << config_.entropy_coefficient
+            << ",\"choice_weighted\":" << (choice_weighted_ ? "true" : "false")
+            << ",\"learning_rate\":" << config_.learning_rate << ",\"clip_epsilon\":" << config_.clip_epsilon
+            << ",\"max_gradient_norm\":" << config_.max_gradient_norm << ",\"value_coefficient\":" << config_.value_coefficient
             << "}" << std::setprecision(9) << std::endl;
     }
 
@@ -364,6 +434,8 @@ public:
 private:
     torch::Device device_;
     dev::FinancialFeatures financial_features_;
+    bool choice_weighted_;
+    bool diagnostics_;
     train::PpoConfig config_;
     train::RngStreams rng_;
     v2::ScalablePolicy model_;
@@ -380,14 +452,15 @@ private:
 int main(int argc, char **argv)
 {
     try {
-        if ((argc != 5 && argc != 7 && argc != 9 && argc != 11 && argc != 13) || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--seed")
-            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1] [--entropy-coefficient NUMBER]");
+        if (argc < 5 || argc > 17 || argc % 2 != 1 || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--seed")
+            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1] [--entropy-coefficient NUMBER] [--policy-loss historical|choice-weighted] [--recovery-diagnostics 0|1]");
         if (std::string(argv[2]) != "cpu" && std::string(argv[2]) != "cuda:0") throw std::invalid_argument("unsupported device");
         int64_t rollout_length = 32;
         double gae_lambda = 0.95;
         double entropy_coefficient = 0.01;
         auto financial_features = dev::FinancialFeatures::Raw;
-        bool has_rollout = false, has_lambda = false, has_financial_features = false, has_entropy = false;
+        bool has_rollout = false, has_lambda = false, has_financial_features = false, has_entropy = false, has_loss = false;
+        bool choice_weighted = false, diagnostics = false, has_diagnostics = false;
         for (int index = 5; index < argc; index += 2) {
             const std::string option(argv[index]), value(argv[index + 1]);
             if (option == "--rollout-length" && !has_rollout) {
@@ -407,6 +480,13 @@ int main(int argc, char **argv)
                     !std::isfinite(entropy_coefficient) || entropy_coefficient < 0.0 || entropy_coefficient > 1.0)
                     throw std::invalid_argument("entropy-coefficient must be finite and in [0,1]");
                 has_entropy = true;
+            } else if (option == "--recovery-diagnostics" && !has_diagnostics) {
+                diagnostics = flag(value);
+                has_diagnostics = true;
+            } else if (option == "--policy-loss" && !has_loss) {
+                if (value != "historical" && value != "choice-weighted") throw std::invalid_argument("unsupported policy loss");
+                choice_weighted = value == "choice-weighted";
+                has_loss = true;
             } else if (option == "--financial-features" && !has_financial_features) {
                 financial_features = dev::parse_financial_features(value);
                 has_financial_features = true;
@@ -423,12 +503,13 @@ int main(int argc, char **argv)
         at::globalContext().setDeterministicAlgorithms(true, false);
         at::globalContext().setDeterministicCuDNN(true);
         at::globalContext().setBenchmarkCuDNN(false);
-        Trainer trainer(std::stoull(argv[4]), torch::Device(argv[2]), rollout_length, gae_lambda, financial_features, entropy_coefficient);
+        Trainer trainer(std::stoull(argv[4]), torch::Device(argv[2]), rollout_length, gae_lambda, financial_features, entropy_coefficient, choice_weighted, diagnostics);
         std::cout << std::setprecision(9);
         std::string line;
         while (std::getline(std::cin, line)) {
             const auto request = fields(line);
             if (request[0] == "ACT") trainer.act(request);
+            else if (request[0] == "PROBE") trainer.probe(request);
             else if (request[0] == "REWARD") trainer.reward(request);
             else if (request[0] == "UPDATE" && request.size() == 1) trainer.update();
             else if (request[0] == "SAVE" && request.size() == 2) trainer.save(request[1]);
