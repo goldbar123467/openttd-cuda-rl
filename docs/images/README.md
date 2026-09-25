@@ -1,6 +1,6 @@
 # Progress illustration provenance
 
-Generated with the built-in imagegen tool on September 24, 2026. These are explanatory illustrations, not measured plots or actual gameplay screenshots. Results come from ../PROGRESS.md. No image implies a completion percentage or general full-game competence.
+The three historical illustrations below were generated with the built-in imagegen tool on September 24, 2026. They are explanatory illustrations, not measured plots or actual gameplay screenshots. Their queued-replication wording reflects that earlier snapshot; the current progress log records subsequent failures. The measured MCP chart at the end of this document is separate. Results come from ../PROGRESS.md. No image implies a completion percentage or general full-game competence.
 
 ## Image 1
 
@@ -21,3 +21,22 @@ Edit this infographic for accuracy and legibility. Remove ALL dark blue gradient
 ## Image 3
 
 Create a refined landscape educational roadmap infographic on clean white background, highly legible navy typography, teal completed markers amber current marker gray future markers, charming small OpenTTD-inspired isometric town and transportation illustrations. Title 'From a trained bus agent to a full-game player'. Subtitle 'Engineering is established. General playing strength is still a research goal.' Four large sequential milestone panels joined by a winding route. Panel 1 'ESTABLISHED' / 'Training and deployment' / 'C++ / CUDA PPO' / 'Checkpoints, ONNX and visible play' / 'MCP company control'. Panel 2 'DEMONSTRATED' / 'Narrow bus skills' / 'V1: 18/18 sampled held-out service cases' / 'V2: planner-assisted service' / 'Cash efficiency remains weak'. Panel 3 emphasized pin 'YOU ARE HERE' / 'Reliable decisions' / 'Replicate borrowing recovery across training seeds' / 'Resolve indistinguishable action features' / 'Fix shared construction conflicts'. Panel 4 'STILL AHEAD' / 'Full-game competence' / 'Learn trucks, trains, ships and aircraft' / 'Generalize across varied maps' / 'Compete profitably against other agents'. Below small clear legend 'Established infrastructure is not the same as learned gameplay.' Footer 'September 24, 2026 • Milestones are not equal effort • No completion percentage implied'. Illustrate progression with computer GPU and bus depot, operating bus village, decision junction, future mixed transport city. No fake percentages, no invented statistics, no extra slogans, no learning curves. Crisp readable graphic suitable for GitHub README.
+
+## Measured MCP comparison
+
+`mcp-matched-guide-results-2026-09-24.png` is a Matplotlib plot of completed
+native-game results, with its exact numeric input in the adjacent `.json` file.
+All twelve full matches are included: two development maps, swapped MCP roles,
+and actual LLM, uniform and proposal-priority controllers. The fixed neural
+opponent sustains service in four LLM matches; the LLM chooses 1,024 WAIT actions.
+Both actors fail service in all eight scripted matches because of shared-plan
+construction conflicts. This is not a general model ranking.
+
+The independent review checks all 24 company totals and 96 economic windows.
+The PNG was visually inspected for labels, sign conventions and crowding.
+Original run: `v2-mcp-matched-guide-economics-01`; read-only review and plotting
+source: `runs/2026-09-24/v2-mcp-matched-guide-01/review_complete.py` (local artifact).
+
+- PNG SHA-256: `98d5c4381b7fa955f4919a9bcb37c9537e35bd014e5306fea5d504e093e68620`.
+- Data SHA-256: `4a7a7f64e731a0e7396d76969af9a133fcae0f7f2f84bafedaa21bf203d6ea5a`.
+- Original comparison SHA-256: `40cc679d5fe20beb8b0a35ba2f5b8027c87c6a763056c703a3b54c1101f40554`.
