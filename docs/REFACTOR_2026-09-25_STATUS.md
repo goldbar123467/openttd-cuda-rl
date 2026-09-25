@@ -3,7 +3,7 @@
 Goal: [complete refactor and PPO recovery](REFACTOR_GOAL_2026-09-25.md).
 Review: `9/25 refractor/`, fetched at `ec5a3f6`; reviewed source was `0595a72`.
 Execution starts from `8ffc5bd` on `codex/local-training-foundation`.
-The first implementation checkpoint is local commit `c8f585b`; nothing was pushed.
+The first implementation checkpoint was local commit `c8f585b`; it was not pushed then.
 All eleven original reports were read. This is an implementation record, not a
 replacement for their requirements or a claim that their static findings passed.
 
@@ -18,8 +18,75 @@ replacement for their requirements or a claim that their static findings passed.
   paths; these worktrees must not be pruned. No training process was found running.
 - No held-out games have been accessed or new tuning study launched.
 - The owner requested publication to `main`. This integration preserves the remote
-  review history and the verified implementation through `e30953c`. The unfinished
-  concurrency driver remains outside this commit; no paid computation is launched.
+  review history and the verified implementation through `e30953c`. The follow-up
+  now verifies concurrency and corrects V2 inference determinism; no paid computation
+  is launched.
+
+## Concurrent execution and deterministic V2 inference (S2-7 / F33)
+
+**Verified on the retained workload after correcting V2 inference.** The first
+full run, `refactor-concurrency-01`, correctly failed its strict prediction gate:
+V1 action/economic traces and all V2 native actions/economics matched, but V2 CUDA
+probabilities, log probabilities, entropy and values differed in their low bits.
+The three V2 comparisons differed on 196, 191 and 203 of 512 prediction rows;
+maximum probability difference was 1.19e-7 and value difference 2.4e-7. The failed
+run and `failure-analysis.json` remain unchanged. No tolerance replaced equality.
+
+Live V2 inference now applies the same deterministic-algorithm, CuDNN and cuBLAS
+settings already used by live training, including fail-closed unsupported
+operations. The graph encoder uses CUDA scatter aggregation, a documented source
+of nondeterminism without those settings ([PyTorch 2.9](https://docs.pytorch.org/docs/2.9/generated/torch.use_deterministic_algorithms.html)).
+The experiment verifies the collective settings correction; it does not isolate a single operator. `DETERMINISM_INFO`
+reports actual runtime settings. Training code, weights and the prediction wire format are
+unchanged; the historical inference binary/source remain retained references.
+
+`refactor-concurrency-02` passes **all 13 strict comparisons** across nine full
+512-decision games (4,608 total decisions). V1 runs two development greedy games
+alone, then those games alongside two sampled games with four process workers.
+V2 runs the same greedy development game alone and twice concurrently on CUDA.
+Progress observations prove every concurrent worker advanced during a shared
+unfinished interval. Original native action/economic traces match byte-for-byte.
+V1 summaries exclude only elapsed duration. V2 prediction comparison excludes only
+inference timing and the run-specific directory prefix of the guided tensor path;
+all remaining fields, relative paths and content hashes match exactly.
+
+The V2 model is the fixed two-update recovery qualification checkpoint, on
+map 1630856436 with seed 20260925 and guide v4. It chooses WAIT for all 512
+steps: zero passengers, -4,834 operating profit, -5,559 cash excluding financing,
+zero invalid actions and no bankruptcy. This is finite-workload correctness,
+not evidence of learned service, universal hardware determinism or a speedup.
+
+Evidence below is under `/home/imsa/.local/share/openttd-rl/runs/`:
+
+- `refactor-concurrency-02/verification.json`, SHA-256 `772427538e0d3c9b3bcdf8e31bde760212f5c9f02949ad5825fa4e5bc9a05141`:
+  commands, seeds, binaries/models, unchanged input hashes, source archives,
+  actual progress overlap and all strict comparisons.
+- `refactor-v2-inference-fix-01/service-replay-02/verification.json`: all 512
+  retained inputs produce exactly unchanged old/new CPU outputs and identical
+  queried/unqueried CUDA outputs. CPU/CUDA maxima are 9e-8 for probabilities and
+  2.4e-7 for values, below the existing 1e-5/1e-4 bounds, with exact argmax.
+  RESET replays the first eight outputs exactly. The first replay attempt lacked
+  compressed-tensor resolution; its input failure is retained separately.
+- `refactor-v2-inference-fix-01/`: **211 Python passes, four existing skips;
+  136/136 portable checks; 4/4 focused native V2 policy/distribution CPU/CUDA
+  checks**. Eight new unit tests exercise overlap, byte differences, prediction
+  projection, held-out refusal and child-failure retention.
+
+The new native binary is
+`/home/imsa/.local/share/openttd-rl/build/refactor-v2-deterministic-infer-01/rl_dev_v2_infer`.
+This follow-up is separate from the older container qualification. New Vast work
+must select a reviewed revision containing this fix and pass the target's complete
+qualification before registration. No learning study or held-out game was launched.
+
+Two bounded read-only audits also clarify report 03's open questions.
+`refactor-development-map-rationale-01/audit.json` hashes three retained
+registrations and orchestrators: they specify the first two development seeds but
+provide no explicit cost/property rationale; that rationale stays unknown. The
+prospective protocol already requires all eight seeds.
+`refactor-v1-retained-backends-01/audit.json` binds all three selected rollout-64
+MLPs to the actual reference trainer binary and recorded fused-OFF configuration.
+Three older curriculum comparison records lack an explicit bound backend and stay
+unclassified; this does not characterize every historical model.
 
 ## V1 training-device agreement (S2-5 / F28 / 03:N8)
 
@@ -396,10 +463,10 @@ directory above. Failed attempts are retained.
   repository suite **136/136 passed** (`refactor-report-fast-01/fast.log`). No
   native PPO math changed in this reporting pass; prior native results stand.
 
-Current next work: verify V1/V2 concurrency determinism, then continue the measured
+Current next work: add neutral stage timers (S3-0), then continue the measured
 pipeline work and remaining audits/strategy dispositions. Container qualification
 and V1 device agreement have now passed as recorded above. The portable package
-supplies capacity and sequential execution; publication, paid provisioning and the
+supplies capacity and sequential execution; image publication, paid provisioning and the
 registered study remain outstanding. A Vast host must pass its own prerequisite
 bundle before running A0-A3.
 
@@ -422,7 +489,7 @@ deliverable; no member is complete until its own evidence is recorded.
 | S2-4 held-out protocol | F09; 03:N4 | Frozen protocol and registered access implemented; refusal/one-use tests verified | No held-out access; model registration after development eligibility |
 | S2-5 device agreement | F28; 03:N8 | Verified on retained MLP; all-architecture native fixtures | 4096 rows/backend, exact argmax, fixed tolerances; valid perturbed package rejected; old CNN spatial-data limit explicit |
 | S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Verified, scoped to retained V1 contrasts | Exact historical half-width; explicit extrapolation assumptions and V2 limit |
-| S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Pending | Solo/concurrent native action/economic trace identity |
+| S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Verified for retained full workload after V2 inference fix | 13 exact comparisons; actual overlap; first CUDA prediction failure preserved |
 | S3-0 timers | 04:section 6; 05:section 11; 03:N14 | Pending | Separate timings, unchanged canonical traces, 3 paired runs |
 | S3-1 evaluation quick wins | F13; 04:B1/B2/B7 | Pending | Full replay equality and paired timing |
 | S3-2 MLP spatial transfers | F12/F32; X10; 05:K1; 06:O3 | Pending | Cross-binary exact mode; all architecture regressions |

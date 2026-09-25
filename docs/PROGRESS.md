@@ -1,5 +1,21 @@
 # Live OpenTTD development progress
 
+## 2026-09-25: concurrent-game determinism and V2 inference fix
+
+The strict concurrency check found small V2 CUDA prediction differences despite
+identical native actions/economics. Live inference now uses the deterministic
+settings already required by training. A fresh run passes all 13 exact comparisons
+across nine complete games, including V1 four-worker and V2 two-game load. The
+original failure remains retained. CPU output is unchanged on all 512 replayed
+inputs, and CPU/CUDA agreement stays within existing tolerances. Checks pass:
+211 Python tests (four additional environment skips), 136 portable checks and four
+focused native CPU/CUDA tests. See [the evidence and limits](REFACTOR_2026-09-25_STATUS.md).
+
+This follows the requested publication to main. The V2 fixture only waits and
+proves no learning improvement. The older container qualification remains tied
+to `43b15fe`; new work must select the corrected source and qualify it on the
+Vast target. Stage timers and the broader registered study remain unfinished.
+
 ## 2026-09-25: V1 training-device agreement follow-up
 
 S2-5 now passes on the retained balanced-roll64 MLP: all 4,096 development
@@ -16,8 +32,8 @@ MCP-environment skips remain. Evidence is in `refactor-v1-device-agreement-01` a
 This work was verified on `codex/refactor-v1-agreement` and is included in the main
 integration at the owner's request. The qualified Vast source and original checkout
 remain at `43b15fe`; no paid compute, new learning study or held-out access occurred.
-Concurrency determinism is the next open Stage 2 item; its unfinished driver is
-kept outside this publication, followed by the outstanding profiling/strategy work.
+Concurrency determinism was the next open Stage 2 item at that publication;
+the verified correction and remaining profiling/strategy work are recorded above.
 
 ## 2026-09-25: minimum recovery correctness and Vast packaging
 
@@ -35,8 +51,9 @@ built locally and passed actual CUDA execution, launcher refusal and the complet
 native correctness bundle, including exact CPU/CUDA reset resume. Container checks
 passed 189 Python tests with four MCP-environment skips, 136 portable tests and all
 19 native tests. The temporary Docker daemon has been stopped. The selected Vast
-host still reruns qualification before registration. No paid instance or Git push exists
-from this work. See [the evidence record](REFACTOR_2026-09-25_STATUS.md) and
+host still reruns qualification before registration. This package was subsequently
+pushed to main at the owner's request; no paid instance has been launched. See
+[the evidence record](REFACTOR_2026-09-25_STATUS.md) and
 [launch instructions](../deployment/vast/README.md) for checks and remaining limits.
 
 

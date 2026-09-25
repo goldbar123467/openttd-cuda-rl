@@ -76,6 +76,39 @@ cuda:0 --output ...` checks the real service boundaries against an existing pack
 The reviewed Vast image predates this isolated follow-up; it retains its separate
 qualification identity at `43b15fe`.
 
+## Full-game concurrency check
+
+`scripts/dev/check_concurrent_determinism.py` runs two full V1 greedy development
+episodes alone and under four-worker load, then one full V2 greedy game alone and
+two copies concurrently. It checks original action/economic bytes and complete
+prediction semantics, and requires observed progress from every concurrent worker.
+Timing and run-root paths are excluded explicitly; numerical differences fail.
+All games use 512 decisions and fresh output directories. CUDA never falls back.
+
+With the Torch venv active, reproduce the retained fixed-model check:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+python scripts/dev/check_concurrent_determinism.py \
+  --v1-engine "$RL_ROOT/engine/build/openttd" \
+  --v1-evaluator "$RL_ROOT/build/refactor-v1-agreement-reference-01/m09_evaluator" \
+  --v1-instance-dir "$RL_ROOT/engine/instances" \
+  --v1-package "$RL_ROOT/runs/live-cuda-balanced-roll64-lambda095-64u-s20260923/models/f6b886f5d3b8274b3bf9856f062b5d5a314fa77f4b66564a7fa0b6b2b963f5c5" \
+  --v2-engine "$RL_ROOT/v2-live-engine/build/openttd" \
+  --v2-policy "$RL_ROOT/build/refactor-v2-deterministic-infer-01/rl_dev_v2_infer" \
+  --v2-training-run "$RL_ROOT/runs/refactor-gradient-qualification-01/qualifications/attempt-001/recovery/cuda-0-plain" \
+  --device cuda:0 --map-seed 1630856436 --seed 20260925 \
+  --output "$RL_ROOT/runs/concurrency-new"
+```
+
+Use a current V2 inference binary: it now applies training's deterministic CUDA
+settings and provides `DETERMINISM_INFO` over its development service. Build it
+with `local.py build --v2-policy` in a separate build directory. The historical
+binary is retained for comparison; its exact CUDA prediction gate failed.
+The corrected check passed all 13 comparisons on RTX 2070/Torch 2.9.1. Its V2
+checkpoint only chooses WAIT, so this is not a learning or throughput benchmark.
+See [the complete evidence record](REFACTOR_2026-09-25_STATUS.md).
+
 ## What we are continuing
 
 Keep the existing C++ PPO and source-integrated OpenTTD environment. The immediate
