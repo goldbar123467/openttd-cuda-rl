@@ -5,6 +5,38 @@ trainer and all PPO losses, gradients, Adam updates and CPU reference calculatio
 retain their existing LibTorch implementations. It is a performance experiment,
 not a new learning algorithm or a claim of better gameplay.
 
+September 25 hygiene checks are recorded in
+[the refactor status](REFACTOR_2026-09-25_STATUS.md). The kernel now distinguishes
+nonfinite input (status 1), an all-illegal mask (2), and nonfinite entropy (3),
+and reports the first failing row. The trainer normalizes its mask to bool;
+the kernel's contiguous float32/bool contract remains explicit. New tests cover
+mixed invalid rows, legal and illegal nonfinite logits, the 65,535/65,536 batch
+boundary, extreme finite spreads and noncontiguous masks. Reference/fused native
+suites and bounded live comparisons pass. This is correctness evidence, not a
+new speedup measurement. Compute Sanitizer 12.6 was attempted for memcheck,
+racecheck, synccheck and initcheck; all failed to initialize this WSL host's WDDM
+debugger interface and reported unsupported-device errors. Sanitizer coverage
+therefore remains unavailable, with logs under `refactor-v1-sanitizers-01`.
+
+The September 25 offline workload estimate in `refactor-study-cost-01` projects
+about 41-42 sequential hours as a lower bound for the mandatory recovery matrix,
+with 654-656 GiB retained artifacts and roughly 500 GiB in request logs. These
+are extrapolations from retained whole-run/game-loop records, not a new CUDA
+benchmark or a concurrency speedup. Storage and host I/O are practical constraints
+to resolve through S3 profiling and equality checks before the large study.
+Per-stage timing and three counterbalanced performance pairs remain outstanding.
+
+The V1 device-agreement follow-up now reads probabilities directly from the
+training ACT backend through a development-only inspection request. Reference
+and fused CUDA each passed all 4,096 retained MLP development observations with
+exact argmax agreement; maximum probability error was 1.78814e-7 against the CPU
+evaluation trace. Both rejected all rows from a valid package with a deliberately
+perturbed policy bias. Native fixtures cover all three architectures, preserve
+optimizer/RNG/model state, and retain exact zero probabilities on illegal actions.
+The documented `1e-6 + 1e-5 * abs(reference)` probability tolerance was unchanged.
+Artifacts: `refactor-v1-device-agreement-01`. This is finite-workload correctness
+evidence; no new performance claim or CNN live-replay result is implied.
+
 ## Why this operation
 
 The measured 128-update live MLP run spent 1,216.8 seconds collecting/updating,

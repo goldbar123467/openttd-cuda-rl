@@ -24,6 +24,11 @@ def canonical(value):
 def reset_manifest(executable, baseset, seed, split, width=64, height=64):
     if split not in ("training", "development"):
         raise ValueError("Live development forbids held-out splits")
+    return _reset_manifest_payload(executable, baseset, seed, split, width, height)
+
+
+def _reset_manifest_payload(executable, baseset, seed, split, width=64, height=64):
+    """Shared encoder; reserved splits require the registered executor's permit."""
     if type(width) is not int or type(height) is not int or (seed is not None and type(seed) is not int):
         raise ValueError("Live seed/dimensions must be integers")
     contract_path = ROOT / "config/v2/m15-scalable-contract.json"
@@ -52,7 +57,7 @@ def reset_manifest(executable, baseset, seed, split, width=64, height=64):
 
 class LiveV2:
     def __init__(self, engine, output, *, seed=None, split="training", decisions=8, ticks=128, companies=1, first_company=0,
-                 visible=False):
+                 visible=False, _reset_factory=None):
         self.engine, self.output = Path(engine).resolve(), Path(output).resolve()
         if type(visible) is not bool:
             raise ValueError("Visible display flag must be boolean")
@@ -64,7 +69,8 @@ class LiveV2:
         if type(companies) is not int or companies not in (1, 2) or type(first_company) is not int or not 0 <= first_company < companies or decisions % companies:
             raise ValueError("Company count, first actor or balanced action budget invalid")
         self.schema = SHARED_SCHEMA if companies == 2 else SCHEMA
-        manifest = reset_manifest(self.engine, self.engine.parent / "baseset/opengfx-8.0.tar", seed, split)
+        factory = reset_manifest if _reset_factory is None else _reset_factory
+        manifest = factory(self.engine, self.engine.parent / "baseset/opengfx-8.0.tar", seed, split)
         self.output.mkdir(parents=True, exist_ok=False)
         (self.output / "artifacts").mkdir()
         (self.output / "openttd.cfg").write_text("\n")

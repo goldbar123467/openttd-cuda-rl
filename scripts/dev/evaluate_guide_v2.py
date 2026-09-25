@@ -15,23 +15,47 @@ from local import capture_source, positive, source_identity, write_json
 from service_v2 import summarize
 
 
-def run(args):
+def select_row(controller, mode, rows, candidates, guide, rng):
+    """Public controls; greedy uniform uses the frozen lowest-row tie break."""
+    if mode not in ("greedy", "sampled"):
+        raise ValueError("Unknown control action mode")
+    if controller == "uniform":
+        return (min(rows) if mode == "greedy" else rng.choice(rows)), 1 / len(rows)
+    if controller not in ("scripted", "repay-first"):
+        raise ValueError("Unknown public control")
+    row = next(row for row in rows if candidates[row]["stable_key"] == guide.proposal)
+    # Preserve the historical script's repayment ordering under each guide.
+    if controller == "repay-first" or guide.families[candidates[row]["family_index"]] == "WAIT":
+        row = next((i for i in rows if guide.families[candidates[i]["family_index"]] == "MANAGE_LOAN"), row)
+    return row, 1.0
+
+
+def run(args, *, heldout_permit=None):
+    if heldout_permit is None:
+        if args.split not in ("training", "development"):
+            raise ValueError("Ordinary controls forbid held-out splits")
+    else:
+        heldout_permit.validate(args, args.controller)
     guidance_name = getattr(args, "guidance", GUIDANCE)
+    mode = getattr(args, "mode", "sampled")
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
     record = {"kind": "native-v2-guided-baseline", "status": "running",
               "source": source_identity(), "guidance": guidance_name, "controller": args.controller,
-              "sampling_seed": args.seed, "map_seed": args.map_seed, "split": args.split,
-              "decisions": args.decisions, "final_evaluation_accessed": False,
+              "sampling_seed": args.seed, "mode": mode, "map_seed": args.map_seed, "split": args.split,
+              "decisions": args.decisions, "final_evaluation_accessed": heldout_permit is not None,
               "engine_sha256": hashlib.sha256(args.openttd.read_bytes()).hexdigest(),
               "claim": "Planner-assisted baseline; no learned route construction or policy optimization"}
+    if heldout_permit is not None:
+        record["held_out_registration"] = heldout_permit.reference
     capture_source(root / "source")
     write_json(root / "run.json", record)
     game = None
     started = time.monotonic()
     rng = random.Random(args.seed)
     try:
-        game = LiveV2(args.openttd, root / "worker", seed=args.map_seed,
+        factory = LiveV2 if heldout_permit is None else heldout_permit.live
+        game = factory(args.openttd, root / "worker", seed=args.map_seed,
                       split=args.split, decisions=args.decisions)
         initial = game.request("OBSERVE")["observation"]
         guide = PublicPlanGuide(initial, root / "worker", guidance=guidance_name)
@@ -43,17 +67,7 @@ def run(args):
                 _, candidate_path, candidates, mask = checked_tensors(tensors, observation)
                 _, mask, guidance = guide.prepare(observation, candidate_path, candidates, mask)
                 rows = [row for row, allowed in enumerate(mask) if allowed]
-                if args.controller == "uniform":
-                    row = rng.choice(rows)
-                    probability = 1 / len(rows)
-                else:
-                    row = next(row for row in rows if candidates[row]["stable_key"] == guide.proposal)
-                    # The original script builds first. The repay-first control
-                    # prioritizes repayment whenever the identical public mask
-                    # offers it, then resumes construction without extra WAITs.
-                    if args.controller == "repay-first" or guide.families[candidates[row]["family_index"]] == "WAIT":
-                        row = next((i for i in rows if guide.families[candidates[i]["family_index"]] == "MANAGE_LOAN"), row)
-                    probability = 1.0
+                row, probability = select_row(args.controller, mode, rows, candidates, guide, rng)
                 selected = candidates[row]
                 action = game.request("ACT", token=observation["token"], candidate=selected["stable_key"])
                 if action["status"] != "OK" or action["action"]["status"] not in ("SUCCESS", "NO_OP"):
@@ -93,6 +107,7 @@ if __name__ == "__main__":
     parser.add_argument("--openttd", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--controller", choices=("uniform", "scripted", "repay-first"), required=True)
+    parser.add_argument("--mode", choices=("greedy", "sampled"), default="sampled")
     parser.add_argument("--seed", type=positive, default=20260923)
     parser.add_argument("--map-seed", type=int)
     parser.add_argument("--split", choices=("training", "development"), default="development")

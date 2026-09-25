@@ -1,0 +1,99 @@
+{
+  "format": "openttd-rl-v2-recovery-study-protocol-1",
+  "registered_utc": "2026-09-25T14:34:35Z",
+  "status": "frozen-before-new-recovery-tuning",
+  "contract_path": "config/v2/m15-scalable-contract.json",
+  "contract_sha256": "b7a4ba1fc20507b77e2ef2ac01347665526cdbd4fc3e036587df5bdb3666d271",
+  "training_seeds": [20260923, 20260924, 20260925],
+  "training_maps": [1110312784, 786545128, 1922409719, 583478638, 903537006, 789617916, 250684692, 1871197196],
+  "fixed_training": {
+    "decisions": 8192,
+    "episode_horizon": 128,
+    "rollout_length": 64,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "optimization_epochs": 4,
+    "sequence_length": 8,
+    "learning_rate": 0.0003,
+    "clip_epsilon": 0.2,
+    "max_gradient_norm": 0.5,
+    "value_coefficient": 0.5,
+    "financial_features": "signed-log-v1",
+    "reuse_bootstrap_tensors": true,
+    "checkpoint_interval": 8
+  },
+  "arms": [
+    {"id": "A0", "guide": "one-bus-public-plan-v2", "choice_weighted": false, "entropy_coefficient": 0.01, "asset_potential": false},
+    {"id": "A1", "guide": "one-bus-public-plan-v2", "choice_weighted": true, "entropy_coefficient": 0.003, "asset_potential": false},
+    {"id": "A2", "guide": "one-bus-public-plan-v2", "choice_weighted": true, "entropy_coefficient": 0.003, "asset_potential": true},
+    {"id": "A3", "guide": "one-bus-public-plan-v4", "choice_weighted": true, "entropy_coefficient": 0.003, "asset_potential": true}
+  ],
+  "conditional_arms": {
+    "A4": "Register after A0-A3 evidence: four recurrent sequences per minibatch and choice-KL guard 0.03; preserve the otherwise selected parent arm.",
+    "A5": "Register after entropy decomposition: coefficient 0.01 with the otherwise selected parent arm."
+  },
+  "early_stop": {
+    "probes": "eight training-map reset states, read-only and RNG-preserving",
+    "check_every_updates": 8,
+    "first_eligible_update": 32,
+    "proposal_probability_below": 0.1,
+    "minimum_maps": 6,
+    "consecutive_checkpoints": 2,
+    "stopped_seed_disposition": "failure retained in arm results; no replacement or selection of an earlier checkpoint"
+  },
+  "development": {
+    "split": "development",
+    "maps": [1630856436, 155097162, 1456534872, 164252095, 1846306860, 1429392268, 1469867788, 625690428],
+    "map_width": 64,
+    "map_height": 64,
+    "decisions": 512,
+    "ticks_per_action": 128,
+    "greedy_action_seed": 20260923,
+    "sampled_action_seeds": [20260923, 20260924, 20260925],
+    "final_model_only": true
+  },
+  "controls": {
+    "controllers": ["uniform", "scripted"],
+    "same_guide_required": true,
+    "same_engine_budget_source_required": true,
+    "full_mode_map_seed_matrix": true,
+    "uniform_greedy_rule": "argmax of equal legal probabilities; smallest legal candidate row wins ties",
+    "scripted_mode_rule": "fixed public proposal in both modes; repeated seed cases do not create independent policy evidence",
+    "reuse_rule": "Exact hashes of control source, guide source, engine, content/settings/reset contract; identical split, map, mode, action seed and budget; completed native trace independently verified."
+  },
+  "advancement": {
+    "all_three_training_seeds_complete": true,
+    "invalid_actions_allowed": 0,
+    "bankruptcies_allowed": 0,
+    "greedy_sustained_maps_per_training_seed": 7,
+    "sampled_positive_paired_profit_and_cash_training_seeds": 2,
+    "positive_pooled_paired_profit_and_cash": true,
+    "reference": "same-guide uniform sampled controller",
+    "profit_metric": "operating_profit",
+    "cash_metric": "cash_result_excluding_financing",
+    "service_metric": "service_in_all_final_three_windows",
+    "uncertainty": "Fixed-seed nested bootstrap (training seed, map, paired action seed), retain historical t intervals; three training seeds are imprecise."
+  },
+  "selection": {
+    "rule": "first eligible arm in preregistered order",
+    "order": ["A0", "A1", "A2", "A3", "A4", "A5"],
+    "rationale": "Prefer the earliest sufficient recipe without selecting the largest noisy observed effect. Execute all mandatory arms even if an earlier arm qualifies.",
+    "if_none_qualifies": "No held-out access; report failed advancement and follow the registered recovery decision tree."
+  },
+  "held_out": {
+    "split": "generalization",
+    "maps": [865927513, 1936289326, 348404717, 1893295922, 1985050841, 1377526319, 678468527, 746648261],
+    "map_width": 64,
+    "map_height": 64,
+    "decisions": 512,
+    "ticks_per_action": 128,
+    "mode_matrix": "same one greedy plus three sampled action seeds per map and model/control as development",
+    "models": "All three final trained models of the selected eligible arm; freeze model, binary, code, runtime and protocol hashes before access.",
+    "acceptance": "Apply the frozen development advancement criteria on these eight held-out maps without adjustment.",
+    "accesses_per_selected_arm": 1,
+    "allow_tuning_from_results": false,
+    "final_split_access": false,
+    "claim_limit": "Untouched by this live recovery tuning campaign; same-size seeded maps do not establish larger-map or general OpenTTD competence."
+  },
+  "execution_gate": "No tuning until correctness qualifications, committed executable study registration/driver/reporting, all-map control matching, held-out refusal tests and cost estimate pass. This protocol alone cannot authorize a model or open a held-out game."
+}

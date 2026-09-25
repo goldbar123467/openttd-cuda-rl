@@ -37,6 +37,10 @@ def checked_package(path, training, device):
     if training['model'].get('financial_features', 'raw') != mode:
         raise ValueError('Training/model financial preprocessing differs')
     manifest = json.loads((path / 'manifest.json').read_text())
+    gradient_norm = training.get('gradient_norm', 'historical')
+    if (training['model'].get('training_gradient_norm', 'historical') != gradient_norm or
+            manifest.get('training_gradient_norm', 'historical') != gradient_norm):
+        raise ValueError('ONNX training gradient norm provenance differs')
     if manifest.get('format') != FORMAT or manifest.get('status') != 'qualified':
         raise ValueError('A qualified live V2 ONNX package is required')
     if manifest.get('metadata') != metadata_for(mode) or manifest.get('runtime') != 'onnxruntime-1.28.0-cpu':

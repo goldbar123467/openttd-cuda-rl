@@ -13,23 +13,32 @@ with demonstrated end-to-end neural gameplay.
 | V1 passenger buses | Sampled policies sustain service in 18/18 registered held-out episodes; greedy service succeeds in 4/6. The one-bus script remains more cash-efficient. |
 | Live V2 recurrent PPO | Real sequential CUDA training works. Current experiments use a public route planner; learned control has not reliably beaten uniform choices using the same guide. |
 | V2 experience and exploration | An 8,192-decision continuation sustains service in 9/9 games but fails economic criteria. Lowering entropy to .001 regresses service to 5/9. |
-| Borrowing recovery | Frozen .001 weights with the optional borrowing guide recover 9/9 service. Fresh training with that guide regresses to 1/9. The frozen-policy result is a development lead awaiting independent training-seed replication, not an adopted learning improvement. |
+| Borrowing recovery | Frozen .001 weights with the optional borrowing guide recover 9/9 service. Fresh training with that guide regresses to 1/9. The first prospective replication seed fails all 18 v2/v3 games with zero passengers. The second seed completed training, but its 18 evaluations were not launched after the user-requested stop. The original lead is not an adopted improvement. |
 | Deployment | Raw and signed-log V2 ONNX compatibility, native parity and visible replay have been qualified. The signed-log deployment extension is integrated; experimental training still requires its matching worktree and binaries. |
-| Shared games / MCP | Actual local Gemma matches execute through company-scoped MCP. A matched-guide campaign is in progress; all eight completed scripted baselines stall on shared construction conflicts. This is integration evidence, not competitive competence. |
+| Shared games / MCP | Actual local Gemma matches execute through company-scoped MCP. All twelve matched-guide games are complete. The LLM chooses WAIT on all 1,024 turns; the neural actor sustains the four LLM matches. Both actors fail all eight scripted matches through shared construction conflicts. The useful-comparison criterion fails. |
 | Other transport | Scripted passenger/mail service is demonstrated. General neural mastery of trucks, rail, ships, aircraft, and multimodal economics remains unfinished. |
 
 Start with [the development guide](docs/DEVELOPMENT.md),
 [the latest results](docs/PROGRESS.md), and [the continuation handoff](handoff.md).
-Independent training-seed replication of the frozen-policy borrowing recovery
-is queued after the matched MCP campaign. An inspected public state also exposes
+The replication already fails its per-seed service requirement. Both fresh
+CUDA training runs are complete and experimentation has stopped at the user's
+request. The second seed is unevaluated; resume only on a later instruction.
+An inspected public state also exposes
 identical candidate features for distinct borrowing/repayment commands and many
 within-family construction choices. Explicit action representation and shared
 construction planning remain unresolved prerequisites for broader claims.
 
 ### Read the latest results visually
 
-These AI-generated explanatory illustrations summarize the September 24 snapshot;
-they are not game screenshots or measured plots. The progress log is authoritative.
+The measured chart below shows all twelve completed MCP matches. Negative cash
+includes capital spending and excludes loan principal. Full outcomes and limitations
+are in the progress log.
+
+![Measured outcomes from all twelve MCP matches](docs/images/mcp-matched-guide-results-2026-09-24.png)
+
+The following AI-generated illustrations preserve an earlier September 24 snapshot.
+Their queued-replication wording is historical: the first prospective seed has now
+failed. They are not game screenshots or measured plots.
 
 ![Completed PPO experiments and their limitations](docs/images/ppo-experiment-results-2026-09-24.png)
 
@@ -49,10 +58,11 @@ The illustrations and their generation prompts are documented in
 
 ### Source backup and local artifacts
 
-The reviewed development source and this snapshot are published to `main`.
-The local working branch is `codex/local-training-foundation`.
-Separate `backup/2026-09-24/<worktree-name>` branches preserve isolated experiment
-source snapshots; they are backups, not merged or newly qualified releases.
+The local working and publication branch is `codex/local-training-foundation`.
+A commit on this branch does not imply that it has been merged into `main`.
+Existing `backup/2026-09-24/<worktree-name>` branches preserve earlier isolated
+source snapshots. Newer experimental worktrees remain local. Backup branches
+are not merged or newly qualified releases.
 Historical worktree paths and run identities in the handoff describe the local
 execution environment and must be adapted on another machine.
 

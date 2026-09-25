@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import unittest
 import tempfile
+import subprocess
 from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/dev"))
@@ -39,6 +40,44 @@ class LiveV2RewardTests(unittest.TestCase):
 
 
 class LiveV2ReturnConfigurationTests(unittest.TestCase):
+    def test_unknown_gradient_norm_fails_before_output_or_native_processes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "must-not-exist"
+            args = SimpleNamespace(episode_horizon=128, gradient_norm="automatic", output=output)
+            with self.assertRaisesRegex(ValueError, "gradient norm"):
+                run(args)
+            self.assertFalse(output.exists())
+
+    def test_invalid_entropy_fails_before_output_or_native_processes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "must-not-exist"
+            for value in (-.1, 1.1, float("nan"), float("inf")):
+                args = SimpleNamespace(episode_horizon=128, entropy_coefficient=value, output=output)
+                with self.assertRaisesRegex(ValueError, "entropy-coefficient"):
+                    run(args)
+                self.assertFalse(output.exists())
+
+    def test_entropy_cli_rejects_invalid_or_duplicate_before_output(self):
+        script = Path(__file__).resolve().parents[2] / "scripts/dev/train_v2.py"
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "must-not-exist"
+            base = [sys.executable, str(script), "--openttd", "missing", "--trainer", "missing",
+                    "--device", "cpu", "--output", str(output)]
+            for flags in (["--entropy-coefficient", "nan"], ["--entropy-coefficient", "1.1"],
+                          ["--entropy-coefficient=.01", "--entropy-coefficient", ".001"]):
+                result = subprocess.run(base + flags, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("entropy-coefficient", result.stderr)
+                self.assertFalse(output.exists())
+
+    def test_unknown_financial_preprocessing_fails_before_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "must-not-exist"
+            for value in ("signed-log-v2", " raw", None):
+                with self.assertRaisesRegex(ValueError, "Financial features"):
+                    run(SimpleNamespace(financial_features=value, output=output))
+                self.assertFalse(output.exists())
+
     def test_invalid_gae_weight_fails_before_output_or_native_processes(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "must-not-exist"

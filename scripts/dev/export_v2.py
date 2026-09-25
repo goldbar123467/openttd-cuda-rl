@@ -28,6 +28,9 @@ def run(args):
     if training['model'].get('financial_features', 'raw') != financial_features or evaluation.get('financial_features', 'raw') != financial_features:
         raise ValueError('Training/model/evaluation financial preprocessing differs')
     metadata = metadata_for(financial_features)
+    gradient_norm = training.get('gradient_norm', 'historical')
+    if training['model'].get('training_gradient_norm', 'historical') != gradient_norm:
+        raise ValueError('Training/model gradient norm provenance differs')
     weights = args.training_run.resolve() / 'inference-weights.pt'
     if Path(training['model']['path']).resolve() != weights or digest(weights) != training['model']['sha256']:
         raise ValueError('Source model identity differs')
@@ -43,6 +46,7 @@ def run(args):
     output.mkdir(parents=True, exist_ok=False)
     record = {'status': 'running', 'kind': 'live-v2-onnx-export', 'source': source_identity(),
         'financial_features': financial_features, 'source_training_run': str(args.training_run.resolve()), 'source_weights_sha256': digest(weights),
+        'source_training_run_sha256': digest(args.training_run / 'run.json'), 'training_gradient_norm': gradient_norm,
         'source_evaluation': str(args.evaluation.resolve()), 'source_evaluation_sha256': digest(args.evaluation / 'run.json'),
         'policy_sha256': digest(args.policy), 'torch': torch.__version__, 'onnx': onnx.__version__, 'onnxruntime': ort.__version__,
         'tolerances': {'probability_absolute': 1e-5, 'value_absolute': 1e-4},
@@ -114,6 +118,7 @@ def run(args):
         manifest = {'format': FORMAT, 'status': 'qualified', 'metadata': metadata,
             'runtime': 'onnxruntime-1.28.0-cpu', 'model_file': 'model.onnx', 'model_sha256': verification['model_sha256'],
             'source_weights_sha256': digest(weights), 'guidance': training.get('guidance', 'none'),
+            'source_training_run_sha256': record['source_training_run_sha256'], 'training_gradient_norm': gradient_norm,
             'verification_file': 'verification.json', 'verification_sha256': digest(output / 'verification.json'),
             'qualification_scope': '512 archived native inputs; new sequential gameplay verified separately'}
         write_json(output / 'manifest.json', manifest)

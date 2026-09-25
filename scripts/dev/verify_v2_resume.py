@@ -8,7 +8,9 @@ import subprocess
 import sys
 
 from guide_v2 import GUIDANCES
+from infer_v2 import FINANCIAL_FEATURES, financial_features_mode
 from local import ROOT, capture_source, source_identity, write_json
+from train_v2 import entropy_coefficient_value, UniqueEntropyOption
 
 
 def comparison_row(row, storage_root):
@@ -38,9 +40,16 @@ def compare_completed(root):
             raise ValueError("V2 comparison requires complete runs with identical configuration")
         if record.get("reuse_bootstrap_tensors", False) != full.get("reuse_bootstrap_tensors", False):
             raise ValueError("V2 comparison requires identical tensor reuse configuration")
+        if record.get("financial_features", "raw") != full.get("financial_features", "raw"):
+            raise ValueError("V2 comparison requires identical financial preprocessing")
+        if record.get("entropy_coefficient", .01) != full.get("entropy_coefficient", .01):
+            raise ValueError("V2 comparison requires identical entropy coefficient")
         for key, default in (("gamma", .99), ("gae_lambda", .95)):
             if record.get(key, default) != full.get(key, default):
                 raise ValueError("V2 comparison requires identical return configuration")
+        for key in ("choice_weighted", "asset_potential"):
+            if record.get(key, False) != full.get(key, False):
+                raise ValueError("V2 comparison requires identical recovery mechanisms")
         if record["requested_updates"] != prefix_updates * (2 if name == "uninterrupted" else 1):
             raise ValueError("V2 comparison requires 256 uninterrupted versus 128 plus 128 decisions")
     if Path(resumed["resume_from"]).resolve() != (root / f"prefix/checkpoints/update-{prefix_updates:06d}").resolve():
@@ -71,13 +80,18 @@ def compare_completed(root):
 
 
 def run(args):
+    financial_features = financial_features_mode(getattr(args, "financial_features", "raw"))
+    entropy_coefficient = entropy_coefficient_value(getattr(args, "entropy_coefficient", .01))
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
     capture_source(root / "source")
     report = {"kind": "v2-native-reset-resume-verification", "status": "running", "source": source_identity(),
               "device": args.device, "guidance": args.guidance, "seed": args.seed, "rollout_steps": args.rollout_length,
               "training_map_count": args.training_map_count, "gae_lambda": args.gae_lambda,
+              "financial_features": financial_features, "entropy_coefficient": entropy_coefficient,
+              "gradient_norm": getattr(args, "gradient_norm", "historical"),
               "reuse_bootstrap_tensors": args.reuse_bootstrap_tensors,
+              "policy_loss": getattr(args, "policy_loss", "historical"), "asset_potential": bool(getattr(args, "asset_potential", False)),
               "claim": "Exact same-host continuation at a native episode reset, not arbitrary mid-game recovery or gameplay strength",
               "trainer_sha256": hashlib.sha256(args.trainer.read_bytes()).hexdigest(),
               "engine_sha256": hashlib.sha256(args.openttd.read_bytes()).hexdigest()}
@@ -93,8 +107,15 @@ def run(args):
             command.extend(["--rollout-length", str(args.rollout_length)])
         if args.gae_lambda != .95:
             command.extend(["--gae-lambda", str(args.gae_lambda)])
+        command.extend(["--entropy-coefficient", str(entropy_coefficient)])
+        command.extend(["--policy-loss", getattr(args, "policy_loss", "historical")])
+        command.extend(["--gradient-norm", report["gradient_norm"]])
+        if getattr(args, "asset_potential", False):
+            command.append("--asset-potential")
         if args.reuse_bootstrap_tensors:
             command.append("--reuse-bootstrap-tensors")
+        if financial_features != "raw":
+            command.extend(["--financial-features", financial_features])
         if resume is not None:
             command.extend(["--resume", str(resume)])
         with (root / (name + ".log")).open("x") as log:
@@ -112,15 +133,22 @@ def run(args):
             original = json.loads((compared / "verification.json").read_text())
             if original.get("rollout_steps", 32) != args.rollout_length:
                 raise ValueError("Existing verification uses another rollout length")
+            if original.get("entropy_coefficient", .01) != entropy_coefficient:
+                raise ValueError("Existing verification uses another entropy coefficient")
             if original.get("gae_lambda", .95) != args.gae_lambda:
                 raise ValueError("Existing verification uses another GAE trace weight")
             if original.get("training_map_count", 4) != args.training_map_count:
                 raise ValueError("Existing verification uses another training map count")
             if original.get("reuse_bootstrap_tensors", False) != args.reuse_bootstrap_tensors:
                 raise ValueError("Existing verification uses another tensor reuse mode")
+            if original.get("financial_features", "raw") != financial_features:
+                raise ValueError("Existing verification uses another financial preprocessing mode")
             for key in ("device", "guidance", "seed", "trainer_sha256", "engine_sha256"):
                 if original[key] != report[key]:
                     raise ValueError("Existing verification differs from requested native configuration")
+            for key, default in (("policy_loss", "historical"), ("asset_potential", False), ("gradient_norm", "historical")):
+                if original.get(key, default) != report[key]:
+                    raise ValueError("Existing verification uses another recovery mechanism")
             report["existing_run_root"] = str(compared)
             report["original_verification_sha256"] = hashlib.sha256((compared / "verification.json").read_bytes()).hexdigest()
         report.update(status="passed", **compare_completed(compared))
@@ -141,7 +169,12 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=20260923)
     parser.add_argument("--rollout-length", type=int, choices=(32, 64, 128), default=32)
     parser.add_argument("--gae-lambda", type=float, default=.95)
+    parser.add_argument("--entropy-coefficient", type=entropy_coefficient_value, action=UniqueEntropyOption, default=.01)
+    parser.add_argument("--financial-features", choices=FINANCIAL_FEATURES, default="raw")
     parser.add_argument("--training-map-count", type=int, default=4)
     parser.add_argument("--reuse-bootstrap-tensors", action="store_true")
+    parser.add_argument("--policy-loss", choices=("historical", "choice-weighted"), default="historical")
+    parser.add_argument("--gradient-norm", choices=("historical", "fp64-v1"), default="historical")
+    parser.add_argument("--asset-potential", action="store_true")
     parser.add_argument("--existing", type=Path, help="Audit already completed full/prefix/resumed runs into a fresh output directory")
     run(parser.parse_args())

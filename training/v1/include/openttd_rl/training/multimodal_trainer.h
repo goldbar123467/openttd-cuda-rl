@@ -37,8 +37,14 @@ public:
         const torch::Tensor &structured,
         const torch::Tensor &spatial,
         const torch::Tensor &legal_masks,
-        bool deterministic);
+        bool deterministic,
+        torch::Tensor *device_probabilities = nullptr);
     [[nodiscard]] UpdateMetrics update(const MultiModalRolloutBatch &rollout);
+    // Read-only pre-update replay against the learner distribution. No sampling
+    // or optimizer/RNG mutation; the development service reports this separately.
+    [[nodiscard]] double audit_behavior(const MultiModalRolloutBatch &rollout);
+    [[nodiscard]] double behavior_replay_max_error() const noexcept { return behavior_replay_max_error_; }
+    [[nodiscard]] std::int64_t behavior_replay_samples() const noexcept { return behavior_replay_samples_; }
 
     [[nodiscard]] MultiModalActorCritic &model() noexcept { return model_; }
     [[nodiscard]] const MultiModalActorCritic &model() const noexcept { return model_; }
@@ -59,6 +65,8 @@ private:
     MultiModalActorCritic model_;
     std::unique_ptr<torch::optim::Adam> optimizer_;
     TrainerCounters counters_;
+    double behavior_replay_max_error_{};
+    std::int64_t behavior_replay_samples_{};
 };
 
 } // namespace openttd_rl::training

@@ -1,5 +1,67 @@
 # Live OpenTTD development progress
 
+## 2026-09-25: V1 training-device agreement follow-up
+
+S2-5 now passes on the retained balanced-roll64 MLP: all 4,096 development
+observations match exact greedy choices on reference and fused CUDA. Maximum
+probability error is 1.79e-7 within the unchanged kernel tolerance. A valid copied
+package with an altered policy bias fails numerically on all 4,096 rows in both
+builds. Native fixtures cover MLP, CNN and combined architectures on CPU/CUDA and
+prove inspection preserves model, optimizer, RNG and counters. Old CNN traces
+lack spatial inputs; the checker refuses them, and optional prospective retention
+is tested. Native suites and 203 Python/136 portable checks pass; four existing
+MCP-environment skips remain. Evidence is in `refactor-v1-device-agreement-01` and
+[the status record](REFACTOR_2026-09-25_STATUS.md).
+
+This work was verified on `codex/refactor-v1-agreement` and is included in the main
+integration at the owner's request. The qualified Vast source and original checkout
+remain at `43b15fe`; no paid compute, new learning study or held-out access occurred.
+Concurrency determinism is the next open Stage 2 item; its unfinished driver is
+kept outside this publication, followed by the outstanding profiling/strategy work.
+
+## 2026-09-25: minimum recovery correctness and Vast packaging
+
+Added the opt-in existing-C++ PPO recovery mechanisms, guide v4, exact read-only
+probe checks, durable reset-resume records, and portable single-GPU study runner.
+The full local minimum correctness bundle passed, including historical equivalence,
+CPU/CUDA agreement, probe neutrality and exact 256 versus 128+128 reset recovery.
+Read-only investigation traced the earlier A0 agreement failure to float32 norm
+accumulation. Prospective protocol 2 applies the qualified FP64 clipping-norm mode
+to every arm while preserving all scientific settings and the .0001 bound.
+The model, gradients and Adam remain float32; historical mode remains available.
+Training/development/held-out execution is packaged but has not run as a full
+study. A 1,500 GB persistent volume is the capacity target. The pinned Docker image
+built locally and passed actual CUDA execution, launcher refusal and the complete
+native correctness bundle, including exact CPU/CUDA reset resume. Container checks
+passed 189 Python tests with four MCP-environment skips, 136 portable tests and all
+19 native tests. The temporary Docker daemon has been stopped. The selected Vast
+host still reruns qualification before registration. No paid instance or Git push exists
+from this work. See [the evidence record](REFACTOR_2026-09-25_STATUS.md) and
+[launch instructions](../deployment/vast/README.md) for checks and remaining limits.
+
+
+The September 25 review execution is active. The complete coverage and current
+verification record is in [REFACTOR_2026-09-25_STATUS.md](REFACTOR_2026-09-25_STATUS.md).
+Missing V2 options are integrated and match original/retained behavior exactly
+on each device. The historical CPU/CUDA gradient-norm failure remains retained;
+the prospective numerical correction passes the original bound. Offline reward/time
+audits are complete; new recovery tuning has not started. This work resumes under
+the new refactor goal; the historical stopped study below remains preserved.
+V1 replay and kernel checks now pass in reference/fused builds and real-game
+comparisons. V2 reset recovery and checkpoint rejection pass on CPU/CUDA. Host
+sanitizer instrumentation is unavailable. The entropy study's failed advancement
+has been independently reproduced from 51 hashed cases; full-map registrations
+are frozen before tuning. All three comparison reports now preserve historical
+statistics while adding per-map/seed/window and paired nested results. Native V2
+evidence verification, explicit control modes and development-default inference
+are tested. The retained-data estimate is about 41-42 sequential hours (a lower
+bound) and 654-656 GiB for the mandatory recovery study, nearly filling Linux
+storage before any held-out confirmation. The portable runner now includes the
+execution/held-out safeguards and recovery mechanisms and requires a larger
+persistent volume. Broader profiling and the registered learning study remain
+pending; no new recovery tuning or held-out game has run. Evidence and failed
+attempts are in the refactor status linked above.
+
 The horizon-256 run, requested lossless storage cleanup and missing-depot
 diagnosis are complete. The 8,192-decision continuation sustains service in all
 nine final evaluations and fixes all three greedy stalls, but fails its sampled
@@ -7,8 +69,10 @@ economic advancement criteria. The subsequent fixed-budget entropy .001 trial
 is complete and regresses service to five of nine cases; advancement fails.
 The borrowing-guide retraining also fails (1/9 service), while frozen weights
 with the new guide restore 9/9 service and provide a lead for independent replication.
-V1 has demonstrated
-reproducible sampled bus play;
+The twelve-game MCP study also fails useful LLM service; all full outcomes
+are reviewed below. The first prospective replication seed fails all eighteen service cases. Both
+new training runs are complete; the second seed is unevaluated after the user-requested stop.
+V1 has demonstrated reproducible sampled bus play;
 strong live V2 neural control is the current blocker. Frozen release contracts,
 held-out selection rules and the user's ordinary game data remain untouched.
 Use [DEVELOPMENT.md](DEVELOPMENT.md) for commands. Detailed prior results and
@@ -16,48 +80,84 @@ failed attempts are preserved in [the history](PROGRESS_HISTORY_2026-09-23.md).
 Run names below are under `~/.local/share/openttd-rl/runs/` in Ubuntu-24.04.
 Readable copies are in the checkout's ignored `runs/2026-09-23/` and `2026-09-24/`.
 
-## Queued: independent training-seed replication of frozen-policy recovery
+## Stopped at user request: independent training-seed recovery study
 
-`v2-recovery-replication-study-01` prospectively tests whether the .001/v2
-policy's inference-time borrowing recovery survives independent training seeds.
-It reuses the immutable, qualified `v2-borrow-guide-01` source and existing
-C++/LibTorch binaries, with no production edit or repeated native qualification.
-Study SHA:
-`653372df52cea80855cc92f433211f8623ab00c4ec8c39957a440d6962ce5c8a`.
-Execution registration SHA:
-`e52b9e241748e856e49f9b749255e8bbaa6df786a01cf471c4a20cdb5363be9d`.
+The user requested: "After the training run stop and commit to GitHub."
+Both fresh CUDA training seeds finished their full 8,192 decisions / 128 updates
+/ 64 episodes. Seed 20260924 completed all eighteen v2/v3 final-weight games;
+seed 20260925's eighteen queued evaluations were never launched. No experiment
+process remains running. This is an incomplete registered comparison with an
+already failed per-seed service criterion, not a completed replication pass.
 
-The existing replication driver (PID 6676; session 33556) has validated all
-18 retained original-seed games and 42 competent controls. It is waiting for the
-exact MCP driver identity to exit after all twelve matches, then for the owned
-local Gemma allocation to expire naturally. It does not unload other workloads.
-Follow `v2-recovery-replication-learning-01/comparison.json`; do not start another
-driver. No new training or evaluation has begun at this checkpoint.
+The study prospectively tested whether the .001/v2 policy's inference-time
+borrowing recovery survives independent training seeds. It reused immutable,
+qualified `v2-borrow-guide-01` source and C++/LibTorch binaries. No production
+implementation changed and no completed native qualification was repeated.
+Study SHA: `653372df52cea80855cc92f433211f8623ab00c4ec8c39957a440d6962ce5c8a`.
+Execution SHA: `e52b9e241748e856e49f9b749255e8bbaa6df786a01cf471c4a20cdb5363be9d`.
 
-Two fresh training seeds, 20260924 and 20260925, each receive 8,192 decisions /
-128 updates with guide v2, entropy .001, eight training maps, horizon 128,
-rollout 64, signed-log inputs, gamma .99, lambda .95 and bootstrap reuse.
-Only each final update-128 model is selected. Each is evaluated with its trained
-v2 guide and the explicit v3 inference override: two development greedy games,
-six sampled games (two fixed maps by three action seeds), and one training-map
-greedy game per guide. This is 36 new full 512-decision evaluations plus the
-18 retained original-seed games, with no held-out access.
+Both runs use guide v2, entropy .001, eight training maps, horizon 128, rollout
+64, signed-log inputs, gamma .99, lambda .95, BPTT eight, four optimization epochs
+and bootstrap reuse. Only final update-128 models are selected. CUDA is mandatory
+with no CPU fallback. Training is serialized, with at most two native evaluation
+jobs between seeds. Both final runs have finite metrics, zero behavior-replay
+error, zero saved-weight reload error and verified reset checkpoint/model hashes.
+The wall times below compare different training seeds; they are not speedups.
 
-Each training seed must pass separately: all nine v3 games sustain service,
-zero invalid actions/bankruptcies, and the six sampled means match or exceed
-all six retained learned controls on passengers, operating profit and cash
-excluding financing, while profit and cash exceed uniform. Pooled means cannot
-hide a failed seed. The paired v2 evaluations measure the recovery mechanism;
-all capital tradeoffs, failures and uncertainty remain visible. The previous
-v3-retraining failure stays failed.
+- Seed 20260924: 4846.741 seconds; model `b3bcbb3977a3d8c927af6348fb3fda9302177ba2d5d9651cdd0544447a82c78a`.
+- Seed 20260925: 4826.652 seconds; model `832f1139d3fc5cf9ab195446e415342fa9ac1b8f9761d0519984ee756b4b940e`.
 
-Scheduling is strictly serialized: one CUDA training job, then at most two
-native evaluation jobs, then the next seed. CUDA availability is mandatory;
-there is no CPU fallback or concurrent build. Focused orchestration checks pass
-for original-seed criteria, missing-seed failure, a deliberately injected service
-failure and paired uncertainty calculations; no native experiment was rerun.
-Registration, driver and preparation checks are in the checkout's ignored
-`runs/2026-09-24/v2-recovery-replication-01/`.
+**Seed 20260924 fails service in all eighteen full games:** zero passengers,
+zero sustained-service cases, zero invalid actions and zero bankruptcies.
+All nine paired v2/v3 full summaries and native trace SHA-256 values are identical.
+The recovery guide changes nothing for this initialization. Each guide's six
+sampled games average 0 passengers, -4,578.667 operating profit, 250.50 capital
+and -5,554.167 cash excluding financing. All six greedy games choose 512 WAITs.
+The registered gate requires every seed to sustain all nine v3 games and match
+or exceed all six learned controls on sampled passengers/profit/cash, with
+profit/cash strictly above uniform. Pooled means cannot conceal this failed seed.
+The original seed23 is a retained development lead; seeds24/25 were prospective
+replications. No held-out or intermediate checkpoint selection occurred.
+
+The two complete v2 greedy development traces remain at stage zero, with no
+blocked frames and legal road construction/repayment available alongside WAIT.
+Initial WAIT probability is about .9858, reaching .9965. This is a preference
+failure before construction, rather than the old unaffordable-bus stall. Each
+game earns -4,834 profit and -5,559 cash, with no deliveries in any window.
+Diagnosis SHA: `8f9a7217193ec2e1f27623994638c3b5c83749256b2e0e37b95a0d84847a8532`.
+All eighteen full outcomes are retained in `seed24-completed-review/`; its JSON
+SHA is `ada6bdab7a1be288c6a16ae805af312f044ac5a77bcf522f6cac443d9662050e`.
+
+After stopping, the read-only review independently checked all eighteen completed
+games and 72 economic windows, including selected actions, masks, guide stages,
+capital and recovery eligibility. Both new full training trajectories also pass
+reward/native-transition and scalar GAE reconstruction; maximum explained-variance
+differences are seed 20260924: 4.98e-10, seed 20260925: 5e-10, below the unchanged 1e-5 tolerance.
+The original seed's completed training audit was reused without rerunning it.
+
+| Training seed | Episodes with START / 64 | Delivering episodes / 64 | Mean training passengers | Mean training profit |
+| ---: | ---: | ---: | ---: | ---: |
+| 20260923 | 54 | 53 | 160.031 | 450.188 |
+| 20260924 | 15 | 15 | 35.562 | -724.859 |
+| 20260925 | 64 | 64 | 204.016 | 621.531 |
+
+These changing-policy training outcomes do not substitute for the second seed's
+unrun final-policy evaluations. Prepared full-comparison plotting and analysis
+remain unexecuted where they require those missing games. The complete-case
+review and training audit are in `stopped-completed-review/` and `training-audit/`
+under the checkout's ignored `runs/2026-09-24/v2-recovery-replication-01/`.
+Their JSON SHA-256 values are `b456ff7b9b260ad798e3f32dc95b0cf0be3f55a51342afb7cdd27cdda50fc552`
+and `4fd108c5a22dd6f6e97c28f4432996fe40212eecca7b2824ca3aaa01004428b6` respectively.
+
+The orchestration parent was held while its CUDA training child finished, then
+stopped before it could dispatch evaluations. The waiting analysis follower was
+cancelled. A first stop-helper attempt hit an exiting-process identity-read race;
+that failure and all pre-stop records are preserved. The corrected helper followed
+the same live training child without restarting or changing it. Native stop
+records are in `v2-recovery-replication-learning-01/user-stop-after-training/`.
+Models, checkpoints, failed experiments, qualified worktrees, original study
+criteria and closed held-out evidence remain intact. Resume only on a new user
+instruction; consume the existing final seed25 model rather than retraining it.
 
 ## Completed: borrowing recovery works for frozen weights; retraining regresses
 
@@ -174,92 +274,81 @@ is a concrete unresolved prerequisite for broader unguided geometry/debt claims;
 do not mistake successful guided service for learning those distinctions.
 No active source, mask, training criterion or model changed for these inspections.
 
-## Active: matched public guides for MCP economics
+## Completed: matched public guides fail useful MCP service
 
-`v2-mcp-matched-guide-study-01` fixes the completed .01/8,192 neural weights,
-the installed local Gemma digest, two development maps and swapped MCP company
-roles before inspecting the borrowing study's final results. Study SHA:
+All twelve registered full games completed and passed native action, mask,
+company/tick, privacy and archive audits: four actual LLM games, four uniform
+baselines and four proposal-priority baselines. Each has 512 global decisions,
+256 actions per company and 65,536 simulation ticks, on two fixed development
+maps with swapped MCP roles. The first company is always zero. Geometry comes
+from the same public planner; no action is selected or replaced automatically.
+
+**The useful-comparison criterion fails:** the LLM sustains service in zero of
+four cases, choosing WAIT on all 1,024 turns. The fixed neural actor sustains
+service in all four LLM matches. Both actors deliver zero in all eight scripted
+matches. There are zero native errors or bankruptcies. All four model-response
+to MCP to native-action audits pass; idle choices are actual model choices.
+This is not a general model ranking or a successful competitive economy.
+
+| Map | MCP company | Neural passengers | Neural operating profit | Neural capital | Neural cash excluding financing |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1630856436 | 0 | 1,290 | 4,592 | 7,368 | -3,501 |
+| 1630856436 | 1 | 1,421 | 5,272 | 7,368 | -2,821 |
+| 155097162 | 0 | 930 | 1,524 | 11,017 | -10,218 |
+| 155097162 | 1 | 908 | 1,450 | 11,017 | -10,292 |
+
+Every LLM company delivers zero, earns -4,834 operating profit, spends no capital
+and has -5,559 cash excluding financing. The neural means are 1,137.25 passengers,
+3,209.50 profit, 9,192.50 capital and -6,708 cash. Its mean cash is 1,149 worse
+than the idle LLM despite 8,043.50 greater profit: small-map capital remains
+unrecovered. Each neural company sustains positive cargo, operating profit and
+cash before capital in all final three windows. Loan principal is excluded from
+cash comparisons. These are fixed-model development results, not held-out tests.
+
+The eight scripted matches expose a shared-planner defect. Both guides choose
+the same exclusive stop/depot sites, and all sixteen company histories become
+permanently blocked by global decisions 12..46. Every outstanding primitive is
+either a public road already satisfying the requested bits or a stop/depot owned
+by the other company; none remains a current native legal proposal. Stages track
+only each guide's own construction. Skipping completed roads alone cannot fix
+foreign exclusive sites. This does not establish deliberate sabotage. Read-only
+replanning on two blocked large-map snapshots finds currently legal alternatives,
+but both actors again choose the same endpoints; no alternative was executed.
+Complete diagnosis and the eighth-case supplement remain preserved.
+
+Across the four LLM games, independent response-history sums verify 2,632 model
+calls, 7,002.787 model seconds, 21,550,261 processed prompt tokens, 94,344 generated
+tokens and zero tool errors. Summed driver wall time is 7,973.975 seconds; tool
+sequence differences are not CUDA speedups. Provider charges are zero and
+hardware/energy costs are unknown. Both company-zero games repeatedly request
+oversized full maps and receive explicit context-limit feedback. The first-case
+audit verifies exact compact state and current legal choices still reach the
+model before every submission; construction is offered on its first 17 turns.
+The small-map company-zero case offers construction for its first 36 turns.
+Company-one games instead use 255/256 explicit single-turn waits after their
+initial queries. The logs establish the choices, not their internal cause.
+
+Study SHA:
 `8c0f5afc6dce9e6a63832b4d7914f1bd6eaeb667cdc092a563ec3aa8fa80d9f3`.
-The isolated `v2-mcp-matched-guide-01` worktree gives each company an independent
-instance of the same public guide and restricts the MCP player to its own current
-filtered native candidates. No action is selected automatically. Defaults retain
-their original behavior; these optional changes are not integrated in main yet.
-
-All 16 MCP-environment tests pass (12 matched-guide and four financial-input
-tests), as do 102 other development tests and all 136 portable tests. The latter
-development environment explicitly skips those 16 separately executed MCP tests.
-All five registered native qualifications now pass: the unchanged eight-step
-default reproduces retained native transitions and neural predictions exactly,
-and four sixteen-step matched map/role cases pass masks, actor/tick order,
-read/rejection immutability, guide advancement, private-finance redaction and
-snapshot archival. This is 72 global decisions, explicitly on CPU, with no LLM
-participation or new build. Qualification record:
-`v2-mcp-matched-guide-checks-01/verification.json`, SHA
-`2d065f5ce53730a466db212bb09850370fa52fafaccfcf420cb56cb9c87970b6`.
-The qualification process has exited; do not repeat it without a new concern.
-
-The existing `experiment.py` driver (PID 3484) is now running twelve complete
-512-global-step / 256-actions-per-company matches: four actual LLM, four uniform
-script and four proposal-priority script. It started only after the completed
-borrowing comparison and all five native checks. Source, prompt, model and binary
-hashes remain frozen. Execution registration SHA:
+Execution SHA:
 `b79865caaa23948c5b43fc1b90eaa845b1674b14ca0870cbf3ddcfddc71c8aa4`.
-Follow `v2-mcp-matched-guide-economics-01/comparison.json` and the existing process;
-do not launch duplicate jobs or edit its frozen source. Two sequential lanes
-permit one LLM game alongside one scripted game, at most two native jobs, and
-no concurrent CUDA training or builds. Every scheduled case is attempted once;
-failed or aborted cases remain recorded. At this checkpoint, all four uniform and four proposal-priority full baselines
-have completed and passed their 512-frame native/mask/privacy audits. The first
-actual LLM role pair is complete and reviewed below; two small-map cases remain pending.
+Neural model SHA:
+`8abd3777722a35fdd4b5c0d20093ed05b3dc2518c880db528dbac7f41f44e1a6`.
+The frozen source is the isolated `v2-mcp-matched-guide-01` worktree; the optional
+matched-guide changes are not integrated into main. All earlier qualification
+results remain valid: 16 MCP tests, 102 other development tests, 136 portable
+tests, eight-step default parity and four sixteen-step matched native cases.
+Do not repeat them without a new change or concern. The fixed neural model's
+failed single-company economic criterion remains failed.
 
-A read-only diagnosis of the first seven completed baselines finds zero
-passengers for both companies in all seven, despite passing execution audits.
-Both guides chose the same stop endpoints and depot. All fourteen company
-histories stall permanently by global decision 12..46. Every remaining planned
-primitive at the first blocked frame is either a public road already satisfying
-the requested road bits, or an exclusive stop/depot built by the other company;
-none remains an exposed legal candidate. Each guide records only its own
-construction, so shared completed roads remain outstanding in its stage counter.
-Even skipping those roads would leave the exclusive-site conflicts unresolved.
-This is an identified shared-planner limitation, not evidence that either model
-can run a competitive transport service or intentionally sabotage the other.
-
-The diagnosis uses complete native traces plus each actor's recorded public map
-and owned infrastructure at its first blocked frame. All fourteen stages remain
-unchanged through decision 512. Detailed residual primitives, full economic
-windows and hashes are retained in the checkout's ignored
-`runs/2026-09-24/v2-mcp-matched-guide-01/completed-baseline-construction-01/`.
-The report JSON SHA is
-`1b116e886aaaf4f51e3e107d130103e4aa6d3f7adbbeffb6ddcf3f171e1f8d82`.
-It starts no game and changes no active controller, prompt, model or criterion.
-This seven-case snapshot remains intact; the eighth baseline is addressed in
-the supplement below. Both large-map LLM outcomes are reviewed below; two small-map cases remain pending.
-
-The eighth baseline subsequently completed and passed its native audit, with
-zero passengers for both companies. It stalls at global decisions 29/30 with the
-same fully explained residual primitives; stages remain fixed through 512.
-Thus all eight completed baselines have the shared construction failure.
-The supplemental `completed-baseline-construction-02/` record preserves its
-full windows and diagnoses, without rerunning earlier cases.
-
-A bounded read-only feasibility probe also calls the unchanged public graph
-planner on both actors' first blocked large-map snapshots. Each finds another
-plan whose primitives are currently exposed; both choose new stop tiles
-2284/2533, with different depots. This rules out a lack of all currently legal
-plans at those two snapshots. The identical new endpoints retain a potential
-ownership collision, so merely resetting the plan is not established as a fix.
-No proposed alternative was executed. Finish the active LLM cases before any
-follow-up experiment; their source, prompt and criteria remain frozen.
-
-The model-choice audit passes read-only on the retained earlier full LLM match:
-1,272 model responses, 767 tool calls and 256 native player actions match. Two
-in-memory action substitutions are rejected. No old game was rerun or changed.
-The new study additionally audits each actual model response through MCP to its
-native action. These are planner-assisted comparisons; identical plans may
-collide or favor the first mover. Preserve those effects and all failed criteria.
-No automatic route repair, replacement model choice, hidden information,
-training-model reselection or held-out access is permitted. The fixed neural
-model retains its failed single-company economic gate.
+The completed driver has exited. Original results remain in
+`v2-mcp-matched-guide-economics-01/comparison.json` and `report.md`. The independent
+full review checks all 24 company totals and 96 economic windows against native
+data. Readable reports, four LLM reviews, baseline diagnoses, and the numerically
+verified and visually reviewed PNG/SVG are in the checkout's ignored
+`runs/2026-09-24/v2-mcp-matched-guide-01/`. The first crowded-axis chart and the
+corrected protocol-wrapper audit attempt are preserved. No failed criterion,
+source, prompt, model, held-out result or native action was changed.
 
 ## Completed: lower entropy regresses service
 
@@ -762,7 +851,8 @@ above. [The handoff](../handoff.md) and
 reproduction commands, qualified deployment, failures, and the recommended next
 bounded diagnostic. The completed diagnosis now distinguishes the blocked
 training depot from the available-but-rejected development depots; the later
-horizon-128 budget extension is running with no outcome yet.
+horizon-128 budget extension subsequently completed with 9/9 service but failed
+economic advancement criteria; see its completed section above.
 
 ## Completed experiment: eight training maps at fixed budget
 
@@ -1205,63 +1295,6 @@ fixed the tested CUDA recovery failure. Source/configuration/contract identities
 remain strict; use archived source to resume older runs. Arbitrary mid-game
 recovery remains unsupported. Live V2 ONNX export and visible playback were
 subsequently qualified for the raw-feature reference policy, as recorded above.
-
-The first actual LLM match has now completed and passed both full audits:
-large map 1630856436, LLM company 0, neural company 1, 512 global decisions /
-256 per company. The LLM chooses WAIT on all 256 turns, delivering zero with
-profit -4,834 and cash excluding financing -5,559. Its guide-scoped legal queries
-expose construction on the first 17 turns (global 1..33, odd), and repayment on
-all 256. Thus initial inaction is a model choice. Its unused construction guide
-becomes blocked for the remaining 239 turns as the neural company builds.
-The logs do not explain the preference, and list-order bias is not established.
-
-The fixed neural actor buys at 36, routes at 38, starts at 40 and first delivers
-at 70. It delivers 1,290 passengers, earns 4,592 operating profit, spends 7,368
-capital and has cash excluding financing -3,501. All final three windows sustain
-positive cargo, operating profit and cash before capital. Against this idle
-opponent, its plan avoids the collisions seen in all eight active-construction
-baselines. This establishes neural service in one shared game, not useful LLM
-transport or broad neural superiority. The role-pair completion is recorded below.
-
-The 1,025 model responses map exactly to 1,025 MCP calls and 256 native actions,
-with zero tool/native errors and no replaced choice. Model time is 2,840.434 s;
-driver wall time is 3,122.656 s including startup and other overhead. A read-only
-response-history sum reproduces 8,399,560 processed prompt tokens, 41,691 output
-tokens, elapsed time and error counters. Provider cost is zero; energy/hardware
-cost remains unknown. Full windows, audits, counters and input hashes are in
-`runs/2026-09-24/v2-mcp-matched-guide-01/first-llm-completed-review/`.
-
-A follow-up provider-request audit verifies the exact system prompt in all
-1,025 requests and the exact current guide-scoped legal list before all 256
-submissions. The model requests `observe(include_map=true)` every turn despite
-instructions to use compact observations; all 256 oversized map responses are
-replaced with explicit context-limit feedback asking for smaller queries.
-The compact initial start result and all 255 subsequent step results preceding
-another model request remain exact and visible, as do legal/submission results.
-Thus useful state and the current choices remain available; map truncation alone
-does not explain the WAIT preference. Recorded prompt lengths are 1,222..8,741
-tokens (median 8,291). This says nothing about provider-internal attention.
-The visibility audit, and its corrected protocol-wrapper analysis assumption,
-are preserved beside the first LLM review. No current prompt or action changed.
-
-The second LLM game completes the large-map role pair: LLM company 1 again
-chooses 256 WAITs, with zero deliveries, profit -4,834 and cash -5,559. The neural
-company 0 buys at global 35, routes at 37, starts at 39 and first delivers at 69;
-it sustains all final windows with 1,421 passengers / 5,272 operating profit /
-7,368 capital / -2,821 cash excluding financing. Both native and model-choice
-audits pass, with zero errors or bankruptcies. Both large-map roles now show
-neural service against an idle LLM; useful LLM transport is still unproven.
-
-This role uses 262 model calls: initial start/observe/three legal lists/submit/
-step, then 255 explicit `wait_turns(count=1)` calls. Each of the three legal
-lists includes WAIT, road construction and repayment; the first submitted action
-is WAIT. All later single-turn waits are actual model choices. Recorded model
-time is 668.237 s, driver wall time 890.491 s, processed prompt tokens 2,215,105
-and output tokens 4,451. Independent sums match all counters, and the prompt is
-exact in every recorded request. The reduced wall time reflects a different
-chosen tool sequence; it is not a CUDA optimization measurement.
-`second-llm-completed-review/` preserves full outcomes and input hashes.
-Two small-map LLM cases remain under unchanged settings; replication is queued.
 
 ## Completed: signed-log neural policy through actual MCP
 

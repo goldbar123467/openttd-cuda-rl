@@ -69,6 +69,10 @@ struct RolloutBatch {
     double gae_lambda);
 
 [[nodiscard]] torch::Tensor normalize_advantages(const torch::Tensor &advantages, double epsilon = 1e-8);
+// Optional development weighting. Weights are exactly 0/1 choices from the
+// stored sampling mask; value targets still include every transition.
+[[nodiscard]] torch::Tensor normalize_choice_advantages(
+    const torch::Tensor &advantages, const torch::Tensor &choices, double epsilon = 1e-8);
 [[nodiscard]] MaskedPolicy masked_categorical(const torch::Tensor &logits, const torch::Tensor &legal_mask);
 [[nodiscard]] LossResult ppo_loss(
     const torch::Tensor &new_log_probabilities,
@@ -77,7 +81,7 @@ struct RolloutBatch {
     const torch::Tensor &new_values,
     const torch::Tensor &returns,
     const torch::Tensor &entropy,
-    const PpoConfig &config);
+    const PpoConfig &config, const torch::Tensor &policy_weights = {});
 
 [[nodiscard]] std::vector<std::vector<std::int64_t>> minibatch_indices(
     std::int64_t sample_count,

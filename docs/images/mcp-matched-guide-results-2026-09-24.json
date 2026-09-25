@@ -1,0 +1,331 @@
+{
+  "comparison_sha256": "40cc679d5fe20beb8b0a35ba2f5b8027c87c6a763056c703a3b54c1101f40554",
+  "script_sha256": "94c3ec8003772b22ad68fe8fbc77048bb6ce81b55d9fb926261913505467e738",
+  "full_native_economy_audits": 24,
+  "full_native_window_audits": 96,
+  "cases": [
+    {
+      "controller": "guided-uniform",
+      "map_seed": 1630856436,
+      "mcp_company": 0,
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1201,
+        "cash_result_excluding_financing": -3183,
+        "net_capital_spend": 1257,
+        "service": false,
+        "company_id": 0
+      },
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1067,
+        "cash_result_excluding_financing": -2982,
+        "net_capital_spend": 1190,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "guided-uniform",
+      "map_seed": 1630856436,
+      "mcp_company": 1,
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1067,
+        "cash_result_excluding_financing": -2937,
+        "net_capital_spend": 1145,
+        "service": false,
+        "company_id": 0
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1218,
+        "cash_result_excluding_financing": -3245,
+        "net_capital_spend": 1302,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "guided-uniform",
+      "map_seed": 155097162,
+      "mcp_company": 0,
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1151,
+        "cash_result_excluding_financing": -3671,
+        "net_capital_spend": 1795,
+        "service": false,
+        "company_id": 0
+      },
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1234,
+        "cash_result_excluding_financing": -6260,
+        "net_capital_spend": 4301,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "guided-uniform",
+      "map_seed": 155097162,
+      "mcp_company": 1,
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1234,
+        "cash_result_excluding_financing": -6230,
+        "net_capital_spend": 4271,
+        "service": false,
+        "company_id": 0
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1167,
+        "cash_result_excluding_financing": -3717,
+        "net_capital_spend": 1825,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "guided-scripted",
+      "map_seed": 1630856436,
+      "mcp_company": 0,
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1051,
+        "cash_result_excluding_financing": -3131,
+        "net_capital_spend": 1355,
+        "service": false,
+        "company_id": 0
+      },
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1051,
+        "cash_result_excluding_financing": -2868,
+        "net_capital_spend": 1092,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "guided-scripted",
+      "map_seed": 1630856436,
+      "mcp_company": 1,
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1051,
+        "cash_result_excluding_financing": -2741,
+        "net_capital_spend": 965,
+        "service": false,
+        "company_id": 0
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1051,
+        "cash_result_excluding_financing": -3258,
+        "net_capital_spend": 1482,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "guided-scripted",
+      "map_seed": 155097162,
+      "mcp_company": 0,
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1151,
+        "cash_result_excluding_financing": -5137,
+        "net_capital_spend": 3261,
+        "service": false,
+        "company_id": 0
+      },
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1167,
+        "cash_result_excluding_financing": -4727,
+        "net_capital_spend": 2835,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "guided-scripted",
+      "map_seed": 155097162,
+      "mcp_company": 1,
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1134,
+        "cash_result_excluding_financing": -4319,
+        "net_capital_spend": 2460,
+        "service": false,
+        "company_id": 0
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1184,
+        "cash_result_excluding_financing": -5545,
+        "net_capital_spend": 3636,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "llm",
+      "map_seed": 1630856436,
+      "mcp_company": 0,
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -4834,
+        "cash_result_excluding_financing": -5559,
+        "net_capital_spend": 0,
+        "service": false,
+        "company_id": 0
+      },
+      "neural": {
+        "passengers": 1290,
+        "operating_profit": 4592,
+        "cash_result_excluding_financing": -3501,
+        "net_capital_spend": 7368,
+        "service": true,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "llm",
+      "map_seed": 1630856436,
+      "mcp_company": 1,
+      "neural": {
+        "passengers": 1421,
+        "operating_profit": 5272,
+        "cash_result_excluding_financing": -2821,
+        "net_capital_spend": 7368,
+        "service": true,
+        "company_id": 0
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -4834,
+        "cash_result_excluding_financing": -5559,
+        "net_capital_spend": 0,
+        "service": false,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "llm",
+      "map_seed": 155097162,
+      "mcp_company": 0,
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -4834,
+        "cash_result_excluding_financing": -5559,
+        "net_capital_spend": 0,
+        "service": false,
+        "company_id": 0
+      },
+      "neural": {
+        "passengers": 930,
+        "operating_profit": 1524,
+        "cash_result_excluding_financing": -10218,
+        "net_capital_spend": 11017,
+        "service": true,
+        "company_id": 1
+      }
+    },
+    {
+      "controller": "llm",
+      "map_seed": 155097162,
+      "mcp_company": 1,
+      "neural": {
+        "passengers": 908,
+        "operating_profit": 1450,
+        "cash_result_excluding_financing": -10292,
+        "net_capital_spend": 11017,
+        "service": true,
+        "company_id": 0
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -4834,
+        "cash_result_excluding_financing": -5559,
+        "net_capital_spend": 0,
+        "service": false,
+        "company_id": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "guided-uniform": {
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1150.5,
+        "cash_result_excluding_financing": -4602.25,
+        "net_capital_spend": 2726.75,
+        "service_cases": 0,
+        "games": 4
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1184.25,
+        "cash_result_excluding_financing": -3454,
+        "net_capital_spend": 1544.75,
+        "service_cases": 0,
+        "games": 4
+      }
+    },
+    "guided-scripted": {
+      "neural": {
+        "passengers": 0,
+        "operating_profit": -1100.75,
+        "cash_result_excluding_financing": -3663.75,
+        "net_capital_spend": 1838,
+        "service_cases": 0,
+        "games": 4
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -1109.25,
+        "cash_result_excluding_financing": -4267.75,
+        "net_capital_spend": 2433.5,
+        "service_cases": 0,
+        "games": 4
+      }
+    },
+    "llm": {
+      "neural": {
+        "passengers": 1137.25,
+        "operating_profit": 3209.5,
+        "cash_result_excluding_financing": -6708,
+        "net_capital_spend": 9192.5,
+        "service_cases": 4,
+        "games": 4
+      },
+      "mcp": {
+        "passengers": 0,
+        "operating_profit": -4834,
+        "cash_result_excluding_financing": -5559,
+        "net_capital_spend": 0,
+        "service_cases": 0,
+        "games": 4
+      }
+    }
+  },
+  "llm_accounting_sum": {
+    "model_calls": 2632,
+    "model_elapsed_ns": 7002786714010,
+    "prompt_tokens_processed": 21550261,
+    "generated_tokens": 94344,
+    "tool_errors": 0,
+    "driver_wall_ns_sum": 7973975282971
+  },
+  "checks": {
+    "all_twelve_complete_and_audited": true,
+    "all_four_llm_complete_zero_native_failures_no_replaced_choices": true,
+    "llm_sustains_service_in_at_least_one_case": false,
+    "neural_sustains_service_in_at_least_one_llm_case": true,
+    "positive_total_passengers_in_every_llm_match": true
+  }
+}

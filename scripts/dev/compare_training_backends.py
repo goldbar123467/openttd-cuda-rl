@@ -12,10 +12,16 @@ import sys
 from local import ROOT, capture_source, positive, source_identity, write_json
 
 
-def run(args):
-    exact_inputs = args.candidate_spatial_validation == "vectorized"
-    if exact_inputs and hashlib.sha256(args.reference.read_bytes()).digest() != hashlib.sha256(args.candidate.read_bytes()).digest():
+def exact_comparison(args):
+    explicit = getattr(args, "require_exact", False)
+    same_binary = hashlib.sha256(args.reference.read_bytes()).digest() == hashlib.sha256(args.candidate.read_bytes()).digest()
+    if args.candidate_spatial_validation == "vectorized" and not (explicit or same_binary):
         raise ValueError("Spatial validation comparison requires the same native trainer")
+    return explicit or args.candidate_spatial_validation == "vectorized"
+
+
+def run(args):
+    exact_inputs = exact_comparison(args)
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     record = {"kind": "paired-live-trainer-backend-comparison", "status": "running",
@@ -24,6 +30,7 @@ def run(args):
               "criteria": {"native_traces": "byte-identical", "update_metrics_rtol": 0 if exact_inputs else 1e-4,
                            "update_metrics_atol": 0 if exact_inputs else 1e-5, "exact_final_model": exact_inputs},
               "candidate_spatial_validation": args.candidate_spatial_validation,
+              "explicit_cross_binary_exact": getattr(args, "require_exact", False),
               "requested_pairs": args.pairs, "updates_per_run": args.updates,
               "reference_sha256": hashlib.sha256(args.reference.read_bytes()).hexdigest(),
               "candidate_sha256": hashlib.sha256(args.candidate.read_bytes()).hexdigest()}
@@ -57,7 +64,7 @@ def run(args):
                         raise RuntimeError(f"Update metric outside declared tolerance: {name} {left[name]} vs {right[name]}")
                     differences[name] = max(differences.get(name, 0.), abs(left[name] - right[name]))
             if exact_inputs and runs["reference"]["model"]["id"] != runs["candidate"]["model"]["id"]:
-                raise RuntimeError("Spatial validation changed final native model identity")
+                raise RuntimeError("Exact comparison changed final native model identity")
             reference_root = output / f"pair-{pair}-reference/episode-metrics"
             candidate_root = output / f"pair-{pair}-candidate/episode-metrics"
             files = sorted(p.name for p in reference_root.glob("*.jsonl"))
@@ -93,6 +100,7 @@ if __name__ == "__main__":
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--pairs", type=positive, default=2)
     parser.add_argument("--updates", type=positive, default=4)
+    parser.add_argument("--require-exact", action="store_true", help="Require exact metrics and final model even across different binaries")
     parser.add_argument("--candidate-spatial-validation", choices=("reference", "vectorized"), default="reference",
                         help="Use identical trainer paths to isolate opt-in CPU spatial validation")
     run(parser.parse_args())

@@ -55,9 +55,11 @@ class CheckpointV2Tests(unittest.TestCase):
             client.request.assert_not_called()
 
     def test_changed_return_or_reuse_config_fails_before_restore(self):
-        self.expected["configuration"].update(gamma=.99, gae_lambda=.95, reuse_bootstrap_tensors=False)
+        self.expected["configuration"].update(gamma=.99, gae_lambda=.95, reuse_bootstrap_tensors=False, entropy_coefficient=.01,
+            financial_features="raw", guidance="one-bus-public-plan-v1", gradient_norm="historical")
         (self.root / "checkpoint.json").write_text(json.dumps(self.manifest))
-        for key, value in (("gamma", .9), ("gae_lambda", 1.0), ("reuse_bootstrap_tensors", True)):
+        for key, value in (("gamma", .9), ("gae_lambda", 1.0), ("reuse_bootstrap_tensors", True), ("entropy_coefficient", .001),
+                           ("financial_features", "signed-log-v1"), ("guidance", "one-bus-public-plan-v2"), ("gradient_norm", "fp64-v1")):
             expected = {"configuration": {**self.expected["configuration"], key: value}}
             client = Mock()
             with patch.object(checkpoint_v2, "reset_signature") as probe:
@@ -66,10 +68,10 @@ class CheckpointV2Tests(unittest.TestCase):
                 probe.assert_not_called()
             client.request.assert_not_called()
 
-    def test_changed_guide_is_rejected_before_native_restore(self):
-        self.expected["configuration"]["guidance"] = "one-bus-public-plan-v1"
+    def test_v3_guide_mismatch_is_rejected_before_reset_or_native_restore(self):
+        self.expected["configuration"]["guidance"] = "one-bus-public-plan-v2"
         (self.root / "checkpoint.json").write_text(json.dumps(self.manifest))
-        changed = {"configuration": {**self.expected["configuration"], "guidance": "one-bus-public-plan-v2"}}
+        changed = {"configuration": {**self.expected["configuration"], "guidance": "one-bus-public-plan-v3"}}
         client = Mock()
         with patch.object(checkpoint_v2, "reset_signature") as probe:
             with self.assertRaisesRegex(ValueError, "configuration"):

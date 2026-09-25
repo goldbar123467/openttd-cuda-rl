@@ -73,7 +73,8 @@ def economic_window(rows: list[dict]) -> dict:
 
 def episode(*, engine: Path, template: Path, output: Path, reward: dict,
             policy: str, seed: int, evaluator: Path | None, package: Path | None,
-            timeout: float = 60, backend: str = "native", evaluation_split: str | None = None) -> dict:
+            timeout: float = 60, backend: str = "native", evaluation_split: str | None = None,
+            retain_spatial_inputs: bool = False) -> dict:
     if template.stem in ("m02-template-07", "m02-template-08") and evaluation_split != "final-evaluation":
         raise ValueError("Final cases require the dedicated registered evaluation runner")
     scenario = json.loads(template.read_text())
@@ -136,6 +137,7 @@ def episode(*, engine: Path, template: Path, output: Path, reward: dict,
                 if not legal[action]:
                     raise RuntimeError(f"Policy selected masked action {action}")
                 before = m07.structured(environment.observation)
+                spatial_before = m08.spatial(environment.observation) if retain_spatial_inputs and client is not None else None
                 result = environment.controller.step(action)
                 if not result["termination"]["trainable"]:
                     raise RuntimeError(f"Untrainable transition: {result['termination']}")
@@ -149,6 +151,8 @@ def episode(*, engine: Path, template: Path, output: Path, reward: dict,
                        "snapshot": result["snapshot"], "termination": result["termination"],
                        "buses": round(environment.observation["structured"]["data"][6] * 8),
                        "routes": round(environment.observation["structured"]["data"][9] * 8)}
+                if spatial_before is not None:
+                    row["spatial_before"] = spatial_before
                 trace.write(json.dumps(row, allow_nan=False) + "\n")
                 trace.flush()
                 rows.append(row)
@@ -260,7 +264,8 @@ def run(args) -> None:
     write_json(output / "run.json", record)
     jobs = [(dict(engine=engine, template=template, reward=reward, policy=policy, seed=seed,
                   evaluator=evaluator, package=package, timeout=args.timeout, backend=args.backend, evaluation_split=args.split,
-                  output=output / f"{policy}-{template.stem}-s{seed}"), args.profile, args.bridge_validation)
+                  output=output / f"{policy}-{template.stem}-s{seed}",
+                  retain_spatial_inputs=getattr(args, "retain_spatial_inputs", False)), args.profile, args.bridge_validation)
             for policy, template, seed in jobs]
     try:
         executor = ProcessPoolExecutor if args.executor == "process" else ThreadPoolExecutor
@@ -293,6 +298,8 @@ def main() -> int:
     parser.add_argument("--templates", nargs="+")
     parser.add_argument("--workers", type=positive, choices=range(1, 5), default=2)
     parser.add_argument("--executor", choices=("thread", "process"), default="process")
+    parser.add_argument("--retain-spatial-inputs", action="store_true",
+                        help="Retain full CNN inputs for device replay (increases trace storage)")
     parser.add_argument("--profile", action="store_true", help="Save per-episode cProfile data; affects timing")
     parser.add_argument("--bridge-validation", choices=("reference", "fast"), default="reference")
     parser.add_argument("--timeout", type=positive, default=60)

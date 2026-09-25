@@ -1,5 +1,81 @@
 # Local training and the path to agentic economies
 
+## Portable Vast.ai recovery study (September 25)
+
+The [single-GPU package](../deployment/vast/README.md) builds and qualifies the
+native engine/trainer before registering A0-A3. It preserves three fixed seeds,
+the 8,192-decision budget, complete development matrices, failures/early stops,
+and a conditional one-access generalization confirmation. Use a 1,500 GB
+persistent volume; initial execution requires 1.25 TB free. Source and runtime
+must remain fixed after registration. No instance rental, publication, or push
+is part of the launcher.
+
+`train_v2.py` now supports opt-in `--policy-loss choice-weighted`,
+`--asset-potential`, `--recovery-diagnostics`, `--training-reset-probes`, and guide
+`one-bus-public-plan-v4`. Historical defaults retain their original loss and UPDATE
+fields. The asset potential is an explicit finite-episode clipped-capital history
+ledger, not a state-only resale valuation. Only the supported one-bus action set
+is accepted. Value loss still uses all transitions; choices-only policy loss does
+not eliminate Adam momentum or shared-trunk drift.
+
+The study's prospective protocol 2 selects `--gradient-norm fp64-v1` for every
+arm. Only clipping's L2 reduction uses float64; the model, gradients and Adam
+remain float32. This addresses measured accumulation error while preserving the
+fixed 1e-4 agreement gate. Historical clipping stays the default reference mode.
+See [the numerical investigation](V2_GRADIENT_NORM_2026-09-25.md) for evidence,
+checkpoint binding and the unchanged study criteria.
+
+`studies/unattended_v2.py` orchestrates build, correctness, registration, training,
+development selection and conditional held-out confirmation. Training checkpoints
+are episode-reset boundaries. Interrupted segments preserve their ancestry and
+resume optimizer/RNG state; failed learning seeds cannot be replaced. Ordinary
+inference/control CLIs still reject held-out splits. The isolated
+`studies/heldout_v2.py` path requires frozen, reverified eligibility from every arm.
+
+See [the refactor evidence record](REFACTOR_2026-09-25_STATUS.md) for actual local
+checks and limitations. The pinned image and its complete native CPU/CUDA bundle
+passed locally in a container, including exact checkpoint resume. The selected
+Vast host still runs its own qualification before registration; no study learning
+result is claimed here.
+
+## V1 CPU/training-device agreement
+
+`scripts/dev/verify_device_agreement.py` replays all neural rows in a completed
+native development evaluation. It imports the content-addressed model into a fresh
+trainer for inference only, compares exact greedy choices and the actual ACT
+backend probabilities, and verifies normal ACT equals development INSPECT.
+It records source/build/runtime identities, hashes inputs before/after, and retains
+failures. A different `--candidate-package` is a negative-control diagnostic and
+can never pass even if its numerical outputs happen to match.
+
+From the checkout with the Torch venv active, build separate reference and fused
+trainers with `local.py build` (add `--fused-policy` for the latter), then run:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+python scripts/dev/verify_device_agreement.py \
+  --evaluation "$RL_ROOT/runs/policy-balanced-roll64-lambda095-64u-s20260923" \
+  --trainer "$RL_ROOT/build/refactor-v1-agreement-reference-01/m08_trainer" \
+  --device cuda:0 --expected-backend reference \
+  --output "$RL_ROOT/runs/device-agreement-reference-new"
+```
+
+Repeat with the fused binary, `--expected-backend fused-cuda`, and a new output
+path. Default batch size 1 reproduces the CPU evaluator's call shape. CUDA never
+falls back to CPU. `--device cpu --expected-backend reference` is explicit CPU
+operation. Reference/fused runs each passed 4,096 retained observations and rejected
+a deliberately perturbed valid package; see the refactor status for evidence.
+
+Historical MLP traces use an explicit unused zero spatial placeholder. CNN and
+combined policies require full `spatial_before`; collect it prospectively with
+`evaluate_live.py --retain-spatial-inputs`. This option adds storage and is off by
+default. Missing CNN inputs cause refusal, not a fabricated observation. Native
+fixtures check all three architectures, both devices, and inspection neutrality.
+`tests/dev/check_device_agreement_service.py --trainer ... --package ... --device
+cuda:0 --output ...` checks the real service boundaries against an existing package.
+The reviewed Vast image predates this isolated follow-up; it retains its separate
+qualification identity at `43b15fe`.
+
 ## What we are continuing
 
 Keep the existing C++ PPO and source-integrated OpenTTD environment. The immediate
@@ -34,6 +110,66 @@ both development maps, including the newly selected 64-step model. These are
 narrow V1 results on fixed maps, not general OpenTTD competence.
 [PROGRESS.md](PROGRESS.md) retains the comparisons,
 failed experiments and current hypotheses. The initial smoke below is historical.
+
+## September 25 evaluation and study preparation
+
+The full recovery program remains active; see
+[its coverage/evidence record](REFACTOR_2026-09-25_STATUS.md) and
+[the frozen protocol](V2_RECOVERY_PROTOCOL.md). Do not launch A0-A3 until the
+execution and held-out safeguards, recovery mechanisms and resource checks pass.
+Protocol 1 remains immutable. Protocol 2 records the numerical amendment before
+execution; its scientific thresholds and workload are unchanged.
+
+`infer_v2.py` now defaults to `--split development`. Training-map diagnostics
+require `--split training`; ordinary launchers still forbid held-out splits.
+For prospective evaluations always pass both `--split development --map-seed N`.
+The registered matrix is eight maps times one greedy and three sampled games
+per final model. `evaluate_guide_v2.py --mode sampled` preserves historical uniform
+sampling. `--mode greedy` takes the lowest legal candidate row when uniform
+probabilities tie. Public scripted controls preserve their fixed ordering in both
+modes; repeated deterministic controls are not independent trained models.
+
+`report_learning.py`, `report_credit_experiment.py` and `report_v2_learning.py`
+now retain per-map, per-training-seed and continuous-window outcomes, exact paired
+differences, signs and a fixed-seed nested bootstrap. Original V1 t intervals are
+unchanged. The V2 reader rederives economics from hash-identified native traces,
+checks reset projection/state continuity/final weights, and pairs only identical
+guide/source/reset/action-mode controls. Historical controls without explicit mode
+require `report_v2_learning.py --legacy-sampled-controls`; this does not qualify
+them for the new protocol. Missing and duplicate cases fail. A one-model nested
+interval describes map/action variation only. The privileged M09 script remains
+distinct from public-information controls.
+
+Reproduce the retained report migration in WSL, from this checkout:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+python scripts/dev/studies/verify_report_migration.py \
+  --v1-comparison "$RL_ROOT/runs/balanced-three-seed-comparison-01/comparison.json" \
+  --credit-comparison "$RL_ROOT/runs/balanced-roll64-three-seed-comparison-01/comparison.json" \
+  --v2-comparison "$RL_ROOT/runs/v2-entropy-learning-01/comparison.json" \
+  --candidate entropy001 --output "$RL_ROOT/runs/report-migration-new"
+python scripts/dev/power_table.py \
+  --comparison "$RL_ROOT/runs/report-migration-new/v1/comparison.json" \
+  --output "$RL_ROOT/runs/power-table-new"
+```
+
+The planning table reproduces the observed paired t width and estimates effects
+for 3/5 training seeds, 2/8 maps and three action seeds. Its random-effects and
+noncentral-t assumptions are explicit; it does not establish V2 power or change
+acceptance thresholds. `studies/estimate_cost_v2.py` takes `--training`, `--neural`
+and `--controls` lists of completed retained run directories, `--power` pointing
+to `power.json`, and a new `--output`. It streams large request logs and records
+every input hash, observed runtime and artifact size in `cost.json`/`cost.md`.
+
+The completed `refactor-study-cost-01` estimate used the entropy study's one
+8,192-decision training run, all eight development neural games and six uniform
+controls. Its exact input paths are in `cost.json`. The mandatory 12-model,
+512-game matrix with verified control reuse has a sequential lower bound of
+about 41-42 hours and projects 654-656 GiB retained storage, versus 670 GiB free
+at audit. It excludes an eligible 160-game held-out confirmation and unrecorded
+neural startup/archive time. Lossless I/O reduction and measured performance
+work therefore precede the large study. Existing models and evidence are retained.
 
 ## Initial local validation (2026-09-23)
 
@@ -178,12 +314,25 @@ Start small: each update collects 128 transitions across four real games. Use
 to exercise the existing spatial networks. More GPU work does not necessarily
 mean faster end-to-end training; report collection and update time separately.
 
-Each successful run retains the training metrics, development returns/deliveries/
-income on both scenarios, and inference weights under `models/`. The exported
+Each successful run retains training metrics, embedded pipeline probes on both
+development scenarios, and inference weights under `models/`. New records name
+the probes `pipeline_probe` with `claim: "not an evaluation"`; `quarter_income`
+is the native quarter counter, not lifetime income. Use `evaluate_live.py` for
+full economic evaluation. The exported
 model is not an optimizer-resume checkpoint; use the separate native reset
 checkpoints below to continue training. Failed runs retain a failure
 record, `training.log`, and available diagnostics. This developer route does not run any held-out
 final manifest or claim a release gate.
+
+New development trainers audit behavior log probabilities before each update,
+rejecting maximum absolute error above 1e-4 before optimizer or shuffle mutation.
+The frozen UPDATE response remains unchanged. Separate development requests
+7 (versioned ACT backend INFO) and 8 (versioned last replay error/sample count)
+populate `act_distribution`, `trainer_diagnostics`, and `behavior_replay` in
+`run.json`. Older binaries require an explicit fused-policy configure flag in
+their adjacent build record; their unavailable replay query is recorded as such.
+`compare_training_backends.py --require-exact` requires identical traces, update
+metrics and final model identities even when comparing different binaries.
 
 ## Checkpoint and resume at native resets
 

@@ -214,20 +214,25 @@ torch::Tensor read_masks(Reader &reader, std::int64_t samples)
     return result;
 }
 
-std::vector<std::uint8_t> handle_act(openttd_rl::training::MultiModalPpoTrainer &trainer, Reader &reader)
+std::vector<std::uint8_t> handle_act(
+    openttd_rl::training::MultiModalPpoTrainer &trainer, Reader &reader, bool inspect = false)
 {
     const auto samples = static_cast<std::int64_t>(reader.u32());
     if (samples <= 0 || samples > 64) throw std::invalid_argument("service ACT batch is outside [1,64]");
     const auto deterministic = reader.u8();
     if (deterministic > 1U) throw std::invalid_argument("service ACT mode is not boolean");
+    if (inspect && deterministic != 1U) throw std::invalid_argument("development INSPECT requires deterministic ACT");
     const auto structured = read_structured(reader, samples);
     const auto spatial = read_spatial(reader, samples);
     const auto masks = read_masks(reader, samples);
     reader.finish();
-    const auto result = trainer.act(structured, spatial, masks, deterministic != 0U);
+    torch::Tensor probabilities;
+    const auto result = trainer.act(structured, spatial, masks, deterministic != 0U, inspect ? &probabilities : nullptr);
     const auto action_tensor = result.actions.contiguous();
     const auto log_probability_tensor = result.log_probabilities.to(torch::kFloat64).contiguous();
     const auto value_tensor = result.values.to(torch::kFloat64).contiguous();
+    const auto logits = inspect ? result.logits.to(torch::kFloat64).contiguous() : torch::Tensor();
+    if (inspect) probabilities = probabilities.to(torch::kFloat64).contiguous();
     const auto actions = action_tensor.accessor<std::int64_t, 1>();
     const auto log_probabilities = log_probability_tensor.accessor<double, 1>();
     const auto values = value_tensor.accessor<double, 1>();
@@ -237,6 +242,14 @@ std::vector<std::uint8_t> handle_act(openttd_rl::training::MultiModalPpoTrainer 
         writer.i64(actions[sample]);
         writer.f64(log_probabilities[sample]);
         writer.f64(values[sample]);
+        if (inspect) {
+            for (std::int64_t action = 0; action < openttd_rl::training::kActionCount; ++action) {
+                writer.f64(logits.accessor<double, 2>()[sample][action]);
+            }
+            for (std::int64_t action = 0; action < openttd_rl::training::kActionCount; ++action) {
+                writer.f64(probabilities.accessor<double, 2>()[sample][action]);
+            }
+        }
     }
     return writer.data();
 }
@@ -346,6 +359,9 @@ int run_service(
     if constexpr (std::endian::native != std::endian::little) {
         throw std::runtime_error("M08 trainer requires an explicitly supported little-endian host");
     }
+#ifdef RL_DEVELOPMENT_CHECKPOINTS
+    bool inference_imported = false;
+#endif
     while (true) {
         std::array<std::uint8_t, 20> header{};
         if (!read_exact_or_eof(STDIN_FILENO, header.data(), header.size())) return 0;
@@ -360,12 +376,53 @@ int run_service(
             throw std::runtime_error("M08 trainer request body was truncated");
         }
         try {
+#ifdef RL_DEVELOPMENT_CHECKPOINTS
+            if (inference_imported && type != kAct && type != kExit && type != 7 && type != 9) {
+                throw std::invalid_argument("imported evaluation weights permit inference only");
+            }
+#endif
             Reader reader(payload);
             std::vector<std::uint8_t> response;
             if (type == kAct) response = handle_act(trainer, reader);
             else if (type == kUpdate) response = handle_update(trainer, reader);
             else if (type == kExport) response = handle_export(trainer, reader);
 #ifdef RL_DEVELOPMENT_CHECKPOINTS
+            else if (type == 9) response = handle_act(trainer, reader, true);
+            else if (type == 10) {
+                const std::filesystem::path path(reader.string(4096));
+                reader.finish();
+                if (trainer.counters().completed_updates != 0 || trainer.counters().accepted_samples != 0) {
+                    throw std::invalid_argument("evaluation import requires a fresh trainer");
+                }
+                const openttd_rl::training::ReadOnlyEvaluationPolicy policy(path, 0);
+                policy.copy_parameters_to(trainer.model());
+                inference_imported = true;
+                Writer writer;
+                writer.u32(1);
+                writer.string(policy.package_id());
+                writer.string(policy.model_sha256());
+                writer.string(policy.state_sha256());
+                response = writer.data();
+            }
+            else if (type == 7) {
+                reader.finish();
+                Writer writer;
+                writer.u32(1); // Development INFO schema, independent of UPDATE.
+#ifdef RL_DEV_FUSED_POLICY
+                writer.string(trainer.device().is_cuda() ? "fused-cuda" : "reference");
+#else
+                writer.string("reference");
+#endif
+                response = writer.data();
+            }
+            else if (type == 8) {
+                reader.finish();
+                Writer writer;
+                writer.u32(1);
+                writer.f64(trainer.behavior_replay_max_error());
+                writer.i64(trainer.behavior_replay_samples());
+                response = writer.data();
+            }
             else if (type == 5 || type == 6) {
                 const std::filesystem::path path(reader.string(4096));
                 reader.finish();
@@ -398,7 +455,7 @@ int run_service(
             writer.string(error_message);
             send_response(STDOUT_FILENO, type, 1, writer.data());
 #ifdef RL_DEVELOPMENT_CHECKPOINTS
-            if (type == 6) return 1; // Never continue after a partially applied restore.
+            if (type == 6 || type == 10) return 1; // Never continue after a partially applied import/restore.
 #endif
             if (numerical_failure) return 1;
         }

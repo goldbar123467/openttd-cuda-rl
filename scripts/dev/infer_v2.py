@@ -78,7 +78,13 @@ def checked_tensors(response, observation, *, bootstrap_only=False):
 
 
 class PolicyClient:
-    def __init__(self, executable, output, device, seed, mode=None, weights=None, rollout_length=None, gae_lambda=None, financial_features="raw"):
+    def __init__(self, executable, output, device, seed, mode=None, weights=None, rollout_length=None, gae_lambda=None,
+                 financial_features="raw", entropy_coefficient=None, choice_weighted=False, recovery_diagnostics=False,
+                 gradient_norm="historical"):
+        if gradient_norm not in ("historical", "fp64-v1"):
+            raise ValueError("Unsupported gradient norm accumulation")
+        if gradient_norm != "historical" and mode is not None:
+            raise ValueError("Gradient norm accumulation is a trainer option")
         self.financial_features = financial_features_mode(financial_features)
         self.log = Path(output).open("x")
         command = [str(executable), "--device", device, "--seed", str(seed)]
@@ -90,6 +96,14 @@ class PolicyClient:
             command += ["--rollout-length", str(rollout_length)]
         if gae_lambda is not None:
             command += ["--gae-lambda", str(gae_lambda)]
+        if entropy_coefficient is not None:
+            command += ["--entropy-coefficient", str(entropy_coefficient)]
+        if choice_weighted:
+            command += ["--policy-loss", "choice-weighted"]
+        if recovery_diagnostics:
+            command += ["--recovery-diagnostics", "1"]
+        if gradient_norm != "historical":
+            command += ["--gradient-norm", gradient_norm]
         if self.financial_features != "raw":
             command += ["--financial-features", self.financial_features]
         self.process = subprocess.Popen(command,
@@ -129,7 +143,12 @@ class PolicyClient:
         self.log.close()
 
 
-def run(args):
+def run(args, *, heldout_permit=None):
+    if heldout_permit is None:
+        if args.split not in ("training", "development"):
+            raise ValueError("Ordinary inference forbids held-out splits")
+    else:
+        heldout_permit.validate(args, "neural")
     visible = bool(getattr(args, "visible", False))
     weights = None
     training = None
@@ -145,6 +164,8 @@ def run(args):
         financial_features = financial_features_mode(training.get("financial_features", "raw"))
         if training["model"].get("financial_features", "raw") != financial_features:
             raise ValueError("Training/model financial preprocessing differs")
+        if training["model"].get("training_gradient_norm", "historical") != training.get("gradient_norm", "historical"):
+            raise ValueError("Training/model gradient norm provenance differs")
         guidance_name = training.get("guidance", "none")
         if guidance_name not in ("none", *GUIDANCES):
             raise ValueError("Saved weights use an unsupported planner curriculum")
@@ -165,7 +186,7 @@ def run(args):
     root.mkdir(parents=True, exist_ok=False)
     record = {"kind": "native-v2-neural-live-inference-smoke", "status": "running", "source": source_identity(),
               "device": args.device, "run_seed": args.seed, "mode": args.mode, "decisions": args.decisions,
-              "split": args.split, "map_seed": args.map_seed, "final_evaluation_accessed": False, "visible": visible,
+              "split": args.split, "map_seed": args.map_seed, "final_evaluation_accessed": heldout_permit is not None, "visible": visible,
               "claim": "Live recurrent policy inference check; short interaction does not establish learned competence",
               "training_run": str(args.training_run.resolve()) if args.training_run else None,
               "model": training["model"] if training else {"initialization_only": True},
@@ -177,6 +198,8 @@ def run(args):
     if onnx_manifest is not None:
         record.update(inference_backend="native-onnxruntime-1.28.0-cpu", onnx_package=onnx_manifest,
                       onnx_package_path=str(args.onnx_package.resolve()))
+    if heldout_permit is not None:
+        record["held_out_registration"] = heldout_permit.reference
     capture_source(root / "source")
     write_json(root / "run.json", record)
     game, policy, reference = None, None, None
@@ -189,7 +212,8 @@ def run(args):
             reference = PolicyClient(args.policy.resolve(), root / "cpu-reference.log", "cpu", args.seed, args.mode, weights,
                                      financial_features=financial_features)
             reference.check_financial_features()
-        game = LiveV2(args.openttd, root / "worker", decisions=args.decisions, split=args.split, seed=args.map_seed, visible=visible)
+        factory = LiveV2 if heldout_permit is None else heldout_permit.live
+        game = factory(args.openttd, root / "worker", decisions=args.decisions, split=args.split, seed=args.map_seed, visible=visible)
         initial = game.request("OBSERVE")["observation"]
         guide = PublicPlanGuide(initial, root / "worker", guidance=guidance_name) if guidance_name in GUIDANCES else None
         transitions = []
@@ -257,7 +281,7 @@ def run(args):
         write_json(root / "run.json", record)
 
 
-if __name__ == "__main__":
+def argument_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--openttd", type=Path, required=True)
     parser.add_argument("--policy", type=Path, required=True)
@@ -270,8 +294,13 @@ if __name__ == "__main__":
     parser.add_argument("--visible", action="store_true", help="View-only native SDL window; requires the isolated V2 playback engine")
     parser.add_argument("--training-run", type=Path, help="Load hash-verified inference weights from a completed live V2 PPO run")
     parser.add_argument("--onnx-package", type=Path, help="Qualified live V2 ONNX package; requires the native ONNX executable and explicit CPU")
-    parser.add_argument("--split", choices=("training", "development"), default="training")
+    parser.add_argument("--split", choices=("training", "development"), default="development",
+                        help="Development maps by default; training-map diagnostics require an explicit override")
     parser.add_argument("--map-seed", type=int)
     parser.add_argument("--guidance-override", choices=GUIDANCES,
                         help="Explicit development diagnostic with a different public guide; recorded separately from training")
-    run(parser.parse_args())
+    return parser
+
+
+if __name__ == "__main__":
+    run(argument_parser().parse_args())

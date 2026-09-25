@@ -14,6 +14,28 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def native_arguments(config, case, seed):
+    command = ["--device", config["device"], "--seed", str(seed)]
+    if config["rollout_steps"] != 32 and case != "wrong-rollout":
+        command.extend(["--rollout-length", str(config["rollout_steps"])])
+    gae_lambda = config.get("gae_lambda", .95)
+    if case == "wrong-lambda":
+        gae_lambda = 1.0 if gae_lambda != 1.0 else .95
+    if gae_lambda != .95:
+        command.extend(["--gae-lambda", str(gae_lambda)])
+    entropy = config.get("entropy_coefficient", .01)
+    if case == "wrong-entropy":
+        entropy = .01 if entropy != .01 else .001
+    if entropy != .01:
+        command.extend(["--entropy-coefficient", str(entropy)])
+    features = config.get("financial_features", "raw")
+    if case == "wrong-financial-features":
+        features = "signed-log-v1" if features == "raw" else "raw"
+    if features != "raw":
+        command.extend(["--financial-features", features])
+    return command
+
+
 def run(args):
     checkpoint = args.checkpoint.resolve()
     manifest = json.loads((checkpoint / "checkpoint.json").read_text())
@@ -30,6 +52,7 @@ def run(args):
     report = {"kind": "v2-native-checkpoint-boundary-tests", "status": "running", "source": source_identity(),
         "checkpoint": str(checkpoint), "checkpoint_manifest_sha256": digest(checkpoint / "checkpoint.json"),
         "trainer_sha256": config["trainer_sha256"], "device": config["device"], "rollout_steps": rollout, "gae_lambda": gae_lambda, "cases": [],
+        "financial_features": config.get("financial_features", "raw"), "entropy_coefficient": config.get("entropy_coefficient", .01),
         "claim": "Native state/publication rejection checks. Repeated snapshot inputs are a synthetic fixture, not new gameplay."}
     write_json(root / "verification.json", report)
     try:
@@ -77,13 +100,10 @@ def run(args):
             ])
         if "gae_lambda" in config:
             cases.append(("wrong-lambda", [restore], "checkpoint configuration", config["run_seed"]))
+        for option in ("entropy", "financial-features"):
+            cases.append(("wrong-" + option, [restore], "checkpoint configuration", config["run_seed"]))
         for name, requests, reason, seed in cases:
-            command = [str(args.trainer.resolve()), "--device", config["device"], "--seed", str(seed)]
-            if rollout != 32 and name != "wrong-rollout":
-                command.extend(["--rollout-length", str(rollout)])
-            selected_lambda = (1.0 if gae_lambda != 1.0 else .95) if name == "wrong-lambda" else gae_lambda
-            if selected_lambda != .95:
-                command.extend(["--gae-lambda", str(selected_lambda)])
+            command = [str(args.trainer.resolve()), *native_arguments(config, name, seed)]
             process = subprocess.run(command,
                 input="\n".join(requests) + "\n", capture_output=True, text=True, timeout=120)
             (root / (name + ".stdout")).write_text(process.stdout)
