@@ -11,6 +11,10 @@ RUN python3 -m venv /opt/openttd-venv \
     && /opt/openttd-venv/bin/python -m pip install --no-cache-dir torch==2.9.1 --index-url https://download.pytorch.org/whl/cu128 \
     && /opt/openttd-venv/bin/python -m pip install --no-cache-dir jsonschema==4.26.0 numpy==2.2.6
 
+# Portable verifier tests also check the full-tier tool inventory.
+RUN apt-get update && apt-get install -y --no-install-recommends bubblewrap \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PATH=/opt/openttd-venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     CUDA_VISIBLE_DEVICES=0 \

@@ -34,10 +34,11 @@ statistics while adding per-map/seed/window and paired nested results. Native V2
 evidence verification, explicit control modes and development-default inference
 are tested. The retained-data estimate is about 41-42 sequential hours (a lower
 bound) and 654-656 GiB for the mandatory recovery study, nearly filling Linux
-storage before any held-out confirmation. Lossless I/O improvements, executable
-study/held-out safeguards and recovery mechanisms remain prerequisites; no new
-recovery tuning or held-out game has run. Evidence and failed attempts are in the
-refactor status linked above.
+storage before any held-out confirmation. The portable runner now includes the
+execution/held-out safeguards and recovery mechanisms and requires a larger
+persistent volume. Broader profiling and the registered learning study remain
+pending; no new recovery tuning or held-out game has run. Evidence and failed
+attempts are in the refactor status linked above.
 
 The horizon-256 run, requested lossless storage cleanup and missing-depot
 diagnosis are complete. The 8,192-decision continuation sustains service in all

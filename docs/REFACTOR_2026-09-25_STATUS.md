@@ -69,7 +69,18 @@ stopped before compilation because the OpenGFX CDN returned HTTP 403/error 1010
 to Python's default User-Agent. The retained same-container diagnostic received
 HTTP 200 with the project-identifying User-Agent. The downloader now identifies
 itself and retains the exact pinned content digest; malformed, mismatched and
-changed cached assets are rejected. Container native qualification remains pending.
+changed cached assets are rejected.
+
+At `0e05f34`, `refactor-container-native-02` completed the engine, live adapter,
+current trainer and historical reference builds inside the image. The initial
+local-mirror attempt needed its upstream origin restored to the canonical URL;
+that harness correction and failed attempt remain recorded. Python qualification
+ran 193 tests: 189 passed and four MCP-environment skips. Portable qualification
+then exposed missing Bubblewrap, which two full-tier inventory tests exercise.
+The image now installs that dependency; the original failure remains retained.
+The actual entrypoint also correctly refused a full study on the local volume's
+686,954,680,320 free bytes against the unchanged 1.25 TB minimum, before any
+registration or training. Container live qualification remains pending.
 No remote instance, paid study or source publication has occurred.
 
 ## Package and recovery checkpoint at 6285087
