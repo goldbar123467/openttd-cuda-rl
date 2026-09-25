@@ -18,7 +18,50 @@ replacement for their requirements or a claim that their static findings passed.
   paths; these worktrees must not be pruned. No training process was found running.
 - No held-out games have been accessed, new tuning study launched, or source pushed.
 
-## Immediate scope: correctness and portable Vast package
+## Current numerical qualification
+
+The [gradient investigation](V2_GRADIENT_NORM_2026-09-25.md) identified float32
+norm reduction error in the historical CPU clipping path. Read-only tracing
+reproduced both devices exactly. The isolated FP64 accumulation experiment passes
+the unchanged 1e-4 bound for A0 (maximum update delta .00001930) and retained guide
+v3 (.00003568), with 128 identical native transitions in each comparison.
+
+The integrated `--gradient-norm fp64-v1` option preserves the historical default
+and binds native/Python checkpoints, model/export provenance and registration.
+Prospective protocol 2 retains protocol 1 and its hash; every arm gets the same
+numerical correction while the scientific settings and thresholds remain fixed.
+The cost estimate was rederived from the retained inputs for protocol 2; it still
+estimates 702-704 GB for the mandatory matrix with control reuse, before held-out
+confirmation, builds, qualifications and headroom. The 1,500 GB volume requirement
+and 1.25 TB initial free-space gate remain.
+
+Current integrated verification: **191 Python tests, 187 passed, four unchanged
+MCP-environment skips; 136/136 portable checks; 19/19 native tests**, including
+CPU/CUDA scalar clipping oracles. The live reference/agreement stage passed all
+seven checks: exact historical raw/A0 behavior on each device, default CPU/CUDA
+agreement, and FP64-mode A0/retained-v3 agreement. Its report is
+`refactor-gradient-qualification-01/qualifications/attempt-001/default-equivalence/verification.json`.
+Recovery qualification also passed on CPU and CUDA: exact probe/action/update/
+weight/RNG/Adam equality, wrong-loss and wrong-norm checkpoint refusal, and
+CPU/CUDA agreement with maximum update delta 2.9000000001389026e-7. Its report is
+`refactor-gradient-qualification-01/qualifications/attempt-001/recovery/verification.json`.
+Exact reset-resume qualification passed on both devices: 256 uninterrupted
+decisions equal 128+128 with a reset-boundary restore, including actions, rewards,
+native traces, update metrics and final weights. The complete minimum bundle
+passed the production qualification validator:
+`refactor-gradient-qualification-01/qualification.json`, SHA-256
+`2b6785cae99da84aec1a050f31f5543b09b1a8591230044f2bf369f68bc67684`.
+The qualified trainer SHA-256 is
+`a92b2dfd1f5d9b77c404c2d0a4458bb998cbf738467b114238ca550e86042c29`.
+This is a local WSL qualification; the target still runs its own complete bundle.
+No training registration or held-out access has been issued.
+
+A project-scoped Docker daemon is building the pinned image locally. No global
+Docker service or configuration was installed. Container build/runtime qualification
+is pending; Docker is no longer an unavailable prerequisite. No remote instance
+or paid study has been launched.
+
+## Package and recovery checkpoint at 6285087
 
 The owner narrowed this handoff to minimum correctness gates and a portable
 single-GPU registered-study package, leaving paid execution and publication for
@@ -86,8 +129,8 @@ rejection, and one-use held-out receipts use temporary fixtures, not held-out ga
 Read [deployment/vast/README.md](../deployment/vast/README.md) for exact commands,
 capacity estimates, retained paths and Vast SSH on-start setup.
 
-Docker is unavailable on this host. No image build, remote Vast execution, paid
-rental, held-out access or full A0-A3 learning study has occurred. The remote
+At this checkpoint Docker was unavailable and no image build had run. No remote
+Vast execution, paid rental, held-out access or full A0-A3 learning study occurred. The remote
 launcher reruns mandatory checks on its actual GPU before learning. WSL results
 must not be described as a container qualification or a successful learning study.
 
@@ -238,8 +281,7 @@ directory above. Failed attempts are retained.
   repository suite **136/136 passed** (`refactor-report-fast-01/fast.log`). No
   native PPO math changed in this reporting pass; prior native results stand.
 
-Next: resolve the retained A0/guide-v3 numerical agreement failures without
-weakening their fixed bounds, then qualify the container on its actual target.
+Next: finish container validation and retain its image/runtime identities.
 The portable package supplies capacity and sequential execution; paid provisioning,
 publication and study execution remain outstanding. The broader V1 agreement,
 concurrency, profiling and strategy work remains on the original goal checklist.
@@ -252,7 +294,7 @@ deliverable; no member is complete until its own evidence is recorded.
 
 | Work | Review findings / extra references | Status | Required evidence |
 | --- | --- | --- | --- |
-| S1-1 reproducible V2 options | F02/F07/F30; X2/X7; 06:K2; 08:3a | Default/retained/recovery verified; cross-device discrepancy open | See results above |
+| S1-1 reproducible V2 options | F02/F07/F30; X2/X7; 06:K2; 08:3a | Historical equivalence, protocol-2 CPU/CUDA agreement and recovery verified | Historical numerical limitation and explicit amendment retained in the investigation |
 | S1-2 V1 behavior replay | F01/F22 | Verified | Clean/corrupt native tests; read-only live equality |
 | S1-3 kernel hygiene | F24/F25; 05:K9 | Functional GPU checks verified; sanitizer unavailable | Edge cases/oracle pass; host debugger failure recorded |
 | S1-4 honest probes | F23; 03:N10 | Verified by focused tests and live runs | Recorded quarter-income fixture and probe labeling |
@@ -278,7 +320,7 @@ deliverable; no member is complete until its own evidence is recorded.
 | Recovery 08:1 / S4-1 | F04; X3/X4/X9; 06:P2a | Mechanism verified; learning study pending | Float64 oracle, zero/one/mixed choices, CPU/CUDA and measured actor drift |
 | Recovery 08:2 | F05/F06 | Verified for the explicit bounded history ledger | Telescoping to 1e-9, terminal/truncation boundaries and native reset recovery |
 | Recovery 08:3b | F07; X5; 06:R4 | Guide mechanism verified; full matched controls pending study | No repayment before START; existing guide behavior/legality preserved |
-| Recovery A0-A3 | 08:section 3 | Packaged; blocked by A0 qualification and target-container verification | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
+| Recovery A0-A3 | 08:section 3 | Packaged; local minimum bundle passed; container qualification and study pending | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
 | S4-2 / 08:4 / A4 | F16; 06:P1 | Pending, after A0-A3 | Sequence batching k=1 exact; registered k>1/KL study |
 | S4-3 / A5 | F17; 06:P4/A3 | Pending, conditional | Entropy decomposition before coefficient studies |
 | S4-4 | F20/F21; X6; 06:R1/R2/R3 | Pending, audit conditional | New reward objective explicitly separate; offline recomputation |

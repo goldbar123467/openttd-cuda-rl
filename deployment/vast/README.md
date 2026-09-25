@@ -1,12 +1,12 @@
 # Portable single-GPU registered study
 
-**Qualification status:** the package is implemented, but local A0 CPU/CUDA
-agreement is blocked. Its second gradient-norm difference is .00011946 against
-the unchanged .0001 limit. The launcher refuses registration on this result.
-The unchanged pre-recovery trainer reproduces the same A0 result on both devices.
-Default same-device equivalence, native tests and recovery mechanisms have separate
-passing evidence. No Docker image or remote study has been run. Resolve this gate
-and qualify the built container before treating the study as ready to train.
+**Qualification status:** the full local correctness bundle passed, including
+historical equivalence, A0/guide-v3/recovery CPU/CUDA agreement at the unchanged
+.0001 limit, probe neutrality and exact CPU/CUDA checkpoint resume. Protocol 2
+uses the qualified FP64 clipping-norm mode. The pinned Docker image is being
+built locally; container validation remains pending. The launcher reruns its
+complete qualification on the target and refuses registration on failed or
+mismatched results.
 
 This package builds the existing native OpenTTD engine and C++/LibTorch trainer,
 runs the minimum correctness gates, then registers and executes A0 through A3.
@@ -16,7 +16,11 @@ No credentials or provider API are required by the runner. Provisioning, publish
 an image/source revision, and payment remain separate operator actions.
 
 The immutable scientific protocol is
-[`v2-recovery-study-protocol-1.json`](../../config/dev/v2-recovery-study-protocol-1.json).
+[`v2-recovery-study-protocol-2.json`](../../config/dev/v2-recovery-study-protocol-2.json).
+It preserves protocol 1 and adds FP64 norm accumulation for clipping in all arms;
+the model, gradients and Adam remain float32. Historical clipping remains an
+explicit reference mode. The [numerical investigation](../../docs/V2_GRADIENT_NORM_2026-09-25.md)
+records the reason and unchanged scientific settings/acceptance thresholds.
 A4/A5 require a later prospective registration. Engineering checks do not establish
 that any policy learned to play better.
 
@@ -31,7 +35,7 @@ checks; there is no CPU fallback. Builds use two workers to limit RAM pressure.
 Allocate **1,500 GB of persistent volume storage**, mounted at `/data`, and at
 least **50 GB of container disk** for the image/runtime. The initial launcher
 requires 1,250,000,000,000 free bytes on the study volume. The retained cost
-estimate is [in the repository](../../config/dev/v2-recovery-cost-estimate.json):
+estimate is [in the repository](../../config/dev/v2-recovery-cost-estimate-2.json):
 about 704 GB for the mandatory matrix with verified control reuse, plus roughly
 160 GB for conditional held-out confirmation, build/qualification artifacts,
 and headroom. These are estimates from older local runs, not a storage guarantee.
@@ -41,7 +45,8 @@ with all artifacts preserved; it never deletes old attempts to manufacture space
 
 The historical mandatory runtime estimate is approximately 41-42 hours with
 control reuse, excluding builds, correctness gates, reporting/hash verification,
-and the conditional held-out run. GPU type alone does not predict this workload's
+and the conditional held-out run. It does not measure the new norm accumulation's
+overhead. GPU type alone does not predict this workload's
 wall time. More interrupted attempts can require more space and time.
 
 [Vast volumes](https://docs.vast.ai/guides/instances/storage/volumes) survive
@@ -70,6 +75,9 @@ commit must be available from the repository before a fresh remote launch. Publi
 the reviewed source and image only when ready; use the resulting image digest in
 the instance template. The image's apt dependencies are resolved at build time;
 the built image digest and recorded runtime identify that concrete environment.
+Keep pre-recovery reference commit `e5f69435ab53fa85dbfb2a50f03f57bec2f7a405`
+available in the published Git history. The bootstrap checks out that exact
+ancestor to build its historical comparison trainer.
 
 Local container execution on an already provisioned GPU machine:
 

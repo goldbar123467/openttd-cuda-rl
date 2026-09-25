@@ -1,0 +1,233 @@
+{
+  "status": "passed",
+  "source": {
+    "commit": "62850877b720e90b09f3ccc1c6093faf60df7638",
+    "status": "M scripts/dev/checkpoint_v2.py\n M scripts/dev/compare_v2_training.py\n M scripts/dev/infer_v2.py\n M scripts/dev/studies/execution_v2.py\n M scripts/dev/studies/protocol_v2.py\n M scripts/dev/studies/training_result_v2.py\n M scripts/dev/studies/unattended_v2.py\n M scripts/dev/studies/vast_bootstrap.py\n M scripts/dev/train_v2.py\n M scripts/dev/verify_v2_default.py\n M scripts/dev/verify_v2_options.py\n M scripts/dev/verify_v2_recovery.py\n M scripts/dev/verify_v2_resume.py\n M tests/dev/test_checkpoint_v2.py\n M tests/dev/test_study_protocol_v2.py\n M tests/dev/test_vast_package.py\n M training/dev/CMakeLists.txt\n M training/dev/v2_live_train.cpp\n?? config/dev/v2-recovery-study-protocol-2.json\n?? training/dev/gradient_clip.h\n?? training/dev/gradient_clip_test.cpp",
+    "working_files_sha256": "8b74ee1f3c6c72004537ca8314e08a6632632459b6344460971c651c694374a1"
+  },
+  "protocol_sha256": "2f67920ef680e05f10ea11dacfbe15c6f8213907c672a0a3a0bc11753d283f8e",
+  "training": [
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/train",
+      "wall_seconds": 5032.124432064999,
+      "device": "cuda:0",
+      "guide": "one-bus-public-plan-v2",
+      "total_bytes": 13163764478,
+      "request_log_bytes": 8800274581
+    }
+  ],
+  "neural_evaluation": [
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-greedy-s20260923-map155097162",
+      "seconds": 162.983105552,
+      "guide": "one-bus-public-plan-v2",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 1353797953,
+      "request_log_bytes": 1093867306
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-greedy-s20260923-map1630856436",
+      "seconds": 178.502091294,
+      "guide": "one-bus-public-plan-v2",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 1363618789,
+      "request_log_bytes": 1102481371
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260923-map155097162",
+      "seconds": 162.69067026,
+      "guide": "one-bus-public-plan-v2",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 1353766619,
+      "request_log_bytes": 1093818230
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260923-map1630856436",
+      "seconds": 178.996421916,
+      "guide": "one-bus-public-plan-v2",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 1363621349,
+      "request_log_bytes": 1102483410
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260924-map155097162",
+      "seconds": 161.453970861,
+      "guide": "one-bus-public-plan-v2",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 1353800503,
+      "request_log_bytes": 1093869342
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260924-map1630856436",
+      "seconds": 177.604424755,
+      "guide": "one-bus-public-plan-v2",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 1363621357,
+      "request_log_bytes": 1102483419
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260925-map1630856436",
+      "seconds": 177.243126758,
+      "guide": "one-bus-public-plan-v2",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 1364556804,
+      "request_log_bytes": 1103221433
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260925-map155097162",
+      "seconds": 170.848144778,
+      "guide": "one-bus-public-plan-v2",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 1356697685,
+      "request_log_bytes": 1095776624
+    }
+  ],
+  "controls": [
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-guided-budget-02/uniform-1630856436",
+      "seconds": 159.06226509999988,
+      "guide": "one-bus-public-plan-v1",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 171041486,
+      "request_log_bytes": 82971923
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-guided-budget-02/uniform-155097162",
+      "seconds": 158.81173420599998,
+      "guide": "one-bus-public-plan-v1",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 171342702,
+      "request_log_bytes": 83013226
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-roll64-sampling-variation-01/uniform-s20260924-map1630856436",
+      "seconds": 158.154125528,
+      "guide": "one-bus-public-plan-v1",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 171168018,
+      "request_log_bytes": 83042764
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-roll64-sampling-variation-01/uniform-s20260924-map155097162",
+      "seconds": 156.19139662399994,
+      "guide": "one-bus-public-plan-v1",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 171502929,
+      "request_log_bytes": 83129836
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-roll64-sampling-variation-01/uniform-s20260925-map1630856436",
+      "seconds": 159.42680877300018,
+      "guide": "one-bus-public-plan-v1",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 171236727,
+      "request_log_bytes": 83064784
+    },
+    {
+      "path": "/home/imsa/.local/share/openttd-rl/runs/v2-roll64-sampling-variation-01/uniform-s20260925-map155097162",
+      "seconds": 157.5225995840001,
+      "guide": "one-bus-public-plan-v1",
+      "engine_sha256": "7669cf2894439031d4cd3a46436bc9cf4409dccfc7d02d9342df95b76ceacddd",
+      "total_bytes": 171470303,
+      "request_log_bytes": 83123454
+    }
+  ],
+  "workload": {
+    "training_runs": 12,
+    "training_decisions": 98304,
+    "candidate_games": 384,
+    "control_games_with_verified_reuse": 128,
+    "control_games_without_reuse": 256,
+    "conditional_heldout_games": 160
+  },
+  "claim": "Offline planning estimate from retained workloads; no speedup or new learning result.",
+  "limitations": [
+    "Neural request-span timing excludes source capture, model/process setup and final archive; totals are lower-bound estimates, not wall-time guarantees.",
+    "Current recovery mechanisms and eight-map population may change cost; retained runs used historical guides/settings.",
+    "Sequential estimates give no unmeasured concurrency speedup. Only one CUDA training job is allowed.",
+    "Directory byte counts describe retained artifacts at audit time; they are not a quota or a storage guarantee."
+  ],
+  "power_table": {
+    "path": "/home/imsa/.local/share/openttd-rl/runs/refactor-power-table-01/power.json",
+    "sha256": "4c0a1a934d7fbf2bcd5800f8d75d063bba3edd2f209c0dc5b14b583db861ddee"
+  },
+  "distributions": {
+    "training_seconds": {
+      "observations": 1,
+      "median": 5032.124432064999,
+      "minimum": 5032.124432064999,
+      "maximum": 5032.124432064999
+    },
+    "neural_evaluation_seconds": {
+      "observations": 8,
+      "median": 174.045635768,
+      "minimum": 161.453970861,
+      "maximum": 178.996421916
+    },
+    "controls_seconds": {
+      "observations": 6,
+      "median": 158.482929867,
+      "minimum": 156.19139662399994,
+      "maximum": 159.42680877300018
+    }
+  },
+  "estimates": [
+    {
+      "verified_control_reuse": true,
+      "retained_statistic": "median",
+      "sequential_hours_lower_bound": 40.97356453963,
+      "artifact_bytes": 702191020200.0,
+      "request_log_bytes": 538299713084.0
+    },
+    {
+      "verified_control_reuse": true,
+      "retained_statistic": "maximum",
+      "sequential_hours_lower_bound": 41.53520853429667,
+      "artifact_bytes": 703907361384,
+      "request_log_bytes": 539880944252
+    },
+    {
+      "verified_control_reuse": false,
+      "retained_statistic": "median",
+      "sequential_hours_lower_bound": 46.60851315712333,
+      "artifact_bytes": 724116103656.0,
+      "request_log_bytes": 548930596156.0
+    },
+    {
+      "verified_control_reuse": false,
+      "retained_statistic": "maximum",
+      "sequential_hours_lower_bound": 47.20371729067001,
+      "artifact_bytes": 725859736296,
+      "request_log_bytes": 550521563260
+    }
+  ],
+  "free_bytes_at_audit": 707381583872,
+  "storage_fits_retained_maximum_with_verified_reuse": true,
+  "inputs_sha256": {
+    "/mnt/c/Users/imsa/Documents/OpenTTD/openttd-cuda-rl/config/dev/v2-recovery-study-protocol-2.json": "2f67920ef680e05f10ea11dacfbe15c6f8213907c672a0a3a0bc11753d283f8e",
+    "/home/imsa/.local/share/openttd-rl/runs/refactor-power-table-01/power.json": "4c0a1a934d7fbf2bcd5800f8d75d063bba3edd2f209c0dc5b14b583db861ddee",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/train/run.json": "2610e0e1de51e6434ce6227c9777fb0126ddda712e2b11ab649e6a6e5efb63b4",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-greedy-s20260923-map155097162/run.json": "c9ad54b7c948a8868638e2d84f032c85c4ce40118cde2a95c08ce703deead609",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-greedy-s20260923-map155097162/worker/requests.jsonl": "f3aa30716b324ef83ef64831a83542c6032b0274d864c9e829a745b61e81b813",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-greedy-s20260923-map1630856436/run.json": "0cbe865640cd9561422333b1c6600fd036970671de7307dfd507e87600ca5366",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-greedy-s20260923-map1630856436/worker/requests.jsonl": "778887e719ea7dcf4a93c05d53500ccdea0894a094b47b7edb32a4180fcc2c11",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260923-map155097162/run.json": "180cafa5b137a9a75285718c3b7e132bb4ecd3cdbec29a93e6d7f8c51e9a3651",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260923-map155097162/worker/requests.jsonl": "5e0b25e65c50942d69248019ae3be7a725b24083a990eef3f0c5dc0773823c5f",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260923-map1630856436/run.json": "8a45558b76502102d6320fdb576615b78ce297c088f6ef1b13291e9c76520d6b",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260923-map1630856436/worker/requests.jsonl": "244e45c392690591ed9b03c82aff14b316587cf430442ceaa3ce19a5ac7fc16c",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260924-map155097162/run.json": "7fe999c08a848772a99a4938a3796f58834b46acd6e118fe8fbc31ada212be07",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260924-map155097162/worker/requests.jsonl": "06ae2be7a27c698b40f7aef527674dd973e421a800a78b0c02a9ad44c7a03d74",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260924-map1630856436/run.json": "934828c28865cd39911704836db55da29e9e5b45b824cd9b128b25cc97ef74d3",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260924-map1630856436/worker/requests.jsonl": "63faab8a608f0af3fdc59c7ab642b8cc11658baefdf8178f5d3e9d45385937df",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260925-map1630856436/run.json": "d47141c9d7b16e99d19bd08f81e3ea55388ff7012b0621a878db21a63f514054",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260925-map1630856436/worker/requests.jsonl": "9c5b6833072b9b72bf067464352b90985cd7851d373a5ee220fb2f3d5bbbbe00",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260925-map155097162/run.json": "12555feeca5130d1843ab9df3e3339604ac92dd1e714807e3daf19f0940d6d8e",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-entropy-learning-01/development-sampled-s20260925-map155097162/worker/requests.jsonl": "8d00e5b99a92b2068bbcec5180c96621c7f299d218e7c430545d769aaeb4cc41",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-guided-budget-02/uniform-1630856436/run.json": "8b893af1cb9f4381becd8ef59cb2ebfbbde1dc12302d0d4a98a2a32c114827f2",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-guided-budget-02/uniform-155097162/run.json": "8f4bb6ee224235ffd2a8f2c74a4bb2193532dbbf9ba1de772823e1f2349d9782",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-roll64-sampling-variation-01/uniform-s20260924-map1630856436/run.json": "35626e92913b0b3fa36164f386a1d8ba2f8e78c07b2dee2ba3f0086f5ef30405",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-roll64-sampling-variation-01/uniform-s20260924-map155097162/run.json": "ac68b620cf71d535dba20383d02bfee4d2df93472e80a4b0a998e5f6e9ab38df",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-roll64-sampling-variation-01/uniform-s20260925-map1630856436/run.json": "d9d6c7a57d0b046905be9610c5720cf1a9be7dd9514ce581d700205b1b0cee18",
+    "/home/imsa/.local/share/openttd-rl/runs/v2-roll64-sampling-variation-01/uniform-s20260925-map155097162/run.json": "d17c9e00fbb98a381c1ffdce8067081bc898ad3a09e139b11fc4bdbe263fbac2"
+  }
+}

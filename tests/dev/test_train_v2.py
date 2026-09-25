@@ -40,6 +40,14 @@ class LiveV2RewardTests(unittest.TestCase):
 
 
 class LiveV2ReturnConfigurationTests(unittest.TestCase):
+    def test_unknown_gradient_norm_fails_before_output_or_native_processes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "must-not-exist"
+            args = SimpleNamespace(episode_horizon=128, gradient_norm="automatic", output=output)
+            with self.assertRaisesRegex(ValueError, "gradient norm"):
+                run(args)
+            self.assertFalse(output.exists())
+
     def test_invalid_entropy_fails_before_output_or_native_processes(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "must-not-exist"

@@ -1,9 +1,16 @@
 # V2 recovery protocol frozen before tuning
 
-[The versioned protocol](../config/dev/v2-recovery-study-protocol-1.json) fixes
+[The versioned protocol](../config/dev/v2-recovery-study-protocol-2.json) fixes
 the report-08 A0-A3 settings, three training seeds, training-only failure rule,
 development matrix, controls, advancement and held-out selection before new
 recovery tuning. No new recovery arm or held-out game has been run.
+
+Protocol 2 preserves [protocol 1](../config/dev/v2-recovery-study-protocol-1.json)
+and its hash, changing only common clipping norm accumulation to `fp64-v1`.
+The [numerical investigation](V2_GRADIENT_NORM_2026-09-25.md) records failed
+historical gates, the gradient audit and bounded counterfactual. Scientific
+settings, workload and acceptance thresholds remain unchanged. The historical
+native mode remains available; its old runs cannot enter protocol 2.
 
 Each trained model is evaluated on all eight development maps, with one greedy
 and three sampled full 512-decision games per map. Uniform and public-scripted
@@ -39,11 +46,11 @@ The execution-registration schema and exact-arm/matrix validators are tested.
 The native evidence reader now checks explicit run/reset identities, native
 reset projection, state/economics continuity, full boundaries and final weights.
 Uniform controls support explicit sampled/greedy modes; the ordinary neural
-launcher defaults to development. The prospective driver must still supply and
-verify every map explicitly. Report integration and offline power/cost estimates
-are available; estimates show storage reduction is needed before the large matrix.
-The access implementation, execution driver and refusal tests are still being
-built. Ordinary launchers continue to reject held-out splits; this
+launcher defaults to development. The execution driver supplies and verifies
+every map explicitly. Reporting and offline power/cost estimates are available;
+the portable package requires a 1,500 GB persistent volume. The access implementation,
+execution driver and refusal tests are implemented; native and container
+qualification still gates execution. Ordinary launchers reject held-out splits; this
 protocol file alone grants no access. Every execution registration must cite the
 offline cost estimate and exact protocol identity. Any setup amendment must be
 explicit, retain its parent's hash, and precede both new tuning and held-out use;

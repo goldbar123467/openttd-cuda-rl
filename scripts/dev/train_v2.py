@@ -70,6 +70,9 @@ def run(args, *, trainer_factory=PolicyClient):
     rollout = getattr(args, "rollout_length", 32)
     reuse_bootstrap_tensors = bool(getattr(args, "reuse_bootstrap_tensors", False))
     choice_weighted = getattr(args, "policy_loss", "historical") == "choice-weighted"
+    gradient_norm = getattr(args, "gradient_norm", "historical")
+    if gradient_norm not in ("historical", "fp64-v1"):
+        raise ValueError("Unsupported gradient norm accumulation")
     asset_potential = bool(getattr(args, "asset_potential", False))
     training_reset_probes = bool(getattr(args, "training_reset_probes", False))
     recovery_diagnostics = bool(getattr(args, "recovery_diagnostics", False)) or choice_weighted or training_reset_probes
@@ -90,8 +93,9 @@ def run(args, *, trainer_factory=PolicyClient):
                   "entropy_coefficient": entropy_coefficient, "gae_lambda": gae_lambda,
                   "guide": args.guidance, "choice_weighted": choice_weighted, "asset_potential": asset_potential,
                   "financial_features": financial_features, "checkpoint_interval": checkpoint_interval,
-                  "reuse_bootstrap_tensors": reuse_bootstrap_tensors}
-        expected_args = {**{k: settings[k] for k in actual if k not in ("device", "trainer", "engine")},
+                  "reuse_bootstrap_tensors": reuse_bootstrap_tensors, "gradient_norm": gradient_norm}
+        registered_settings = {"gradient_norm": "historical", **settings}
+        expected_args = {**{k: registered_settings[k] for k in actual if k not in ("device", "trainer", "engine")},
                          "device": registration["runtime"]["device"],
                          "trainer": registration["binaries"]["trainer"], "engine": registration["binaries"]["engine"]}
         if actual != expected_args or args.seed not in protocol["training_seeds"] or not training_reset_probes:
@@ -131,6 +135,7 @@ def run(args, *, trainer_factory=PolicyClient):
               "episode_horizon": args.episode_horizon, "training_map_seeds": seeds,
               "reuse_bootstrap_tensors": reuse_bootstrap_tensors,
               "choice_weighted": choice_weighted, "asset_potential": asset_potential,
+              "gradient_norm": gradient_norm,
               "recovery_diagnostics": recovery_diagnostics,
               "reward_schema": POTENTIAL_SCHEMA if asset_potential else "development-v2-live-reward-1",
               "potential_ledger": LEDGER if asset_potential else None, "episodes": [], "updates": [],
@@ -170,16 +175,17 @@ def run(args, *, trainer_factory=PolicyClient):
                                rollout_length=rollout if rollout != 32 else None,
                                gae_lambda=gae_lambda if gae_lambda != .95 else None, financial_features=financial_features,
                                entropy_coefficient=entropy_coefficient, choice_weighted=choice_weighted,
-                               recovery_diagnostics=recovery_diagnostics)
+                               recovery_diagnostics=recovery_diagnostics, gradient_norm=gradient_norm)
         trainer.check_financial_features()
         info = trainer.request("TRAINING_INFO")
         expected_info = {"rollout_steps": rollout, "sequence_length": 8, "optimization_epochs": 4,
                          "gamma": .99, "gae_lambda": gae_lambda, "entropy_coefficient": entropy_coefficient}
         extras = {"choice_weighted": choice_weighted, "learning_rate": .0003, "clip_epsilon": .2,
-                  "max_gradient_norm": .5, "value_coefficient": .5}
+                  "max_gradient_norm": .5, "value_coefficient": .5, "gradient_norm": gradient_norm}
         if (any(info.get(key) != value for key, value in expected_info.items()) or
                 any(key in info and info[key] != value for key, value in extras.items()) or
                 (choice_weighted and info.get("choice_weighted") is not True) or
+                (gradient_norm != "historical" and info.get("gradient_norm") != gradient_norm) or
                 set(info) - (set(expected_info) | set(extras))):
             raise ValueError("Native V2 trainer configuration differs from requested PPO settings")
         record["native_training_runtime"] = info
@@ -325,6 +331,7 @@ def run(args, *, trainer_factory=PolicyClient):
         model = root / "inference-weights.pt"
         record["save_validation"] = trainer.request(f"SAVE\t{model}")
         record["model"] = {"path": str(model), "sha256": hashlib.sha256(model.read_bytes()).hexdigest(), "financial_features": financial_features,
+                           "training_gradient_norm": gradient_norm,
                            "purpose": "Inference weights only; optimizer/RNG recovery uses separate reset checkpoints"}
         if game:
             game.close(); game = None
@@ -367,6 +374,8 @@ if __name__ == "__main__":
     parser.add_argument("--reuse-bootstrap-tensors", action="store_true",
                         help="Reuse a validated bootstrap frame for the next actor at the same native state; experimental")
     parser.add_argument("--policy-loss", choices=("historical", "choice-weighted"), default="historical")
+    parser.add_argument("--gradient-norm", choices=("historical", "fp64-v1"), default="historical",
+                        help="Versioned L2 clipping accumulation; parameters and gradients remain float32")
     parser.add_argument("--asset-potential", action="store_true", help="Versioned finite-episode clipped-capital ledger shaping")
     parser.add_argument("--recovery-diagnostics", action="store_true", help="Read-only proposal probabilities on collected actions")
     parser.add_argument("--training-reset-probes", action="store_true", help="Eight training resets and frozen recovery early-stop rule")

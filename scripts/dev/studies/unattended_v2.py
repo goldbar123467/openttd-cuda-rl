@@ -64,7 +64,8 @@ def training_command(registration_path, registration, seed, output, *, checkpoin
         "--training-map-count", "8", "--financial-features", settings["financial_features"],
         "--entropy-coefficient", str(settings["entropy_coefficient"]), "--gae-lambda", str(settings["gae_lambda"]),
         "--guidance", settings["guide"], "--checkpoint-interval", str(settings["checkpoint_interval"]),
-        "--policy-loss", "choice-weighted" if settings["choice_weighted"] else "historical", "--reuse-bootstrap-tensors"]
+        "--policy-loss", "choice-weighted" if settings["choice_weighted"] else "historical", "--reuse-bootstrap-tensors",
+        "--gradient-norm", settings["gradient_norm"]]
     if settings["asset_potential"]:
         command.append("--asset-potential")
     if checkpoint is not None:
@@ -203,7 +204,7 @@ def run(args):
                 if not registration_path.exists():
                     register(SimpleNamespace(arm=name, study_id="vast-recovery-" + name.lower(),
                         output=registration_path.parent, **{k: Path(binaries[k]["path"]) for k in ("engine", "trainer", "policy")},
-                        qualification=[qualification], cost=ROOT / "config/dev/v2-recovery-cost-estimate.json"))
+                        qualification=[qualification], cost=ROOT / "config/dev/v2-recovery-cost-estimate-2.json"))
                 preflight(registration_path)
                 state["registrations"][name] = artifact(registration_path)
                 state.update(status="running", current_arm=name, phase="training")

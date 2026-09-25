@@ -29,7 +29,7 @@ def compare_exact(reference, candidate):
             raise ValueError(f"Exact comparison configuration differs: {key}")
     for key, default in (("gamma", .99), ("gae_lambda", .95), ("financial_features", "raw"),
                          ("entropy_coefficient", .01), ("reuse_bootstrap_tensors", False),
-                         ("choice_weighted", False), ("asset_potential", False)):
+                         ("choice_weighted", False), ("asset_potential", False), ("gradient_norm", "historical")):
         if left.get(key, default) != right.get(key, default):
             raise ValueError(f"Exact comparison configuration differs: {key}")
     for first, second in zip(a, b, strict=True):

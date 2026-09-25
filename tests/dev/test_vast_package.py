@@ -41,7 +41,7 @@ def training_record(reg):
             "episode_horizon": 128, "training_map_seeds": p["training_maps"], "guidance": t["guide"],
             "trainer_sha256": "c" * 64, "engine_sha256": "c" * 64, "updates": [], "checkpoints": [],
             **{k: t[k] for k in ("financial_features", "reuse_bootstrap_tensors", "checkpoint_interval", "gamma",
-                "gae_lambda", "entropy_coefficient", "optimization_epochs", "sequence_length", "choice_weighted", "asset_potential")}}
+                "gae_lambda", "entropy_coefficient", "optimization_epochs", "sequence_length", "choice_weighted", "asset_potential", "gradient_norm")}}
 
 
 class PackageTests(unittest.TestCase):
@@ -67,6 +67,7 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(command[command.index("--updates") + 1], "88")
         self.assertIn("--training-reset-probes", command)
         self.assertIn("--asset-potential", command)
+        self.assertEqual(command[command.index("--gradient-norm") + 1], "fp64-v1")
         self.assertEqual(runner.resume_point({"checkpoints": [], "resume_from": "/old/checkpoint", "restored_update": 40}),
                          (Path("/old/checkpoint"), 40))
         self.assertEqual(runner.resume_point({"checkpoints": [{"status": "saved", "path": "/new/checkpoint", "update": 48}],
@@ -208,9 +209,9 @@ class PackageTests(unittest.TestCase):
             reg["code_sha256"] = {"fixture": "e" * 64}
             checks = {}
             for name in CORRECTNESS_CHECKS:
-                write_json(root / (name + ".json"), {"status": "passed"})
+                write_json(root / (name + ".json"), {"status": "passed", "study_gradient_norm": "fp64-v1", "gradient_norm": "fp64-v1"})
                 checks[name] = artifact(root / (name + ".json"))
-            names = ("rl_choice_weighted_cpu", "rl_choice_weighted_cuda", "rl_dev_v2_policy_cpu", "rl_dev_v2_policy_cuda",
+            names = ("rl_gradient_clip_cpu", "rl_gradient_clip_cuda", "rl_choice_weighted_cpu", "rl_choice_weighted_cuda", "rl_dev_v2_policy_cpu", "rl_dev_v2_policy_cuda",
                      "rl_checkpoint_roundtrip_cpu", "rl_checkpoint_roundtrip_cuda", "rl_behavior_replay_cpu", "rl_behavior_replay_cuda")
             xml = root / "native.xml"
             xml.write_text("<testsuite>" + "".join(f'<testcase status="run" name="{name}" />' for name in names) + "</testsuite>")
@@ -219,6 +220,12 @@ class PackageTests(unittest.TestCase):
             path = root / "qualification.json"
             write_json(path, report)
             check_qualification(artifact(path), reg, Inputs())
+            write_json(root / "other-mode.json", {"status": "passed", "gradient_norm": "historical"})
+            changed = copy.deepcopy(report)
+            changed["checks"]["recovery"] = artifact(root / "other-mode.json")
+            write_json(path, changed)
+            with self.assertRaisesRegex(ValueError, "gradient norm"):
+                check_qualification(artifact(path), reg, Inputs())
             changed = copy.deepcopy(report)
             changed["checks"].pop("recovery")
             write_json(path, changed)

@@ -26,6 +26,7 @@ def compatibility(record):
             "financial_features": record.get("financial_features", "raw"),
             "entropy_coefficient": record.get("entropy_coefficient", .01),
             "choice_weighted": record.get("choice_weighted", False),
+            "gradient_norm": record.get("gradient_norm", "historical"),
             "asset_potential": record.get("asset_potential", False),
             "potential_ledger": record.get("potential_ledger"),
             "potential_at_reset": 0.0},

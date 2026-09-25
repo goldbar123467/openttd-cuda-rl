@@ -89,6 +89,7 @@ def run(args):
               "device": args.device, "guidance": args.guidance, "seed": args.seed, "rollout_steps": args.rollout_length,
               "training_map_count": args.training_map_count, "gae_lambda": args.gae_lambda,
               "financial_features": financial_features, "entropy_coefficient": entropy_coefficient,
+              "gradient_norm": getattr(args, "gradient_norm", "historical"),
               "reuse_bootstrap_tensors": args.reuse_bootstrap_tensors,
               "policy_loss": getattr(args, "policy_loss", "historical"), "asset_potential": bool(getattr(args, "asset_potential", False)),
               "claim": "Exact same-host continuation at a native episode reset, not arbitrary mid-game recovery or gameplay strength",
@@ -108,6 +109,7 @@ def run(args):
             command.extend(["--gae-lambda", str(args.gae_lambda)])
         command.extend(["--entropy-coefficient", str(entropy_coefficient)])
         command.extend(["--policy-loss", getattr(args, "policy_loss", "historical")])
+        command.extend(["--gradient-norm", report["gradient_norm"]])
         if getattr(args, "asset_potential", False):
             command.append("--asset-potential")
         if args.reuse_bootstrap_tensors:
@@ -144,7 +146,7 @@ def run(args):
             for key in ("device", "guidance", "seed", "trainer_sha256", "engine_sha256"):
                 if original[key] != report[key]:
                     raise ValueError("Existing verification differs from requested native configuration")
-            for key, default in (("policy_loss", "historical"), ("asset_potential", False)):
+            for key, default in (("policy_loss", "historical"), ("asset_potential", False), ("gradient_norm", "historical")):
                 if original.get(key, default) != report[key]:
                     raise ValueError("Existing verification uses another recovery mechanism")
             report["existing_run_root"] = str(compared)
@@ -172,6 +174,7 @@ if __name__ == "__main__":
     parser.add_argument("--training-map-count", type=int, default=4)
     parser.add_argument("--reuse-bootstrap-tensors", action="store_true")
     parser.add_argument("--policy-loss", choices=("historical", "choice-weighted"), default="historical")
+    parser.add_argument("--gradient-norm", choices=("historical", "fp64-v1"), default="historical")
     parser.add_argument("--asset-potential", action="store_true")
     parser.add_argument("--existing", type=Path, help="Audit already completed full/prefix/resumed runs into a fresh output directory")
     run(parser.parse_args())

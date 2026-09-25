@@ -74,14 +74,18 @@ def check_qualification(reference, registration, inputs):
             any(report.get(k) != registration[k] for k in ("source", "code_sha256", "binaries", "runtime")) or
             set(report.get("checks", {})) != set(CORRECTNESS_CHECKS)):
         raise ValueError("Correctness bundle does not cover this exact executable study")
-    for item in report["checks"].values():
+    for name, item in report["checks"].items():
         check = inputs.json(checked_artifact(item, inputs))
         if check.get("status") != "passed":
             raise ValueError("Required correctness check did not pass")
+        if name in ("default-equivalence", "recovery", "resume-cpu", "resume-cuda"):
+            key = "study_gradient_norm" if name == "default-equivalence" else "gradient_norm"
+            if check.get(key) != registration["training"]["gradient_norm"]:
+                raise ValueError("Correctness check used another gradient norm accumulation mode")
     tree = ET.fromstring(inputs.read(checked_artifact(report["native_junit"], inputs)))
     cases = list(tree.iter("testcase"))
     names = {case.get("name") for case in cases}
-    required = {"rl_choice_weighted_cpu", "rl_choice_weighted_cuda", "rl_dev_v2_policy_cpu", "rl_dev_v2_policy_cuda",
+    required = {"rl_gradient_clip_cpu", "rl_gradient_clip_cuda", "rl_choice_weighted_cpu", "rl_choice_weighted_cuda", "rl_dev_v2_policy_cpu", "rl_dev_v2_policy_cuda",
                 "rl_checkpoint_roundtrip_cpu", "rl_checkpoint_roundtrip_cuda", "rl_behavior_replay_cpu", "rl_behavior_replay_cuda"}
     if (not required <= names or any(c.get("status") != "run" for c in cases if c.get("name") in required) or
             any(any(x.tag in ("failure", "error", "skipped") for x in c) for c in cases)):

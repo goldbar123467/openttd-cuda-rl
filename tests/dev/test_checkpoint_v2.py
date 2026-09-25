@@ -56,10 +56,10 @@ class CheckpointV2Tests(unittest.TestCase):
 
     def test_changed_return_or_reuse_config_fails_before_restore(self):
         self.expected["configuration"].update(gamma=.99, gae_lambda=.95, reuse_bootstrap_tensors=False, entropy_coefficient=.01,
-            financial_features="raw", guidance="one-bus-public-plan-v1")
+            financial_features="raw", guidance="one-bus-public-plan-v1", gradient_norm="historical")
         (self.root / "checkpoint.json").write_text(json.dumps(self.manifest))
         for key, value in (("gamma", .9), ("gae_lambda", 1.0), ("reuse_bootstrap_tensors", True), ("entropy_coefficient", .001),
-                           ("financial_features", "signed-log-v1"), ("guidance", "one-bus-public-plan-v2")):
+                           ("financial_features", "signed-log-v1"), ("guidance", "one-bus-public-plan-v2"), ("gradient_norm", "fp64-v1")):
             expected = {"configuration": {**self.expected["configuration"], key: value}}
             client = Mock()
             with patch.object(checkpoint_v2, "reset_signature") as probe:

@@ -33,6 +33,18 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(path, self.root / 'model.onnx')
         self.assertEqual(manifest, self.manifest)
 
+    def test_training_numerics_provenance_must_match(self):
+        self.training['gradient_norm'] = 'fp64-v1'
+        self.training['model']['training_gradient_norm'] = 'fp64-v1'
+        with self.assertRaisesRegex(ValueError, 'gradient norm'):
+            checked_package(self.root, self.training, 'cpu')
+        self.manifest['training_gradient_norm'] = 'fp64-v1'
+        (self.root / 'manifest.json').write_text(json.dumps(self.manifest))
+        checked_package(self.root, self.training, 'cpu')
+        self.training['model']['training_gradient_norm'] = 'historical'
+        with self.assertRaisesRegex(ValueError, 'gradient norm'):
+            checked_package(self.root, self.training, 'cpu')
+
     def test_explicit_cuda_rejected(self):
         with self.assertRaisesRegex(ValueError, 'explicit CPU'):
             checked_package(self.root, self.training, 'cuda:0')

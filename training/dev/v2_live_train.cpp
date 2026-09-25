@@ -1,6 +1,7 @@
 // Development recurrent V2 adapter over the trusted V1 PPO/GAE implementation.
 #include "v2_live_input.h"
 #include "checkpoint_io.h"
+#include "gradient_clip.h"
 #include "openttd_rl/training/model.h"
 #include "openttd_rl/training/rng.h"
 
@@ -59,9 +60,9 @@ class Trainer {
 public:
     Trainer(uint64_t seed, torch::Device device, int64_t rollout_length = 32, double gae_lambda = 0.95,
         dev::FinancialFeatures financial_features = dev::FinancialFeatures::Raw, double entropy_coefficient = 0.01,
-        bool choice_weighted = false, bool diagnostics = false) :
+        bool choice_weighted = false, bool diagnostics = false, bool fp64_gradient_norm = false) :
         device_(std::move(device)), financial_features_(financial_features), choice_weighted_(choice_weighted),
-        diagnostics_(diagnostics), rng_(seed), model_(rng_.initialization_seed())
+        diagnostics_(diagnostics), fp64_gradient_norm_(fp64_gradient_norm), rng_(seed), model_(rng_.initialization_seed())
     {
         if (device_.is_cuda() && !torch::cuda::is_available()) throw std::runtime_error("CUDA unavailable; no fallback");
         if (rollout_length != 32 && rollout_length != 64 && rollout_length != 128) throw std::invalid_argument("rollout length must be 32, 64 or 128");
@@ -256,7 +257,8 @@ public:
                     if (!parameter.value().grad().defined() || !torch::isfinite(parameter.value().grad()).all().item<bool>())
                         throw std::runtime_error("missing/nonfinite recurrent policy gradient: " + parameter.key());
                 }
-                const double norm = torch::nn::utils::clip_grad_norm_(model_->parameters(), config_.max_gradient_norm, 2.0, true);
+                const double norm = fp64_gradient_norm_ ? dev::clip_grad_norm_fp64_(model_->parameters(), config_.max_gradient_norm) :
+                    torch::nn::utils::clip_grad_norm_(model_->parameters(), config_.max_gradient_norm, 2.0, true);
                 if (!std::isfinite(norm)) throw std::runtime_error("nonfinite recurrent policy gradient norm");
                 optimizer_->step();
                 v2::require_finite_policy(model_, "live PPO update");
@@ -298,6 +300,7 @@ public:
         if (financial_features_ != dev::FinancialFeatures::Raw)
             out << "\nfinancial-features=" << dev::financial_features_name(financial_features_);
         if (choice_weighted_) out << "\npolicy-loss=choice-weighted-v1";
+        if (fp64_gradient_norm_) out << "\ngradient-norm=fp64-v1";
         return out.str();
     }
 
@@ -315,6 +318,7 @@ public:
             << ",\"gamma\":" << config_.gamma << ",\"gae_lambda\":" << config_.gae_lambda
             << ",\"entropy_coefficient\":" << config_.entropy_coefficient
             << ",\"choice_weighted\":" << (choice_weighted_ ? "true" : "false")
+            << ",\"gradient_norm\":\"" << (fp64_gradient_norm_ ? "fp64-v1" : "historical") << "\""
             << ",\"learning_rate\":" << config_.learning_rate << ",\"clip_epsilon\":" << config_.clip_epsilon
             << ",\"max_gradient_norm\":" << config_.max_gradient_norm << ",\"value_coefficient\":" << config_.value_coefficient
             << "}" << std::setprecision(9) << std::endl;
@@ -436,6 +440,7 @@ private:
     dev::FinancialFeatures financial_features_;
     bool choice_weighted_;
     bool diagnostics_;
+    bool fp64_gradient_norm_;
     train::PpoConfig config_;
     train::RngStreams rng_;
     v2::ScalablePolicy model_;
@@ -452,8 +457,8 @@ private:
 int main(int argc, char **argv)
 {
     try {
-        if (argc < 5 || argc > 17 || argc % 2 != 1 || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--seed")
-            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1] [--entropy-coefficient NUMBER] [--policy-loss historical|choice-weighted] [--recovery-diagnostics 0|1]");
+        if (argc < 5 || argc > 19 || argc % 2 != 1 || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--seed")
+            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1] [--entropy-coefficient NUMBER] [--policy-loss historical|choice-weighted] [--recovery-diagnostics 0|1] [--gradient-norm historical|fp64-v1]");
         if (std::string(argv[2]) != "cpu" && std::string(argv[2]) != "cuda:0") throw std::invalid_argument("unsupported device");
         int64_t rollout_length = 32;
         double gae_lambda = 0.95;
@@ -461,6 +466,7 @@ int main(int argc, char **argv)
         auto financial_features = dev::FinancialFeatures::Raw;
         bool has_rollout = false, has_lambda = false, has_financial_features = false, has_entropy = false, has_loss = false;
         bool choice_weighted = false, diagnostics = false, has_diagnostics = false;
+        bool fp64_gradient_norm = false, has_gradient_norm = false;
         for (int index = 5; index < argc; index += 2) {
             const std::string option(argv[index]), value(argv[index + 1]);
             if (option == "--rollout-length" && !has_rollout) {
@@ -487,6 +493,10 @@ int main(int argc, char **argv)
                 if (value != "historical" && value != "choice-weighted") throw std::invalid_argument("unsupported policy loss");
                 choice_weighted = value == "choice-weighted";
                 has_loss = true;
+            } else if (option == "--gradient-norm" && !has_gradient_norm) {
+                if (value != "historical" && value != "fp64-v1") throw std::invalid_argument("unsupported gradient norm accumulation");
+                fp64_gradient_norm = value == "fp64-v1";
+                has_gradient_norm = true;
             } else if (option == "--financial-features" && !has_financial_features) {
                 financial_features = dev::parse_financial_features(value);
                 has_financial_features = true;
@@ -503,7 +513,7 @@ int main(int argc, char **argv)
         at::globalContext().setDeterministicAlgorithms(true, false);
         at::globalContext().setDeterministicCuDNN(true);
         at::globalContext().setBenchmarkCuDNN(false);
-        Trainer trainer(std::stoull(argv[4]), torch::Device(argv[2]), rollout_length, gae_lambda, financial_features, entropy_coefficient, choice_weighted, diagnostics);
+        Trainer trainer(std::stoull(argv[4]), torch::Device(argv[2]), rollout_length, gae_lambda, financial_features, entropy_coefficient, choice_weighted, diagnostics, fp64_gradient_norm);
         std::cout << std::setprecision(9);
         std::string line;
         while (std::getline(std::cin, line)) {

@@ -1,4 +1,6 @@
 import copy
+import hashlib
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -10,6 +12,18 @@ from studies.protocol_v2 import PROTOCOL_PATH, PROTOCOL_SHA256, development_matr
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_numerical_amendment_preserves_protocol_one_and_scientific_criteria(self):
+        old_path = PROTOCOL_PATH.with_name("v2-recovery-study-protocol-1.json")
+        original = json.loads(old_path.read_bytes())
+        revised = load_protocol()
+        self.assertEqual(hashlib.sha256(old_path.read_bytes()).hexdigest(),
+                         "50b27a8d31b54485af847ae2478454a401efe9d0f0f8ab16c8a84398aa26f3d0")
+        self.assertEqual(revised["fixed_training"].pop("gradient_norm"), "fp64-v1")
+        revised.pop("amendment")
+        revised["format"] = original["format"]
+        revised["registered_utc"] = original["registered_utc"]
+        self.assertEqual(revised, original)
+
     def test_frozen_protocol_covers_disjoint_native_partitions(self):
         p = load_protocol()
         self.assertFalse(set(p["training_maps"]) & set(p["development"]["maps"]))

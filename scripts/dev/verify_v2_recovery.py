@@ -21,8 +21,10 @@ def run(args):
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
     capture_source(root / "source")
+    gradient_norm = getattr(args, "gradient_norm", "historical")
     report = {"kind": "v2-recovery-correctness", "status": "running", "source": source_identity(),
               "host": host(), "trainer": artifact(args.trainer), "engine": artifact(args.openttd), "checks": {},
+              "gradient_norm": gradient_norm,
               "claim": "Bounded correctness and exact read-only probe equality; not learning improvement"}
     write_json(root / "verification.json", report)
     try:
@@ -43,7 +45,7 @@ def run(args):
                     episode_horizon=128, training_map_count=8, financial_features="signed-log-v1",
                     gae_lambda=.95, entropy_coefficient=.003, guidance="one-bus-public-plan-v4",
                     reuse_bootstrap_tensors=True, checkpoint_interval=2, resume=None,
-                    policy_loss="choice-weighted", asset_potential=True)
+                    policy_loss="choice-weighted", asset_potential=True, gradient_norm=gradient_norm)
                 with (root / f"{label}-{name}.log").open("x") as stream, contextlib.redirect_stdout(stream):
                     train_v2.run(settings, trainer_factory=factory)
                 print(json.dumps({"case": f"{label}-{name}", "status": "completed"}), flush=True)
@@ -53,7 +55,8 @@ def run(args):
             report["checks"][f"probe-equality-{label}"] = {**exact, "native_checkpoints": checkpoints,
                 "exact_checkpoint_state": checkpoint_equality, "probes": probes}
             mismatch = PolicyClient(args.trainer, root / f"{label}-wrong-loss.log", device, 20260923,
-                                   rollout_length=64, financial_features="signed-log-v1", entropy_coefficient=.003)
+                                   rollout_length=64, financial_features="signed-log-v1", entropy_coefficient=.003,
+                                   gradient_norm=gradient_norm)
             rejected = False
             try:
                 mismatch.request(f"RESTORE\t{checkpoints[0]['path']}")
@@ -64,6 +67,21 @@ def run(args):
             if not rejected or "checkpoint configuration" not in (root / f"{label}-wrong-loss.log").read_text():
                 raise ValueError("Native checkpoint accepted another policy-loss configuration")
             report["checks"][f"wrong-loss-rejected-{label}"] = True
+            # Keep loss and every other setting equal: only norm accumulation
+            # changes, proving the native checkpoint binds this numerical mode.
+            mismatch = PolicyClient(args.trainer, root / f"{label}-wrong-norm.log", device, 20260923,
+                                   rollout_length=64, financial_features="signed-log-v1", entropy_coefficient=.003,
+                                   choice_weighted=True, gradient_norm="fp64-v1" if gradient_norm == "historical" else "historical")
+            rejected = False
+            try:
+                mismatch.request(f"RESTORE\t{checkpoints[0]['path']}")
+            except RuntimeError:
+                rejected = True
+            finally:
+                mismatch.abort()
+            if not rejected or "checkpoint configuration" not in (root / f"{label}-wrong-norm.log").read_text():
+                raise ValueError("Native checkpoint accepted another gradient norm accumulation mode")
+            report["checks"][f"wrong-norm-rejected-{label}"] = True
             write_json(root / "verification.json", report)
         if set(args.devices) == {"cpu", "cuda:0"}:
             compare_v2_training.run(SimpleNamespace(cpu=root / "cpu-plain", cuda=root / "cuda-0-plain", output=root / "device-agreement"))
@@ -83,4 +101,5 @@ if __name__ == "__main__":
     for name in ("trainer", "openttd", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--devices", choices=("cpu", "cuda:0"), nargs="+", default=["cpu", "cuda:0"])
+    parser.add_argument("--gradient-norm", choices=("historical", "fp64-v1"), default="historical")
     run(parser.parse_args())

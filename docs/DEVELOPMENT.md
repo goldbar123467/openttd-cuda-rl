@@ -18,6 +18,13 @@ ledger, not a state-only resale valuation. Only the supported one-bus action set
 is accepted. Value loss still uses all transitions; choices-only policy loss does
 not eliminate Adam momentum or shared-trunk drift.
 
+The study's prospective protocol 2 selects `--gradient-norm fp64-v1` for every
+arm. Only clipping's L2 reduction uses float64; the model, gradients and Adam
+remain float32. This addresses measured accumulation error while preserving the
+fixed 1e-4 agreement gate. Historical clipping stays the default reference mode.
+See [the numerical investigation](V2_GRADIENT_NORM_2026-09-25.md) for evidence,
+checkpoint binding and the unchanged study criteria.
+
 `studies/unattended_v2.py` orchestrates build, correctness, registration, training,
 development selection and conditional held-out confirmation. Training checkpoints
 are episode-reset boundaries. Interrupted segments preserve their ancestry and
@@ -70,7 +77,8 @@ The full recovery program remains active; see
 [its coverage/evidence record](REFACTOR_2026-09-25_STATUS.md) and
 [the frozen protocol](V2_RECOVERY_PROTOCOL.md). Do not launch A0-A3 until the
 execution and held-out safeguards, recovery mechanisms and resource checks pass.
-The protocol's source identity and thresholds have not changed.
+Protocol 1 remains immutable. Protocol 2 records the numerical amendment before
+execution; its scientific thresholds and workload are unchanged.
 
 `infer_v2.py` now defaults to `--split development`. Training-map diagnostics
 require `--split training`; ordinary launchers still forbid held-out splits.

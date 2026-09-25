@@ -8,8 +8,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from local import ROOT
 
-PROTOCOL_PATH = ROOT / "config/dev/v2-recovery-study-protocol-1.json"
-PROTOCOL_SHA256 = "50b27a8d31b54485af847ae2478454a401efe9d0f0f8ab16c8a84398aa26f3d0"
+PROTOCOL_PATH = ROOT / "config/dev/v2-recovery-study-protocol-2.json"
+PROTOCOL_SHA256 = "2f67920ef680e05f10ea11dacfbe15c6f8213907c672a0a3a0bc11753d283f8e"
 REGISTRATION_SCHEMA = ROOT / "docs/project/schema/dev-study-registration.schema.json"
 
 

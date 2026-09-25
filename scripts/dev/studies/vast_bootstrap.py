@@ -10,7 +10,7 @@ import zipfile
 
 from local import ROOT, host, source_identity, write_json
 from studies.execution_v2 import artifact, code_identity, CORRECTNESS_CHECKS
-from studies.protocol_v2 import PROTOCOL_SHA256
+from studies.protocol_v2 import PROTOCOL_SHA256, load_protocol
 from studies.recovery_v2 import launch
 
 REFERENCE_COMMIT = "e5f69435ab53fa85dbfb2a50f03f57bec2f7a405"
@@ -104,7 +104,8 @@ def qualify(root, binaries):
     checks["native"] = command(out, "native", ["ctest", "--test-dir", Path(binaries["trainer"]["path"]).parent,
                                               "--output-on-failure", "--output-junit", out / "native-tests.xml"])
     checks["heldout-refusal"] = command(out, "heldout-refusal", [sys.executable, "-m", "unittest", "discover", "-s", "tests/dev", "-p", "test_heldout_v2.py", "-v"])
-    common = ["--trainer", binaries["trainer"]["path"], "--openttd", binaries["engine"]["path"]]
+    common = ["--trainer", binaries["trainer"]["path"], "--openttd", binaries["engine"]["path"],
+              "--gradient-norm", load_protocol()["fixed_training"]["gradient_norm"]]
     command(out, "default-equivalence", [sys.executable, ROOT / "scripts/dev/verify_v2_default.py", *common,
         "--reference-trainer", binaries["reference_trainer"]["path"], "--output", out / "default-equivalence"])
     checks["default-equivalence"] = artifact(out / "default-equivalence/verification.json")

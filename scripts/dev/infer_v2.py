@@ -79,7 +79,12 @@ def checked_tensors(response, observation, *, bootstrap_only=False):
 
 class PolicyClient:
     def __init__(self, executable, output, device, seed, mode=None, weights=None, rollout_length=None, gae_lambda=None,
-                 financial_features="raw", entropy_coefficient=None, choice_weighted=False, recovery_diagnostics=False):
+                 financial_features="raw", entropy_coefficient=None, choice_weighted=False, recovery_diagnostics=False,
+                 gradient_norm="historical"):
+        if gradient_norm not in ("historical", "fp64-v1"):
+            raise ValueError("Unsupported gradient norm accumulation")
+        if gradient_norm != "historical" and mode is not None:
+            raise ValueError("Gradient norm accumulation is a trainer option")
         self.financial_features = financial_features_mode(financial_features)
         self.log = Path(output).open("x")
         command = [str(executable), "--device", device, "--seed", str(seed)]
@@ -97,6 +102,8 @@ class PolicyClient:
             command += ["--policy-loss", "choice-weighted"]
         if recovery_diagnostics:
             command += ["--recovery-diagnostics", "1"]
+        if gradient_norm != "historical":
+            command += ["--gradient-norm", gradient_norm]
         if self.financial_features != "raw":
             command += ["--financial-features", self.financial_features]
         self.process = subprocess.Popen(command,
@@ -157,6 +164,8 @@ def run(args, *, heldout_permit=None):
         financial_features = financial_features_mode(training.get("financial_features", "raw"))
         if training["model"].get("financial_features", "raw") != financial_features:
             raise ValueError("Training/model financial preprocessing differs")
+        if training["model"].get("training_gradient_norm", "historical") != training.get("gradient_norm", "historical"):
+            raise ValueError("Training/model gradient norm provenance differs")
         guidance_name = training.get("guidance", "none")
         if guidance_name not in ("none", *GUIDANCES):
             raise ValueError("Saved weights use an unsupported planner curriculum")

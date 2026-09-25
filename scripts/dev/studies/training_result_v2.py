@@ -66,7 +66,7 @@ def training_history(reference, registration, protocol, inputs, registration_sha
                 "trainer_sha256": registration["binaries"]["trainer"]["sha256"],
                 "engine_sha256": registration["binaries"]["engine"]["sha256"],
                 **{k: settings[k] for k in ("financial_features", "reuse_bootstrap_tensors", "checkpoint_interval",
-                    "gamma", "gae_lambda", "entropy_coefficient", "optimization_epochs", "sequence_length", "choice_weighted", "asset_potential")}}
+                    "gamma", "gae_lambda", "entropy_coefficient", "optimization_epochs", "sequence_length", "choice_weighted", "asset_potential", "gradient_norm")}}
     if any(type(record.get(k)) is not type(v) or record.get(k) != v for k, v in expected.items()):
         raise ValueError("Training result differs from the exact registered arm")
     updates = record["updates"]
@@ -126,7 +126,7 @@ def verify_training(reference, registration, protocol, inputs, registration_sha2
         return result
     runtime_expected = {"rollout_steps": settings["rollout_length"], **{k: settings[k] for k in (
         "gamma", "gae_lambda", "optimization_epochs", "sequence_length", "entropy_coefficient", "choice_weighted",
-        "learning_rate", "clip_epsilon", "max_gradient_norm", "value_coefficient")}}
+        "learning_rate", "clip_epsilon", "max_gradient_norm", "value_coefficient", "gradient_norm")}}
     info = record["native_training_runtime"]
     if any(type(info.get(k)) is not type(v) or info.get(k) != v for k, v in runtime_expected.items()):
         raise ValueError("Native trainer did not verify the registered effective optimizer/loss configuration")
@@ -148,6 +148,7 @@ def verify_training(reference, registration, protocol, inputs, registration_sha2
     model = record["model"]
     if (Path(model["path"]).resolve() != path.parent / "inference-weights.pt" or
             model["financial_features"] != settings["financial_features"] or
+            model.get("training_gradient_norm") != settings["gradient_norm"] or
             digest(model["path"]) != model["sha256"] or record["save_validation"] != {
                 "status": "SAVED_INFERENCE_WEIGHTS", "updates": len(updates), "reload_output_max_error": 0}):
         raise ValueError("Only the verified final inference model can enter development selection")
