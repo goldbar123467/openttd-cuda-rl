@@ -1,34 +1,65 @@
 # OpenTTD Reinforcement Learning Platform
 
-## Current development snapshot — September 24, 2026
+## Current development snapshot — October 2, 2026
 
 This repository contains a working C++/LibTorch PPO pipeline for real OpenTTD
-interactions, CUDA training, checkpoint recovery, ONNX export, visible playback,
-and company-scoped MCP control. **It is not yet a neural agent that plays all
-transport modes well.** Historical capability gates below must not be confused
-with demonstrated end-to-end neural gameplay.
+interactions, CUDA training, checkpoint recovery, separate native human-imitation
+training, qualified ONNX playback modes, and company-scoped MCP control.
+**It is not yet a neural agent that plays all transport modes well.** Historical
+capability gates below must not be confused with demonstrated end-to-end neural
+gameplay.
+
+**Exact bus-route imitation now works in the verified recording and supplied
+live contexts.** The existing candidate-scoring network learned station-order
+insertion, Full load any cargo, independent order copying, deletion, purchases
+and starts. This uses C++/LibTorch on CUDA; Python orchestrates and audits runs.
+
+| Area | Latest executed result and limitation |
+| --- | --- |
+| Native human replay | All 11 equality checks pass against the latest manual save at marker 47: actual date 1958-08-19, tick 234,528, cash 104,326 and loan 100,000. Complete serialized orders, roads, vehicles, stations, depots and finance match. |
+| Exact-action dataset | 12 supported decisions: two buys, three inserts, three Full load any changes, one independent copy, one deletion and two starts. Eight order labels are new. Eighteen executed commands and nine other records remain excluded. |
+| CUDA imitation | The 1,000-epoch fit uniquely selects 12/12 targets, with zero aliases or ties and minimum probability margin 0.733095. All choices survive candidate-row permutation. This is training fit on one recording. |
+| Live route setup | Greedy and sampled policies reproduce routes 1→0 and 1→2, with both endpoints Full load any before starting the correct target bus. All four runs use supplied infrastructure and have zero invalid actions. |
+| Sustained fleet management | Later actions overbuy buses and repeatedly edit orders; extra buses can start with duplicate endpoints, and one sampled run changes an established source route. All four short runs have negative operating profit. |
+| Model compatibility | `orders-v1` native observations/actions use explicit `signed-log-orders-v2` model preprocessing. All 28,303 audited legal inputs are distinct where parameters differ. Older modes retain their semantics; order-mode ONNX export/playback is explicitly unsupported. |
+| PPO continuation | Fresh import preserves all 12 choices with zero PPO updates. The route policy has not undergone live PPO refinement; any later refinement must measure imitation retention separately. |
+
+The first live context supplies roads, a depot and two stations but no buses.
+The second supplies roads, a depot, three stations, the human-configured running
+source bus and an already-purchased stopped target bus. In both policy modes,
+the first context starts its target at decision 6 and the second at decision 5.
+Construction, the second context's
+purchase, held-out generalization and optimal economic strategy are not claims
+of these live exercises. The remaining priority is sustained fleet management:
+preserving routes and choosing when to buy, edit, wait or manage debt.
+
+Start with [the exact bus-order results and reproduction commands](docs/DEVELOPMENT.md#exact-bus-order-imitation-october-2).
+That section records per-operation accuracy, native semantics, failed runs,
+model hashes, test results and live economics. The earlier
+[progress log](docs/PROGRESS.md) and [continuation handoff](handoff.md) preserve
+older campaigns; they do not supersede the October 2 evidence.
+
+### Earlier live PPO and MCP results — September 24, 2026
 
 | Area | Executed result and limitation |
 | --- | --- |
 | V1 passenger buses | Sampled policies sustain service in 18/18 registered held-out episodes; greedy service succeeds in 4/6. The one-bus script remains more cash-efficient. |
-| Live V2 recurrent PPO | Real sequential CUDA training works. Current experiments use a public route planner; learned control has not reliably beaten uniform choices using the same guide. |
+| Live V2 recurrent PPO | Real sequential CUDA training works. These earlier experiments use a public route planner; learned control has not reliably beaten uniform choices using the same guide. |
 | V2 experience and exploration | An 8,192-decision continuation sustains service in 9/9 games but fails economic criteria. Lowering entropy to .001 regresses service to 5/9. |
 | Borrowing recovery | Frozen .001 weights with the optional borrowing guide recover 9/9 service. Fresh training with that guide regresses to 1/9. The first prospective replication seed fails all 18 v2/v3 games with zero passengers. The second seed completed training, but its 18 evaluations were not launched after the user-requested stop. The original lead is not an adopted improvement. |
 | Deployment | Raw and signed-log V2 ONNX compatibility, native parity and visible replay have been qualified. The signed-log deployment extension is integrated; experimental training still requires its matching worktree and binaries. |
 | Shared games / MCP | Actual local Gemma matches execute through company-scoped MCP. All twelve matched-guide games are complete. The LLM chooses WAIT on all 1,024 turns; the neural actor sustains the four LLM matches. Both actors fail all eight scripted matches through shared construction conflicts. The useful-comparison criterion fails. |
 | Other transport | Scripted passenger/mail service is demonstrated. General neural mastery of trucks, rail, ships, aircraft, and multimodal economics remains unfinished. |
 
-Start with [the development guide](docs/DEVELOPMENT.md),
-[the latest results](docs/PROGRESS.md), and [the continuation handoff](handoff.md).
-The replication already fails its per-seed service requirement. Both fresh
-CUDA training runs are complete and experimentation has stopped at the user's
-request. The second seed is unevaluated; resume only on a later instruction.
-An inspected public state also exposes
-identical candidate features for distinct borrowing/repayment commands and many
-within-family construction choices. Explicit action representation and shared
-construction planning remain unresolved prerequisites for broader claims.
+That replication failed its per-seed service requirement. Both training runs
+completed, but the second seed remains unevaluated after the user-requested stop;
+do not silently resume that campaign. The historical raw inputs aliased distinct
+loan and construction actions. The October 2 action-aware preprocessing and
+float32 audits address those input defects without changing archived modes.
+Shared construction planning and useful competitive economic control remain
+unresolved.
 
-### Read the latest results visually
+### Historical PPO and MCP results visually
 
 The measured chart below shows all twelve completed MCP matches. Negative cash
 includes capital spending and excludes loan principal. Full outcomes and limitations
@@ -72,6 +103,13 @@ local artifacts and are **not included in this source backup**. The standard WSL
 artifact root is `~/.local/share/openttd-rl/`; follow the development guide to build
 and run locally. Preserve model packages separately if moving machines.
 
+The October 2 bus experiment lives under
+`runs/human-orders-20261002-01/` within that artifact root. Its verified dataset
+is in `replay-manual-latest/`, selected weights in `imitation-categorical-1000/`,
+independent checks in `final-fit-audit-categorical-1000/`, and greedy/sampled
+traces in `live-categorical-1000/`. These local directories are not downloadable
+model releases or files supplied by a clean Git clone.
+
 Completed-run lossless compression saved 149.65 GiB while retaining model and
 checkpoint hashes. See [storage retention and exact restoration](docs/STORAGE.md)
 before reading archived logs or pruning artifacts. The cleanup did not compact
@@ -85,7 +123,10 @@ MCP. C++/CUDA and PPO remain the core learning stack.
 
 - [Development guide](docs/DEVELOPMENT.md): build the existing trainer on your
   machine, collect live game rollouts, save a model, and see the next milestones.
-- [Current results and failures](docs/PROGRESS.md): actual local learning,
+- [Exact human bus-order workflow](docs/DEVELOPMENT.md#exact-bus-order-imitation-october-2):
+  verified replay, CUDA imitation, distinct-input and permutation audits, fresh
+  PPO import, and supplied-context live continuations.
+- [Earlier results and failures](docs/PROGRESS.md): retained local learning,
   checkpoint, replay, CUDA, transport and MCP evidence.
 - [Watch the demonstrated neural policy](docs/DEVELOPMENT.md#export-and-watch-a-development-policy):
   launch the exported V1 model in an isolated OpenTTD window.
@@ -94,10 +135,12 @@ MCP. C++/CUDA and PPO remain the core learning stack.
 - [Agent instructions](AGENTS.md): project boundaries and how to continue work.
 - [Project goal](GOAL.md): broader game and research scope.
 
-The portable development entry point is `training/dev`; it compiles the existing
-`training/v1` implementation. Release builds remain in `training/v1` and
-`training/v2`. The M22 corpus trainer is a program-selection experiment; its
-reward-table updates must not be described as interactive OpenTTD training.
+The portable development entry point is `training/dev`; it reuses the existing
+`training/v1` PPO implementation and, with V2 enabled, the `training/v2` scalable
+policy with development live-PPO and separate imitation services. Release builds
+remain in `training/v1` and `training/v2`. The M22 corpus trainer is a
+program-selection experiment; its reward-table updates must not be described as
+interactive OpenTTD training.
 
 The local V1 MLP now sustains passenger service in all 18 preregistered sampled
 held-out episodes, with positive operating profit. It still spends more net cash
@@ -106,7 +149,8 @@ recovery, ONNX replay and visible play have been verified. These are constrained
 bus results, not general OpenTTD competence.
 
 Live V2 recurrent PPO, shared company control and an actual MCP-connected local
-LLM match also run. Useful V2 neural control remains unresolved: extra training
+LLM match also run. The new imitation slice reproduces exact route setup, but
+sustained economic control remains unresolved. Earlier guided PPO training
 did not beat uniform choices under the same public route guide. Scripted native
 passenger/mail service works on two development maps, with construction costs
 still leaving cumulative cash losses. The progress log separates these executed
@@ -1114,6 +1158,10 @@ independent project and does not imply OpenTTD endorsement.
 
 ## Current status
 
+The table below records historical milestone evidence and its frozen scope.
+For the current human-imitation workflow and remaining live-control limits, use
+the October 2 development snapshot at the top of this README.
+
 | Area | Current evidence | Project status |
 |---|---|---|
 | V1 OpenTTD source/integration/toolchain profile | Offline source preparation, repeated probes/builds/resources/provenance, and deterministic closure audit | `M01/G01 PASS`; frozen baseline only |
@@ -1160,7 +1208,8 @@ distributed multi-machine training.
 
 ## Repository note
 
-The accepted milestone commits are kept synchronized with `origin/main` and the
-worktree is expected to be clean at handoff. Any future user-owned changes must
-still be preserved. Follow the transition document before deleting, renaming, or
+Current local development is published on `codex/local-training-foundation`;
+publication there does not imply a merge into `main` or a new model release.
+Keep a clean worktree after an authorized commit while preserving any unrelated
+user-owned changes. Follow the transition document before deleting, renaming, or
 repurposing an existing oracle, parity fixture, or evidence artifact.
