@@ -53,6 +53,10 @@ int main(int argc, char **argv)
         if (args.at("--mode") != "greedy" && args.at("--mode") != "sampled") throw std::invalid_argument("unsupported inference mode");
         const auto financial_features = openttd_rl::development::parse_financial_features(
             args.contains("--financial-features") ? args.at("--financial-features") : "raw");
+        if (financial_features == openttd_rl::development::FinancialFeatures::SignedLogLoanV1 ||
+            financial_features == openttd_rl::development::FinancialFeatures::SignedLogActionsV1 ||
+            openttd_rl::development::uses_order_features(financial_features))
+            throw std::invalid_argument("action preprocessing requires native candidate parameters; ONNX playback is unsupported");
         const std::filesystem::path path(args.at("--weights"));
         if (!path.is_absolute() || !std::filesystem::is_regular_file(path)) throw std::invalid_argument("ONNX weights require an existing absolute file");
         if (std::string(OrtGetApiBase()->GetVersionString()) != "1.28.0") throw std::runtime_error("development ONNX Runtime must be 1.28.0");

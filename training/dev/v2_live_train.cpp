@@ -372,7 +372,7 @@ public:
     void restore(const std::string &name)
     {
         const std::filesystem::path path(name);
-        if (updates_ != 0 || pending_ || !rollout_.empty() || !expected_reset_ || !path.is_absolute() ||
+        if (imported_weights_ || updates_ != 0 || pending_ || !rollout_.empty() || !expected_reset_ || !path.is_absolute() ||
             std::filesystem::file_size(path) > 512U * 1024U * 1024U)
             throw std::invalid_argument("RESTORE requires a bounded checkpoint and fresh trainer");
         torch::serialize::InputArchive archive, model, optimizer;
@@ -404,6 +404,22 @@ public:
         }
         std::cout << "{\"status\":\"RESTORED_RESET_CHECKPOINT\",\"updates\":" << updates_
             << ",\"transitions\":" << updates_ * static_cast<uint64_t>(config_.rollout_length) << "}" << std::endl;
+    }
+
+    void import_weights(const std::string &name)
+    {
+        const std::filesystem::path path(name);
+        if (imported_weights_ || updates_ != 0 || pending_ || !rollout_.empty() || !expected_reset_ ||
+            !optimizer_->state().empty() || !path.is_absolute() || !std::filesystem::is_regular_file(path) ||
+            std::filesystem::file_size(path) > 512U * 1024U * 1024U)
+            throw std::invalid_argument("IMPORT_WEIGHTS requires bounded inference weights and a fresh trainer");
+        torch::serialize::InputArchive archive;
+        archive.load_from(path.string(), device_);
+        dev::read_live_v2_weights(archive, model_, financial_features_);
+        check_checkpoint_state();
+        hidden_.zero_();
+        imported_weights_ = true;
+        std::cout << "{\"status\":\"IMPORTED_WEIGHTS\",\"updates\":0,\"optimizer_reset\":true,\"recurrent_reset\":true}" << std::endl;
     }
 
     void save(const std::string &name)
@@ -450,6 +466,7 @@ private:
     std::optional<v2::ScalablePolicyInput> save_probe_;
     bool pending_{};
     bool expected_reset_{true};
+    bool imported_weights_{};
     uint64_t updates_{};
 };
 } // namespace
@@ -458,7 +475,7 @@ int main(int argc, char **argv)
 {
     try {
         if (argc < 5 || argc > 19 || argc % 2 != 1 || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--seed")
-            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1] [--entropy-coefficient NUMBER] [--policy-loss historical|choice-weighted] [--recovery-diagnostics 0|1] [--gradient-norm historical|fp64-v1]");
+            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2] [--entropy-coefficient NUMBER] [--policy-loss historical|choice-weighted] [--recovery-diagnostics 0|1] [--gradient-norm historical|fp64-v1]");
         if (std::string(argv[2]) != "cpu" && std::string(argv[2]) != "cuda:0") throw std::invalid_argument("unsupported device");
         int64_t rollout_length = 32;
         double gae_lambda = 0.95;
@@ -523,6 +540,7 @@ int main(int argc, char **argv)
             else if (request[0] == "REWARD") trainer.reward(request);
             else if (request[0] == "UPDATE" && request.size() == 1) trainer.update();
             else if (request[0] == "SAVE" && request.size() == 2) trainer.save(request[1]);
+            else if (request[0] == "IMPORT_WEIGHTS" && request.size() == 2) trainer.import_weights(request[1]);
             else if (request[0] == "CHECKPOINT" && request.size() == 2) trainer.checkpoint(request[1]);
             else if (request[0] == "RESTORE" && request.size() == 2) trainer.restore(request[1]);
             else if (request[0] == "CHECKPOINT_INFO" && request.size() == 1) trainer.checkpoint_info();

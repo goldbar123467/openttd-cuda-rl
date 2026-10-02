@@ -11,12 +11,16 @@ from local import ROOT, capture_source, positive, source_identity, write_json
 
 
 def development_headers(text):
-    for name in ("settings_type.h", "station_func.h"):
+    for name in ("settings_type.h", "station_func.h", "economy_func.h"):
         include = f'#include "{name}"'
         if include not in text:
             if text.count("#include <algorithm>") != 1:
                 raise ValueError("Native header insertion anchor differs")
             text = text.replace("#include <algorithm>", include + "\n\n#include <algorithm>", 1)
+    if "#include <cmath>" not in text:
+        if text.count("#include <algorithm>") != 1:
+            raise ValueError("Native math header insertion anchor differs")
+        text = text.replace("#include <algorithm>", "#include <algorithm>\n#include <cmath>", 1)
     return text
 
 

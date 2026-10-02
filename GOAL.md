@@ -18,6 +18,33 @@ Use `docs/DEVELOPMENT.md` for the current executable workflow. Historical gates
 remain useful evidence, but new work should prioritize working gameplay and
 measured learning over adding further milestone documents.
 
+### Owner clarification (2026-10-02): financing and network design
+
+Debt management and productive use of loans are as important as route placement.
+The agent must learn when and how much to borrow, how much operating cash to
+retain, when to invest in another route or bus, when to wait for earnings, and
+when repayment is preferable to further expansion. Assess these choices together
+with terrain-aware construction, passenger service and sustainable profitability.
+Loan principal is financing: borrowing is not earned revenue, and repayment is
+not an operating loss. Preserve this distinction in observations, rewards and
+reports. Human demonstrations must retain financing decisions and their timing
+alongside construction and routing; learning them requires public financial state
+and confirmed outcomes at each decision.
+
+The October 2 first recording now has checkpoint-verified native replay and a
+working separate C++ imitation-to-PPO path. The immediate follow-up is to retain
+the learned decisions while improving live service and financing; collecting
+another 5–10 demonstrations was explicitly deferred by the owner. This changes
+the current work order, not the broader transport/economy objective. See
+`docs/DEVELOPMENT.md` for the reproduced results and remaining limitations.
+
+The owner subsequently requested one fresh bus-only recording focused on route
+selection, one purchased bus per initial route, full load at both endpoints
+before departure, and viewing/managing the fleet. Collect that focused lesson
+with replayable checkpoints and human rationale notes before resuming the route
+interface extension and training. This does not authorize a broad recording
+campaign or change the longer-term transport scope.
+
 ## Document status
 
 - Status: project authority

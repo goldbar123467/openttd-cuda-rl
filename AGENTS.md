@@ -23,6 +23,8 @@ Python may orchestrate processes, experiments, plotting, and independent tests.
 - `training/v2`: scalable/recurrent policy work. M22 campaigns currently use a
   fixed corpus and reward tables, not interactive OpenTTD rollouts.
 - `training/dev`: portable development build of existing training components.
+- `scripts/dev/replay_human.py` and `imitate_v2.py`: checkpoint-verified native
+  human replay and a separate C++ imitation objective feeding a fresh PPO policy.
 - `integration/openttd/patches/15.3`: source integration on pinned upstream.
 - `openttd-upstream`: upstream submodule/object repository; keep it pristine.
 - `config/v1`, `config/v2`, `evidence`, and `docs/project`: historical contracts,
@@ -46,6 +48,30 @@ Python may orchestrate processes, experiments, plotting, and independent tests.
 
 ## RL correctness
 
+- **Action semantics must reach the network.** The October 2 human-learning
+  experiment found that native `MANAGE_LOAN` borrow and repay candidates had
+  bit-identical 32-float feature vectors: their direction parameters were dropped,
+  their costs were both zero, and their normalized priorities rounded to the same
+  float. More training cannot distinguish identical inputs. Check actual encoded
+  tensors for economically distinct actions, not just legal masks or command IDs.
+  The opt-in `signed-log-loan-v1` native preprocessing exposes the public loan
+  direction in reserved candidate slots 30/31 and binds the change to model
+  metadata. Preserve `raw` and `signed-log-v1` archives; fail closed on mismatched
+  preprocessing. See the current evidence and qualification status in
+  `docs/DEVELOPMENT.md` before reusing a model or claiming financing competence.
+  That historical mode fixes loan direction only. The archived input audit also found omitted
+  road/stop/depot orientation and route/vehicle distinctions. One demonstrated
+  START row ties with a different co-located vehicle's candidate, so greedy row
+  accuracy alone can hide an unlearnable semantic distinction. New native
+  imitation defaults to `signed-log-actions-v1`: reserved slots 20..31 encode
+  all three active public uint32 parameter words as log-scaled byte limbs.
+  This preserves vehicle identity, orientation and ordered route endpoints;
+  unknown trailing parameters or occupied reserved slots fail closed. Preserve
+  the older preprocessing modes and reject mismatched archives. Audit actual
+  encoded legal candidate equivalence classes and require unique exact-action
+  accuracy with a positive probability margin, including after row permutation.
+  Read the current development evidence before claiming learned route choices;
+  the human recording still labels only purchases, starts and repayments.
 - Collect observations, legal masks, rewards, and termination from the environment
   boundary. Never read future state, private opponent state, or evaluation labels.
 - Store the behavior policy log probability and the exact sampling mask. Reuse
@@ -56,6 +82,21 @@ Python may orchestrate processes, experiments, plotting, and independent tests.
   use final manifests for tuning, even when they are present in the repository.
 - Distinguish synthetic learning, corpus learning, live rollouts, and held-out
   gameplay. A successful smoke run is not evidence of improved playing strength.
+- Human command logs are raw intentions until native replay matches a saved
+  checkpoint and confirms execution/cost accounting. Use only exact supported
+  actions from the legal candidate list at the pre-command state. Keep unsupported
+  GUI actions, failed/estimate commands, and gaps out of supervised labels; never
+  infer WAIT or unobserved borrowing decisions from them. Human examples train the
+  separate imitation objective, never the on-policy PPO rollout buffer. Report
+  exact-action accuracy by action type: aggregate loss can hide failed repayments.
+- Check imitation retention after PPO on the same training examples, labelled as
+  retention rather than held-out accuracy. The October 2 greedy fit reached
+  11/11 (including one indistinguishable START pair), but four PPO updates
+  retained only 7/11 and lost all four repayment choices. Report
+  greedy and sampled gameplay separately: sampled service on three development
+  maps coexisted with greedy loan cycling and poor liquidity. Neither successful
+  weight import nor service alone establishes sensible debt management. Preserve
+  this small baseline before changing rewards, curricula, or training duration.
 - Report game outcomes (profit, delivered cargo, service, invalid actions,
   bankruptcy), baselines, seeds, and uncertainty alongside reward.
 

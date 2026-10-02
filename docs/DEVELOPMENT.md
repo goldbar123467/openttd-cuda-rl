@@ -1,5 +1,949 @@
 # Local training and the path to agentic economies
 
+## Exact bus-order imitation (October 2)
+
+The later bus recording now supplies **12 exact native training examples**,
+including eight newly supported order decisions. The opt-in `orders-v1`
+interface reuses the existing candidate-scoring network and separate C++/LibTorch
+imitation objective. There is no second PPO implementation or Python trainer.
+
+**Verified final fit: 12/12 unique exact choices**, on CUDA with
+`signed-log-orders-v2`, 1,000 epochs, seed 20261002 and learning rate 0.0003.
+The independent audit also passes all 12 after candidate-row permutation.
+There are zero input aliases or target ties; the minimum target probability
+margin is 0.733095 (required >1e-6), and maximum permutation probability error
+is 1.19e-7. Final negative log likelihood is 0.0273864 and mean target probability
+is 0.974287. This is fit to one recording, not held-out generalization.
+
+| Demonstrated operation | Exact choices | Minimum target margin |
+| --- | ---: | ---: |
+| Buy bus | 2/2 | 0.998423 |
+| Insert station order | 3/3 | 0.733095 |
+| Full load any cargo | 3/3 | 0.995146 |
+| Independent copy of orders | 1/1 | 0.965018 |
+| Delete one order | 1/1 | 0.993058 |
+| Start correct vehicle | 2/2 | 0.997620 |
+
+The new action schema is `v2-m15-bus-orders-action-v1`. In this mode only,
+family 6 (`SET_ROUTE` in the existing family inventory) contains primitive order
+operations instead of the legacy route-reset macro. Parameter 1 is the target
+vehicle; parameter 2 packs operation, order index, raw insert type (or
+`MOF_LOAD=3`) and raw insert flags into four bytes; parameter 3 is the station,
+copy source, loading mode or zero. Operations are insert=1, modify-load=2,
+copy=3 and delete=4. Loading modes 0, 2, 3 and 4 remain distinct; **Full load any
+is 3, not Full load all (2)**. Copy executes `CO_COPY`, never `CO_SHARE`.
+Deletion requires an actual in-range order index, avoiding upstream's
+out-of-range delete/declone behavior. Native command tests determine legality.
+
+`signed-log-orders-v1` and `signed-log-orders-v2` bind these semantics to
+`v2-m15-public-development-orders-v1`. Model archives carry both observation
+and action tags, and structured tensor slot 511 marks the projection. Native
+readers reject mismatched models/tensors, including callers that bypass Python
+metadata validation. All three public uint32 action parameters still use the
+injective byte-limb encoding in candidate slots 20–31. Historical `raw`,
+`signed-log-v1`, `signed-log-loan-v1` and `signed-log-actions-v1` retain their
+interpretations. ONNX export/playback explicitly rejects both native order modes.
+
+The first 512-epoch CUDA fit, using `signed-log-orders-v1`, failed the strict
+acceptance check: 6/12 unique choices, including 0/3 Full load any decisions.
+It preferred No loading (4) to Full load any (3). Its input audit found zero
+aliases; its strict prediction audit found zero ties, a minimum target margin
+of -0.185859, and row-permutation probability error at most 1.20e-7. The failed
+run and audit remain intact in `imitation-512/` and `failed-fit-audit-512/`.
+
+Based only on those training diagnostics, `signed-log-orders-v2` adds one-hot
+categories for operation, loading mode and order index. For order candidates,
+slots 0–3 encode the four operations, 4–7 encode loading modes 0/2/3/4 (only
+for loading modifications), and 8–11 encode indices 0–3 (absent for copying).
+These replace redundant family one-hot features; the policy's separate family
+embedding and exact parameter limbs remain intact. The network architecture
+and native actions are unchanged. The immutable dataset keeps its original v1
+reader tag; each run records its selected reader separately, and v1/v2 model
+archives cannot be interchanged. No live exercise selected this encoding.
+
+The independent compiled-reader audit passed on all **28,303 legal rows** in
+the 12 training states: zero aliases, all 335 order candidates' categorical
+slots correct, and every v1 feature digest identical to the preserved reader.
+Only order-candidate slots 0–11 differ in v2. The native regression fixture also
+checks 25 distinct rows, invalid index/one-hot rejection, exact archive reload
+and bidirectional v1/v2 mismatch rejection on CPU and CUDA.
+
+The first categorical fit used 512 epochs, seed 20261002 and learning rate
+0.0003 on CUDA. It reached 11/12 unique choices (loss 0.271590), correctly
+learning all loading/copy/delete/purchase/start decisions. The remaining
+command-22 insertion selected station 1 instead of station 0, with target margin
+-0.370187. This run is preserved in `imitation-categorical-512/`. The improving
+training fit justified one bounded extension to 1,000 epochs at the same seed
+and learning rate, before any live evaluation. The trainer has no imitation
+resume entry point, so the longer run repeats the seeded prefix from scratch.
+An attempted 1,024-epoch invocation was rejected by the existing 1,000-epoch
+native limit before any update; its failed run is preserved separately.
+
+The final run took 776.58 seconds on the RTX 2070 (`cuda:0`). Gradients and
+losses remained finite, exact legal masks were retained, checkpoint reload
+error was zero, CPU/CUDA probability error was at most 3.58e-7, and gradient
+error at most 1.21e-9. Its model SHA256 is
+`7dcd6c54a205594ec65a55ec852c135d6cdbe28ef87fea76290b3ac7ba7e461c`.
+Fresh PPO import preserves all 12 exact choices and target probabilities,
+with maximum value difference 1.20e-7, fresh optimizer/recurrent state and
+**zero PPO updates**. No live PPO training was performed.
+
+**Live sequence checks also passed in both greedy and sampled mode.** Each of
+the four unforced continuations used the complete native legal mask, 24
+decisions at 128 ticks each (3,072 ticks), sampling seed 20261002, and recurrent
+reset before every decision to match imitation. Before-command-20 supplies
+human-built roads, a depot and two stations, with no buses. Both modes chose
+purchase → insert station 1 → insert station 0 → Full load any at index 0 →
+Full load any at index 1 → start bus 1, at decision 6. Before-command-35 supplies
+roads/depot/three stations, the human-configured running bus 1, and an already
+human-purchased stopped bus 2. Both modes chose independent copy from bus 1 →
+delete index 1 → insert station 2 → Full load any at index 1 → start bus 2, at
+decision 5. Both endpoints were Full load any before each target started, and
+all four target buses retained their intended routes at the end.
+
+| Supplied context / policy | Target route | Final target cargo | Final company buses | Delivered passengers (company) | Operating profit |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Before 20 / greedy | 1→0 | 12/31 | 4 | 0 | -221 |
+| Before 20 / sampled | 1→0 | 13/31 | 2 | 0 | -206 |
+| Before 35 / greedy | 1→2 | 28/31 | 5 | 31 | -83 |
+| Before 35 / sampled | 1→2 | 22/31 | 5 | 31 | -77 |
+
+All four runs had zero invalid actions, no bankruptcy and no loan changes.
+The before-35 deliveries and finance are whole-company totals that include the
+supplied source bus; they are not attributed to the newly configured bus 2.
+Capital spending was 19,684 / 9,842 / 14,763 / 14,763 in table order; cash
+changes were -19,930 / -10,073 / -14,871 / -14,865. These short runs were not
+profitable. Continued actions overbought buses and repeatedly edited orders;
+extra buses in the first context acquired duplicate endpoints, and the sampled
+second context later changed the supplied source bus 1 to route 1→2.
+Three extra starts in the first context used repeated endpoints; the source
+route change in the sampled second context was an explicit later copy action,
+not accidental sharing or copy aliasing. `live-categorical-1000/sequence-review.json`
+records every start and hashes the action traces used for this assessment.
+
+The remaining concrete limitation is **sustained fleet management**, including
+when to stop buying/editing and preserving existing routes. Neither construction
+nor the second live context's purchase was learned by that live exercise; the
+two exact purchase decisions pass only the recorded-state fit check. There was
+no full autonomous two-route build, no held-out evaluation and no claim of an
+optimal strategy from one profitable human game. Live results did not select or
+retune the model. No additional demonstration was requested.
+
+The existing 40-column vehicle table now exposes stopped status, cargo/capacity,
+order count, real/implicit order progress, current order type/destination/time,
+and the complete sequence of up to four independent station orders. Each order
+uses four columns: `(raw_type + 256*raw_flags)/65535`, destination/65535,
+wait_time/65535 and travel_time/65535. The order count determines presence.
+This preserves non-stop, loading/unloading and timetable state. Running buses
+automatically accumulate timetable values, so existing orders must retain those
+values even though a new insertion starts with zero timings. Shared lists,
+longer sequences, refit/conditional and other unsupported order variants fail
+closed. Public demand and finance remain available; targets, future orders,
+future profit and candidate row positions are not added to inputs.
+
+**Native verification passed through the latest manual save**, named
+`Fluningbury Transport, 1958-06-18.sav`, explicitly selected with
+`--checkpoint-occurrence latest`. Marker 47 represents actual date 1958-08-19,
+tick 234,528. All 11 equality checks passed: roads, complete serialized orders,
+vehicles, stations, depots, cash, loan, date, tick, finance and command-cost
+accounting. All 30 replayed commands succeeded; costs totalled 13,893. Final
+cash is 104,326 against initial 100,000, with debt unchanged at 100,000. Both
+running buses have 31/31 passengers, on routes 1→0 and 1→2 with both endpoints
+Full load any. Three modifications suffice because bus 2 inherits the first
+endpoint's loading rule when copying bus 1's orders.
+
+Eight additional native execution probes run each new demonstrated primitive,
+compare complete resulting order bytes and unrelated vehicles, mutate a copy
+source to verify independence, distinguish Full load any from all, and reject
+invalid vehicle/order indices without mutation. Save/restore around these
+probes also passes the final manual-checkpoint equality. Labels additionally
+require the exact candidate at its pre-command state, successful native
+execution and matching cost/principal accounting. The consumer rechecks the
+source packet, operation, candidate, tensor hashes and replay evidence.
+
+There remain 18 unlabelled executed commands (17 unsupported commands and one
+depot absent from the retained candidate quota), eight failed/test/estimate
+records, and one explicitly recorded ambiguous save-preview marker: 27
+exclusions in total. The preview ambiguity remains subject to mandatory native
+equality. No elapsed gap becomes WAIT and no human record enters PPO rollouts.
+Construction, GUI viewing and the human's reasoning have not been learned.
+
+Implementation is in `integration/dev/rl_bus_orders.inc`, the existing live and
+human replay includes, `scripts/dev/prepare_bus_orders.py`, `replay_human.py`,
+`orders_observation_v2.py`, `imitate_v2.py`, and `training/dev/v2_live_input.cpp`.
+Independent checks are `audit_bus_orders_v2.py` and `live_bus_orders_v2.py`.
+All runtime paths below are in WSL under `/home/imsa/.local/share/openttd-rl`:
+
+- `bus-orders-engine-20261002-01/`: isolated live engine and final-build identity.
+- `human-orders-replay-engine-20261002-01/`: isolated replay engine; original
+  failed build/source retained in `pre-refresh/`, corrected identity in
+  `final-build.json`.
+- `build/human-orders-20261002-01/`: preserved original C++/LibTorch binaries.
+- `build/human-orders-20261002-02/`: categorical reader, trainer and inference.
+- `runs/human-orders-20261002-01/replay-manual-latest/`: verified dataset,
+  source packets, exact public tensors, eight native semantic reports and
+  pre-command 20/35 saves for explicitly supplied live exercises.
+- `runs/human-orders-20261002-01/`: training, independent audits and test logs.
+- `runs/human-orders-20261002-01/imitation-categorical-1000/`: selected model,
+  full CUDA metrics, configuration, source archive, labels and hashed tensors.
+- `runs/human-orders-20261002-01/final-fit-audit-categorical-1000/`: independent
+  packet/native/input/prediction audit and row-permutation evidence.
+- `runs/human-orders-20261002-01/human-ppo-import-categorical-1000/`: all-example
+  fresh-PPO import parity with no updates.
+- `runs/human-orders-20261002-01/live-categorical-1000/`: four greedy/sampled
+  traces, exact initial/final public states, action probabilities and economics.
+
+Verification logs include all 12 V2 CPU/CUDA CTests passing in the new build,
+291 Python development tests (287 passed, four MCP-environment skips), the four
+MCP tests passing in the separate MCP environment, and all 136 portable fast
+checks passing. The final consumer tests reject coordinated sample/config
+packet corruption by reconstructing events from the original hashed command
+log; the actual v2 consumer import also passed all 12 records with the immutable
+dataset hash unchanged. These checks supplement the eight native order execution
+probes and the legacy-mode depot/purchase live smoke test.
+Native ONNX playback rejects both order reader versions before reading weights;
+the raw-mode control reaches weight-file validation. Its supplemental build
+report confirms the trainer/infer/audit/common-library hashes did not change.
+
+To repeat the fit and its independent checks from the WSL checkout, choose a
+fresh output directory (these commands refuse to overwrite existing runs):
+
+```bash
+set -e
+runtime=/home/imsa/.local/share/openttd-rl
+py="$runtime/venv/bin/python"
+build="$runtime/build/human-orders-20261002-02"
+evidence="$runtime/runs/human-orders-20261002-01"
+out="$runtime/runs/human-orders-repeat"
+"$py" scripts/dev/imitate_v2.py --trainer "$build/rl_dev_v2_imitation" \
+  --dataset "$evidence/replay-manual-latest/dataset.json" --output "$out/imitation" \
+  --device cuda:0 --seed 20261002 --epochs 1000 --learning-rate 0.0003 \
+  --financial-features signed-log-orders-v2
+"$py" scripts/dev/audit_bus_orders_v2.py --imitation-run "$out/imitation" \
+  --audit-executable "$build/rl_dev_v2_action_audit" --policy "$build/rl_dev_v2_infer" \
+  --output "$out/audit"
+"$py" scripts/dev/verify_imitation_v2.py --build-dir "$build" \
+  --imitation-run "$out/imitation" --output "$out/ppo-import" --device cuda:0 \
+  --financial-features signed-log-orders-v2
+"$py" scripts/dev/live_bus_orders_v2.py \
+  --openttd "$runtime/bus-orders-engine-20261002-01/build/openttd" \
+  --policy "$build/rl_dev_v2_infer" --imitation-run "$out/imitation" \
+  --output "$out/live" --device cuda:0 --seed 20261002 --decisions 24 --ticks 128
+```
+
+## Distinct native action inputs (October 2)
+
+**Verified: 11/11 unique human choices, with no input or prediction ties.**
+The final 512-epoch CUDA fit reproduced all three purchases, four starts and
+four repayments. In `command-26`, vehicle 1 now receives probability 0.885299
+versus 0.106080 for vehicle 2, a margin of 0.779219. Every target beats every
+legal alternative by at least that margin. Reversing legal rows within each
+family preserved all 11 semantic choices; maximum probability change was
+1.20e-7. This is training fit on the original one-game recording.
+
+The actual native input audit covered **25,936 legal rows across 11 archived
+observations**, including repeated states. Same-input/different-parameter groups
+fell from **8,543 to zero**: roads 4,753, stops 2,203, depots 1,465, routes 120,
+starts 1 and sales 1 were removed. Loans remained distinguishable. A fresh audit
+of the archived loan-only models reports 10/11 unique choices before PPO and
+6/11 after PPO, while preserving their historical 11/11 and 7/11 row scores.
+
+The first new-mode 256-epoch fit reached 10/11: its remaining START mistake had
+distinct inputs and a negative margin of -0.019671, not an accidental correct tie.
+Its failed strict audit is retained. The single extension to 512 epochs used
+training fit only, with unchanged seed 20261002 and learning rate 0.0003; no
+development map or held-out evaluation selected it. Final negative log likelihood
+was 0.020136 and mean target probability 0.980603. CPU/CUDA probability error was
+at most 2.38e-7, gradient error 1.86e-9, and checkpoint reload error zero.
+
+New native imitation runs default to **`signed-log-actions-v1`**. This extends
+the loan correction to every active M15 action parameter without changing the
+32-feature policy architecture, game commands, legal masks or PPO objective.
+The historical `--financial-features` option names the combined preprocessing
+version. `raw`, `signed-log-v1` and `signed-log-loan-v1` retain their original
+input behavior and archive interpretation; existing models must retain their tag.
+
+The current native schema uses family plus three uint32 parameter words:
+
+| Action | Parameters exposed to the policy |
+| --- | --- |
+| Town pair | Ordered origin and destination town IDs |
+| Single-tile road | Tile, road bits (X/Y), length |
+| Bus stop / road depot | Tile and diagonal orientation |
+| Buy bus | Depot tile and engine ID |
+| Set route | Vehicle ID, ordered origin and destination station IDs |
+| Start / stop / send to depot / sell | Vehicle ID |
+| Manage loan | Borrow/repay direction and amount |
+
+Reserved feature slots 20–23 encode parameter 1, 24–27 parameter 2, and 28–31
+parameter 3. Each word is split into four little-endian bytes; each byte becomes
+`log1p(byte) / log(256)`. This is injective in float32 for all 256 byte values,
+including at uint32 carry boundaries, and gives small vehicle IDs a useful scale.
+It does not encode candidate row, target label, stable-key hash or future state.
+Family embeddings and original features 0–19 remain in place, with the existing
+signed-log finance transform. Occupied reserved features, active parameter words
+4–15, or unsupported loan amounts fail closed. Masked padding remains ignored.
+New archives reject mismatched preprocessing; ONNX export/playback reject the
+new mode until equivalent parameter preprocessing is qualified.
+
+The imitation metrics retain `accuracy` as historical greedy row accuracy and
+add `unique_exact_accuracy`, input-alias counts, target ties, minimum probability
+margin, per-family summaries and initial/final per-example details. Unique success
+requires no same-input legal target alias and a target probability more than
+`1e-6` above every legal alternative. New-mode training rejects an aliased target
+before its first optimizer update. A completed low-epoch fit is not automatically
+a successful unique-action fit.
+
+`audit_action_inputs_v2.py` runs the actual C++ reader over every legal candidate
+in archived training observations, preserving its emitted float32 features. It
+compares loan-only and complete-action preprocessing, checks original artifact
+hashes, and optionally verifies a new model against those exact human examples.
+The prediction check reverses legal rows within each family and requires the
+same unique semantic choices. Synthetic native tests additionally cover every
+byte value, large adjacent IDs, orientation and route contrasts, policy gradients,
+padding, row permutation, schema rejection and CPU/CUDA archive reload.
+
+The recording still supplies only three purchases, four starts and four
+repayments. Structural road/stop/depot/route distinctions are covered by input
+audits and numerical fixtures, not demonstrated human learning of those actions.
+Long drags, drive-through stops, cloning and GUI order edits remain outside the
+exact supported imitation labels. This work does not establish held-out playing
+strength or address the earlier PPO retention/debt-management failures.
+
+Verification passed all 10 native V2 CPU/CUDA tests, all 59 focused Python tests
+with no skips, and all 136 portable fast tests. Synthetic CPU and CUDA checks
+passed fresh PPO weight import, finite updates and pre-update rejection of an
+aliased target. All 11 human examples passed CUDA import parity and unique-choice
+checks. Both Python and the independently compiled ONNX executable reject the
+unsupported parameter modes before loading weights. Bash syntax and
+`git diff --check` passed. Two initial compiler failures from signed-index/character
+warnings were repaired; their records remain in the new build directory.
+
+Artifacts are under `/home/imsa/.local/share/openttd-rl` in Ubuntu-24.04:
+
+- `build/human-actions-20261002-01/`: isolated executables, build provenance,
+  source snapshots, successful build log and preserved failed attempts.
+- `runs/human-actions-20261002-01/imitation/` and `action-audit-256/`: the
+  256-epoch diagnostic and failed strict fit audit.
+- `runs/human-actions-20261002-01/imitation-fit/`: final 512-epoch fit, exact
+  training tensors, source, metrics and weights.
+- `runs/human-actions-20261002-01/action-audit/report.json`: full before/after
+  alias groups, native transformed features, unique predictions, row permutations
+  and unchanged input/model hashes.
+- `runs/human-actions-20261002-01/historical-tie-audit/`: strict metrics for the
+  untouched archived imitation/PPO pair.
+- `runs/human-actions-20261002-01/import-check/`, `synthetic-cpu/`,
+  `synthetic-cuda/`, `native-tests/`, `python-tests/` and `onnx-guard/`:
+  verification reports and logs.
+
+Reproduce in WSL using a fresh build and output directory:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+PY="$RL_ROOT/venv/bin/python"
+POLICY_BUILD="$RL_ROOT/build/human-actions-new"
+EXPERIMENT="$RL_ROOT/runs/human-actions-new"
+"$PY" scripts/dev/local.py build --v2-policy --jobs 2 \
+  --cuda-root /usr/local/cuda-12.6 --build-dir "$POLICY_BUILD"
+"$PY" scripts/dev/imitate_v2.py \
+  --trainer "$POLICY_BUILD/rl_dev_v2_imitation" \
+  --dataset "$RL_ROOT/runs/human-replay-full-20261002-01/dataset.json" \
+  --device cuda:0 --seed 20261002 --epochs 512 --learning-rate 0.0003 \
+  --financial-features signed-log-actions-v1 --output "$EXPERIMENT/imitation"
+"$PY" scripts/dev/audit_action_inputs_v2.py \
+  --imitation-run "$RL_ROOT/runs/human-imitation-20261002-01/imitation-loan-fit" \
+  --audit-executable "$POLICY_BUILD/rl_dev_v2_action_audit" \
+  --prediction-run "$EXPERIMENT/imitation" \
+  --policy "$POLICY_BUILD/rl_dev_v2_infer" --output "$EXPERIMENT/action-audit"
+"$PY" scripts/dev/verify_imitation_v2.py \
+  --build-dir "$POLICY_BUILD" --device cuda:0 \
+  --financial-features signed-log-actions-v1 \
+  --imitation-run "$EXPERIMENT/imitation" --output "$EXPERIMENT/import-check"
+```
+
+## Human replay, imitation, and the loan-direction defect (October 2)
+
+The first human recording has now been validated, its supported decisions have
+trained the C++ policy through imitation and then live PPO, and the resulting
+policy has been evaluated on different development maps. The owner deferred
+collecting another
+5–10 games. The later bus-only lesson request authorizes one focused new
+recording, described under Local human command recording below.
+
+**Native replay is now verified.** The prefix through
+`Cartborough Transport, 1950-03-18.sav` replayed 29 commands and matched cash
+82,819, debt 100,000, roads, complete serialized orders, vehicles, stations,
+depots and date/fraction. Replaying all 65 commands through the final
+`Cartborough Transport, 1967-09-01.sav` matched cash 120,938 and debt 60,000.
+The independently rebuilt, guarded replay also matched tick 478,777 and the
+complete public finance state. Replay-confirmed command costs totalled 16,751
+for the early prefix and 38,087 for the final prefix. Every immediate command
+reconciled `cash_change = loan_change - command_cost`. The stock recording did
+not contain original execution costs; these are costs confirmed during replay,
+with checkpoint equality providing the independent state check.
+
+The final prefix supplies **11 exact supported human labels**: three `BUY_BUS`,
+four `START_VEHICLE`, and four `MANAGE_LOAN` repayments of 10,000 each. The depot
+command was outside the retained native candidate quota. Long road drags,
+drive-through stops, cloning and GUI order edits were replayed for equivalence
+but excluded from imitation because their semantics do not exactly match the
+current policy actions. Failed/test/estimate records are excluded. No gaps were
+labelled WAIT, and the game contains no explicit additional-borrowing examples.
+Each retained example has pre-action public tensors, the exact native legal
+mask, stable candidate identity, source command and confirmed cost.
+
+**The first learning test exposed an action-representation defect.** Native
+borrow and repay have distinct parameter values (direction 1 and 2), but the
+policy loader discarded those parameters except the action family. Their
+command costs are both zero; priorities `UINT32_MAX - direction`, normalized as
+float32, both round to 1. Their entire 32-float feature vectors were identical.
+This was independently confirmed from archived native tensor rows 3841/3842,
+including the binary hash. Legal masks and financing observations alone could
+not make the policy distinguish the directions.
+
+The original fixed test used the existing `signed-log-v1` preprocessing, CUDA,
+64 supervised epochs, learning rate 0.0003 and seed 20261002. Negative log
+likelihood fell from 2.635650 to 0.792878 and exact-action accuracy rose from
+3/11 to 7/11: all purchases and starts were reproduced, but none of the four
+repayments. The old `family_accuracy` field in that run is the raw family-head
+argmax, not the family of the globally greedy action; its name is corrected to
+`family_head_accuracy` for future runs. A separate action audit found that the
+four repayment contexts selected `BUY_BUS`. Do not call this learned repayment.
+
+On each of the three fixed development maps, the original imitation model failed
+to start service, made 138 borrow and 118 repay actions with 236 immediate opposite
+loan-action pairs, and ended with 292,783 cash and 300,000 debt. Its cash result
+excluding financing was -7,217. High cash here was borrowed principal, not earned
+income. The associated PPO attempt was intentionally interrupted after two
+updates and 289 recorded transitions once the feature collision was confirmed.
+Its failed-behavior evidence, partial rollout and reset checkpoint are retained.
+This correction follows an encoded-input defect, not selection on held-out maps.
+
+The correction is an opt-in **`signed-log-loan-v1`** preprocessing mode in the
+existing C++ input boundary. It retains signed-log money features and adds
+borrow/repay indicators to reserved candidate features 30 and 31, derived only
+from the visible native direction parameters. It preserves the existing native
+actions, masks, rewards, and loan-principal accounting. Model archives bind the
+preprocessing name; old modes retain their behavior. ONNX export for the new
+mode is rejected until equivalent preprocessing is qualified. Python export and
+package checks reject it, and an independently compiled native ONNX target also
+rejects it before loading a model. This mode identifies the archived native loan-learning
+experiments; do not silently change a historical model's preprocessing tag.
+
+**The corrected small experiment completed.** At the same 64-epoch budget the
+new encoding reached 8/11 exact decisions (four starts and four repayments,
+but no purchases). A single bounded 256-epoch fit on the same 11 training
+examples then reached **11/11 greedy target rows**: all three purchases, four
+starts and four repayments, including one tied START candidate described below.
+This extension was chosen from training fit, not development-map
+scores. Negative log likelihood fell from 2.629874 to 0.065524; mean target
+probability reached 0.952086. CPU/CUDA probability error was at most 3.58e-7,
+gradient error 1.40e-9, and reload error zero. This is a training fit from one
+game, not held-out imitation accuracy or proof that every action is distinguishable.
+
+**The loan correction does not fix every action feature.** A final read-only
+inventory of all legal candidates in the 11 archived training observations
+confirmed zero remaining borrow/repay aliases under `signed-log-loan-v1`, but
+found same-feature/different-parameter groups for roads, stops, depots, routes,
+starts and selling. These are possible semantic aliases, not measurements of
+their gameplay impact. Counts include repeated states across observations.
+One alias directly affects a training label: in `command-26`, START rows 3073
+and 3074 identify vehicles 1 and 2 but have identical features. The demonstrated
+target is row 3073, which wins the greedy tie; its probability is only 0.499473
+after imitation and 0.383774 after PPO. Therefore **11/11 includes one tie and
+does not establish learned vehicle discrimination**. Preserve the verified loan
+fix and baseline; version and test the remaining public action distinctions
+before claiming complete route/vehicle learning.
+
+The verified weights initialized fresh PPO Adam and recurrent state. Four CUDA
+PPO updates collected 512 decisions on training map seeds 1110312784 and
+786545128, using 128-step rollouts and 256-decision episodes, guide v5, finance
+observations, choice-weighted policy loss, fp64 gradient-norm reduction and the
+existing asset potential. All metrics were finite and behavior-probability replay
+error was zero at every update. Training delivered 310 passengers on the first
+map and none on the second. The first update's approximate KL was 0.256766;
+this short run is not evidence of a conservative or converged update schedule.
+Resuming from update 2 reproduced the final two updates, all 256 subsequent
+decisions and economic transitions, and all 277 normalized native checkpoint
+state fields exactly, including model, Adam, recurrent state and CPU/CUDA RNG.
+The imitation weights are imported only at initialization, never over a resumed
+PPO checkpoint.
+
+**Service transfer occurred only with sampling; financing remains poor.** Every
+row below uses the same three development maps, seed 20261002, 256 decisions,
+starting cash/debt of 100,000 and the public guide v5. Values separated by `/`
+follow map order 1630856436, 155097162, 1456534872. These are development maps,
+not held-out human games or the frozen final evaluation corpus.
+
+| Controller | Maps starting service | Passengers by map | Operating profit by map | Mean immediate loan reversals |
+| --- | ---: | --- | --- | ---: |
+| Scripted baseline | 3/3 | 673 / 465 / 732 | 2,688 / 781 / 2,761 | 0 |
+| Imitation, greedy | 0/3 | 0 / 0 / 0 | -334 / -334 / -334 | 245 |
+| Imitation + PPO, greedy | 0/3 | 0 / 0 / 0 | -334 / -334 / -334 | 245 |
+| Imitation, sampled | 0/3 | 0 / 0 / 0 | -417 / -401 / -317 | 209.7 |
+| Imitation + PPO, sampled | 3/3 | 186 / 93 / 205 | 450 / -226 / 496 | 147 |
+
+Sampled evaluation was an explicitly paired diagnostic after greedy failure;
+neither result selected or tuned a model. Sampled PPO started service at decision
+175 on all three maps, ended with debt 20,000 / 30,000 / 20,000 and cash
+12,732 / 18,407 / 13,780. Its minimum decision-boundary cash was only
+2,011 / 4,160 / 3,057. Cash results excluding financing were
+-7,268 / -11,593 / -6,220: the short services did not recover construction costs.
+All reported controllers had zero invalid actions and no bankruptcy. Greedy
+imitation and PPO reached minimum cash -25 and spent every decision on loans.
+The scripted baseline also ran with small cash reserves; it is a service control,
+not an optimal repayment policy. Immediate reversals count adjacent opposite
+loan-action pairs, so an alternating sequence of three actions has two reversals.
+Report interest as a lower bound from observed year-to-date counters; a reset
+can hide charges at a year boundary.
+
+**PPO also forgot the demonstrated repayments.** A read-only native audit on the
+same 11 training examples, full native masks and independent recurrent resets
+found 11/11 greedy target rows before PPO and 7/11 afterward, including the same
+START tie. Purchases and starts were retained at the greedy-row level;
+all four repayment contexts instead selected `BUY_BUS`. Mean repayment target
+probability fell from 0.996780 to 0.001420. This is training-example retention,
+not a new evaluation split. It motivates a bounded retention/learning-rate
+experiment before a longer PPO run; it does not justify silently mixing human
+examples into the on-policy rollout buffer or declaring debt management solved.
+
+All paths below are under `/home/imsa/.local/share/openttd-rl` in Ubuntu-24.04:
+
+- `runs/human-replay-early-20261002-02/report.json`: verified early prefix.
+- `runs/human-replay-full-20261002-01/dataset.json`: immutable training dataset
+  and its replay report; `runs/human-replay-full-20261002-02/report.json` independently
+  rechecks the full prefix with additional company/cost/tick/finance guards.
+- `human-input-20261002-01/transfer.json`: allowlisted original Windows capture
+  hashes and verified Linux runtime copy; user saves and ordinary configuration
+  were preserved.
+- `human-replay-engine-20261002-02/final-build.json`: isolated source/binary
+  identity, build logs and unchanged base-engine checks.
+- `runs/human-imitation-20261002-01/imitation/`: original fixed human fit;
+  `runs/human-imitation-20261002-01/human-import-actions/report.json`: actual
+  selected actions and import parity.
+- `runs/human-imitation-20261002-01/evaluation/`: original map tests, scripted
+  baselines and `native-loan-feature-equality.json` with the independent defect
+  evidence. The three map seeds are 1630856436, 155097162 and 1456534872, each
+  evaluated for 256 decisions with guide v5 and finance observations.
+- `runs/human-imitation-20261002-01/ppo/interruption-context.json`: why the
+  original PPO attempt was stopped, with all earlier artifacts retained.
+- `runs/human-imitation-20261002-01/imitation-loan/`: paired 64-epoch corrected
+  diagnostic; `imitation-loan-fit/`: final 256-epoch training fit. Their
+  `human-import-loan-actions/` and `human-import-loan-fit-actions/` sibling
+  directories verify native import and the actual selected actions.
+- `runs/human-imitation-20261002-01/ppo-loan/`: completed four-update refinement;
+  `ppo-loan-resume/` and `resume-verification.json`: exact continuation proof.
+- `runs/human-imitation-20261002-01/evaluation/main-greedy-report/` and
+  `evaluation/main-sampled-report/`: paired JSON/Markdown outcomes and hashes.
+  Effective environment settings match. Greedy baseline and model evaluations
+  have different recorded evaluator source snapshots; this is disclosed rather
+  than claiming identical source. The sampled pair shares its evaluator source.
+- `runs/human-imitation-20261002-01/ppo-retention/report.json`: all 11 before/after
+  native predictions with model, executable and tensor hashes verified.
+- `runs/human-imitation-20261002-01/candidate-semantic-alias-inventory/`: read-only
+  raw/corrected feature inventory, full alias groups, audit script and hashes.
+  Only one retained training target has a non-loan alias, the START pair above.
+- `runs/human-imitation-20261002-01/evaluation/outcome-plot/`: inspected PNG/SVG
+  outcome chart, rendering script and report/evidence/output hashes.
+- `runs/human-replay-parser-audit-20261002-01.json`: malformed-record rejection
+  and unchanged event output for all 65 verified commands. Published replay
+  reports remain immutable; their original cost wording is clarified above.
+- `build/human-loan-onnx-guard-20261002-03/report.json`: compiled rejection check.
+- `imitation-build-correction.json`: an initial build touched the prior pilot's
+  trainer; it was restored to its exact recorded hash. All subsequent builds use
+  isolated directories. Failed builds and experiments remain preserved.
+
+The development workflow now uses `prepare_human_replay.py`, `replay_human.py`,
+and `imitate_v2.py`; `train_v2.py --imitation-run` imports verified supervised
+weights into fresh PPO optimizer/recurrent state. `infer_v2.py --imitation-run`
+evaluates the policy before PPO. `report_imitation_eval_v2.py` audits actual
+native service, command spending, liquidity, debt and immediate loan reversals.
+PPO continues to collect its own behavior probabilities and exact sampling masks.
+Sparse human examples use independent recurrent resets, and do not establish
+learning of timing, complete route construction or whether additional borrowing
+is productive. The imitation objective has no critic labels. The public guide
+still supplies route geometry in live tests and restricts masks compared with
+the original full native masks used for imitation and retention checks.
+
+Verification passed six native policy/distribution/loan-feature CPU/CUDA tests,
+the synthetic CPU/CUDA import/update checks, the real human-label import check,
+the focused Python suite (128 tests: 127 passed, one skipped), and all 136
+portable fast tests. The skipped direct-export test requires Torch; both tests
+in its module passed when rerun in the training virtualenv. The compiled ONNX
+rejection test and all three replay/parser tests passed. The new Bash examples
+passed syntax checks, and `git diff --check` passed.
+
+Reproduce the small learning sequence from this checkout in WSL with fresh
+output directories. The following uses the verified engine and dataset already
+on this host; the replay preparation commands are provided separately below.
+Build into a new directory rather than overwriting a prior experiment's native
+executables. `local.py build` uses the detected CUDA architecture.
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+PY="$RL_ROOT/venv/bin/python"
+POLICY_BUILD="$RL_ROOT/build/human-imitation-new"
+EXPERIMENT="$RL_ROOT/runs/human-imitation-new"
+ENGINE="$RL_ROOT/v2-finance-engine-20261002-01/build/openttd"
+"$PY" scripts/dev/local.py build --v2-policy --jobs 2 \
+  --cuda-root /usr/local/cuda-12.6 --build-dir "$POLICY_BUILD"
+"$PY" scripts/dev/imitate_v2.py \
+  --trainer "$POLICY_BUILD/rl_dev_v2_imitation" \
+  --dataset "$RL_ROOT/runs/human-replay-full-20261002-01/dataset.json" \
+  --device cuda:0 --seed 20261002 --epochs 256 --learning-rate 0.0003 \
+  --financial-features signed-log-loan-v1 --output "$EXPERIMENT/imitation"
+"$PY" scripts/dev/verify_imitation_v2.py \
+  --build-dir "$POLICY_BUILD" --device cuda:0 \
+  --financial-features signed-log-loan-v1 \
+  --imitation-run "$EXPERIMENT/imitation" --output "$EXPERIMENT/import-check"
+"$PY" scripts/dev/train_v2.py \
+  --openttd "$ENGINE" --trainer "$POLICY_BUILD/rl_dev_v2_train" \
+  --device cuda:0 --seed 20261002 --updates 4 --rollout-length 128 \
+  --episode-horizon 256 --training-map-count 2 --finance-observations \
+  --financial-features signed-log-loan-v1 --guidance one-bus-public-plan-v5 \
+  --policy-loss choice-weighted --gradient-norm fp64-v1 --asset-potential \
+  --reuse-bootstrap-tensors --checkpoint-interval 2 \
+  --imitation-run "$EXPERIMENT/imitation" --output "$EXPERIMENT/ppo"
+for mode in greedy sampled; do
+  for map in 1630856436 155097162 1456534872; do
+    "$PY" scripts/dev/infer_v2.py \
+      --openttd "$ENGINE" --policy "$POLICY_BUILD/rl_dev_v2_infer" \
+      --device cpu --seed 20261002 --mode "$mode" --decisions 256 \
+      --split development --map-seed "$map" \
+      --imitation-run "$EXPERIMENT/imitation" \
+      --guidance-override one-bus-public-plan-v5 \
+      --output "$EXPERIMENT/imitation-$mode-$map"
+    "$PY" scripts/dev/infer_v2.py \
+      --openttd "$ENGINE" --policy "$POLICY_BUILD/rl_dev_v2_infer" \
+      --device cpu --seed 20261002 --mode "$mode" --decisions 256 \
+      --split development --map-seed "$map" --training-run "$EXPERIMENT/ppo" \
+      --output "$EXPERIMENT/ppo-$mode-$map"
+  done
+done
+"$PY" scripts/dev/audit_imitation_retention_v2.py \
+  --imitation-run "$EXPERIMENT/imitation" --ppo-run "$EXPERIMENT/ppo" \
+  --policy "$POLICY_BUILD/rl_dev_v2_infer" --output "$EXPERIMENT/retention"
+```
+
+The local CUDA toolkit path is host-specific; the verified loan build's
+`CMakeCache.txt` records `/usr/local/cuda-12.6/bin/nvcc`. Inspect local build
+provenance before building elsewhere. Generate comparisons with
+`report_imitation_eval_v2.py --runs LABEL=PATH ... --output FRESH_DIRECTORY`,
+using a separate report for each inference mode and repeated policy labels
+across maps. To check continuation, run the same PPO configuration with
+`--updates 2 --resume "$EXPERIMENT/ppo/checkpoints/update-000002"`, omit
+`--imitation-run`, and use a new output directory. Then run
+`compare_v2_resume.py --original ORIGINAL --resumed RESUMED --output NEW_REPORT.json`.
+Do not edit archived source/configuration to bypass a resume compatibility check.
+
+To replay the preserved Linux-accessible recording again, use fresh directories:
+
+```bash
+"$PY" scripts/dev/prepare_human_replay.py \
+  --base-engine-root "$RL_ROOT/v2-finance-engine-20261002-01" \
+  --engine-root "$RL_ROOT/human-replay-engine-new" --jobs 4
+"$PY" scripts/dev/replay_human.py \
+  --openttd "$RL_ROOT/human-replay-engine-new/build/openttd" \
+  --recording "$RL_ROOT/human-input-20261002-01" \
+  --checkpoint 'Cartborough Transport, 1967-09-01.sav' \
+  --output "$RL_ROOT/runs/human-replay-full-new"
+```
+
+## Learning priority: debt and route investment (October 2)
+
+The owner explicitly gives loan and debt management equal importance to route
+placement. The learning objective includes choosing productive borrowing,
+preserving enough cash for operation and construction, expanding at a sustainable
+pace, and deciding when to repay. A successful bus builder must also demonstrate
+these financing choices over time.
+
+Native V2 already exposes `MANAGE_LOAN` borrow/repay actions. The historical v3/v4
+one-bus guide restricts borrowing to blocked construction with no vehicle and
+cash below 10,000; v4 also gates repayment on starting service and retaining at
+least 20,000 cash before the repayment action. The new opt-in
+`one-bus-public-plan-v5` guide keeps every native legal borrow/repay choice
+available alongside WAIT and the proposed construction step. Historical guides
+retain their behavior. Route geometry still comes from the public one-bus planner;
+the policy chooses financing and whether/when to advance construction.
+
+The opt-in `finance-v1` observation mode uses effective `GetMaxLoan()` rather than
+the raw company override sentinel. It adds borrowing headroom, interest rate,
+current-quarter income, expenses and operating profit, and current-year interest
+paid. These are own-company observations, validated against native state. The
+schema is `v2-m15-public-development-finance-v1`; reserved structured slots 16-22
+encode the seven fields, with signed-log amounts and interest percent divided by
+100. Own-company slot 4 contains the effective maximum loan divided by 1e9.
+Legacy observations remain unchanged. Inference and reset checkpoints bind the
+schema; the frozen study, MCP and ONNX paths do not accept this new schema yet.
+
+For the human-data learning path, capture cash, outstanding principal, effective
+borrowing limit/headroom, interest settings and paid interest, recent earned
+income and operating costs, and actual construction/vehicle spending at decision
+boundaries. Use only information available then; long-run outcomes belong in
+later rewards and reports. Keep the distinct options to borrow, repay, invest or
+wait in the same native action boundary used by the policy and MCP.
+
+Account for principal separately from earnings and costs. The existing
+`cash_result_excluding_financing = balance_change - loan_change` convention
+should remain: a borrow/repay round trip must not create reward from principal
+flows, and cash gained by borrowing must not look like business income. Evaluate
+interest cost, liquidity shortages, debt trajectory, net investment, passenger
+service and survival together. A fixed repay-first controller remains a baseline,
+not evidence that the policy learned when repayment helps.
+
+The first demonstration contains four repayment requests and use of its starting
+finances; it contains no explicit `CmdIncreaseLoan` records. Preserve its value
+as phased investment/repayment evidence without claiming it demonstrates every
+borrowing decision. Broader borrowing behavior needs suitable decision contexts
+and observed examples or live exploration. The verified replay and separate
+imitation path are described above; the earlier finance pilot did not use them
+and does not establish trained financing competence.
+
+## Finance-aware live PPO pilot (October 2)
+
+The first pilot completed four C++/LibTorch PPO updates on the local RTX 2070
+(`cuda:0`), with 512 unique training decisions across two 256-decision episodes.
+It uses guide v5 and finance observations, signed-log financial features,
+choice-weighted policy loss, existing asset potential and fp64 gradient-norm
+reduction. PPO mathematics and reward formulas were not changed for this pilot.
+Borrowed principal does not count as earnings or add capital/potential reward.
+This is live planner-assisted PPO, not training on the human recording.
+
+Artifacts are under
+`/home/imsa/.local/share/openttd-rl/runs/finance-pilot-20261002-01` in Ubuntu-24.04.
+`report.json` and `finance-curves.png` summarize the actual traces; `train/`
+contains source/configuration, tensors, native economics, weights and checkpoints.
+The independent engine is `v2-finance-engine-20261002-01/build/openttd` under the
+same `openttd-rl` root, with build provenance in its `preparation.json`. The base
+engine, ordinary Windows game and human saves were preserved.
+
+| Episode/controller | Map seed | Passengers | Operating profit | Cash result excluding financing | Final debt |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Training episode 1 | 1110312784 | 682 | 2,104 | -5,301 | 70,000 |
+| Training episode 2 | 786545128 | 744 | 2,358 | -5,798 | 50,000 |
+| Saved policy, greedy development | 1630856436 | 0 | -2,334 | -2,684 | 100,000 |
+| Scripted development control | 1630856436 | 673 | 2,688 | -5,030 | 10,000 |
+
+Every row covers 256 decisions and starts with 100,000 cash and debt. All had zero
+invalid actions and no bankruptcy. Training operated one bus per map but made
+127 borrow and 135 repay actions, including 73 immediate opposite-loan actions.
+The saved policy chose WAIT for all 256 development decisions. Positive training
+operating profit did not recover construction spending. Four updates and one
+development map do not establish improved playing strength; the greedy policy
+still fails to initiate service.
+
+The native verification passed 27 paired legacy/finance snapshots, unchanged
+gameplay, exact +/-10,000 principal flows, and actual charged interest. All 512
+stored masks/log probabilities passed inspection; behavior replay error was zero.
+Resuming update 2 reproduced the next two updates, economic trace and final
+weights exactly (`resume-verification.json`). An eight-decision CPU/CUDA inference
+comparison passed: probability maximum absolute error 5.9e-8, value 1.79e-7,
+against tolerances 1e-5 and 1e-4. Focused development tests and the 136-test portable
+fast suite passed. The first fast-suite attempt used an unsuitable virtualenv;
+its missing Git/jsonschema failure log is retained, and the documented system
+Python invocation passed.
+
+Reproduce from the checkout in WSL using fresh output directories. This host
+already has the unchanged native trainer/inference build shown below:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+PY="$RL_ROOT/venv/bin/python"
+POLICY_BUILD="$RL_ROOT/build/refactor-gradient-clip-01"
+ENGINE_ROOT="$RL_ROOT/v2-finance-engine-new"
+PILOT="$RL_ROOT/runs/finance-pilot-new"
+"$PY" scripts/dev/prepare_finance_v2.py \
+  --base-engine-root "$RL_ROOT/v2-live-engine" \
+  --engine-root "$ENGINE_ROOT" --jobs 4
+"$PY" scripts/dev/verify_v2_finance.py \
+  --openttd "$ENGINE_ROOT/build/openttd" --output "$PILOT/native-finance-check"
+"$PY" scripts/dev/train_v2.py \
+  --openttd "$ENGINE_ROOT/build/openttd" \
+  --trainer "$POLICY_BUILD/rl_dev_v2_train" --device cuda:0 --seed 20261002 \
+  --updates 4 --rollout-length 128 --episode-horizon 256 --training-map-count 2 \
+  --financial-features signed-log-v1 --finance-observations \
+  --guidance one-bus-public-plan-v5 --policy-loss choice-weighted \
+  --gradient-norm fp64-v1 --asset-potential --reuse-bootstrap-tensors \
+  --checkpoint-interval 2 --output "$PILOT/train"
+"$PY" scripts/dev/evaluate_guide_v2.py \
+  --openttd "$ENGINE_ROOT/build/openttd" --controller scripted --mode greedy \
+  --seed 20261002 --map-seed 1630856436 --split development --decisions 256 \
+  --guidance one-bus-public-plan-v5 --finance-observations \
+  --output "$PILOT/scripted-development"
+"$PY" scripts/dev/infer_v2.py \
+  --openttd "$ENGINE_ROOT/build/openttd" --policy "$POLICY_BUILD/rl_dev_v2_infer" \
+  --training-run "$PILOT/train" --device cpu --seed 20261002 --mode greedy \
+  --decisions 256 --split development --map-seed 1630856436 \
+  --output "$PILOT/greedy-development"
+```
+
+The next slice from this pilot was verified human replay/action mapping and a
+separate imitation objective before PPO refinement; that work is recorded above.
+Financing scenarios also need varied
+capital requirements and later expansion: the present one-bus task begins with
+enough cash to build, so productive additional borrowing is not necessary.
+Simply increasing this pilot's training budget would not test the owner's full
+strategy. Keep the human recording as raw evidence until replay establishes
+observations, legal actions and confirmed outcomes at each decision.
+
+## Local human command recording (October 2)
+
+`scripts/dev/record_human.ps1` launches the installed Windows OpenTTD 15.3 with
+normal mouse/keyboard controls in a fresh, isolated 64x64 temperate game. It uses
+the stock `desync=1` command logger, an explicit per-session `-c` configuration,
+`-X` local-only search paths and `-x` to disable configuration persistence. It
+does not read/copy the ordinary game configuration, credentials or saves. Runtime
+artifacts go under `%LOCALAPPDATA%\OpenTTD-RL\demonstrations`, outside the checkout.
+
+Run from this checkout in Windows PowerShell:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev/record_human.ps1
+```
+
+For the owner's current focused bus lesson, add `-Lesson bus-routes`. The session
+includes `BUS-LESSON.md` and an editable `route-notes.md`, with lesson preferences
+recorded in `recording.json`: one directly purchased bus per initial route and
+Full load any cargo at both endpoints before first start. Aim for two routes;
+save `route-1-ready` before starting and `route-1-service` after passenger delivery,
+then the corresponding route-2 saves and `final`. Avoid reloading or changing
+maps mid-session. Corrections stay in the command history. Notes identify route
+reasoning, consulted windows/metrics and management decisions by game date or
+checkpoint; GUI navigation and video are not captured. Notes are annotations,
+never inferred policy labels. Completion inventories their final hash and lists
+missing requested checkpoints without pretending that capture verifies service.
+
+The bus lesson passed the installed-engine `-SmokeTest -Lesson bus-routes` at
+`C:\Users\imsa\AppData\Local\OpenTTD-RL\demonstrations\20261002-133745-smoke-6a437769`.
+It produced initial/exit saves, a setup command log, lesson/notes metadata and
+zero exit status. This checks recorder operation, not human gameplay or replay.
+The fresh interactive bus lesson was then launched at
+`C:\Users\imsa\AppData\Local\OpenTTD-RL\demonstrations\20261002-133851-human-eadd5d2c`
+with seed 1792482899. Startup inspection confirmed a responding OpenTTD 15.3
+process, `initial.sav` and the setup pause/save command records. It was left
+running for the owner. The completed capture exited with code zero and retained
+32 command records, 8 failed/test/estimate records and six saves.
+
+**The later manual save is now the primary verified checkpoint**, as requested
+by the owner. `Fluningbury Transport, 1958-06-18.sav` was overwritten at log line
+47; its actual final game date is 1958-08-19. Native replay through that last
+marker executed 30 commands successfully and matched all 11 checks (roads,
+complete serialized orders, cash, debt, date, tick, finance, vehicles, stations,
+depots and command-cost accounting). Two preliminary autosave replays passed
+but do not replace this final manual checkpoint.
+
+The final save has two directly purchased buses, one on station route 1 → 0 and
+one on 1 → 2. Both endpoints were Full load any cargo before each first start.
+The second bus copied the first bus's orders, deleted one endpoint, inserted a
+new endpoint and set its full-load flag. Both final buses are running with 31/31
+passengers. Cash rose from 100,000 to 104,326 while debt stayed at 100,000; total
+replayed command spending was 13,893. The demonstrated operation recovered its
+initial spending. Final current-quarter operating profit is 375. The adapter's
+17,158 operating profit and 5,270 passengers cover current plus up to 24 retained
+quarters, not lifetime totals. Continued simulation is outcome evidence, not
+inferred supervised WAIT actions; GUI viewing and rationale are not recorded.
+
+At capture verification, the importer exported only four exact labels (two purchases and two starts).
+Route insertion, full-load modification, copying/deleting orders and construction
+needed exact policy-action support before this recording could train those
+choices. The depot fell outside retained legal candidates. The subsequent
+orders-v1 implementation and learning results are documented at the top of this
+guide. Preserve the distinction between verified gameplay and supported labels.
+
+The hash-verified completed copy is under
+`%LOCALAPPDATA%\OpenTTD-RL\demonstrations\completed\20261002-133851-human-eadd5d2c-bus-01`.
+Windows `/mnt/c` visibility differed from native Windows AppData, so transfer used
+WSL UNC and verified all 17 captured files. Linux input is
+`/home/imsa/.local/share/openttd-rl/human-input-bus-20261002-01`; results are in
+`/home/imsa/.local/share/openttd-rl/runs/human-bus-capture-20261002-01/`, especially
+`replay-manual-latest/report.json` and `capture-report.json`. Exact Windows parser
+and test copies plus hashes are retained in `tooling-latest/`. The user-facing
+report is `%LOCALAPPDATA%\OpenTTD-RL\analysis\bus-capture-20261002-01\capture-report.md`.
+
+Replay checkpoint discovery now supports both `save/` and `save/autosave/`,
+rejecting ambiguous basenames. Duplicate save markers fail closed by default.
+Explicit `--checkpoint-occurrence latest` chooses the last marker; it permits a
+same-file load/preview marker only immediately before that selected save, with
+the ambiguity recorded and native equality still mandatory before labels export.
+OpenTTD logs `load:` for save-dialog previews too; never infer a user reload from
+that marker alone. Other loads/map changes and overwritten initial saves reject.
+All eight focused parser tests passed, along with the three native checkpoint
+replays and `git diff --check`.
+
+The game starts paused in 1950 with six towns. Unpause, build a passenger-bus
+service, let it deliver passengers, save (any name is accepted), and quit normally.
+Each launch uses a unique folder. Use one map per recording; do not reuse a recording folder
+or its configuration because the stock logger truncates its file at process start.
+The first capture should be brief, followed by an audit of actual construction and
+order commands before spending time on larger demonstrations.
+
+Each folder contains `READ-ME.txt`, `recording.json`, the exact recorder/config/
+startup script, `save/initial.sav`, the native `save/autosave/commands-out.log`,
+and periodic/manual/exit saves. Provenance includes seed, executable version/hash,
+available base-asset hashes, source revision/dirty state, command line, native CPU
+runtime and capture result. The setup `pause`/`save initial` and startup commands
+are not human labels. No game command history before capture can be recovered
+from a final save alone.
+
+**This is raw evidence, not a training-ready dataset.** Stock command logging
+precedes execution and its `cmdf` records include failed tests and estimate-only
+queries. It lacks confirmed results/costs, public observation tensors, legal masks
+and policy action labels. The new native replay and separate C++ imitation path
+above accepts only a verified, exactly mapped subset. Do not feed raw records
+directly into the on-policy PPO buffer or infer replay equivalence from capture.
+Generated demonstration
+maps are not registered development or held-out evaluations.
+
+The installed Steam 15.3 binary passed the bounded `-SmokeTest -Seed 20261002`
+capture check at
+`C:\Users\imsa\AppData\Local\OpenTTD-RL\demonstrations\20261002-094318-smoke-9e79498d`.
+The null video driver verified initial/exit saves, command-log creation, the native
+setup pause record and a zero process exit; it did not exercise human mouse input
+or a playable-company demonstration. Two earlier failed launcher checks are
+retained beside it. A Steam version change is refused pending requalification.
+
+The initial desktop shortcut failed before launching the game because Explorer
+does not inherit Codex's Git path. The launcher now resolves the installed/bundled
+Git executable explicitly (or accepts `-GitExecutable`), checks its exit status,
+and imports the running PowerShell edition's built-in modules. Initialization
+failures retain `launcher-error.log` and `recording.json`; interactive failures
+show an error dialog. No global PATH or PowerShell configuration is changed.
+
+Logging is enabled in the session's `scripts/autoexec.scr`, before game generation,
+instead of with `-d`. The latter opens a Windows debug console whose QuickEdit
+selection can stall startup. The final desktop-environment smoke passed in
+`20261002-095916-smoke-d23cfabe`. The actual desktop shortcut then opened a playable
+GUI and wrote `save/initial.sav` in `20261002-095952-human-066d342d`; its native log
+also records human construction. That session was left running for the user.
+Earlier failed starts are retained. These checks establish capture startup, not
+replay equivalence, a successful bus trajectory or learning.
+
+The first human session now contains manual saves and commands for two buses
+with separate two-stop routes sharing one station. An allowlisted, hash-checked
+snapshot through the `Cartborough Transport, 1955-01-25.sav` save record is in
+that session's `audits/two-routes-20261002-100835-7926bd5c` directory. The snapshot
+has the initial save, four manual saves, and the exact command-log prefix through
+the selected save; later live gameplay is excluded. Order payloads were checked
+against upstream tag 15.3. These are intended command sequences, not confirmed
+deliveries or profits. The native replay and supported action mapping were
+subsequently verified in the human-learning workflow above.
+
+That session subsequently finished with four distinct bus routes and a clean
+recorder exit. The final manual save is `Cartborough Transport, 1967-09-01.sav`;
+the exit save is also retained. A verified copy of the complete capture is under
+`%LOCALAPPDATA%\OpenTTD-RL\demonstrations\completed\20261002-095952-human-066d342d-b8b26671`.
+It includes a lossless structured event timeline and the owner's verbatim strategy
+annotation: phased expansion, careful initial borrowing, terrain-aware roads,
+dense stop placement, limited bus capacity, and later loan repayment. Initial
+and exit saves both passed isolated native load checks; results are in sibling
+`verification-20261002-101536-b47f8d1c`. Loading is not replay verification or a
+learning result. Preserve timing without labelling every inter-command gap WAIT.
+The completed native replay above uses the pinned serialized-command dispatcher,
+captures public state before supported decisions and confirms execution results.
+The short-episode economics helper still cannot establish lifetime operating
+totals for this long demonstration; the replay compares actual saved cash/debt
+and public finance fields instead.
+
 ## Portable Vast.ai recovery study (September 25)
 
 The [single-GPU package](../deployment/vast/README.md) builds and qualifies the
@@ -575,7 +1519,12 @@ for experiment hypotheses, actual results, limitations, and the next iteration.
 1. **Stronger live V2 learning:** the recurrent policy now trains from native
    sequential decisions and resumes at verified resets. Establish improvement
    over uniform/scripted controls under the same public route guide; current
-   guided service alone does not show a learned advantage.
+   guided service alone does not show a learned advantage. The human-imitation
+   connection is now working; next make the remaining public candidate meanings
+   distinguishable, then compare repayment retention, greedy/sampled service and
+   cash under a bounded update change before scaling training. The
+   October 2 evidence above is the baseline, and extra demonstrations remain
+   deferred until the owner resumes that work.
 2. **More transport:** native scripted passenger/mail service now works together
    on two development maps. Extend useful neural cargo control and then industrial
    freight. Historical M16 qualification fixtures are not live play.

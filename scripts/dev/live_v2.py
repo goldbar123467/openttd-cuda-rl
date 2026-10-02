@@ -15,6 +15,18 @@ from local import ROOT, capture_source, positive, source_identity, write_json
 
 SCHEMA = "openttd-rl-development-v2-live-1"
 SHARED_SCHEMA = "openttd-rl-development-v2-shared-1"
+OBSERVATION_SCHEMAS = {
+    "legacy": "v2-m15-public-development-v2",
+    "finance-v1": "v2-m15-public-development-finance-v1",
+    "orders-v1": "v2-m15-public-development-orders-v1",
+}
+
+
+def observation_mode_for_schema(schema):
+    for mode, expected in OBSERVATION_SCHEMAS.items():
+        if schema == expected:
+            return mode
+    raise ValueError("Unsupported public observation schema")
 
 
 def canonical(value):
@@ -57,8 +69,14 @@ def _reset_manifest_payload(executable, baseset, seed, split, width=64, height=6
 
 class LiveV2:
     def __init__(self, engine, output, *, seed=None, split="training", decisions=8, ticks=128, companies=1, first_company=0,
-                 visible=False, _reset_factory=None):
+                 visible=False, _reset_factory=None, observation_mode="legacy", initial_save=None):
         self.engine, self.output = Path(engine).resolve(), Path(output).resolve()
+        if observation_mode not in OBSERVATION_SCHEMAS:
+            raise ValueError("Unsupported live observation mode")
+        if initial_save is not None:
+            initial_save = Path(initial_save).resolve(strict=True)
+            if observation_mode != "orders-v1" or companies != 1 or not initial_save.is_file() or initial_save.suffix.lower() != ".sav":
+                raise ValueError("Initial save requires a single-company orders-v1 exercise and a saved game")
         if type(visible) is not bool:
             raise ValueError("Visible display flag must be boolean")
         if visible and (companies != 1 or os.environ.get("SDL_VIDEODRIVER") in ("dummy", "offscreen") or
@@ -81,6 +99,10 @@ class LiveV2:
                   "output_fd": output_child, "maximum_decisions": decisions, "step_ticks": ticks}
         if companies == 2:
             config["company_count"] = companies
+        if observation_mode != "legacy":
+            config["observation_mode"] = observation_mode
+        if initial_save is not None:
+            config["initial_save"] = str(initial_save)
         (self.output / "live.json").write_bytes(canonical(config) + b"\n")
         self.request_id = 0
         self.events = (self.output / "requests.jsonl").open("x")

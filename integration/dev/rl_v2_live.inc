@@ -67,7 +67,18 @@ static void DevWriteResponse(int fd, const json &response)
     }
 }
 
-static json DevCompanyEconomy(CompanyID identity = _current_company)
+static json DevFinance(const Company &company)
+{
+    const int64_t maximum = company.GetMaxLoan().base();
+    const int64_t loan = company.current_loan.base();
+    const int64_t income = company.cur_economy.income.base(), expenses = company.cur_economy.expenses.base();
+    return {{"maximum_loan", maximum}, {"borrowing_headroom", std::max<int64_t>(0, maximum - loan)},
+        {"interest_rate_percent", _economy.interest_rate}, {"quarter_income", income},
+        {"quarter_expenses", expenses}, {"quarter_operating_profit", income + expenses},
+        {"year_interest_paid", company.yearly_expenses[0][EXPENSES_LOAN_INTEREST].base()}};
+}
+
+static json DevCompanyEconomy(CompanyID identity = _current_company, bool finance = false)
 {
     const Company *company = Company::GetIfValid(identity);
     if (company == nullptr) return {{"alive", false}};
@@ -81,12 +92,14 @@ static json DevCompanyEconomy(CompanyID identity = _current_company)
     // This adapter limits episodes to 65536 ticks, shorter than the retained
     // economy history. Summing quarters avoids the cur_economy reset pitfall.
     for (uint8_t i = 0; i < company->num_valid_stat_ent; ++i) add(company->old_economy[i]);
-    return {{"alive", company->months_of_bankruptcy < 10}, {"balance", company->money.base()},
+    json result = {{"alive", company->months_of_bankruptcy < 10}, {"balance", company->money.base()},
         {"loan", company->current_loan.base()}, {"income", income}, {"expenses", expenses},
         {"operating_profit", income + expenses}, {"delivered_passengers", delivered}};
+    if (finance) result["finance"] = DevFinance(*company);
+    return result;
 }
 
-static std::string DevWritePublicTensors(const std::filesystem::path &metadata_path)
+static std::string DevWritePublicTensors(const std::filesystem::path &metadata_path, bool finance = false)
 {
     // Reuse the native encoder, then redact non-public feature slots before
     // publishing a response or giving their paths to any policy process.
@@ -105,15 +118,57 @@ static std::string DevWritePublicTensors(const std::filesystem::path &metadata_p
         const size_t offset = 1286927 + (row * 40 + 7) * sizeof(float);
         std::fill(bytes.begin() + offset, bytes.begin() + offset + 2 * sizeof(float), uint8_t{0});
     }
+    json finance_metadata;
+    if (finance) {
+        const Company &company = *Company::Get(_current_company);
+        const json values = DevFinance(company);
+        auto write_float = [&](size_t offset, float value) {
+            Require(offset + sizeof(float) <= bytes.size() && std::isfinite(value), "invalid finance tensor value");
+            const uint32_t word = std::bit_cast<uint32_t>(value);
+            for (size_t i = 0; i < sizeof(float); ++i) bytes[offset + i] = static_cast<uint8_t>(word >> (8 * i));
+        };
+        static constexpr std::array<std::string_view, 7> fields = {"maximum_loan", "borrowing_headroom",
+            "interest_rate_percent", "quarter_income", "quarter_expenses", "quarter_operating_profit", "year_interest_paid"};
+        json descriptions = json::array();
+        for (size_t i = 0; i < fields.size(); ++i) {
+            const double value = values.at(fields[i]).get<double>();
+            // These additional finance slots are already normalized. The
+            // optional trainer preprocessing still applies only to legacy slots.
+            const double scaled = i == 2 ? value / 100.0 :
+                std::copysign(std::log1p(std::min(std::abs(value), 1.0e9)) / std::log1p(1.0e9), value);
+            write_float((16 + i) * sizeof(float), static_cast<float>(scaled));
+            descriptions.push_back({{"index", 16 + i}, {"name", fields[i]},
+                {"encoding", i == 2 ? "percent/100" : "signed-log1p-clipped-1e9"}});
+        }
+        // The own-company row is first. Historical M15 writes the raw
+        // per-company override, whose sentinel is not the effective loan limit.
+        // Correct only this opt-in view; opponent rows remain redacted.
+        write_float(1181696 + 4 * sizeof(float), static_cast<float>(
+            std::clamp(company.GetMaxLoan().base() / 1.0e9, 0.0, 1.0)));
+        finance_metadata = {{"mode", "finance-v1"}, {"structured", descriptions},
+            {"company_maximum_loan", "own-row-column-4-effective-GetMaxLoan-divided-by-1e9"},
+            {"quarter_expenses_sign", "native-negative-expense"}, {"values", values}};
+    }
+#ifdef RL_DEV_BUS_ORDERS
+    if (_dev_bus_orders) DevWriteOrderTensorState(bytes);
+#endif
     Sha256 digest; digest.Update(bytes); const std::string sha = digest.Finish();
     json metadata = ReadCanonicalJson(metadata_path.string());
     metadata["source_observation_schema_id"] = metadata.at("observation_schema_id");
-    metadata["observation_schema_id"] = "v2-m15-public-development-v2";
+    metadata["observation_schema_id"] = finance ? "v2-m15-public-development-finance-v1" : "v2-m15-public-development-v2";
     metadata["schema_version"] = "openttd-rl-development-v2-observation-metadata-1";
     metadata["redacted_features"] = {"structured[13:16]", "entities.vehicles.values[:,7:9]"};
     metadata["vehicle_order"] = "own-company-first-then-public-vehicle-id";
     metadata["observing_company"] = _current_company.base();
     metadata["binary"]["sha256"] = sha;
+    if (finance) metadata["finance_observation"] = std::move(finance_metadata);
+#ifdef RL_DEV_BUS_ORDERS
+    if (_dev_bus_orders) {
+        metadata["observation_schema_id"] = "v2-m15-public-development-orders-v1";
+        metadata["action_semantics"] = "orders-v1";
+        metadata["order_observation"] = DevOrderObservationDescription();
+    }
+#endif
     {
         std::ofstream output(binary_path, std::ios::binary | std::ios::trunc);
         output.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
@@ -128,13 +183,13 @@ static std::string DevWritePublicTensors(const std::filesystem::path &metadata_p
 }
 
 static json DevObservation(CandidateEnumeration &enumeration, uint32_t decisions, uint32_t maximum,
-    uint32_t step_ticks, bool pending, bool terminal, std::string_view schema = DEV_LIVE_SCHEMA)
+    uint32_t step_ticks, bool pending, bool terminal, std::string_view schema = DEV_LIVE_SCHEMA, bool finance = false)
 {
     const CompanyID identity = _current_company;
     if (terminal && Company::GetIfValid(identity) == nullptr) {
         return {{"schema_version", schema}, {"company_id", identity.base()}, {"tick", TimerGameTick::counter},
             {"decisions", decisions}, {"terminal", true}, {"truncated", false}, {"pending_step", pending},
-            {"economy", DevCompanyEconomy()}, {"candidates", json::array()}};
+            {"economy", DevCompanyEconomy(identity, finance)}, {"candidates", json::array()}};
     }
     Require(Company::GetNumItems() <= 2 && Company::IsValidID(identity), "development observing company missing");
     json towns = json::array(), stations = json::array(), depots = json::array(), vehicles = json::array(), roads = json::array();
@@ -159,6 +214,9 @@ static json DevObservation(CandidateEnumeration &enumeration, uint32_t decisions
             {"stopped", vehicle->vehstatus.Test(VehState::Stopped)}, {"orders", orders},
             {"speed", vehicle->cur_speed}, {"destination_tile", vehicle->dest_tile.base()},
             {"cargo_count", vehicle->cargo.StoredCount()}, {"cargo_capacity", vehicle->cargo_cap}});
+#ifdef RL_DEV_BUS_ORDERS
+        if (_dev_bus_orders) DevAddVehicleOrderState(vehicles.back(), *vehicle);
+#endif
     }
     for (TileIndex tile{}; tile < Map::Size(); ++tile) {
         RoadBits bits = GetAnyRoadBits(tile, RTT_ROAD);
@@ -186,21 +244,45 @@ static json DevObservation(CandidateEnumeration &enumeration, uint32_t decisions
     }
     // Public/own-company fields only. Reset seeds, RNG state and future outcomes
     // are retained by the launcher, never exposed in the policy observation.
-    return {{"schema_version", schema}, {"action_schema_id", ACTION_SCHEMA_ID}, {"company_id", identity.base()},
+    json observation = {{"schema_version", schema}, {"action_schema_id", ACTION_SCHEMA_ID}, {"company_id", identity.base()},
         {"token", NativeStateSha256()}, {"tick", TimerGameTick::counter}, {"decisions", decisions},
         {"maximum_decisions", maximum}, {"step_ticks", step_ticks}, {"pending_step", pending},
         {"terminal", terminal}, {"truncated", !terminal && decisions >= maximum},
-        {"economy", DevCompanyEconomy()}, {"map", {{"width", Map::SizeX()}, {"height", Map::SizeY()},
+        {"economy", DevCompanyEconomy(identity, finance)}, {"map", {{"width", Map::SizeX()}, {"height", Map::SizeY()},
             {"roads", roads}, {"clear_tiles", clear_tiles}, {"houses", houses}, {"flat_tiles", flat_tiles},
             {"bus_stop_catchment_radius", catchment}}},
         {"towns", towns}, {"stations", stations}, {"depots", depots}, {"vehicles", vehicles}, {"candidates", candidates}};
+#ifdef RL_DEV_BUS_ORDERS
+    if (_dev_bus_orders) {
+        observation["action_semantics"] = "orders-v1";
+        observation["order_observation"] = DevOrderObservationDescription();
+    }
+#endif
+    return observation;
 }
 
 static void RunDevelopmentV2Live(const json &config, const std::string &trace_path, const std::string &artifact_directory)
 {
     const bool shared = config.at("schema_version") == DEV_SHARED_SCHEMA;
     const std::string_view schema = shared ? DEV_SHARED_SCHEMA : DEV_LIVE_SCHEMA;
-    Require(config.size() == (shared ? 7 : 6) && config.at("schema_version") == schema &&
+    const bool finance = config.contains("observation_mode");
+    bool initial_save = false;
+#ifdef RL_DEV_BUS_ORDERS
+    _dev_bus_orders = config.value("observation_mode", "") == "orders-v1";
+    ACTION_SCHEMA_ID = _dev_bus_orders ? DEV_ORDER_ACTION_SCHEMA : "v2-m15-hierarchical-action-v1";
+    initial_save = config.contains("initial_save");
+    if (initial_save) {
+        Require(_dev_bus_orders && !shared, "supplied initial save requires single-company orders-v1");
+        Require(SaveOrLoad(config.at("initial_save").get<std::string>(), SLO_LOAD, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK,
+            "orders-v1 initial save load failed");
+        SetModalProgress(false);
+        SetLocalCompany(CompanyID::Begin()); _current_company = CompanyID::Begin();
+    }
+    if (finance) Require(config.at("observation_mode") == "finance-v1" || _dev_bus_orders, "unknown development observation mode");
+#else
+    if (finance) Require(config.at("observation_mode") == "finance-v1", "unknown development observation mode");
+#endif
+    Require(config.size() == static_cast<size_t>((shared ? 7 : 6) + (finance ? 1 : 0) + (initial_save ? 1 : 0)) && config.at("schema_version") == schema &&
         (shared || config.at("company_id") == 0), "development live configuration fields differ");
     if (shared) Require(config.at("company_count").is_number_unsigned() && config.at("company_count") == 2,
         "shared development requires exactly two companies");
@@ -236,7 +318,7 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
         final["initial_tick"] = TimerGameTick::counter;
         final["initial_companies"] = json::array();
         for (uint32_t company = 0; company < companies; ++company)
-            final["initial_companies"].push_back({{"company_id", company}, {"economy", DevCompanyEconomy(CompanyID{static_cast<uint8_t>(company)})}});
+            final["initial_companies"].push_back({{"company_id", company}, {"economy", DevCompanyEconomy(CompanyID{static_cast<uint8_t>(company)}, finance)}});
     }
     try {
         while (auto incoming = DevReadRequest(input)) {
@@ -256,7 +338,7 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
             _current_company = CompanyID{request.at("company_id").get<uint8_t>()};
             const CompanyID identity = _current_company;
             if (operation == "OBSERVE" && request.size() == 3) {
-                response["observation"] = DevObservation(enumeration, decisions, maximum, ticks, pending, terminal, schema);
+                response["observation"] = DevObservation(enumeration, decisions, maximum, ticks, pending, terminal, schema, finance);
             } else if (operation == "TENSORS" && request.size() == 3) {
                 if (pending || terminal) {
                     response.update({{"status", "REJECTED"}, {"reason", "DECISION_BOUNDARY"}});
@@ -270,7 +352,7 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
                         // Historical M15 encoded seeds as observation features.
                         // Use literal zeros for every seed argument: the live
                         // policy receives no reset seed or private RNG state.
-                        const std::string digest = DevWritePublicTensors(observation_path);
+                        const std::string digest = DevWritePublicTensors(observation_path, finance);
                         WriteRlV2CandidatesAndMaybeExecute(candidates_path.string(), "", "", digest, 0, 0, 0);
                     }
                     Require(token == NativeStateSha256(), "development tensor observation mutated native state");
@@ -295,7 +377,7 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
                     if (!selected) {
                         response.update({{"status", "REJECTED"}, {"reason", "ILLEGAL_CANDIDATE"}});
                     } else {
-                        before = DevCompanyEconomy(); before_hash = NativeStateSha256();
+                        before = DevCompanyEconomy(identity, finance); before_hash = NativeStateSha256();
                         action = ExecuteCandidate(*selected);
                         action["family"] = FAMILY_NAMES[static_cast<size_t>(selected->family)];
                         action["candidate"] = selected->stable_key; action["parameters"] = selected->parameters;
@@ -315,7 +397,7 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
                     for (uint32_t tick = 0; tick < ticks; ++tick) StateGameLoop();
                     _current_company = identity;
                     ++decisions; pending = false;
-                    json after = DevCompanyEconomy();
+                    json after = DevCompanyEconomy(identity, finance);
                     terminal = !after.at("alive").get<bool>();
                     if (shared) for (uint32_t company = 0; company < companies; ++company)
                         terminal = terminal || !DevCompanyEconomy(CompanyID{static_cast<uint8_t>(company)}).at("alive").get<bool>();
@@ -330,7 +412,7 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
                         // is retained in the trace, never sent to either actor.
                         research["research_economies"] = json::array();
                         for (uint32_t company = 0; company < companies; ++company)
-                            research["research_economies"].push_back(DevCompanyEconomy(CompanyID{static_cast<uint8_t>(company)}));
+                            research["research_economies"].push_back(DevCompanyEconomy(CompanyID{static_cast<uint8_t>(company)}, finance));
                     }
                     trace << research.dump() << '\n'; trace.flush();
                     Require(static_cast<bool>(trace), "development live trace write failed");
@@ -347,12 +429,12 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
             DevWriteResponse(output, response);
             if (close) break;
         }
-        final.update({{"decisions", decisions}, {"pending_step", pending}, {"economy", DevCompanyEconomy()},
+        final.update({{"decisions", decisions}, {"pending_step", pending}, {"economy", DevCompanyEconomy(_current_company, finance)},
             {"tick", TimerGameTick::counter}, {"terminal", terminal}, {"status", terminal || decisions >= maximum ? "COMPLETE" : "CLOSED"}});
         if (shared) {
             final["companies"] = json::array();
             for (uint32_t company = 0; company < companies; ++company)
-                final["companies"].push_back({{"company_id", company}, {"economy", DevCompanyEconomy(CompanyID{static_cast<uint8_t>(company)})}});
+                final["companies"].push_back({{"company_id", company}, {"economy", DevCompanyEconomy(CompanyID{static_cast<uint8_t>(company)}, finance)}});
         }
     } catch (const std::exception &error) {
         final.update({{"status", "FAILED"}, {"error", error.what()}, {"decisions", decisions}, {"pending_step", pending}});

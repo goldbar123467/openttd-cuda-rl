@@ -10,18 +10,22 @@ import struct
 import subprocess
 import time
 
-from live_v2 import LiveV2
+from live_v2 import LiveV2, OBSERVATION_SCHEMAS, observation_mode_for_schema
 from live_v2_artifacts import archive_tensors
 from local import capture_source, positive, source_identity, write_json
 from service_v2 import summarize
 from guide_v2 import GUIDANCES, PublicPlanGuide
 from v2_onnx_package import FINANCIAL_FEATURES, checked_package, financial_features_mode
 from play_live import native_screenshot
+from finance_observation_v2 import validate_finance
+from imitation_warm_start_v2 import checked_imitation_run
 
 TENSOR_SCHEMA = "openttd-rl-development-v2-public-tensors-1"
 
 
-def checked_tensors(response, observation, *, bootstrap_only=False):
+def checked_tensors(response, observation, *, bootstrap_only=False, observation_mode="legacy"):
+    if observation_mode not in OBSERVATION_SCHEMAS:
+        raise ValueError("Unsupported tensor observation mode")
     if response["status"] != "OK" or response["tensors"]["schema_version"] != TENSOR_SCHEMA:
         raise ValueError("Native public tensor response differs")
     tensors = response["tensors"]
@@ -46,15 +50,30 @@ def checked_tensors(response, observation, *, bootstrap_only=False):
     _, obs_meta, obs_bytes = result["observation"]
     if obs_meta["schema_version"] != "openttd-rl-development-v2-observation-metadata-1" or obs_meta["snapshot"]["candidate_tiebreak_seed"] != 0:
         raise ValueError("Unredacted observation metadata is forbidden")
-    if obs_meta["observation_schema_id"] != "v2-m15-public-development-v2" or obs_meta.get("vehicle_order") != "own-company-first-then-public-vehicle-id":
-        raise ValueError("Live tensors must order vehicles by public identity before selection")
+    if obs_meta["observation_schema_id"] != OBSERVATION_SCHEMAS[observation_mode] or obs_meta.get("vehicle_order") != "own-company-first-then-public-vehicle-id":
+        raise ValueError("Live tensor observation schema or public vehicle ordering differs")
     if obs_meta.get("observing_company") != observation["company_id"]:
         raise ValueError("Native tensor metadata has a different observing company")
+    if observation_mode == "finance-v1":
+        validate_finance(observation, obs_meta, obs_bytes)
+    if observation_mode == "orders-v1":
+        from orders_observation_v2 import validate_orders
+        validate_finance(observation, obs_meta, obs_bytes, schema=OBSERVATION_SCHEMAS["orders-v1"])
+        validate_orders(observation, obs_meta, obs_bytes)
+    marker = struct.unpack_from("<f", obs_bytes, 511 * 4)[0]
+    if marker != (1.0 if observation_mode == "orders-v1" else 0.0):
+        raise ValueError("Order tensor mode marker differs")
     if struct.unpack_from("<3f", obs_bytes, 13 * 4) != (0.0, 0.0, 0.0):
         raise ValueError("Native tensor observation exposes seed features")
     if any(struct.unpack_from("<2f", obs_bytes, 1286927 + (row * 40 + 7) * 4) != (0.0, 0.0) for row in range(1024)):
         raise ValueError("Native tensor observation exposes breakdown countdowns")
     _, candidate_meta, candidate_bytes = result["candidates"]
+    if observation_mode == "orders-v1" and (
+            candidate_meta.get("action_semantics") != "orders-v1" or
+            candidate_meta.get("action_schema_id") != "v2-m15-bus-orders-action-v1" or
+            observation.get("action_semantics") != "orders-v1" or
+            observation.get("action_schema_id") != "v2-m15-bus-orders-action-v1"):
+        raise ValueError("Order candidate and observation action schema differs")
     if candidate_meta["observation_sha256"] != obs_meta["binary"]["sha256"]:
         raise ValueError("Candidate tensor bound to another observation")
     records = {record["row"]: record for record in candidate_meta["records"]}
@@ -72,6 +91,8 @@ def checked_tensors(response, observation, *, bootstrap_only=False):
         candidate = exposed[record["stable_key"]]
         if record["parameters"] != candidate["parameters"]:
             raise ValueError("Neural and public action parameters differ")
+        if list(struct.unpack_from("<16I", candidate_bytes, 4096 * 128 + row * 64)) != record["parameters"]:
+            raise ValueError("Native binary and public action parameters differ")
         if candidate_bytes[row * 128:(row + 1) * 128] != struct.pack("<32f", *candidate["features"]):
             raise ValueError("Neural and public candidate features differ")
     return result["observation"][0], result["candidates"][0], records, mask
@@ -155,12 +176,24 @@ def run(args, *, heldout_permit=None):
     onnx_manifest = None
     guidance_name = "none"
     financial_features = "raw"
+    observation_mode = "legacy"
+    imitation_run = getattr(args, "imitation_run", None)
+    imitation_ancestry = None
+    if imitation_run:
+        if args.training_run or heldout_permit is not None or getattr(args, "onnx_package", None):
+            raise ValueError("Imitation evaluation is a separate native development workflow")
+        training, imitation_ancestry = checked_imitation_run(imitation_run)
+        observation_mode = observation_mode_for_schema(training["observation_schema_id"])
+        financial_features = financial_features_mode(training["financial_features"])
+        guidance_name = training.get("guidance", "none") or "none"
+        if guidance_name not in ("none", *GUIDANCES):
+            raise ValueError("Imitation weights use an unsupported planner curriculum")
+        weights = Path(imitation_ancestry["weights"])
     if args.training_run:
         training = json.loads((args.training_run / "run.json").read_text())
         if training["kind"] != "native-v2-live-recurrent-ppo" or training["status"] != "completed":
             raise ValueError("Inference requires a completed live V2 training run")
-        if training.get("observation_schema_id") != "v2-m15-public-development-v2":
-            raise ValueError("Saved weights use an incompatible public observation version")
+        observation_mode = observation_mode_for_schema(training.get("observation_schema_id"))
         financial_features = financial_features_mode(training.get("financial_features", "raw"))
         if training["model"].get("financial_features", "raw") != financial_features:
             raise ValueError("Training/model financial preprocessing differs")
@@ -173,13 +206,15 @@ def run(args, *, heldout_permit=None):
         if weights != args.training_run.resolve() / "inference-weights.pt" or hashlib.sha256(weights.read_bytes()).hexdigest() != training["model"]["sha256"]:
             raise ValueError("Saved V2 training weights path/hash differs")
     if getattr(args, "onnx_package", None):
+        if observation_mode != "legacy":
+            raise ValueError("Finance observations are not yet qualified for ONNX export/playback")
         if training is None or args.compare_cpu:
             raise ValueError("ONNX playback requires --training-run; use export verification for the native CPU comparison")
         weights, onnx_manifest = checked_package(args.onnx_package, training, args.device)
     trained_guidance = guidance_name
     override = getattr(args, "guidance_override", None)
     if override is not None:
-        if override not in GUIDANCES or guidance_name not in GUIDANCES:
+        if override not in GUIDANCES or (guidance_name not in GUIDANCES and imitation_ancestry is None):
             raise ValueError("Guidance override requires a supported planner-trained model")
         guidance_name = override
     root = args.output.resolve()
@@ -191,10 +226,15 @@ def run(args, *, heldout_permit=None):
               "training_run": str(args.training_run.resolve()) if args.training_run else None,
               "model": training["model"] if training else {"initialization_only": True},
               "financial_features": financial_features,
+              "observation_schema_id": OBSERVATION_SCHEMAS[observation_mode],
               "guidance": guidance_name, "trained_guidance": trained_guidance, "guidance_override": override,
               "policy_sha256": hashlib.sha256(args.policy.read_bytes()).hexdigest(),
               "engine_sha256": hashlib.sha256(args.openttd.read_bytes()).hexdigest(),
               "tolerances": {"probability_atol": 1e-5, "value_atol": 1e-4}}
+    if imitation_ancestry is not None:
+        record["imitation_run"] = str(imitation_run.resolve())
+        record["initial_policy"] = imitation_ancestry
+        record["claim"] = "Human-imitation transfer to live native decisions; planner-mask changes are explicit"
     if onnx_manifest is not None:
         record.update(inference_backend="native-onnxruntime-1.28.0-cpu", onnx_package=onnx_manifest,
                       onnx_package_path=str(args.onnx_package.resolve()))
@@ -213,7 +253,10 @@ def run(args, *, heldout_permit=None):
                                      financial_features=financial_features)
             reference.check_financial_features()
         factory = LiveV2 if heldout_permit is None else heldout_permit.live
-        game = factory(args.openttd, root / "worker", decisions=args.decisions, split=args.split, seed=args.map_seed, visible=visible)
+        mode_options = {"observation_mode": observation_mode} if observation_mode != "legacy" else {}
+        if mode_options and heldout_permit is not None:
+            raise ValueError("Finance observations are outside the frozen held-out protocol")
+        game = factory(args.openttd, root / "worker", decisions=args.decisions, split=args.split, seed=args.map_seed, visible=visible, **mode_options)
         initial = game.request("OBSERVE")["observation"]
         guide = PublicPlanGuide(initial, root / "worker", guidance=guidance_name) if guidance_name in GUIDANCES else None
         transitions = []
@@ -221,7 +264,7 @@ def run(args, *, heldout_permit=None):
             for decision in range(args.decisions):
                 observation = game.request("OBSERVE")["observation"]
                 response = game.request("TENSORS")
-                obs_path, candidate_path, candidates, mask = checked_tensors(response, observation)
+                obs_path, candidate_path, candidates, mask = checked_tensors(response, observation, **mode_options)
                 guidance = None
                 if guide:
                     candidate_path, mask, guidance = guide.prepare(observation, candidate_path, candidates, mask)
@@ -293,6 +336,7 @@ def argument_parser():
     parser.add_argument("--compare-cpu", action="store_true")
     parser.add_argument("--visible", action="store_true", help="View-only native SDL window; requires the isolated V2 playback engine")
     parser.add_argument("--training-run", type=Path, help="Load hash-verified inference weights from a completed live V2 PPO run")
+    parser.add_argument("--imitation-run", type=Path, help="Evaluate a completed native human-imitation run before PPO")
     parser.add_argument("--onnx-package", type=Path, help="Qualified live V2 ONNX package; requires the native ONNX executable and explicit CPU")
     parser.add_argument("--split", choices=("training", "development"), default="development",
                         help="Development maps by default; training-map diagnostics require an explicit override")
