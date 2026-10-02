@@ -7,6 +7,10 @@ learning CUDA and PPO; retain understandable C++ training code, measurable GPU
 work, and a CPU reference. The long-term research platform pits neural policies,
 scripted AIs, and LLMs using MCP against each other in a shared economy.
 
+OpenTTD itself runs on the CPU. CUDA accelerates neural training and supported
+policy inference, not the simulation. Measure game-worker throughput separately
+from network speed; never describe this as a GPU implementation of OpenTTD.
+
 Read `docs/DEVELOPMENT.md` for the current practical workflow and backlog, and
 `GOAL.md` for the broader game scope. User instructions take precedence over
 historical milestone documents. Prefer one working vertical slice to expanding
@@ -31,10 +35,15 @@ running longer training; repeated purchases and route edits remain unresolved.
   human replay and a separate C++ imitation objective feeding a fresh PPO policy.
 - `scripts/dev/audit_bus_orders_v2.py` and `live_bus_orders_v2.py`: exact bus-order
   input/semantic audits and bounded unforced continuations of supplied contexts.
+- `scripts/dev/mcp_v2.py`: existing company-scoped MCP adapter, exercised in local
+  Gemma matches. Packaging and meaningful competitive play remain unfinished.
 - `integration/openttd/patches/15.3`: source integration on pinned upstream.
 - `openttd-upstream`: upstream submodule/object repository; keep it pristine.
 - `config/v1`, `config/v2`, `evidence`, and `docs/project`: historical contracts,
   provenance, and milestone records. These are not proof of a local reproduction.
+- `docs/internal/README.md`: relocated agent handoffs, prompts, September 25
+  reviews and the archived README ledger. Put internal reports here rather than
+  growing the public README. Preserve historical evidence paths and hashes.
 
 ## Development boundaries
 
@@ -127,12 +136,13 @@ from device utilization alone. Small networks can be faster on CPU.
 
 ## MCP and economic experiments
 
-Build MCP as an adapter over the same versioned observation/action interface used
-by neural agents, not a privileged game-control path. Keep company identity,
+Package and extend the existing MCP adapter over the same versioned
+observation/action interface used by neural agents. Keep company identity,
 action budgets, simulation ticks, timeouts, legal masks, and public information
 consistent across participants. Log action attempts, results, costs, and timing.
-Separate model inference latency from simulated economic time. Add multiplayer
-only after a repeatable single-company training/evaluation loop works locally.
+Separate model inference latency from simulated economic time. Shared-company
+matches already execute, but useful economic competition remains unproved.
+Qualify model/interface compatibility before putting new policies into matches.
 
 ## Verification and handoff
 

@@ -462,7 +462,7 @@ evidence, qualified worktrees, models and checkpoints remain intact.
 
 Older completed request logs and tensor JSON metadata may now require gzip
 reading or exact-path restoration. Main `report_shared_v2.py` accepts `.jsonl.gz`;
-archived scripts and worktrees remain unchanged. Use [docs/STORAGE.md](docs/STORAGE.md)
+archived scripts and worktrees remain unchanged. Use [docs/STORAGE.md](../STORAGE.md)
 for the retention policy and restore command. Per-file original/archive hashes
 and journals live at `$RL_ROOT/maintenance/storage-20260924-01`; the full report
 is copied to `runs/2026-09-24/storage-cleanup-01/report.md`. The interrupted
@@ -804,7 +804,7 @@ learning and development/held-out claims separate. Update
   rather than that contextual hash, establish preservation for this handoff.
 - New runtime compression experiment: not started; only the retained offline
   profile exists. No runtime compression setting changed.
-- Files: this `handoff.md` and `continuation-prompt.md` in the project root.
+- Files: `docs/internal/handoff.md` and `docs/internal/continuation-prompt.md`.
 - The user explicitly authorized goal pausing at this boundary. No further
   experiment is authorized in the old chat before the requested pause.
 <!-- FINAL_CHECKS_END -->
