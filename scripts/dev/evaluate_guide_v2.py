@@ -7,9 +7,9 @@ from pathlib import Path
 import random
 import time
 
-from guide_v2 import GUIDANCE, GUIDANCES, PublicPlanGuide
+from guide_v2 import GUIDANCE, GUIDANCES, FINANCE_GUIDANCE, PublicPlanGuide
 from infer_v2 import checked_tensors
-from live_v2 import LiveV2
+from live_v2 import LiveV2, OBSERVATION_SCHEMAS
 from live_v2_artifacts import archive_tensors
 from local import capture_source, positive, source_identity, write_json
 from service_v2 import summarize
@@ -26,7 +26,8 @@ def select_row(controller, mode, rows, candidates, guide, rng):
     row = next(row for row in rows if candidates[row]["stable_key"] == guide.proposal)
     # Preserve the historical script's repayment ordering under each guide.
     if controller == "repay-first" or guide.families[candidates[row]["family_index"]] == "WAIT":
-        row = next((i for i in rows if guide.families[candidates[i]["family_index"]] == "MANAGE_LOAN"), row)
+        row = next((i for i in rows if guide.families[candidates[i]["family_index"]] == "MANAGE_LOAN" and
+                    (getattr(guide, "guidance", None) != FINANCE_GUIDANCE or candidates[i]["parameters"][1] == 2)), row)
     return row, 1.0
 
 
@@ -37,12 +38,17 @@ def run(args, *, heldout_permit=None):
     else:
         heldout_permit.validate(args, args.controller)
     guidance_name = getattr(args, "guidance", GUIDANCE)
+    observation_mode = "finance-v1" if getattr(args, "finance_observations", False) else "legacy"
+    mode_options = {"observation_mode": observation_mode} if observation_mode != "legacy" else {}
+    if mode_options and heldout_permit is not None:
+        raise ValueError("Finance observations are outside the frozen held-out protocol")
     mode = getattr(args, "mode", "sampled")
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
     record = {"kind": "native-v2-guided-baseline", "status": "running",
               "source": source_identity(), "guidance": guidance_name, "controller": args.controller,
               "sampling_seed": args.seed, "mode": mode, "map_seed": args.map_seed, "split": args.split,
+              "observation_schema_id": OBSERVATION_SCHEMAS[observation_mode],
               "decisions": args.decisions, "final_evaluation_accessed": heldout_permit is not None,
               "engine_sha256": hashlib.sha256(args.openttd.read_bytes()).hexdigest(),
               "claim": "Planner-assisted baseline; no learned route construction or policy optimization"}
@@ -56,7 +62,7 @@ def run(args, *, heldout_permit=None):
     try:
         factory = LiveV2 if heldout_permit is None else heldout_permit.live
         game = factory(args.openttd, root / "worker", seed=args.map_seed,
-                      split=args.split, decisions=args.decisions)
+                      split=args.split, decisions=args.decisions, **mode_options)
         initial = game.request("OBSERVE")["observation"]
         guide = PublicPlanGuide(initial, root / "worker", guidance=guidance_name)
         transitions = []
@@ -64,7 +70,7 @@ def run(args, *, heldout_permit=None):
             for decision in range(args.decisions):
                 observation = game.request("OBSERVE")["observation"]
                 tensors = game.request("TENSORS")
-                _, candidate_path, candidates, mask = checked_tensors(tensors, observation)
+                _, candidate_path, candidates, mask = checked_tensors(tensors, observation, **mode_options)
                 _, mask, guidance = guide.prepare(observation, candidate_path, candidates, mask)
                 rows = [row for row, allowed in enumerate(mask) if allowed]
                 row, probability = select_row(args.controller, mode, rows, candidates, guide, rng)
@@ -113,4 +119,5 @@ if __name__ == "__main__":
     parser.add_argument("--split", choices=("training", "development"), default="development")
     parser.add_argument("--decisions", type=positive, default=512)
     parser.add_argument("--guidance", choices=GUIDANCES, default=GUIDANCE)
+    parser.add_argument("--finance-observations", action="store_true")
     run(parser.parse_args())

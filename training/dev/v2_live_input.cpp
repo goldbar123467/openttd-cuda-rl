@@ -71,20 +71,30 @@ FinancialFeatures parse_financial_features(std::string_view name)
 {
     if (name == "raw") return FinancialFeatures::Raw;
     if (name == "signed-log-v1") return FinancialFeatures::SignedLogV1;
-    throw std::invalid_argument("financial features must be raw or signed-log-v1");
+    if (name == "signed-log-loan-v1") return FinancialFeatures::SignedLogLoanV1;
+    if (name == "signed-log-actions-v1") return FinancialFeatures::SignedLogActionsV1;
+    if (name == "signed-log-orders-v1") return FinancialFeatures::SignedLogOrdersV1;
+    if (name == "signed-log-orders-v2") return FinancialFeatures::SignedLogOrdersV2;
+    throw std::invalid_argument("unknown financial/action preprocessing mode");
 }
 
 const char *financial_features_name(FinancialFeatures mode)
 {
     if (mode == FinancialFeatures::Raw) return "raw";
     if (mode == FinancialFeatures::SignedLogV1) return "signed-log-v1";
+    if (mode == FinancialFeatures::SignedLogLoanV1) return "signed-log-loan-v1";
+    if (mode == FinancialFeatures::SignedLogActionsV1) return "signed-log-actions-v1";
+    if (mode == FinancialFeatures::SignedLogOrdersV1) return "signed-log-orders-v1";
+    if (mode == FinancialFeatures::SignedLogOrdersV2) return "signed-log-orders-v2";
     throw std::invalid_argument("unknown financial feature mode");
 }
 
 void transform_live_v2_finances(ScalablePolicyInput &input, FinancialFeatures mode)
 {
     if (mode == FinancialFeatures::Raw) return;
-    if (mode != FinancialFeatures::SignedLogV1) throw std::invalid_argument("unknown financial feature mode");
+    if (mode != FinancialFeatures::SignedLogV1 && mode != FinancialFeatures::SignedLogLoanV1 &&
+        mode != FinancialFeatures::SignedLogActionsV1 && !uses_order_features(mode))
+        throw std::invalid_argument("unknown financial feature mode");
     // Native financial fields use different linear divisors. Recover their
     // bounded currency units and apply one signed logarithmic scale. Zero and
     // redacted/padded fields remain zero; no extra information enters the model.
@@ -103,6 +113,10 @@ void write_financial_features(torch::serialize::OutputArchive &archive, Financia
 {
     // Omit the tag for legacy raw models, preserving their inference archives.
     if (mode != FinancialFeatures::Raw) checkpoint_string(archive, kFinancialFeaturesArchiveKey, financial_features_name(mode));
+    if (uses_order_features(mode)) {
+        checkpoint_string(archive, "development_observation_schema", kOrdersObservationSchema);
+        checkpoint_string(archive, "development_action_semantics", kOrdersActionSemantics);
+    }
 }
 
 FinancialFeatures read_financial_features(torch::serialize::InputArchive &archive)
@@ -112,7 +126,23 @@ FinancialFeatures read_financial_features(torch::serialize::InputArchive &archiv
     if (value.scalar_type() != torch::kUInt8 || value.dim() != 1 || value.numel() == 0 || value.numel() > 64)
         throw std::invalid_argument("financial feature metadata shape/type differs");
     value = value.cpu().contiguous();
-    return parse_financial_features(std::string_view(static_cast<const char *>(value.const_data_ptr()), static_cast<size_t>(value.numel())));
+    const auto mode = parse_financial_features(std::string_view(static_cast<const char *>(value.const_data_ptr()), static_cast<size_t>(value.numel())));
+    // Shared by inference archives and complete PPO checkpoints so neither
+    // reader can silently accept another order/observation interpretation.
+    if (uses_order_features(mode)) {
+        auto require_tag = [&](const char *key, std::string_view expected) {
+            torch::Tensor tag;
+            if (!archive.try_read(key, tag, true) || tag.scalar_type() != torch::kUInt8 || tag.dim() != 1 ||
+                tag.numel() != static_cast<int64_t>(expected.size()))
+                throw std::invalid_argument("orders model schema metadata missing or malformed");
+            tag = tag.cpu().contiguous();
+            if (std::string_view(static_cast<const char *>(tag.const_data_ptr()), expected.size()) != expected)
+                throw std::invalid_argument("orders model schema metadata differs");
+        };
+        require_tag("development_observation_schema", kOrdersObservationSchema);
+        require_tag("development_action_semantics", kOrdersActionSemantics);
+    }
+    return mode;
 }
 
 void write_live_v2_weights(torch::serialize::OutputArchive &archive, const ScalablePolicy &model, FinancialFeatures mode)
@@ -148,6 +178,11 @@ openttd_rl::v2::ScalablePolicyInput read_live_v2_input(
     Reader reader(observation, 2182927);
     ScalablePolicyInput input;
     input.structured = reader.floats({1, kStructuredFeatures});
+    // A binary marker binds this opt-in projection even when callers bypass
+    // Python metadata checks. Historical archives and tensors stay unchanged.
+    const float orders_marker = input.structured[0][511].item<float>();
+    if (orders_marker != (uses_order_features(financial_features) ? 1.0F : 0.0F))
+        throw std::invalid_argument("orders observation/preprocessing schema differs");
     if (input.structured.slice(1, 13, 16).abs().sum().item<float>() != 0.0F)
         throw std::invalid_argument("live V2 policy refuses unredacted seed features");
     input.global_spatial = reader.floats({1, kSpatialChannels, 64, 64});
@@ -192,6 +227,72 @@ openttd_rl::v2::ScalablePolicyInput read_live_v2_input(
         if (family >= kFamilyCount) throw std::invalid_argument("native V2 candidate family exceeds inventory");
         families[row] = family;
         family_mask[family] = true;
+        if (financial_features == FinancialFeatures::SignedLogActionsV1 || uses_order_features(financial_features)) {
+            // M15 exposes three active uint32 parameters after the family.
+            // Keep every bit: a direct float cast aliases large adjacent IDs,
+            // and normalized priority already aliases small co-located IDs.
+            // Slots 20..31 contain p1, p2, p3 in little-endian byte order.
+            // log1p(byte)/log(256) is injective on all 256 byte values and
+            // gives small IDs a useful scale without changing public meaning.
+            if (input.candidate_features[0][row].slice(0, 20, 32).abs().sum().item<float>() != 0.0F)
+                throw std::invalid_argument("action feature encoding requires unused reserved slots 20..31");
+            for (size_t parameter = 4; parameter < 16; ++parameter)
+                if (parameters[static_cast<size_t>(row * 16) + parameter] != 0)
+                    throw std::invalid_argument("action feature encoding requires unused trailing parameters 4..15");
+            if (family == 11 && ((parameters[static_cast<size_t>(row * 16 + 1)] != 1 &&
+                parameters[static_cast<size_t>(row * 16 + 1)] != 2) ||
+                parameters[static_cast<size_t>(row * 16 + 2)] != 10000))
+                throw std::invalid_argument("action feature encoding requires native borrow/repay 10000");
+            if (uses_order_features(financial_features) && family == 6) {
+                const auto descriptor = parameters[static_cast<size_t>(row * 16 + 2)];
+                const auto value = parameters[static_cast<size_t>(row * 16 + 3)];
+                const auto operation = descriptor & 255U, index = (descriptor >> 8) & 255U;
+                const auto type = (descriptor >> 16) & 255U, flags = descriptor >> 24;
+                const bool insert = operation == 1 && index <= 4 && (type == 0x21 || type == 0x61) && flags == 0 && value < 65535;
+                const bool load = operation == 2 && index < 4 && type == 3 && flags == 0 &&
+                    (value == 0 || value == 2 || value == 3 || value == 4);
+                const bool copy = operation == 3 && descriptor == 3;
+                const bool remove = operation == 4 && index < 4 && type == 0 && flags == 0 && value == 0;
+                if (!insert && !load && !copy && !remove)
+                    throw std::invalid_argument("unsupported orders-v1 primitive parameters");
+            }
+            for (size_t parameter = 1; parameter <= 3; ++parameter) {
+                const auto value = parameters[static_cast<size_t>(row * 16) + parameter];
+                for (size_t byte = 0; byte < 4; ++byte)
+                    input.candidate_features[0][row][static_cast<int64_t>(20 + (parameter - 1) * 4 + byte)] =
+                        static_cast<float>(std::log1p(static_cast<double>((value >> (8 * byte)) & 255U)) / std::log(256.0));
+            }
+            if (financial_features == FinancialFeatures::SignedLogOrdersV2 && family == 6) {
+                // These are unordered public categories. The archived v1 fit
+                // consistently chose endpoint value NoLoad=4 over FullAny=3.
+                // Family already reaches the model via its learned embedding;
+                // reuse only its redundant native one-hot slots for categories.
+                // All exact uint32 limbs remain intact. No label/row is read.
+                for (int64_t column = 0; column < 12; ++column)
+                    if (input.candidate_features[0][row][column].item<float>() != (column == 6 ? 1.0F : 0.0F))
+                        throw std::invalid_argument("categorical order features require native family one-hot slots");
+                const auto descriptor = parameters[static_cast<size_t>(row * 16 + 2)];
+                const auto operation = descriptor & 255U, index = (descriptor >> 8) & 255U;
+                const auto value = parameters[static_cast<size_t>(row * 16 + 3)];
+                if (operation != 3 && index >= 4)
+                    throw std::invalid_argument("categorical order index outside supported four orders");
+                input.candidate_features[0][row].slice(0, 0, 12).zero_();
+                input.candidate_features[0][row][static_cast<int64_t>(operation - 1)] = 1.0F;
+                if (operation == 2)
+                    input.candidate_features[0][row][static_cast<int64_t>(4 + (value == 0 ? 0 : value - 1))] = 1.0F;
+                if (operation != 3) input.candidate_features[0][row][static_cast<int64_t>(8 + index)] = 1.0F;
+            }
+        }
+        if (financial_features == FinancialFeatures::SignedLogLoanV1 && family == 11) {
+            const auto direction = parameters[static_cast<size_t>(row * 16 + 1)];
+            const auto amount = parameters[static_cast<size_t>(row * 16 + 2)];
+            if ((direction != 1 && direction != 2) || amount != 10000 ||
+                input.candidate_features[0][row].slice(0, 30, 32).abs().sum().item<float>() != 0.0F)
+                throw std::invalid_argument("loan feature encoding requires native borrow/repay 10000 and unused reserved slots");
+            // Original float priority rounds UINT32_MAX-1 and -2 to the same
+            // value. Preserve the exact public action meaning explicitly.
+            input.candidate_features[0][row][direction == 1 ? 30 : 31] = 1.0F;
+        }
     }
     actions.finished();
     input.hidden_state = torch::zeros({1, kHiddenSize}, torch::kFloat32);

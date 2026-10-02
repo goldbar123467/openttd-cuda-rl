@@ -5,7 +5,7 @@ from pathlib import Path
 
 from infer_v2 import checked_tensors
 from guide_v2 import GUIDANCES, PublicPlanGuide
-from live_v2 import LiveV2, canonical
+from live_v2 import LiveV2, canonical, observation_mode_for_schema
 from live_v2_artifacts import archive_tensors
 from local import ROOT, write_json
 
@@ -17,6 +17,12 @@ def digest(path):
 def compatibility(record):
     scripts = ["train_v2.py", "checkpoint_v2.py", "infer_v2.py", "live_v2.py", "live_v2_artifacts.py",
                "guide_v2.py", "service_v2.py", "route_v2.py", "asset_potential_v2.py"]
+    if observation_mode_for_schema(record["observation_schema_id"]) == "finance-v1":
+        scripts.append("finance_observation_v2.py")
+    ancestry = {}
+    if record.get("initial_policy") is not None:
+        scripts.append("imitation_warm_start_v2.py")
+        ancestry["initial_policy"] = record["initial_policy"]
     contracts = ["m15-scalable-contract.json", "m15-native-source.json", "setting-inventory.json"]
     return {"configuration": {key: record[key] for key in (
         "device", "run_seed", "rollout_steps", "environments", "sequence_length", "optimization_epochs",
@@ -29,7 +35,7 @@ def compatibility(record):
             "gradient_norm": record.get("gradient_norm", "historical"),
             "asset_potential": record.get("asset_potential", False),
             "potential_ledger": record.get("potential_ledger"),
-            "potential_at_reset": 0.0},
+            "potential_at_reset": 0.0, **ancestry},
         "collector_sources": {name: digest(ROOT / "scripts/dev" / name) for name in scripts},
         "contracts": {name: digest(ROOT / "config/v2" / name) for name in contracts}}
 
@@ -44,11 +50,13 @@ def validate_interval(interval, horizon, rollout=32):
 def reset_signature(engine, output, configuration, next_episode):
     """A read-only next-game reset probe, never an extra training transition."""
     seeds = configuration["training_map_seeds"]
-    game = LiveV2(engine, output, seed=seeds[next_episode % len(seeds)], decisions=configuration["episode_horizon"])
+    mode = observation_mode_for_schema(configuration["observation_schema_id"])
+    mode_options = {"observation_mode": mode} if mode != "legacy" else {}
+    game = LiveV2(engine, output, seed=seeds[next_episode % len(seeds)], decisions=configuration["episode_horizon"], **mode_options)
     try:
         observation = game.request("OBSERVE")["observation"]
         tensors = game.request("TENSORS")
-        obs, candidate_path, candidates, mask = checked_tensors(tensors, observation)
+        obs, candidate_path, candidates, mask = checked_tensors(tensors, observation, **mode_options)
         signature = {"public_observation_sha256": hashlib.sha256(canonical({k: v for k, v in observation.items() if k != "token"})).hexdigest(),
                      "reset_manifest_sha256": digest(output / "reset.json"),
                      "observation_binary_sha256": digest(obs), "native_candidates_binary_sha256": digest(candidate_path)}

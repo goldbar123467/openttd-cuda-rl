@@ -31,6 +31,8 @@ class ExportPolicy(nn.Module):
     def __init__(self, financial_features="raw"):
         super().__init__()
         self.financial_features = financial_features_mode(financial_features)
+        if self.financial_features in ('signed-log-loan-v1', 'signed-log-actions-v1', 'signed-log-orders-v1', 'signed-log-orders-v2'):
+            raise ValueError('Loan-direction preprocessing requires native candidate parameters; ONNX export is unsupported')
         self.structured_1 = nn.Linear(512, 256)
         self.structured_2 = nn.Linear(256, 128)
         self.spatial_1 = nn.Conv2d(32, 32, 5, stride=2, padding=2)
@@ -141,6 +143,8 @@ class ExportPolicy(nn.Module):
 
 def load_export_policy(weights, financial_features='raw'):
     mode = financial_features_mode(financial_features)
+    if mode in ('signed-log-loan-v1', 'signed-log-actions-v1', 'signed-log-orders-v1', 'signed-log-orders-v2'):
+        raise ValueError('Loan-direction preprocessing requires native candidate parameters; ONNX export is unsupported')
     state = torch.jit.load(str(weights), map_location='cpu').state_dict()
     key, prefix = 'development_financial_features', 'development_preprocessed_policy.'
     if mode == 'raw':

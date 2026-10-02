@@ -10,11 +10,12 @@ import signal
 
 from infer_v2 import FINANCIAL_FEATURES, PolicyClient, checked_tensors, financial_features_mode
 from guide_v2 import GUIDANCES, PublicPlanGuide
-from live_v2 import LiveV2
+from live_v2 import LiveV2, OBSERVATION_SCHEMAS
 from live_v2_artifacts import archive_tensors
 from local import ROOT, capture_source, positive, source_identity, write_json
 import checkpoint_v2
 from asset_potential_v2 import AssetPotential, LEDGER, SCHEMA as POTENTIAL_SCHEMA
+from imitation_warm_start_v2 import checked_imitation_run, import_imitation
 
 
 def reward_components(transition):
@@ -59,6 +60,10 @@ def interrupt_training(signum, frame):
 
 def run(args, *, trainer_factory=PolicyClient):
     financial_features = financial_features_mode(getattr(args, "financial_features", "raw"))
+    observation_mode = "finance-v1" if getattr(args, "finance_observations", False) else "legacy"
+    mode_options = {"observation_mode": observation_mode} if observation_mode != "legacy" else {}
+    if mode_options and (getattr(args, "study_registration", None) or getattr(args, "training_reset_probes", False)):
+        raise ValueError("Finance observations are a separate pilot, outside frozen studies/reset probes")
     if not 1 <= args.episode_horizon <= 512:
         raise ValueError("V2 episode horizon must be 1..512 decisions")
     gae_lambda = getattr(args, "gae_lambda", .95)
@@ -79,6 +84,13 @@ def run(args, *, trainer_factory=PolicyClient):
     if (asset_potential or training_reset_probes or recovery_diagnostics) and args.guidance not in GUIDANCES:
         raise ValueError("Recovery potential/probes/diagnostics require public one-bus guidance")
     registration_path = getattr(args, "study_registration", None)
+    imitation_run = getattr(args, "imitation_run", None)
+    initial_policy = None
+    if imitation_run:
+        if resume or registration_path or training_reset_probes:
+            raise ValueError("Imitation initialization requires fresh unregistered PPO without reset probes")
+        _, initial_policy = checked_imitation_run(imitation_run,
+            observation_schema=OBSERVATION_SCHEMAS[observation_mode], financial_features=financial_features)
     registration_ref = None
     predecessor_path = getattr(args, "interrupted_predecessor", None)
     if predecessor_path and (resume or not registration_path or not training_reset_probes):
@@ -126,6 +138,12 @@ def run(args, *, trainer_factory=PolicyClient):
         if (previous_record["status"] not in ("running", "interrupted") or
                 previous_record.get("study_registration_sha256") != (registration_ref or {}).get("sha256")):
             raise ValueError("Probed recovery requires an interrupted segment of the same registered seed")
+    resumed_initial_policy = None
+    if resume:
+        # Read ancestry before creating a run directory. Native optimizer/RNG
+        # recovery below still verifies the complete checkpoint compatibility.
+        saved_compatibility = json.loads((resume / "checkpoint.json").read_text())["compatibility"]
+        resumed_initial_policy = saved_compatibility["configuration"].get("initial_policy")
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
     record = {"kind": "native-v2-live-recurrent-ppo", "status": "running", "source": source_identity(),
@@ -139,7 +157,7 @@ def run(args, *, trainer_factory=PolicyClient):
               "recovery_diagnostics": recovery_diagnostics,
               "reward_schema": POTENTIAL_SCHEMA if asset_potential else "development-v2-live-reward-1",
               "potential_ledger": LEDGER if asset_potential else None, "episodes": [], "updates": [],
-              "observation_schema_id": "v2-m15-public-development-v2",
+              "observation_schema_id": OBSERVATION_SCHEMAS[observation_mode],
               "guidance": args.guidance,
               "claim": "Live native PPO pipeline; finite updates alone do not establish playing competence",
               "trainer_sha256": hashlib.sha256(args.trainer.read_bytes()).hexdigest(),
@@ -150,6 +168,12 @@ def run(args, *, trainer_factory=PolicyClient):
     if registration_ref:
         record["study_registration"] = registration_ref
         record["study_registration_sha256"] = registration_ref["sha256"]
+    if initial_policy:
+        record["initial_policy"] = initial_policy
+    elif resumed_initial_policy is not None:
+        # Resume imports the native optimizer/RNG checkpoint, never supervised
+        # weights again. Preserve the original warm-start ancestry for binding.
+        record["initial_policy"] = resumed_initial_policy
     if resume_parent:
         record["resume_parent"] = resume_parent
     if predecessor_ref:
@@ -189,6 +213,9 @@ def run(args, *, trainer_factory=PolicyClient):
                 set(info) - (set(expected_info) | set(extras))):
             raise ValueError("Native V2 trainer configuration differs from requested PPO settings")
         record["native_training_runtime"] = info
+        if initial_policy:
+            record["imitation_import"] = import_imitation(trainer, initial_policy)
+            write_json(root / "run.json", record)
         if checkpoint_interval or resume:
             info = trainer.request("CHECKPOINT_INFO")
             if info != {"format": "openttd-rl-development-v2-reset-checkpoint-1", "reset_only": True, "updates": 0,
@@ -234,13 +261,13 @@ def run(args, *, trainer_factory=PolicyClient):
                     ledger = AssetPotential(record["native_training_runtime"]["gamma"], args.episode_horizon) if asset_potential else None
                     cached_frame = None
                     worker = root / f"episode-{episode:06d}"
-                    game = LiveV2(args.openttd, worker, seed=seeds[episode % len(seeds)], decisions=args.episode_horizon)
+                    game = LiveV2(args.openttd, worker, seed=seeds[episode % len(seeds)], decisions=args.episode_horizon, **mode_options)
                     episode += 1
                     observation = game.request("OBSERVE")["observation"]
                     guide = PublicPlanGuide(observation, worker, guidance=args.guidance) if args.guidance in GUIDANCES else None
                 if cached_frame is None:
                     tensors = game.request("TENSORS")
-                    obs_path, candidate_path, candidates, mask = checked_tensors(tensors, observation)
+                    obs_path, candidate_path, candidates, mask = checked_tensors(tensors, observation, **mode_options)
                     guidance = None
                     if guide:
                         candidate_path, mask, guidance = guide.prepare(observation, candidate_path, candidates, mask)
@@ -279,7 +306,7 @@ def run(args, *, trainer_factory=PolicyClient):
                 cached_frame = None
                 if bootstrap:
                     next_tensors = game.request("TENSORS")
-                    next_obs_path, next_candidate_path, next_candidates, next_mask = checked_tensors(next_tensors, next_observation, bootstrap_only=True)
+                    next_obs_path, next_candidate_path, next_candidates, next_mask = checked_tensors(next_tensors, next_observation, bootstrap_only=True, **mode_options)
                     next_guidance = None
                     if guide:
                         next_candidate_path, next_mask, next_guidance = guide.prepare(next_observation, next_candidate_path, next_candidates, next_mask)
@@ -360,6 +387,8 @@ if __name__ == "__main__":
     parser.add_argument("--trainer", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", choices=("cpu", "cuda:0"), required=True)
+    parser.add_argument("--finance-observations", action="store_true",
+                        help="Opt into native finance-v1 features; requires a finance-capable development engine")
     parser.add_argument("--financial-features", choices=FINANCIAL_FEATURES, default="raw",
                         help="Optional signed-log currency preprocessing shared by native training and inference")
     parser.add_argument("--seed", type=positive, default=20260923)
@@ -384,6 +413,8 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint-interval", type=int, default=0,
                         help="Save every N cumulative updates at a verified native reset; 0 disables checkpoints")
     parser.add_argument("--resume", type=Path, help="Restore a V2 reset checkpoint; updates are additional")
+    parser.add_argument("--imitation-run", type=Path,
+                        help="Initialize fresh PPO from a completed, hash-verified native human-imitation run")
     parser.add_argument("--interrupted-predecessor", type=Path, help="Retain a registered interruption before its first reset checkpoint")
     signal.signal(signal.SIGTERM, interrupt_training)
     signal.signal(signal.SIGINT, interrupt_training)

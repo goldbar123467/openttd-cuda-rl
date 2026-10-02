@@ -9,7 +9,8 @@ GUIDANCE = "one-bus-public-plan-v1"
 WAIT_GUIDANCE = "one-bus-public-plan-v2"
 BORROW_GUIDANCE = "one-bus-public-plan-v3"
 SERVICE_GUIDANCE = "one-bus-public-plan-v4"
-GUIDANCES = (GUIDANCE, WAIT_GUIDANCE, BORROW_GUIDANCE, SERVICE_GUIDANCE)
+FINANCE_GUIDANCE = "one-bus-public-plan-v5"
+GUIDANCES = (GUIDANCE, WAIT_GUIDANCE, BORROW_GUIDANCE, SERVICE_GUIDANCE, FINANCE_GUIDANCE)
 
 
 class PublicPlanGuide:
@@ -25,8 +26,12 @@ class PublicPlanGuide:
         self.next_actions = None
         self.service_started = False
         self.proposal_family = None
-        write_json(output / "planner-guide.json", {"guidance": self.guidance, "plan": self.policy.plan,
-            "claim": "Planner supplies route construction choices; neural policy controls execution timing and debt repayment and, in v3, optional first-bus borrowing recovery"})
+        claim = ("Planner supplies one-bus route construction choices; neural policy chooses between the next "
+                 "investment/service action, WAIT, and every exposed native-legal loan action at every stage. "
+                 "No human imitation or learned route geometry is claimed."
+                 if self.guidance == FINANCE_GUIDANCE else
+                 "Planner supplies route construction choices; neural policy controls execution timing and debt repayment and, in v3, optional first-bus borrowing recovery")
+        write_json(output / "planner-guide.json", {"guidance": self.guidance, "plan": self.policy.plan, "claim": claim})
 
     def prepare(self, observation, candidate_path, records, native_mask):
         # A time-limit bootstrap has physical candidates in TENSORS but no ACT
@@ -42,7 +47,7 @@ class PublicPlanGuide:
                 proposal = self.policy.choose(preview)
                 next_stage = self.policy.stage
             except RuntimeError as exc:
-                unavailable_service = (self.guidance in (WAIT_GUIDANCE, BORROW_GUIDANCE, SERVICE_GUIDANCE) and
+                unavailable_service = (self.guidance in (WAIT_GUIDANCE, BORROW_GUIDANCE, SERVICE_GUIDANCE, FINANCE_GUIDANCE) and
                     str(exc) == "Planned service continuation has no exposed legal candidate" and
                     stage >= len(self.policy.plan["actions"]))
                 if not (unavailable_service or str(exc).startswith("Planned primitive is no longer exposed/legal at stage ")):
@@ -70,9 +75,9 @@ class PublicPlanGuide:
             # Evaluating the next value or choosing WAIT must not advance the
             # construction plan. Commit only the actual chosen proposal.
             self.policy.stage = stage
-        # Expose recovery as a choice only after first-bus construction.
-        # The low-cash threshold is below the existing repayment threshold,
-        # so the policy never has indistinguishable borrow/repay alternatives.
+        # Preserve historical v3/v4 recovery after first-bus construction.
+        # Those guides separate borrowing and repayment by cash thresholds;
+        # v5 instead leaves both choices to the policy under native legality.
         borrowing_recovery = (self.guidance in (BORROW_GUIDANCE, SERVICE_GUIDANCE) and blocked and
             stage >= len(self.policy.plan["actions"]) and not observation["vehicles"] and
             observation["economy"]["balance"] < 10000)
@@ -80,7 +85,12 @@ class PublicPlanGuide:
         repayment_allowed = self.guidance != SERVICE_GUIDANCE or (
             stage >= len(self.policy.plan["actions"]) and self.service_started)
         for candidate in exposed:
-            if candidate["family"] == "WAIT" or (candidate["family"] == "MANAGE_LOAN" and
+            if self.guidance == FINANCE_GUIDANCE and candidate["family"] == "MANAGE_LOAN":
+                # Financing competes with investment from the first decision.
+                # Native candidates alone decide cash, debt and loan-limit
+                # legality; the curriculum adds no repayment/recovery threshold.
+                allowed.add(candidate["key"])
+            elif candidate["family"] == "WAIT" or (candidate["family"] == "MANAGE_LOAN" and
                 candidate["parameters"][1:3] == [2, 10000] and observation["economy"]["balance"] >= 20000 and
                 observation["economy"]["loan"] >= 10000 and repayment_allowed):
                 allowed.add(candidate["key"])
@@ -116,6 +126,10 @@ class PublicPlanGuide:
         if self.guidance == SERVICE_GUIDANCE:
             info["service_started"] = self.service_started
             info["repayment_allowed"] = repayment_allowed
+        if self.guidance == FINANCE_GUIDANCE:
+            info["financing_choices"] = "all-exposed-native-legal-loan-actions"
+            info["loan_allowed_keys"] = sorted(c["key"] for c in exposed if c["family"] == "MANAGE_LOAN")
+            info["service_started"] = self.service_started
         return path, mask, info
 
     def commit(self, candidate_key):
