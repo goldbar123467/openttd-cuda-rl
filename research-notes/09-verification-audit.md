@@ -1,7 +1,7 @@
 # Independent verification audit
 
 Audit date: 2026-07-29 UTC  
-Audited report: `OpenTTD_CUDA_RL_REVERSE_ENGINEERING_REPORT.md` (2,896 lines)  
+Audited report: [OpenTTD_CUDA_RL_REVERSE_ENGINEERING_REPORT.md](../docs/internal/OpenTTD_CUDA_RL_REVERSE_ENGINEERING_REPORT.md) (2,896 lines)
 Pinned source: `/workspace/openttd-upstream` at
 `29f808ef0022064e6d9a83c8476d1e0f4686af86`
 

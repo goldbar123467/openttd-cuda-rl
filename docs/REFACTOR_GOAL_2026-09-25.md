@@ -1,7 +1,7 @@
 # Goal prompt: complete the September 25 refactor and PPO recovery
 
 Execute the complete, evidence-backed refactor and live PPO recovery program in
-`9/25 refractor/`. Carry it through implementation, verification, profiling,
+`docs/internal/reviews/2026-09-25/`. Carry it through implementation, verification, profiling,
 registered experiments, reporting, and a reproducible handoff. Do not stop after
 making a plan, implementing only the easiest fixes, or running a smoke test.
 
@@ -16,7 +16,7 @@ service with learned competence.
 Work from `C:\Users\imsa\Documents\OpenTTD\openttd-cuda-rl`, using its WSL/Linux
 equivalent for builds and execution. Read the parent instructions, this checkout's
 `AGENTS.md`, `docs/DEVELOPMENT.md`, `GOAL.md`, and current progress/handoff notes.
-Then read **all eleven original Markdown files**, in full, in `9/25 refractor/`:
+Then read **all eleven original Markdown files**, in full, in `docs/internal/reviews/2026-09-25/`:
 
 - `README.md`
 - `00-review-summary.md`

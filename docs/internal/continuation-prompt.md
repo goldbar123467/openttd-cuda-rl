@@ -5,7 +5,7 @@ The run and handoff are complete. Paste the following into the new chat:
 ```text
 /goal Continue the existing OpenTTD C++/CUDA PPO and agentic-economy project at C:\Users\imsa\Documents\OpenTTD\openttd-cuda-rl.
 
-First read AGENTS.md, GOAL.md, docs/DEVELOPMENT.md, handoff.md, and docs/PROGRESS.md from that checkout. The previous chat was intentionally paused after completing its current run so work could continue here. Use the completed results and next-step recommendation in handoff.md; do not restart from the original zero-passenger smoke.
+First read AGENTS.md, GOAL.md, docs/DEVELOPMENT.md, docs/internal/handoff.md, and docs/PROGRESS.md from that checkout. The previous chat was intentionally paused after completing its current run so work could continue here. Use the completed results and next-step recommendation in docs/internal/handoff.md; do not restart from the original zero-passenger smoke.
 
 Preserve the existing dirty/untracked implementation, isolated qualified worktrees, model artifacts, failed experiments, and frozen release records. Never read or copy the parent OpenTTD directory's secrets.cfg/private.cfg or alter its ordinary saves and configuration. Do not commit, push, or publish unless I ask. Keep C++/LibTorch as the PPO implementation and enforce the recorded resource limits: at most two native jobs, one CUDA training job, compiler parallelism two, and no silent CPU fallback. Do not spawn subagents unless I authorize them.
 

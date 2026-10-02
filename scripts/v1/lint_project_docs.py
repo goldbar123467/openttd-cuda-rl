@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lint active V1 document authority, links, and legacy scope banners."""
+"""Lint project authority, reachable historical navigation, and legacy banners."""
 
 from __future__ import annotations
 
@@ -11,10 +11,16 @@ from dataclasses import dataclass
 from urllib.parse import unquote, urlsplit
 
 
+INTERNAL_INDEX = "docs/internal/README.md"
+README_HISTORY = "docs/internal/README_HISTORY_2026-10-02.md"
+IMPLEMENTATION_HANDOFF = "docs/internal/NEXT_STAGES_IMPLEMENTATION_HANDOFF.md"
+PUBLIC_NAVIGATION_TARGETS = ("GOAL.md", "docs/DEVELOPMENT.md", INTERNAL_INDEX, README_HISTORY)
+
 ACTIVE_FIXED = (
     "GOAL.md",
     "README.md",
-    "NEXT_STAGES_IMPLEMENTATION_HANDOFF.md",
+    INTERNAL_INDEX,
+    IMPLEMENTATION_HANDOFF,
     "docs/architecture/V1_ARCHITECTURE.md",
     "docs/contracts/V1_ENVIRONMENT.md",
     "docs/training/PPO_AND_MODEL_PIPELINE.md",
@@ -70,12 +76,12 @@ ACTIVE_FIXED = (
 )
 V1_ADR_NUMBERS = tuple(range(7, 14))
 LEGACY_BANNER_FILES = (
-    "OPENTTD_P0_ORACLE_CONTRACT_AGENT_PROMPT.md",
-    "OpenTTD_CUDA_RL_REVERSE_ENGINEERING_REPORT.md",
-    "00_P0_CODEX_HANDOFF_INDEX.md",
-    "01_P0_EVIDENCE_GATE_AND_CONTRADICTION_REGISTER.md",
-    "02_P0_PATCHES_0003_0007_IMPLEMENTATION_SPEC.md",
-    "03_P0_COMMAND_AND_FIELD_MAPPING_CONTRACT.md",
+    "docs/internal/OPENTTD_P0_ORACLE_CONTRACT_AGENT_PROMPT.md",
+    "docs/internal/OpenTTD_CUDA_RL_REVERSE_ENGINEERING_REPORT.md",
+    "docs/internal/00_P0_CODEX_HANDOFF_INDEX.md",
+    "docs/internal/01_P0_EVIDENCE_GATE_AND_CONTRADICTION_REGISTER.md",
+    "docs/internal/02_P0_PATCHES_0003_0007_IMPLEMENTATION_SPEC.md",
+    "docs/internal/03_P0_COMMAND_AND_FIELD_MAPPING_CONTRACT.md",
     "docs/P0_SCOPE.md",
     "docs/scope/P0_SUPPORTED_SCOPE.md",
     "docs/scope/P0_FORBIDDEN_SCOPE.md",
@@ -90,7 +96,7 @@ REQUIRED_NAVIGATION_TARGETS = (
     "docs/training/PPO_AND_MODEL_PIPELINE.md",
     "docs/project/VERIFICATION.md",
     "docs/project/LEGACY_P0_TRANSITION.md",
-    "NEXT_STAGES_IMPLEMENTATION_HANDOFF.md",
+    IMPLEMENTATION_HANDOFF,
     "docs/project/M00_WORKTREE_PRESERVATION.md",
     "docs/project/G00_GATE_REPORT.md",
     "docs/project/M01_SOURCE_PREPARATION.md",
@@ -247,33 +253,53 @@ def _link_destination(raw: str) -> str:
     return destination.split(maxsplit=1)[0]
 
 
-def check_local_links(root: pathlib.Path, documents: list[pathlib.Path]) -> int:
+def local_link_targets(root: pathlib.Path, document: pathlib.Path) -> list[pathlib.Path]:
+    """Resolve and validate every local destination relative to its document."""
     root_resolved = root.resolve()
-    count = 0
-    for document in documents:
-        for match in MARKDOWN_LINK.finditer(_read(document)):
-            destination = _link_destination(match.group(1))
-            parsed = urlsplit(destination)
-            if parsed.scheme or parsed.netloc or destination.startswith("#"):
-                continue
-            if not parsed.path:
-                continue
-            decoded = unquote(parsed.path)
-            if pathlib.PurePosixPath(decoded).is_absolute():
-                raise DocLintError(
-                    f"{document.relative_to(root)} uses absolute local link {destination!r}"
-                )
-            target = (document.parent / decoded).resolve()
-            if not target.is_relative_to(root_resolved):
-                raise DocLintError(
-                    f"{document.relative_to(root)} link escapes repository: {destination!r}"
-                )
-            if not target.exists():
-                raise DocLintError(
-                    f"{document.relative_to(root)} has broken local link {destination!r}"
-                )
-            count += 1
-    return count
+    targets = []
+    for match in MARKDOWN_LINK.finditer(_read(document)):
+        destination = _link_destination(match.group(1))
+        parsed = urlsplit(destination)
+        if parsed.scheme or parsed.netloc or destination.startswith("#"):
+            continue
+        if not parsed.path:
+            continue
+        decoded = unquote(parsed.path)
+        if pathlib.PurePosixPath(decoded).is_absolute():
+            raise DocLintError(
+                f"{document.relative_to(root)} uses absolute local link {destination!r}"
+            )
+        target = (document.parent / decoded).resolve()
+        if not target.is_relative_to(root_resolved):
+            raise DocLintError(
+                f"{document.relative_to(root)} link escapes repository: {destination!r}"
+            )
+        if not target.exists():
+            raise DocLintError(
+                f"{document.relative_to(root)} has broken local link {destination!r}"
+            )
+        targets.append(target)
+    return targets
+
+
+def check_local_links(root: pathlib.Path, documents: list[pathlib.Path]) -> int:
+    return sum(len(local_link_targets(root, document)) for document in documents)
+
+
+def check_navigation(root: pathlib.Path) -> None:
+    """Keep the compact public README connected to the complete historical ledger."""
+    readme_targets = set(local_link_targets(root, root / "README.md"))
+    for target in PUBLIC_NAVIGATION_TARGETS:
+        if (root / target).resolve() not in readme_targets:
+            raise DocLintError(f"README.md navigation omits {target}")
+
+    index_targets = set(local_link_targets(root, root / INTERNAL_INDEX))
+    if (root / README_HISTORY).resolve() not in index_targets:
+        raise DocLintError(f"{INTERNAL_INDEX} navigation omits {README_HISTORY}")
+    historical_targets = index_targets | set(local_link_targets(root, root / README_HISTORY))
+    for target in REQUIRED_NAVIGATION_TARGETS:
+        if (root / target).resolve() not in historical_targets:
+            raise DocLintError(f"internal navigation omits {target}")
 
 
 def check_scope_conflicts(root: pathlib.Path, documents: list[pathlib.Path]) -> None:
@@ -313,14 +339,9 @@ def check_authority(root: pathlib.Path, adrs: list[pathlib.Path]) -> None:
     if "Version 2 active expansion" not in goal or "native power-of-two map dimensions" not in goal:
         raise DocLintError("GOAL.md does not state the active V2 breadth/scale boundary")
 
-    readme = _read(root / "README.md")
-    if "Version 2 is now active" not in readme:
-        raise DocLintError("README.md does not identify V2 as active")
-    for target in REQUIRED_NAVIGATION_TARGETS:
-        if f"]({target})" not in readme:
-            raise DocLintError(f"README.md navigation omits {target}")
+    check_navigation(root)
 
-    handoff = _read(root / "NEXT_STAGES_IMPLEMENTATION_HANDOFF.md")
+    handoff = _read(root / IMPLEMENTATION_HANDOFF)
     authority_order = (
         "1. `GOAL.md`",
         "2. `docs/project/REQUIREMENTS.md`",
@@ -339,7 +360,8 @@ def validate(root: pathlib.Path) -> DocLintSummary:
     documents = active_documents(root)
     adrs = find_v1_adrs(root)
     check_authority(root, adrs)
-    local_links = check_local_links(root, documents)
+    # The archive retains historical prose, but every destination must still work.
+    local_links = check_local_links(root, documents + [root / README_HISTORY])
     check_scope_conflicts(root, documents)
     for relative in LEGACY_BANNER_FILES:
         check_legacy_banner(root / relative, root)

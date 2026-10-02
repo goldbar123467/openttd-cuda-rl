@@ -878,8 +878,8 @@ in v2-horizon256-01/completed on Windows; training audits are adjacent.
 
 The user requested pausing after this run and moving to a new chat. The original
 task stopped at that boundary; the continuation task's later work is recorded
-above. [The handoff](../handoff.md) and
-[continuation prompt](../continuation-prompt.md) identify source/worktrees,
+above. [The handoff](internal/handoff.md) and
+[continuation prompt](internal/continuation-prompt.md) identify source/worktrees,
 reproduction commands, qualified deployment, failures, and the recommended next
 bounded diagnostic. The completed diagnosis now distinguishes the blocked
 training depot from the available-but-rejected development depots; the later

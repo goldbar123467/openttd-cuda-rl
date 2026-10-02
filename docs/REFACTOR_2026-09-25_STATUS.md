@@ -1,7 +1,7 @@
 # September 25 refactor execution status
 
 Goal: [complete refactor and PPO recovery](REFACTOR_GOAL_2026-09-25.md).
-Review: `9/25 refractor/`, fetched at `ec5a3f6`; reviewed source was `0595a72`.
+Review: `docs/internal/reviews/2026-09-25/`, fetched at `ec5a3f6`; reviewed source was `0595a72`.
 Execution starts from `8ffc5bd` on `codex/local-training-foundation`.
 The first implementation checkpoint was local commit `c8f585b`; it was not pushed then.
 All eleven original reports were read. This is an implementation record, not a
