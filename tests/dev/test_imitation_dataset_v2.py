@@ -50,7 +50,7 @@ class ImitationDatasetTests(unittest.TestCase):
                     "source_recording": source, "records": samples,
                     "replay_validation": {"status": "passed", "path": str(report),
                         "sha256": hashlib.sha256(report.read_bytes()).hexdigest()}}))
-                for mode in ("signed-log-orders-v1", "signed-log-orders-v2"):
+                for mode in ("signed-log-orders-v1", "signed-log-orders-v2", "signed-log-orders-v3"):
                     with self.subTest(corrupt=corrupt, mode=mode), patch("replay_human.validate_samples", side_effect=ValueError("reached exact sample validator")) as validator:
                         message = "hash-verified recording log" if corrupt else "reached exact sample validator"
                         with self.assertRaisesRegex(ValueError, message):
@@ -67,7 +67,7 @@ class ImitationDatasetTests(unittest.TestCase):
                 "action_semantics": "orders-v1", "financial_features": "signed-log-orders-v1",
                 "replay_validation": {"status": "failed"}}))
             original = dataset.read_bytes()
-            for mode in ("signed-log-orders-v1", "signed-log-orders-v2"):
+            for mode in ("signed-log-orders-v1", "signed-log-orders-v2", "signed-log-orders-v3"):
                 with self.assertRaisesRegex(ValueError, "Replay verification|replay verification"):
                     prepare_dataset(dataset, root, financial_features=mode)
                 self.assertEqual(original, dataset.read_bytes())

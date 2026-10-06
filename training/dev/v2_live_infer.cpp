@@ -20,7 +20,7 @@ int main(int argc, char **argv)
         }
         if (!args.contains("--device") || !args.contains("--seed") || !args.contains("--mode") ||
             args.size() != 3 + args.count("--weights") + args.count("--financial-features"))
-            throw std::invalid_argument("required: --device cpu|cuda:0 --seed INTEGER --mode greedy|sampled [--weights FILE] [--financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2]");
+            throw std::invalid_argument("required: --device cpu|cuda:0 --seed INTEGER --mode greedy|sampled [--weights FILE] [--financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3]");
         if (args.at("--device") != "cpu" && args.at("--device") != "cuda:0") throw std::invalid_argument("unsupported device");
         if (args.at("--mode") != "greedy" && args.at("--mode") != "sampled") throw std::invalid_argument("unsupported mode");
         const auto financial_features = openttd_rl::development::parse_financial_features(

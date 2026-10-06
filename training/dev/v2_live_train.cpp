@@ -475,7 +475,7 @@ int main(int argc, char **argv)
 {
     try {
         if (argc < 5 || argc > 19 || argc % 2 != 1 || std::string(argv[1]) != "--device" || std::string(argv[3]) != "--seed")
-            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2] [--entropy-coefficient NUMBER] [--policy-loss historical|choice-weighted] [--recovery-diagnostics 0|1] [--gradient-norm historical|fp64-v1]");
+            throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER [--rollout-length 32|64|128] [--gae-lambda NUMBER] [--financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3] [--entropy-coefficient NUMBER] [--policy-loss historical|choice-weighted] [--recovery-diagnostics 0|1] [--gradient-norm historical|fp64-v1]");
         if (std::string(argv[2]) != "cpu" && std::string(argv[2]) != "cuda:0") throw std::invalid_argument("unsupported device");
         int64_t rollout_length = 32;
         double gae_lambda = 0.95;

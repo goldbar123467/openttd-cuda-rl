@@ -9,6 +9,7 @@ import select
 import struct
 import subprocess
 import time
+import tempfile
 
 from live_v2 import LiveV2, OBSERVATION_SCHEMAS, observation_mode_for_schema
 from live_v2_artifacts import archive_tensors
@@ -107,6 +108,9 @@ class PolicyClient:
         if gradient_norm != "historical" and mode is not None:
             raise ValueError("Gradient norm accumulation is a trainer option")
         self.financial_features = financial_features_mode(financial_features)
+        self.order_projection = None
+        if self.financial_features == "signed-log-orders-v3":
+            self.order_projection = tempfile.TemporaryDirectory(prefix="orders-v3-", dir=Path(output).parent)
         self.log = Path(output).open("x")
         command = [str(executable), "--device", device, "--seed", str(seed)]
         if mode is not None:
@@ -135,7 +139,12 @@ class PolicyClient:
         if self.financial_features != "raw" and self.request("FINANCIAL_FEATURES_INFO") != {"financial_features": self.financial_features}:
             raise ValueError("Native policy financial preprocessing differs")
 
-    def request(self, line):
+    def request(self, line, *, public_state=None):
+        parts = line.split("\t")
+        if self.order_projection is not None and len(parts) == 2 and all(Path(path).is_file() for path in parts):
+            from order_projection_v3 import project_pair
+            paths, _ = project_pair(*parts, self.order_projection.name, public_state=public_state)
+            line = "\t".join(map(str, paths))
         self.process.stdin.write(line + "\n")
         self.process.stdin.flush()
         if not select.select([self.process.stdout], [], [], 60)[0]:
@@ -162,6 +171,8 @@ class PolicyClient:
         self.process.stdin.close()
         self.process.stdout.close()
         self.log.close()
+        if self.order_projection is not None:
+            self.order_projection.cleanup()
 
 
 def run(args, *, heldout_permit=None):
@@ -271,7 +282,8 @@ def run(args, *, heldout_permit=None):
                 if game.request("OBSERVE")["observation"] != observation or game.request("TENSORS")["tensors"] != response["tensors"]:
                     raise RuntimeError("Tensor observation changed state or was not cached")
                 started = time.monotonic_ns()
-                prediction = policy.request(f"{obs_path}\t{candidate_path}")
+                projection_options = {"public_state": observation} if financial_features == "signed-log-orders-v3" else {}
+                prediction = policy.request(f"{obs_path}\t{candidate_path}", **projection_options)
                 elapsed = time.monotonic_ns() - started
                 if prediction["schema_version"] != TENSOR_SCHEMA or prediction["row"] not in candidates:
                     raise ValueError("Native policy selected an unexposed row")
@@ -279,7 +291,7 @@ def run(args, *, heldout_permit=None):
                 if len(p) != 4096 or not all(math.isfinite(value) and value >= 0 for value in p) or abs(sum(p) - 1) > 1e-5 or any(p[i] != 0 for i in range(4096) if not mask[i]):
                     raise ValueError("Native policy returned invalid probabilities/masks")
                 if reference:
-                    cpu = reference.request(f"{obs_path}\t{candidate_path}")
+                    cpu = reference.request(f"{obs_path}\t{candidate_path}", **projection_options)
                     errors["probability_max_abs"] = max(errors["probability_max_abs"], max(abs(a - b) for a, b in zip(p, cpu["probabilities"], strict=True)))
                     errors["value_max_abs"] = max(errors["value_max_abs"], abs(prediction["value"] - cpu["value"]))
                     if errors["probability_max_abs"] > 1e-5 or errors["value_max_abs"] > 1e-4 or prediction["row"] != cpu["row"]:

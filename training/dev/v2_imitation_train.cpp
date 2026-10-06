@@ -181,7 +181,7 @@ int64_t integer(const std::string &text, int64_t minimum, int64_t maximum)
 int main(int argc, char **argv)
 {
     try {
-        if (argc != 15) throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER --epochs INTEGER --learning-rate NUMBER --financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2 --manifest PATH --output PATH");
+        if (argc != 15) throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER --epochs INTEGER --learning-rate NUMBER --financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3 --manifest PATH --output PATH");
         std::map<std::string, std::string> args;
         for (int index = 1; index < argc; index += 2)
             if (!args.emplace(argv[index], argv[index + 1]).second) throw std::invalid_argument("duplicate imitation option");

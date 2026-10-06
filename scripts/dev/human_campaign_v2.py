@@ -13,7 +13,7 @@ CAMPAIGN_SCHEMA = "openttd-rl-development-human-imitation-campaign-1"
 SINGLE_SCHEMA = "openttd-rl-development-human-imitation-dataset-1"
 OBSERVATION_SCHEMA = "v2-m15-public-development-orders-v1"
 NATIVE_SCHEMA = "openttd-rl-development-v2-imitation-1"
-MODES = ("signed-log-orders-v1", "signed-log-orders-v2")
+MODES = ("signed-log-orders-v1", "signed-log-orders-v2", "signed-log-orders-v3")
 
 
 def artifact(path):

@@ -64,7 +64,7 @@ class ImitationWarmStartTests(unittest.TestCase):
             checked_imitation_run(self.root)
 
     def test_order_modes_require_explicit_semantics_and_do_not_interchange(self):
-        for mode in ("signed-log-orders-v1", "signed-log-orders-v2"):
+        for mode in ("signed-log-orders-v1", "signed-log-orders-v2", "signed-log-orders-v3"):
             self.record.update(financial_features=mode,
                 observation_schema_id="v2-m15-public-development-orders-v1", action_semantics="orders-v1")
             self.record["model"].update(financial_features=mode,

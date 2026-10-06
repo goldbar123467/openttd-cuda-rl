@@ -16,7 +16,7 @@ DATASET_SCHEMA = "openttd-rl-development-human-imitation-dataset-1"
 NATIVE_SCHEMA = "openttd-rl-development-v2-imitation-1"
 OBSERVATION_SCHEMA = "v2-m15-public-development-finance-v1"
 ORDERS_OBSERVATION_SCHEMA = "v2-m15-public-development-orders-v1"
-ORDER_FEATURES = ("signed-log-orders-v1", "signed-log-orders-v2")
+ORDER_FEATURES = ("signed-log-orders-v1", "signed-log-orders-v2", "signed-log-orders-v3")
 REPLAY_CHECKS = {"roads", "orders", "cash", "debt", "date", "vehicles", "stations", "depots", "command_cost_accounting"}
 
 
@@ -146,6 +146,12 @@ def prepare_dataset(dataset_path, output, *, financial_features=None):
         # Save the full label/evidence row separately; the native service reads
         # only bounded paths, indices and the exact observed mask.
         archived.append({**record, "archived_tensors": copied})
+        if financial_features == "signed-log-orders-v3":
+            from order_projection_v3 import project_pair
+            pair, projection = project_pair(copied["observation"]["path"], copied["candidate"]["path"],
+                                            tensors / f"{index:04d}-v3", public_state=observation)
+            copied = {name: artifact(path) for name, path in zip(("observation", "candidate"), pair)}
+            archived[-1].update(archived_tensors=copied, order_projection=projection)
         lines.append("\t".join([sample, game, copied["observation"]["path"], copied["candidate"]["path"],
                                  str(action), str(family), ",".join(map(str, legal))]))
     manifest = output / "native-imitation.tsv"

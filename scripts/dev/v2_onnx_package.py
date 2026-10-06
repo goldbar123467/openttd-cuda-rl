@@ -9,7 +9,7 @@ METADATA = {'openttd_rl.kind': 'development-v2-live-recurrent-policy-1',
     'openttd_rl.observation_schema': 'v2-m15-public-development-v2',
     'openttd_rl.financial_features': 'raw'}
 
-FINANCIAL_FEATURES = ('raw', 'signed-log-v1', 'signed-log-loan-v1', 'signed-log-actions-v1', 'signed-log-orders-v1', 'signed-log-orders-v2')
+FINANCIAL_FEATURES = ('raw', 'signed-log-v1', 'signed-log-loan-v1', 'signed-log-actions-v1', 'signed-log-orders-v1', 'signed-log-orders-v2', 'signed-log-orders-v3')
 
 
 def financial_features_mode(value):
@@ -20,7 +20,7 @@ def financial_features_mode(value):
 
 def metadata_for(financial_features):
     mode = financial_features_mode(financial_features)
-    if mode in ('signed-log-loan-v1', 'signed-log-actions-v1', 'signed-log-orders-v1', 'signed-log-orders-v2'):
+    if mode in ('signed-log-loan-v1', 'signed-log-actions-v1', 'signed-log-orders-v1', 'signed-log-orders-v2', 'signed-log-orders-v3'):
         raise ValueError('Action preprocessing requires native candidate parameters; ONNX export is not supported for this mode')
     metadata = {**METADATA, 'openttd_rl.financial_features': mode}
     if mode != 'raw':

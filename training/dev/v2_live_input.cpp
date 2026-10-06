@@ -1,11 +1,15 @@
 #include "v2_live_input.h"
 #include "checkpoint_io.h"
 
+#include <algorithm>
 #include <bit>
 #include <cmath>
 #include <cstring>
 #include <fstream>
 #include <limits>
+#include <map>
+#include <memory>
+#include <set>
 #include <stdexcept>
 #include <vector>
 
@@ -65,6 +69,103 @@ private:
     std::vector<uint8_t> data_;
     size_t position_{};
 };
+
+// Candidate-local entity binding, computed only from the current public tensor.
+// The explicit v3-only tensor projection removes redundant native vehicle
+// coordinates and binds marker 2. Every slot 14..19 must be zero on arrival.
+class OrderContext {
+public:
+    explicit OrderContext(const ScalablePolicyInput &input)
+    {
+        const auto vehicles = input.vehicles.features.accessor<float, 3>();
+        const auto vehicle_mask = input.vehicles.mask.accessor<bool, 2>();
+        const auto stations = input.stations.features.accessor<float, 3>();
+        const auto station_mask = input.stations.mask.accessor<bool, 2>();
+        for (int64_t row = 0; row < kStationCapacity; ++row) if (station_mask[0][row] && stations[0][row][3] == 1.0F) {
+            const auto id = integer(stations[0][row][0], 63999, 63999);
+            if (!stations_.emplace(id, stations[0][row][5]).second)
+                throw std::invalid_argument("v3 duplicate public station identity");
+        }
+        for (int64_t row = 0; row < kVehicleCapacity; ++row) if (vehicle_mask[0][row] && vehicles[0][row][2] == 1.0F) {
+            const auto *values = &vehicles[0][row][0];
+            Vehicle vehicle;
+            vehicle.stopped = integer(values[13], 1, 1);
+            const auto count = integer(values[16], 4, 4);
+            if (values[38] != 0 || values[39] != 0)
+                throw std::invalid_argument("v3 requires independent supported public orders");
+            std::set<uint32_t> assigned;
+            for (uint32_t index = 0; index < count; ++index) {
+                const auto type = integer(values[20 + index * 4], 65535, 65535) & 255U;
+                if (type != 0x21 && type != 0x61)
+                    throw std::invalid_argument("v3 requires canonical station orders");
+                const auto destination = integer(values[21 + index * 4], 65535, 63999);
+                vehicle.orders.push_back(destination);
+                assigned.insert(destination);
+            }
+            for (uint32_t index = count; index < 4; ++index)
+                for (uint32_t column = 0; column < 4; ++column)
+                    if (values[20 + index * 4 + column] != 0)
+                        throw std::invalid_argument("v3 requires zero padded public orders");
+            for (const auto station : assigned) ++assigned_[station];
+            // Pinned 15.3 VehicleID pool End is 0xFF000 (the invalid sentinel
+            // is 0xFFFFF). Native Unit uses End-1, not the sentinel.
+            const auto id = integer(values[0], 1044479, 1044479);
+            if (!vehicles_.emplace(id, std::move(vehicle)).second)
+                throw std::invalid_argument("v3 duplicate public vehicle identity");
+        }
+    }
+
+    void encode(float *features, const uint32_t *parameters) const
+    {
+        const auto found = vehicles_.find(parameters[1]);
+        if (found == vehicles_.end()) throw std::invalid_argument("v3 target vehicle missing from public tensor");
+        const auto &vehicle = found->second;
+        for (size_t column = 14; column < 20; ++column)
+            if (features[column] != 0) throw std::invalid_argument("v3 requires unused order slots 14..19");
+        const auto operation = parameters[2] & 255U, index = (parameters[2] >> 8) & 255U;
+        bool has_station = operation != 3;
+        uint32_t station = parameters[3];
+        if (operation == 1) {
+            if (vehicle.orders.size() >= 4 || index > vehicle.orders.size())
+                throw std::invalid_argument("v3 insertion position differs from public orders");
+        } else if (operation == 2 || operation == 4) {
+            if (index >= vehicle.orders.size()) throw std::invalid_argument("v3 order index differs from public orders");
+            station = vehicle.orders[index];
+        } else if (operation == 3) {
+            const auto source = vehicles_.find(parameters[3]);
+            if (source == vehicles_.end() || source->second.orders.empty() || parameters[1] == parameters[3])
+                throw std::invalid_argument("v3 copy source missing or unsupported");
+        }
+        features[14] = has_station && std::find(vehicle.orders.begin(), vehicle.orders.end(), station) != vehicle.orders.end() ? 1.0F : 0.0F;
+        features[15] = operation == 1 && ((index > 0 && vehicle.orders[index - 1] == station) ||
+            (index < vehicle.orders.size() && vehicle.orders[index] == station)) ? 1.0F : 0.0F;
+        features[16] = static_cast<float>(vehicle.orders.size()) / 4.0F;
+        features[17] = static_cast<float>(vehicle.stopped);
+        features[18] = 0; features[19] = 0;
+        if (has_station) {
+            const auto stop = stations_.find(station);
+            if (stop == stations_.end()) throw std::invalid_argument("v3 candidate station missing from public tensor");
+            const auto buses = assigned_.find(station);
+            features[18] = static_cast<float>(std::log1p(buses == assigned_.end() ? 0 : buses->second) / std::log1p(1024.0));
+            if (stop->second < 0 || stop->second > 1) throw std::invalid_argument("v3 public waiting count outside native bounds");
+            features[19] = static_cast<float>(std::log1p(static_cast<double>(stop->second) * 65535) / std::log1p(65535.0));
+        }
+    }
+private:
+    static uint32_t integer(float value, double divisor, uint32_t maximum)
+    {
+        const double decoded = static_cast<double>(value) * divisor;
+        const auto rounded = std::round(decoded);
+        if (rounded < 0 || rounded > maximum ||
+                value != static_cast<float>(rounded) / static_cast<float>(divisor))
+            throw std::invalid_argument("v3 public categorical value outside exact native encoding");
+        return static_cast<uint32_t>(rounded);
+    }
+    struct Vehicle { uint32_t stopped{}; std::vector<uint32_t> orders; };
+    std::map<uint32_t, Vehicle> vehicles_;
+    std::map<uint32_t, float> stations_;
+    std::map<uint32_t, uint32_t> assigned_;
+};
 } // namespace
 
 FinancialFeatures parse_financial_features(std::string_view name)
@@ -75,6 +176,7 @@ FinancialFeatures parse_financial_features(std::string_view name)
     if (name == "signed-log-actions-v1") return FinancialFeatures::SignedLogActionsV1;
     if (name == "signed-log-orders-v1") return FinancialFeatures::SignedLogOrdersV1;
     if (name == "signed-log-orders-v2") return FinancialFeatures::SignedLogOrdersV2;
+    if (name == "signed-log-orders-v3") return FinancialFeatures::SignedLogOrdersV3;
     throw std::invalid_argument("unknown financial/action preprocessing mode");
 }
 
@@ -86,6 +188,7 @@ const char *financial_features_name(FinancialFeatures mode)
     if (mode == FinancialFeatures::SignedLogActionsV1) return "signed-log-actions-v1";
     if (mode == FinancialFeatures::SignedLogOrdersV1) return "signed-log-orders-v1";
     if (mode == FinancialFeatures::SignedLogOrdersV2) return "signed-log-orders-v2";
+    if (mode == FinancialFeatures::SignedLogOrdersV3) return "signed-log-orders-v3";
     throw std::invalid_argument("unknown financial feature mode");
 }
 
@@ -181,7 +284,9 @@ openttd_rl::v2::ScalablePolicyInput read_live_v2_input(
     // A binary marker binds this opt-in projection even when callers bypass
     // Python metadata checks. Historical archives and tensors stay unchanged.
     const float orders_marker = input.structured[0][511].item<float>();
-    if (orders_marker != (uses_order_features(financial_features) ? 1.0F : 0.0F))
+    const float expected_marker = financial_features == FinancialFeatures::SignedLogOrdersV3 ? 2.0F :
+        (uses_order_features(financial_features) ? 1.0F : 0.0F);
+    if (orders_marker != expected_marker)
         throw std::invalid_argument("orders observation/preprocessing schema differs");
     if (input.structured.slice(1, 13, 16).abs().sum().item<float>() != 0.0F)
         throw std::invalid_argument("live V2 policy refuses unredacted seed features");
@@ -222,6 +327,8 @@ openttd_rl::v2::ScalablePolicyInput read_live_v2_input(
     auto *families = input.candidate_family.data_ptr<int64_t>();
     auto *family_mask = input.family_mask.data_ptr<bool>();
     const auto *mask = input.candidate_mask.data_ptr<bool>();
+    const auto order_context = financial_features == FinancialFeatures::SignedLogOrdersV3 ?
+        std::make_unique<OrderContext>(input) : nullptr;
     for (int64_t row = 0; row < kCandidateCapacity; ++row) if (mask[row]) {
         auto family = parameters[static_cast<size_t>(row * 16)];
         if (family >= kFamilyCount) throw std::invalid_argument("native V2 candidate family exceeds inventory");
@@ -262,7 +369,8 @@ openttd_rl::v2::ScalablePolicyInput read_live_v2_input(
                     input.candidate_features[0][row][static_cast<int64_t>(20 + (parameter - 1) * 4 + byte)] =
                         static_cast<float>(std::log1p(static_cast<double>((value >> (8 * byte)) & 255U)) / std::log(256.0));
             }
-            if (financial_features == FinancialFeatures::SignedLogOrdersV2 && family == 6) {
+            if ((financial_features == FinancialFeatures::SignedLogOrdersV2 ||
+                    financial_features == FinancialFeatures::SignedLogOrdersV3) && family == 6) {
                 // These are unordered public categories. The archived v1 fit
                 // consistently chose endpoint value NoLoad=4 over FullAny=3.
                 // Family already reaches the model via its learned embedding;
@@ -281,6 +389,8 @@ openttd_rl::v2::ScalablePolicyInput read_live_v2_input(
                 if (operation == 2)
                     input.candidate_features[0][row][static_cast<int64_t>(4 + (value == 0 ? 0 : value - 1))] = 1.0F;
                 if (operation != 3) input.candidate_features[0][row][static_cast<int64_t>(8 + index)] = 1.0F;
+                if (order_context) order_context->encode(input.candidate_features[0][row].data_ptr<float>(),
+                    parameters.data() + row * 16);
             }
         }
         if (financial_features == FinancialFeatures::SignedLogLoanV1 && family == 11) {

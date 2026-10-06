@@ -7,6 +7,23 @@ learning CUDA and PPO; retain understandable C++ training code, measurable GPU
 work, and a CPU reference. The long-term research platform pits neural policies,
 scripted AIs, and LLMs using MCP against each other in a shared economy.
 
+The October 6 goal is one station/order representation trial, not DAgger yet.
+Preserve the ten-game pipeline and merge origin/main locally; do not push.
+Implement `signed-log-orders-v3` with the same network/actions/masks, then run
+exactly one fresh 186-choice CUDA fit at 256 updates, seed 20261002 and learning
+rate 0.0003. Audit all training inputs and game 08, and use the existing frozen
+50-case gameplay protocol only if most of the nine adjacent-duplicate insertion
+predictions are removed (at most four remain). Stop and report a failed criterion;
+do not tune features or refit. Keep games 09–10, DAgger/WAIT labels, the example
+cap, PPO, network changes and MCP outside this goal.
+The owner approved a v3-only tensor projection because native order slots 14–15
+already contain coordinates. Check their old meaning, clear them, require zero
+slots 16–19, and bind marker 2; the C++ v3 reader rejects nonzero slots 14–19.
+For v3, bind station column 5 to the same public snapshot's passenger count,
+because the old column sums all cargo. Preserve raw tensors, earlier modes,
+archive compatibility checks and native-only ONNX rejection. See the October 6
+section of docs/DEVELOPMENT.md for the slot meanings, tests and artifact paths.
+
 OpenTTD itself runs on the CPU. CUDA accelerates neural training and supported
 policy inference, not the simulation. Measure game-worker throughput separately
 from network speed; never describe this as a GPU implementation of OpenTTD.

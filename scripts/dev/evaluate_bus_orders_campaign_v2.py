@@ -197,7 +197,8 @@ def unsupported_order_state(state):
     return failures
 
 
-def episode(engine, policy_path, model, output, case, context, *, decisions=512, verify_save=False, capture_interface_limit=False):
+def episode(engine, policy_path, model, output, case, context, *, decisions=512, verify_save=False, capture_interface_limit=False,
+            financial_features=MODE):
     output.mkdir(parents=True, exist_ok=False)
     report = {"status": "running", "case": case, "source_save": checked(context["save"]),
               "engine": artifact(engine), "policy": artifact(policy_path) if model is not None else None,
@@ -215,15 +216,19 @@ def episode(engine, policy_path, model, output, case, context, *, decisions=512,
         write_json(output / "initial.json", initial)
         if model is not None:
             policy = PolicyClient(policy_path, output / "policy.log", "cpu", case["action_seed"], mode=case["mode"],
-                                  weights=Path(model["path"]), financial_features=MODE)
+                                  weights=Path(model["path"]), financial_features=financial_features)
             policy.check_financial_features()
             report["model"] = model
+            report["financial_features"] = financial_features
         transitions, operations, interim, interface_limit = [], [], [], []
+        first_route = {"started": False, "valid": False, "vehicle_id": None}
         with (output / "decisions.jsonl").open("x") as log:
             for index in range(decisions):
                 state = client.request("OBSERVE")["observation"]
                 if state["terminal"]:
                     break
+                if first_route["vehicle_id"] is None and state["vehicles"]:
+                    first_route["vehicle_id"] = min(bus["id"] for bus in state["vehicles"])
                 if model is not None and capture_interface_limit:
                     interface_limit = unsupported_order_state(state)
                     if interface_limit:
@@ -235,7 +240,8 @@ def episode(engine, policy_path, model, output, case, context, *, decisions=512,
                     response = client.request("TENSORS")
                     obs, candidates, inventory, mask = checked_tensors(response, state, observation_mode="orders-v1")
                     policy.request("RESET")
-                    prediction = policy.request(f"{obs}\t{candidates}")
+                    projection_options = {"public_state": state} if financial_features == "signed-log-orders-v3" else {}
+                    prediction = policy.request(f"{obs}\t{candidates}", **projection_options)
                     selected = inventory.get(prediction["row"])
                     probabilities = prediction["probabilities"]
                     if (selected is None or not mask[prediction["row"]] or len(probabilities) != len(mask)
@@ -249,6 +255,13 @@ def episode(engine, policy_path, model, output, case, context, *, decisions=512,
                                 "observation": artifact(obs), "candidates": artifact(candidates),
                                 "legal_rows": [row for row, value in enumerate(mask) if value]}
                 transition = step(client, state, candidate)
+                if (not first_route["started"] and candidate["parameters"][:2] == [7, first_route["vehicle_id"]]):
+                    bus = next(bus for bus in state["vehicles"] if bus["id"] == first_route["vehicle_id"])
+                    if bus["stopped"]:
+                        orders = bus["orders"]
+                        first_route.update(started=True, decision=index + 1, orders=orders,
+                                           valid=len(orders) == 2 and len({order["destination"] for order in orders}) == 2 and
+                                           all(order["load_mode"] == 3 for order in orders))
                 transitions.append(transition)
                 operations.append(operation(candidate))
                 log.write(json.dumps({"decision": index + 1, "operation": operations[-1], "candidate": candidate,
@@ -269,6 +282,7 @@ def episode(engine, policy_path, model, output, case, context, *, decisions=512,
         archive_tensors(output / "worker", compresslevel=1)
         archive_metadata(output / "worker")
         report.update(status="completed", summary=summarize(transitions, initial, final), final_save=saved,
+                      first_route=first_route,
                       checkpoints=interim, operation_counts=dict(Counter(operations)),
                       valid_running_routes=sum(not bus["stopped"] and len(bus["orders"]) == 2 and
                           len({order["destination"] for order in bus["orders"]}) == 2 and

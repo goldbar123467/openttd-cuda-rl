@@ -10,7 +10,7 @@ from v2_onnx_package import financial_features_mode, metadata_for
 
 class LoanFeaturesTests(unittest.TestCase):
     def test_native_mode_is_explicit_and_onnx_metadata_rejects_it(self):
-        for mode in ("signed-log-loan-v1", "signed-log-actions-v1", "signed-log-orders-v1", "signed-log-orders-v2"):
+        for mode in ("signed-log-loan-v1", "signed-log-actions-v1", "signed-log-orders-v1", "signed-log-orders-v2", "signed-log-orders-v3"):
             self.assertEqual(financial_features_mode(mode), mode)
             with self.assertRaisesRegex(ValueError, "native candidate parameters"):
                 metadata_for(mode)
@@ -20,7 +20,7 @@ class LoanFeaturesTests(unittest.TestCase):
     @unittest.skipUnless(find_spec("torch") is not None, "direct export test requires the local Torch environment")
     def test_direct_export_adapter_and_loader_reject_before_weights_read(self):
         from v2_export_policy import ExportPolicy, load_export_policy
-        for mode in ("signed-log-loan-v1", "signed-log-actions-v1", "signed-log-orders-v1", "signed-log-orders-v2"):
+        for mode in ("signed-log-loan-v1", "signed-log-actions-v1", "signed-log-orders-v1", "signed-log-orders-v2", "signed-log-orders-v3"):
             with self.assertRaisesRegex(ValueError, "native candidate parameters"):
                 ExportPolicy(mode)
             with self.assertRaisesRegex(ValueError, "native candidate parameters"):

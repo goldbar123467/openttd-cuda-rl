@@ -1,5 +1,64 @@
 # Local training and the path to agentic economies
 
+## One station/order feature trial (October 6)
+
+The owner authorized one `signed-log-orders-v3` feature version and one fresh
+seven-game CUDA fit: 256 updates, seed 20261002, learning rate 0.0003. Training
+uses only the 186 choices from games 01–07; game 08 supplies 34 development
+choices. Games 09–10, DAgger, WAIT labels, PPO and network/action changes are
+outside this trial. No feature or model tuning follows gameplay evaluation.
+Stop before the benchmark if the fit does not remove most of the nine reported
+adjacent-duplicate insertion predictions (a majority requires at most four).
+
+The ten-game pipeline is preserved in local commit `41b0ad5`; `origin/main`,
+including the chart gallery, is merged in `f06422c`. Nothing is pushed.
+The fresh build is
+`/home/imsa/.local/share/openttd-rl/build/human-orders-v3-20261006-01/`;
+the experiment is
+`/home/imsa/.local/share/openttd-rl/runs/human-orders-v3-20261006-01/`.
+
+The original proposal's unused-slot assumption was incorrect: 179/186 training
+states contain order candidates with native bus coordinates in slots 14–15
+(13,527 candidate rows). The owner approved a v3-only tensor projection.
+`order_projection_v3.py` checks those coordinates against the target bus and
+requires slots 16–19 to remain zero, clears the redundant coordinate block,
+and changes structured marker 511 from 1 to 2. The native v3 reader requires
+all six incoming order slots 14–19 to be zero. Native v1/v2 tensors retain
+marker 1 and are rejected by v3; v3 tensors are rejected by v1/v2. Weight archive
+preprocessing tags also reject v2/v3 mismatches. ONNX export rejects v3.
+
+The old station tensor's column 5 sums every waiting cargo type, including mail.
+For v3 only, the projection binds that column to the exact passenger count in
+the same validated public snapshot. It retains original tensors and records
+both source/projected hashes and public passenger counts. Counts saturate at
+the existing native bound of 65,535; no extra information or future state is
+used. Native entity IDs decode with the pinned pool limits: station 63,999 and
+vehicle 1,044,479, rather than the vehicle invalid sentinel 1,048,575.
+
+Only family-6 order candidates receive the new six features:
+
+| Slot | Public meaning |
+| --- | --- |
+| 14 | This endpoint already occurs in the target bus's orders |
+| 15 | An inserted endpoint duplicates either immediate neighbor |
+| 16 | Target bus order count divided by four |
+| 17 | Target bus stopped status |
+| 18 | `log1p(assigned buses)/log1p(1024)`; each owned bus counts once, including stopped buses |
+| 19 | `log1p(waiting passengers)/log1p(65535)` at the endpoint |
+
+Loading/deletion candidates use their indexed endpoint. Copies have no endpoint,
+so slots 14, 15, 18 and 19 are zero. Slots 0–13 and 20–31, every exact action
+parameter and every legal mask remain unchanged. All earlier reader modes retain
+their behavior. Public identities, order indices and reserved slots fail closed.
+Native CPU/CUDA tests cover both legacy order modes and v3, archive/tensor
+rejection, public counts, repeated stops, insertion neighbors and row ordering.
+`audit_orders_v3.py --stage inputs` compares actual C++ features to independently
+decoded public JSON and checks all legal candidates for exact aliases across
+the 186 training states. `--stage fit` reports unique exact fit per action type,
+duplicate predictions and row permutations on training and game 08 only.
+
+Results and final qualification are recorded below after the single fit.
+
 ## Ten-game training and saved benchmark (October 5)
 
 All ten human games are preserved and pass native replay and partition-appropriate

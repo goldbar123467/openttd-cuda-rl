@@ -24,7 +24,7 @@ def checked_imitation_run(directory, *, observation_schema=None, financial_featu
         raise ValueError("Imitation weights path/hash differs")
     if model.get("financial_features") != record.get("financial_features"):
         raise ValueError("Imitation model preprocessing metadata differs")
-    if record.get("financial_features") in ("signed-log-orders-v1", "signed-log-orders-v2"):
+    if record.get("financial_features") in ("signed-log-orders-v1", "signed-log-orders-v2", "signed-log-orders-v3"):
         if (record.get("observation_schema_id") != "v2-m15-public-development-orders-v1" or
                 record.get("action_semantics") != "orders-v1" or model.get("action_semantics") != "orders-v1" or
                 model.get("observation_schema_id") != record["observation_schema_id"]):

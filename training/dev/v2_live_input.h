@@ -8,9 +8,9 @@
 namespace openttd_rl::development {
 inline constexpr const char *kLiveV2TensorSchema = "openttd-rl-development-v2-public-tensors-1";
 // The historical option name also versions native action preprocessing.
-enum class FinancialFeatures { Raw, SignedLogV1, SignedLogLoanV1, SignedLogActionsV1, SignedLogOrdersV1, SignedLogOrdersV2 };
+enum class FinancialFeatures { Raw, SignedLogV1, SignedLogLoanV1, SignedLogActionsV1, SignedLogOrdersV1, SignedLogOrdersV2, SignedLogOrdersV3 };
 inline constexpr bool uses_order_features(FinancialFeatures mode)
-{ return mode == FinancialFeatures::SignedLogOrdersV1 || mode == FinancialFeatures::SignedLogOrdersV2; }
+{ return mode == FinancialFeatures::SignedLogOrdersV1 || mode == FinancialFeatures::SignedLogOrdersV2 || mode == FinancialFeatures::SignedLogOrdersV3; }
 inline constexpr const char *kOrdersObservationSchema = "v2-m15-public-development-orders-v1";
 inline constexpr const char *kOrdersActionSemantics = "orders-v1";
 inline constexpr const char *kFinancialFeaturesArchiveKey = "development_financial_features";
