@@ -34,6 +34,10 @@ def checked_artifact(record):
 
 def prepare_dataset(dataset_path, output, *, financial_features=None):
     dataset = json.loads(dataset_path.read_text())
+    from human_campaign_v2 import CAMPAIGN_SCHEMA, prepare_campaign_dataset, require_training_split
+    if dataset.get("schema_version") == CAMPAIGN_SCHEMA:
+        return prepare_campaign_dataset(dataset_path, output, financial_features=financial_features,
+                                        prepare_single=prepare_dataset)
     if (dataset.get("schema_version") != DATASET_SCHEMA or dataset.get("source_kind") != "human" or
             dataset.get("observation_schema_id") not in (OBSERVATION_SCHEMA, ORDERS_OBSERVATION_SCHEMA)):
         raise ValueError("Only native finance observations from human replay are accepted")
@@ -55,6 +59,7 @@ def prepare_dataset(dataset_path, output, *, financial_features=None):
             replay_report.get("status") != "passed" or not required_checks <= replay_report.get("checks", {}).keys() or
             any(value is not True for value in replay_report["checks"].values())):
         raise ValueError("Referenced native replay report did not pass every equivalence check")
+    require_training_split(dataset)
     if replay_report["source_recording"] != dataset["source_recording"]:
         raise ValueError("Replay and imitation refer to different recordings")
     for path, digest in replay_report["inputs"].items():

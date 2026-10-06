@@ -187,7 +187,12 @@ void RunRlHumanReplay(const std::string &config_path)
         const int date = event.at("date"); const uint fraction = event.at("fraction");
         uint64_t ticks = 0;
         while (TimerGameEconomy::date.base() < date || (TimerGameEconomy::date.base() == date && TimerGameEconomy::date_fract < fraction)) {
-            Require(!_pause_mode.Any(), "human replay cannot advance a paused game to next command");
+            // StateGameLoop polls and releases native link-graph job pauses.
+            // Keep human/control pauses fatal when the next event needs time
+            // to advance; never clear a pause or synthesize an unpause command.
+            Require(_pause_mode.None() || _pause_mode == PauseMode::LinkGraph ||
+                _pause_mode.base() == PauseModes{PauseMode::LinkGraph, PauseMode::CommandDuringPause}.base(),
+                fmt::format("human replay cannot advance a paused game to next command: mode={}", _pause_mode.base()));
             StateGameLoop();
             Require(++ticks < 1000000, "human replay event tick bound exceeded");
         }

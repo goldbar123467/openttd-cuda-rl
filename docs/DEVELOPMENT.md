@@ -1,5 +1,421 @@
 # Local training and the path to agentic economies
 
+## Ten-game training and saved benchmark (October 5)
+
+All ten human games are preserved and pass native replay and partition-appropriate
+input checks. Games 01–07 supply 186 training choices; game 08 supplies 34 development
+choices; games 09–10 supply 64 test choices. Training remains separate from evaluation.
+Runtime evidence is under `/home/imsa/.local/share/openttd-rl/runs/human-ten-game-training-20261005-01/`.
+
+The unchanged C++/LibTorch trainer completed 256 CUDA updates at learning rate
+0.0003 and seed 20261002 in 2,976.5 seconds. The selected final archive is
+`seven-game-256/inference-weights.pt`, SHA-256
+`05d306e26a6b3b71e0a33df7630e06b9fdb8993aa880135acfa585cbfb7f854d`.
+Training NLL falls from 4.666104 to 1.228980; unique exact fit is 128/186.
+Gradients are finite, masks exact, target aliases and ties zero. Reload error is
+zero and CPU/CUDA maximum probability error is 3.13e-7. There are no PPO updates.
+
+| Frozen policy | Updates / training choices | Development game 08 | Test games 09–10 | Test excluding repayments |
+| --- | --- | --- | --- | --- |
+| Original one-game model | 1,000 / 12 | 8/34 | 18/64 | 18/44 |
+| Equal-update one-game control | 256 / 12 | 5/34 | 14/64 | 14/44 |
+| Four-game model | 256 / 79 | 12/34 | 19/64 | 19/44 |
+| Seven-game model | 256 / 186 | 18/34 | 41/64 | 21/44 |
+
+Twenty of the 22 additional correct test choices relative to the four-game model
+are repayments. These are two test recordings, not 64 independent games.
+The training set contains 43 inserts, 43 Full load any changes, 32 repayments,
+29 starts, 25 purchases, seven copies, five deletions and two other load changes.
+The new model fits inserts 6/43, copies 0/7 and repayments 32/32.
+
+The owner's requested independent insertion audit covers every one of the 43
+training targets: no aliases, 43/43 targets present and aligned, and no semantic
+choice changes after row permutation (maximum probability error 1.19e-7).
+Errors are 11 wrong stations with correct vehicle/position, 12 wrong target
+vehicles and 14 wrong action/order primitives. Six are exact; there are no
+position-only errors when the correct bus and station are selected. All eleven
+wrong-station pairs differ only in encoded station ID slot 28. The candidate
+vectors provide vehicle position, not target-station geometry/demand; station and
+vehicle context is pooled once for every candidate. Weak entity binding is a
+hypothesis, not proof of an input-information ceiling.
+
+Uniform guessing over insertion candidates with an oracle primitive hint averages
+6.39%, versus 13.95% actual exact fit. Copy guessing averages 32.97%; repayments
+50%. The unrestricted full-mask baseline is approximately 0.04% per choice. The
+hinted baseline knows the correct family/order primitive, not loan direction;
+average reciprocal candidate counts must not be replaced by reciprocal mean counts.
+See `choice-diagnostics/` and `insertion-structure/` in the experiment root.
+
+The isolated 43-insertion CUDA diagnostic fits 12/43 after 256 updates, loss
+1.509522, with native masks/numerics and shuffled-row checks passing. A fresh
+1,000-update diagnostic completes at 21/43, loss 1.143390, selected from training
+diagnostics only. Both trials clear native mask/numerical and row-permutation
+checks. More optimization and isolating the class help, but still do not memorize
+these examples. Representation or optimization remains unresolved; this is not
+proof of an absolute information ceiling or a label bug.
+Neither diagnostic supplies test labels to the optimizer or replaces a benchmark
+actor. Use `train_insertion_diagnostic_v2.py` to reproduce those bounded fits.
+
+The saved benchmark is complete: four frozen neural actors plus one script,
+50 attempted episodes each. All 250 outcomes have native final saves: 247 full
+budgets and three explicit order-interface failures. The frozen
+`fifty-game-protocol.json` binds models,
+engine and 25 initial saves. Each world runs greedy and sampled modes at 512
+decisions × 128 ticks. Eight distinct development map seeds recur across 64×64,
+128×128 and rectangular maps; there are not 50 independent maps. Two stops, a
+depot and scripted road infrastructure are supplied; no buses are supplied and
+construction learning is not claimed. The script buys one bus, configures two
+Full load any orders and repays 10,000 when balance is at least 20,000.
+
+| Frozen actor | Delivering attempts (greedy / sampled; each out of 25) | Mean operating profit (all 50) | Sustained profitable service | Interface failures |
+| --- | --- | --- | --- | --- |
+| one-game-1000 | 1 / 4 | -18,744.46 | 0/50 | 1 |
+| one-game-256 | 0 / 22 | -10,256.58 | 0/50 | 0 |
+| four-game-256 | 3 / 22 | -26,342.34 | 0/50 | 2 |
+| seven-game-256 | 0 / 24 | -9,484.70 | 0/50 | 0 |
+| scripted-one-bus-repay | 24 / 24 | +3,623.16 | 44/50 | 0 |
+
+The new model improves mean operating profit by 17,202.58 relative to the
+four-game model at matched horizons (95% map-seed cluster interval
+[16,432.62, 17,843.92]), but remains 13,107.86 below the script
+([-14,258.04, -12,069.79] for new minus script). It delivers more passengers
+on average than the four-game model but does not achieve sustained profitability.
+Its sampled fleet averages 18.32 buses. Greedy service remains absent.
+The independent verifier recomputes all 250 native ledgers, 127,427 decisions and
+16,310,656 ticks; every reset engine hash and final save hash matches.
+Zero invalid actions and bankruptcies do not imply successful service.
+The full report, figures, CSVs, model archives, human input evidence and 250 final
+saves are exported under `%LOCALAPPDATA%/OpenTTD-RL/analysis/human-ten-game-training-20261005-01/`.
+
+All attempted cases remain in the results, including unsupported order-state
+failures. Native `orders-v1` rejects noncanonical lists such as dummy orders after
+station removal. Capture these as explicit interface terminations with partial
+budgets and final saves; never change masks/features/weights to manufacture
+completion. The three captures reproduce all 395, 329 and 239 original
+transitions/choices, save the same boundaries and pass native reloads. Financial paired
+comparisons use the minimum common simulated horizon when a case ends early.
+Saving consumes no action/ticks and pending actions reject CHECKPOINT. Preserve
+the original failed attempts and interrupted sequential jobs.
+
+`run_bus_orders_benchmark_v2.py` runs independent native cases with up to eight
+process workers and hash-validates reused complete cases. After all attempts,
+`summarize_bus_benchmark_v2.py` recomputes native accounting and exports episode,
+operation and paired tables with uncertainty clustered by the eight map seeds.
+`write_bus_benchmark_report_v2.py`, `plot_bus_benchmark_v2.py` and
+`export_bus_benchmark_evidence.ps1` produce the portable report, scientific figures,
+model archives and all 250 final saved games. Complete source/tensor/transition
+evidence remains in the runtime; none belongs in Git.
+
+Comparison commands require a completed batch, including explicit saved interface
+terminations rather than silently dropping failed cases. Reuse binds each worker's
+engine checksum and the originating actor's protocol/reader provenance. Offline
+model/run/reader identities must match the frozen gameplay actors. The exporter
+rejects a truncated or repeated case CSV, changed protocols and plots generated
+from another results file.
+
+```bash
+experiment_root=/home/imsa/.local/share/openttd-rl/runs/human-ten-game-training-20261005-01
+python3 scripts/dev/summarize_bus_benchmark_v2.py \
+  --protocol "$experiment_root/fifty-game-protocol.json" \
+  --offline "$experiment_root/offline-comparison-02/report.json" \
+  --batch "$experiment_root/gameplay-batch-02/report.json" \
+  --choice-diagnostics "$experiment_root/choice-diagnostics/report.json" \
+  --insertion-structure "$experiment_root/insertion-structure/report.json" \
+  --insertion-run "$experiment_root/insertions-only-256/run.json" \
+  --insertion-run "$experiment_root/insertions-only-1000/run.json" \
+  --output "$experiment_root/comparison-evidence-01"
+python3 scripts/dev/write_bus_benchmark_report_v2.py \
+  --results "$experiment_root/comparison-evidence-01/results.json" \
+  --output "$experiment_root/comparison-evidence-01/report.md"
+```
+
+Use a fresh output directory when reproducing; finished reports never overwrite
+earlier attempts. Render figures from `results.json` before exporting the Windows
+package. The final inventory records every owned experiment file, including the
+preserved failures and exact native input archives.
+
+## Ten human games: current collection plan (October 5)
+
+The owner selected passenger buses and money management for a ten-game human
+dataset experiment. [The collection plan](HUMAN_DATASET_10_GAMES.md) proposes
+seven training games, one development game and two held-out games. The owner
+wants ten consecutive fresh recorder sessions, followed by native replay/import
+audits and dataset preparation. Each game has two passenger routes, with extra
+buses when service and demand justify them.
+Explicit WAIT capture remains a tooling gap;
+ordinary command silence cannot teach waiting. Qualify those boundaries before
+exporting affected labels and training. This direction supersedes the earlier collection
+deferral while preserving the October 2 recordings and results below.
+
+Game 01 completed raw recording on October 5 in session
+`20261005-100753-human-7a080369` (seed 1268495509). All 14 allowlisted capture files,
+including five saves, match the preserved-copy hashes. The final manual save is
+`Garfingburg Transport, 1954-01-07.sav`, marker 44. All 11 native checks pass and
+31 commands replay successfully, providing 18 exact choices: three purchases,
+six inserts, six Full load any changes and three starts. Twenty records are
+excluded. The checkpoint has three running buses on two routes, cash 103,186 and
+loan 100,000. Replay is `runs/human-campaign-20261005/game-01/replay-manual/`.
+
+At the owner's request, game 02 was checked before game 03. Session
+`20261005-101658-human-2eeb36f1` (seed 212758682) passes all 11 native equality and
+accounting checks against `Brunston Transport, 1954-08-23.sav`, marker 48. The
+training-data consumer accepts 24 exact examples: four purchases, eight inserts,
+eight Full load any changes and four starts. Four buses are running on two routes
+at the checkpoint; cash is 100,745 and loan remains 100,000. Eighteen records are
+excluded, and no new model training ran. WSL reports/dataset are in
+`runs/human-campaign-20261005/game-02/` under the local runtime root; the Windows
+verification report is in `%LOCALAPPDATA%/OpenTTD-RL/analysis/human-campaign-20261005/game-02/`.
+
+Game 03, session `20261005-113936-human-24383522` (seed 476793754), also passes all
+11 native checks against `Ginthill Transport, 1956-03-08.sav`, marker 56. All 14
+capture files are preserved. Its 22 exact choices include four purchases, five
+inserts, four Full load any changes, two independent copies, one deletion, four
+starts and two 10,000 repayments. The checkpoint confirms two depots, two disjoint
+routes and two running buses per route; cash is 101,020 and debt is 80,000.
+Twenty-eight records are excluded. The human's explanation of avoiding the
+isolated largest town is attached separately to the campaign ledger.
+
+Game 03 exposed an internal link-graph pause during native order-state restoration.
+The replay loop now permits only that pause, optionally with `CommandDuringPause`,
+so upstream `StateGameLoop` can poll and release it. Human/control pauses still
+fail when the next event needs time; no pause is forcibly cleared. The original
+engine and both failed attempts remain intact. The repaired isolated engine is
+`/home/imsa/.local/share/openttd-rl/human-orders-replay-engine-20261005-linkgraph/`;
+its preparation and refresh records bind source and binary hashes. Three native
+pause controls pass, and game 02 still matches its checkpoint with 24 labels.
+Game 03's successful replay is `replay-manual-linkgraph-v2/` under
+`runs/human-campaign-20261005/game-03/` in the runtime root. The existing consumer
+accepts all 22 examples with `signed-log-orders-v2`; no model was fitted. The
+Windows verification report is in
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-campaign-20261005/game-03/verification.md`.
+The campaign assembler now validates all four recordings together.
+
+Game 04, session `20261005-123821-human-71704373` (seed 392546014), passes all 11
+checks against `Plontford Transport, 1952-10-26.sav`, marker 43. The consumer
+accepts 15 choices: three purchases, four inserts, four Full load any changes,
+one independent copy and three starts. The checkpoint confirms one depot and
+two routes sharing station 1: two buses on 0/1, one on 1/2, all running. Cash is
+100,890 and debt remains 100,000. Twenty-two records are excluded; no WAIT or
+finance labels are inferred. The owner's nearby-major-towns rationale is attached
+separately. Reports/dataset are in the runtime's
+`runs/human-campaign-20261005/game-04/`; the Windows report is
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-campaign-20261005/game-04/verification.md`.
+All four games now provide 79 verified examples.
+
+Game 05, session `20261005-152914-human-b8b97f37` (seed 2057442348), passes all
+11 native checks against `Kinborough Transport, 1967-02-10.sav`, marker 69.
+All 53 replayed commands succeed. Seventeen capture files, including eight saves,
+and the 18-file runtime transfer are hash-verified. The consumer accepts 39
+choices: five purchases, five inserts, five Full load any changes, six starts,
+four independent copies, three deletions, one loading-mode-0 change and ten
+10,000 repayments. Twenty-one records are excluded, including one vehicle clone
+that replayed successfully but has no exact policy action. No WAIT is inferred.
+
+The saved game has three stops, one depot and six running buses: four on 0/1 and
+two on 0/2, all using independent two-order lists. One endpoint on bus 5 uses
+loading mode 0; the other eleven use Full load any. Cash is 110,424 and debt zero.
+The ten repayments each match -10,000 cash/principal with zero command cost.
+The owner's selection of two largest cities and two stops in the largest is
+preserved as an annotation. Initial populations rank towns 4 and 0 first; stops
+1/2 are nearest town 4's public center and stop 0 is nearest town 0. This is
+consistent geometry, not a direct station-town lookup or inferred selection label.
+
+Game 05's replay and consumer are under `runs/human-campaign-20261005/game-05/`.
+Its Windows report is
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-campaign-20261005/game-05/verification.md`.
+The training-only assembler passes with 118 choices across five games at
+`runs/human-campaign-20261005/datasets/train-games-01-05/`. This adds no new model
+training or PPO updates; the four-game pilot below remains unchanged.
+
+Game 06, session `20261005-154603-human-5745f1c6` (seed 2020301813), passes all
+11 native checks against `Trendhattan Ridge Transport, 1972-05-06.sav`, marker 65.
+All 49 replayed commands succeed. Seventeen capture files, including eight saves,
+and the 18-file runtime transfer match hashes. The consumer accepts 39 choices:
+four purchases, nine inserts, ten Full load any changes, four starts, one deletion,
+one loading-mode-4 change and ten 10,000 repayments. Seventeen records are excluded.
+
+At log lines 49–54, native vehicle 5 changes from stations 2/1 to 0/1. This moves
+the fleet from three buses on 1/2 and one on 0/1 to two per route. Five edits are
+exact supported labels. The intervening unload-mode-1 command at line 50 succeeds
+but has no policy label; subsequent samples use its actual resulting state.
+Vehicle IDs differ later; ID 5 identifies the bus at edit time only. The final
+save has three stops, one depot and four running buses, two per route. All eight
+endpoints use Full load any; one has unloading mode 1. Cash is 103,214 and debt
+zero. Finance and cargo counters remain checkpoint snapshots.
+
+The owner's reported profitability reason is preserved as a retrospective
+annotation. Native replay confirms the route edit; per-route causal profitability
+is unmeasured. Replay and consumer are under `runs/human-campaign-20261005/game-06/`;
+the Windows report is
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-campaign-20261005/game-06/verification.md`.
+The six-game training-only assembler passes with 157 choices, including 22
+repayments, at `runs/human-campaign-20261005/datasets/train-games-01-06/`.
+No model training or PPO updates ran on game 06; the four-game pilot is preserved.
+
+Game 07, session `20261005-165039-human-b595e313` (seed 1652481928), passes all
+11 native checks against `Lathill Transport, 1979-01-02.sav`, marker 72. All 55
+replayed commands succeed. Nineteen capture files, including ten saves, and all
+20 runtime transfer files match hashes. The consumer accepts 29 choices: two
+purchases, six inserts, six Full load any changes, five starts/restarts and ten
+10,000 repayments. Thirty-two records are excluded, including depot/replacement
+commands and the later bus purchase at line 60. That purchase succeeds at cost
+5,742; its later supported orders and start use the actual resulting state.
+
+After the second initial departure, 563,003 simulation ticks pass before the
+next logged command, the first repayment. It starts with cash 150,468 and debt
+100,000. Five repayments reduce debt to 50,000; later maintenance, repayments and
+one additional purchase precede full repayment. The final save has three stops,
+one depot and three running buses: two on 1/2 and one on 0/1, all independent
+two-order lists with Full load any at each endpoint. Cash is 103,852 and debt
+zero. Finance and passenger counters remain checkpoint snapshots.
+
+The owner's delayed-investment explanation is a retrospective annotation. The
+quiet interval has no explicit WAIT boundary or duration label. Reports/dataset
+are under `runs/human-campaign-20261005/game-07/`; the Windows report is
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-campaign-20261005/game-07/verification.md`.
+The seven-game training-only assembler passes with 186 choices, including 32
+repayments, at `runs/human-campaign-20261005/datasets/train-games-01-07/`.
+The proposed training partition is now qualified; games 08–10 remain excluded.
+No game-07 model training or PPO updates ran. The four-game pilot is preserved.
+
+Game 08, session `20261005-170721-human-7fc8c991` (seed 1070616272), completed
+normally at 17:55:10 EDT. All 17 capture files, including eight saves, and all
+18 runtime transfer files match hashes. All 11 native checks pass against
+`Invenwell Transport, 1969-11-28.sav`, marker 66, with 51 successful commands.
+The read-only development audit accepts 34 exact choices after checking public
+tensors, targets and masks. Final replay and audit are under
+`runs/human-campaign-20261005/game-08/replay-manual/` and `development-integrity/`.
+Earlier manual snapshots and the failed locked-log snapshot attempt are preserved.
+
+The checkpoint has five running buses, three on 1/2 and two on 0/1, with independent
+two-order lists and Full load any at all ten endpoints. Cash is 109,219 and debt
+zero. There are five buys, six inserts, six Full load any changes, five starts,
+two copies and ten repayments; 23 records are excluded. The owner's explanation
+of scaling by passenger queues is attached separately. Station 1 has 1,173 waiting
+passengers before purchase line 41 and 553 before line 47. These are station totals,
+without passenger destinations or an inferred purchase threshold.
+
+Game 08 remains development data. The seven-game training set still validates
+186 choices. Both direct imitation and the campaign assembler now check the
+partition bound in preserved-capture metadata; a CLI label cannot turn a
+development/test capture into training data. The campaign parent hash is also
+rechecked before writing the combined native manifest.
+`scripts/dev/audit_human_evaluation_v2.py --dataset NATIVE_DATASET --split development
+--output NEW_OUTPUT` checks completed capture identity, replay, original commands,
+public tensors and exact masks, producing a separate evaluation schema with no
+trainer TSV, model fitting or scores. Its source records retain their immutable
+native identities; the read-only export assigns the actual development/test split.
+Game 08's development export is complete. Its Windows report is
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-campaign-20261005/game-08/verification.md`.
+Both actual training input paths reject the completed development capture, and
+the seven-game training regression still accepts 186 choices. No new model
+training or model scoring ran on game 08.
+
+Game 09, session `20261005-175528-human-8877f4a7` (seed 1846900543), completed
+normally from 17:55:29 to 18:03:40 EDT. All 16 capture files, including seven
+saves, and 17 runtime transfer files match hashes. All 11 checks pass against
+`Wruningley Market Transport, 1961-04-16.sav`, marker 60; all 46 commands succeed.
+The read-only test audit accepts 31 choices: five buys, four inserts, four Full
+load any changes, five starts, three copies and ten repayments. Twenty-one
+records are excluded. Its final orders are two two-stop routes across three
+stations: two buses on 0/1 and three on 0/2, all independent with Full load any.
+The owner's "three city loop" description is retained separately; no bus has a
+three-station order cycle in the final save.
+
+Reports are under `runs/human-campaign-20261005/game-09/replay-manual/` and
+`test-integrity/`; the Windows report is
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-campaign-20261005/game-09/verification.md`.
+Both actual training paths reject this test capture. No model scores, selection,
+feature/reward tuning or fitting use game 09. Nine games supply 251 choices
+across partitions: 186 training, 34 development and 31 test. No new model
+training or PPO updates ran; the four-game pilot remains unchanged.
+
+### Four-game pilot requested before the next six recordings
+
+The pilot uses the unchanged native C++/LibTorch imitation trainer on CUDA,
+256 mean full-dataset Adam updates, seed 20261002, learning rate 0.0003 and
+`signed-log-orders-v2`. A fresh 12-example October 2 control uses the same update
+budget; the preserved 1,000-update model is a separate historical reference.
+The four new games contain 14 buys, 23 inserts, 22 Full load any changes,
+14 starts, three copies, one deletion and two repayments. There are no borrowing,
+WAIT or construction labels. All four native checkpoints match; the combined
+manifest adds no synthetic or inferred choices.
+
+The runtime experiment root is
+`/home/imsa/.local/share/openttd-rl/runs/human-four-game-pilot-20261005-01/`.
+`protocol.json` freezes the training budgets and live contexts. `assembly/`
+binds every game's original replay and capture hashes. `one-game-256/` and
+`four-game-256/` retain separate training inputs, losses and model archives.
+The assembler accepts only whole training games, rejects duplicate seeds/logs,
+and reuses the existing checkpoint, packet, accounting, candidate and mask checks.
+The native 512-example bound remains sufficient for 79 labels.
+
+To reproduce into fresh output directories (set the four individual dataset paths):
+
+```bash
+python scripts/dev/human_campaign_v2.py \
+  --game game-01 "$GAME_01_DATASET" --game game-02 "$GAME_02_DATASET" \
+  --game game-03 "$GAME_03_DATASET" --game game-04 "$GAME_04_DATASET" \
+  --financial-features signed-log-orders-v2 --output "$RL_ROOT/runs/pilot-new/assembly"
+python scripts/dev/imitate_v2.py \
+  --trainer "$RL_ROOT/build/human-orders-20261002-02/rl_dev_v2_imitation" \
+  --dataset "$RL_ROOT/runs/pilot-new/assembly/dataset.json" \
+  --output "$RL_ROOT/runs/pilot-new/four-game-256" --device cuda:0 \
+  --seed 20261002 --epochs 256 --learning-rate 0.0003 \
+  --financial-features signed-log-orders-v2
+```
+
+`compare_human_imitation_v2.py --stage offline --model NAME RUN --corpus NAME REPORT
+--policy EXECUTABLE --output NEW_OUTPUT` checks completed compatible models and
+passed corpora, reporting unique exact choices by operation/game, training fit
+versus unseen-recording transfer, probability margins and candidate permutation.
+Supply `--corpus original ONE_GAME_RUN/run.json` and
+`--corpus four-games ASSEMBLY/report.json` for the pilot's two corpora.
+`--stage live --model NAME RUN --replay VERIFIED_OCTOBER_2_REPLAY --openttd ENGINE
+--policy EXECUTABLE --output NEW_OUTPUT --device cpu` compares greedy and sampled
+24-decision continuations with the same 128-tick budget and full legal masks.
+Those contexts supply infrastructure; the copy/edit context also supplies two
+buses. They are familiar to the original one-game models and transfer contexts
+for the four-game model. These short checks do not estimate held-out strength.
+Games 08–10 remain excluded from training and model selection.
+
+The completed four-game fit takes 1,289.2 seconds (21.5 minutes), versus 218.9
+seconds for the equal-update one-game control. Different dataset sizes mean
+different example counts processed despite equal optimizer-update counts.
+
+| Model | Adam updates | Original 12 choices | New 79 choices |
+| --- | ---: | ---: | ---: |
+| Fresh one-game control | 256 | 10/12 fit | 25/79 transfer |
+| Fresh four-game pilot | 256 | 8/12 transfer | 53/79 fit |
+| Preserved one-game reference | 1,000 | 12/12 fit | 23/79 transfer |
+
+The four-game model gets 14/14 purchases, 22/22 Full load any settings and
+12/14 starts, but only 4/23 station insertions, 1/3 copies, 0/1 deletions and
+0/2 repayments. Its final mean negative log likelihood is 0.965040. All 79
+inputs have zero aliases or target ties; maximum permutation probability error
+is 2.98e-7 and CPU/CUDA probability error is 5.51e-7. The archived model is
+`four-game-256/inference-weights.pt`, SHA-256
+`f92bcb306c62f20b828cd595688689753d0e1a02d3715a090f18019f09a8345e`.
+
+All four new live continuations use legal actions but fail to start the intended
+target bus with the correct two-stop Full load any route, including the diagnostic
+that allows reversed station order. They repeatedly insert duplicate stops and
+make two to four purchases per continuation. Operating profits range from -233
+to -65; the copy/edit cases deliver 31 passengers company-wide, which includes
+the supplied source bus. The preserved reference starts its intended target
+correctly in all four cases, but still overbuys and loses operating money.
+The four-game model has not trained on these original-recording contexts; this
+comparison demonstrates drift, not a held-out ranking of playing strength.
+
+The Windows report and hash-bound JSON are in
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-four-game-pilot-20261005-01/`, with
+`training-curves.csv`. Complete native traces remain in the runtime's
+`offline-controls/`, `offline-four-game/`, `live-controls/` and `live-four-game/`.
+Focused orchestration tests pass (38), fast checks pass (136), documentation
+links pass and `git diff --check` passes. No PPO refinement ran. The next blockers
+are station selection, sparse financing coverage and explicit hold/wait labels;
+additional games alone do not fill choices absent from the recorder.
+
 ## Exact bus-order imitation (October 2)
 
 The later bus recording now supplies **12 exact native training examples**,

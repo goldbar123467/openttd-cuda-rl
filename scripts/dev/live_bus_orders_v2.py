@@ -42,7 +42,7 @@ def operation(candidate):
     return {1: "INSERT_ORDER", 3: "COPY_ORDERS", 4: "DELETE_ORDER"}.get(opcode, "UNKNOWN_ORDER")
 
 
-def run_context(args, replay, model, output, line, mode, financial_features):
+def run_context(args, replay, model, output, line, mode, financial_features, *, context_claim=None):
     output.mkdir(parents=True, exist_ok=False)
     context = CONTEXTS[line]
     initial_save = replay / f"before-command-{line}.sav"
@@ -55,7 +55,7 @@ def run_context(args, replay, model, output, line, mode, financial_features):
               "map_initialization": {"bootstrap_map_seed": BOOTSTRAP_MAP_SEED, "bootstrap_split": "development",
                                      "played_map": "Restored verified human context save; bootstrap generated map is discarded before any policy observation"},
               "guidance": "none; exact complete native legal mask", "recurrent_state": "reset before each decision, matching independent imitation examples",
-              "claim": "Unforced continuation of a training-recording context with supplied infrastructure; no construction learning or held-out generalization claim",
+              "claim": context_claim or "Unforced continuation of a training-recording context with supplied infrastructure; no construction learning or held-out generalization claim",
               "economics_scope": "Whole company, including the supplied human-controlled source bus in the second context; cargo_count is a final vehicle snapshot, not delivered cargo attribution",
               "starts": [], "route_ready_decisions": []}
     game, policy = None, None

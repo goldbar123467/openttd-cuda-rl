@@ -18,9 +18,108 @@ the contract/evidence machinery. Do not rewrite working systems merely to rename
 them, introduce a second PPO implementation, or replace C++ with Python training.
 Python may orchestrate processes, experiments, plotting, and independent tests.
 
-The next practical priority is sustained fleet control while preserving imitation
-retention. Check that learned order choices survive bounded PPO updates before
-running longer training; repeated purchases and route edits remain unresolved.
+The ten human passenger-bus and money-management games are collected and qualified.
+Follow `docs/HUMAN_DATASET_10_GAMES.md` for their replay/import evidence. Preserve
+whole-game splits and make chosen waiting explicit before exporting WAIT labels.
+Each game should have two passenger routes; the owner will add buses when it
+makes sense. Do not impose a one-bus fleet limit or require additional routes.
+Ten games are hash-preserved and pass native replay and partition-appropriate
+input checks. Seven training games supply 186 exact choices; game 08 supplies
+34 development choices and games 09–10 supply 64 test choices (31/33). The first four
+supply 18, 24, 22 and 15 (79 total).
+At the owner's request, a four-game
+CUDA imitation pilot ran alongside an equal-update one-game control and the
+preserved October 2 1,000-update model. Keep games 08–10 out of this pilot.
+The pilot completed: four-game fit is 53/79 unique exact choices, versus 25/79
+and 23/79 transfer for the 256- and 1,000-update one-game controls. Station
+insertions remain 4/23 and repayments 0/2. All four live continuations still
+drift and lose operating money; do not treat this model as qualified for PPO.
+At the owner's request, game 02 was verified before game 03: all 11 native replay
+checks pass and the consumer accepts 24 supported labels. Game 03 is captured
+and passes all 11 checks; the consumer accepts 22 choices, including two repayments.
+Its human rationale weighs town population against distance before construction;
+keep that annotation separate from exact command labels.
+Game 04 is preserved and passes all 11 checks; the consumer accepts 15 choices.
+Game 05 adds 39 choices, including ten 10,000 repayments and one loading-mode-0
+change. Its three stops serve two route pairs; six buses are running, cash is
+110,424 and debt is zero. The owner selected the two largest cities and placed
+two stops in the largest. Keep that rationale separate from construction labels;
+public nearest-town geometry is consistent, not a direct station-town lookup.
+Vehicle cloning is replayed but excluded as a policy action. The five-game
+training-only assembler accepts 118 examples; no game-05 model training ran.
+Game 06 adds 39 choices and a verified mid-game reassignment: native vehicle 5
+moves from stations 2/1 to 0/1, balancing the fleet at two buses per route.
+Five supported edits retain exact pre-command states; the intervening unload-mode-1
+command is replayed but excluded as a label. Ten repayments leave cash 103,214
+and zero debt. Keep the owner's profitability rationale as a retrospective
+annotation; causal improvement is unmeasured. The six-game assembler accepts
+157 examples; no game-06 model training ran.
+Game 07 adds 29 choices, including ten repayments, and ends with three running
+buses, cash 103,852 and zero debt. The owner delayed further investment;
+retain that retrospective waiting rationale without turning command gaps into
+WAIT labels. Later maintenance and one bus purchase replay successfully but are
+excluded as policy actions. The seven-game assembler accepts 186 choices,
+including 32 repayments; games 08–10 remain outside training. No game-07 model
+training ran.
+Game 08's completed capture passes all 11 checks and the read-only development
+audit for 34 choices. Five buses run on two routes (3/2 allocation),
+cash is 109,219 and debt zero. The owner scaled capacity using passenger queues;
+retain exact pre-purchase station totals without inventing per-route demand or
+numeric thresholds. Game 08 belongs to development; training remains 186 choices.
+Training consumers must respect the partition hash-bound in preservation metadata.
+Use `audit_human_evaluation_v2.py` for read-only development/test integrity exports;
+it creates no trainer manifest and requires completed capture metadata.
+Game 09 passes native and read-only test integrity checks for 31 choices. The
+saved orders are two two-stop routes across three stops, with two buses on 0/1
+and three on 0/2. Preserve the owner's "three city loop" description separately;
+no three-station bus order cycle is present in the final save. Both training
+input paths reject the capture. Do not use this test game's choices or outcomes
+to tune features, rewards or models; no model scores were computed during capture.
+Game 10 passes all 11 checks and the read-only test audit with 33 choices.
+The owner used two stops in a city with starting population above 2,000 and
+scaled the fleet. Preserve that rationale separately from unsupported stop-building
+labels. All ten games supply 284 choices across their fixed partitions.
+The owner now requests a new training run, comparison with prior runs, a saved
+50-game evaluation and all evidence, without questions or stopping early.
+The seven-game CUDA fit is frozen at 256 updates, seed 20261002, learning rate
+0.0003 and unchanged signed-log-orders-v2 C++ training. It fits 128/186 choices
+and matches 41/64 held-out test choices, including all 20 repayments. Excluding
+repayments, test accuracy is 21/44 versus the four-game model's 19/44.
+Training insertions are 6/43 and copies 0/7; independent auditing finds no
+insertion aliases or row-alignment/permutation faults. Insertion errors comprise
+11 wrong stations, 12 wrong target vehicles and 14 wrong action/order primitives.
+The owner requested an isolated insertion-only CUDA memorization diagnostic;
+keep its weights separate from the frozen gameplay actors and test data.
+It fits 12/43 at 256 updates and 21/43 at 1,000, with masks, numerical checks and
+row permutation passing. It still underfits; investigate entity binding and
+optimization before assuming additional demonstrations alone resolve insertion.
+Its experiment root is
+`runs/human-ten-game-training-20261005-01/`. Keep evaluation off the optimizer.
+Compare final weights with prior compatible models on identical native episodes,
+separating greedy/sampled results and explicitly disclosing supplied infrastructure.
+Native live CHECKPOINT saves must not change state/ticks or consume a policy action;
+pending actions reject saves. Preserve original engines and failed qualification runs.
+The 50-game-per-actor benchmark is complete with four frozen neural actors and one
+script: 250 outcomes and final saves, 247 full budgets and three interface failures.
+The new model delivers in 24/25 sampled and 0/25 greedy episodes. Its mean
+operating profit is -9,484.7, versus the script's +3,623.16; sustained profitable
+service is 0/50 versus 44/50. At matched horizons it improves operating profit
+by 17,202.58 over the four-game model but trails the script by 13,107.86.
+All 127,427 decisions and 16,310,656 ticks pass native accounting verification.
+All three failure captures reproduce their original choices/transitions exactly
+(395, 329 and 239 decisions) and pass native save reloads. Report interface failures
+explicitly, with native saves, partial budgets and all planned-case denominators.
+Do not mask away actions or change features/models in response to evaluation.
+The complete comparison is `comparison-evidence-01/` in the experiment root;
+the portable Windows report is under `%LOCALAPPDATA%/OpenTTD-RL/analysis/human-ten-game-training-20261005-01/`.
+The current multi-game assembler reuses each game's original replay validator,
+preserves native game/sample identities and rejects held-out games, repeated
+seeds/recordings, changed inputs and incompatible readers. Its campaign manifest
+is training-only; it does not manufacture WAIT or construction labels.
+Native replay must let StateGameLoop poll link-graph pauses, including the
+command-during-pause flag; other pauses still fail when time must advance.
+Assess sustained fleet control and imitation retention before longer PPO training; repeated
+purchases and route edits remain unresolved.
 
 ## What exists
 

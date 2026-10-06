@@ -418,6 +418,22 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
                     Require(static_cast<bool>(trace), "development live trace write failed");
                     response["transition"] = transition;
                 }
+            } else if (operation == "CHECKPOINT" && request.size() == 3) {
+                if (pending) {
+                    response.update({{"status", "REJECTED"}, {"reason", "DECISION_BOUNDARY"}});
+                } else {
+                    const auto path = std::filesystem::path(artifact_directory) /
+                        fmt::format("checkpoint-{:06}.sav", response.at("id").get<uint64_t>());
+                    Require(!std::filesystem::exists(path), "development checkpoint already exists");
+                    const uint64_t tick_before = TimerGameTick::counter;
+                    const bool company_present = Company::GetIfValid(identity) != nullptr;
+                    const std::string token = company_present ? NativeStateSha256() : "company-absent";
+                    Require(SaveOrLoad(path.string(), SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY, false) == SL_OK,
+                        "development native checkpoint save failed");
+                    Require(TimerGameTick::counter == tick_before &&
+                        (!company_present || NativeStateSha256() == token), "development checkpoint mutated native state");
+                    response["checkpoint"] = {{"file", path.string()}, {"tick", tick_before}, {"state_token", token}};
+                }
             } else if (operation == "CLOSE" && request.size() == 3) {
                 close = true;
             } else {

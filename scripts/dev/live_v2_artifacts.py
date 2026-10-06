@@ -4,14 +4,14 @@ import hashlib
 import shutil
 
 
-def archive_tensors(worker):
+def archive_tensors(worker, *, compresslevel=9):
     directory = worker.resolve() / "artifacts"
     for path in sorted(directory.glob("tensors-*.bin")):
         if path.is_symlink() or path.resolve().parent != directory:
             raise ValueError("Tensor archive target escaped the owned worker directory")
         destination = path.with_suffix(".bin.gz")
         with path.open("rb") as source, destination.open("xb") as stream:
-            with gzip.GzipFile(filename="", mode="wb", fileobj=stream, mtime=0) as compressed:
+            with gzip.GzipFile(filename="", mode="wb", fileobj=stream, mtime=0, compresslevel=compresslevel) as compressed:
                 shutil.copyfileobj(source, compressed)
         with gzip.open(destination, "rb") as check:
             if hashlib.sha256(check.read()).digest() != hashlib.sha256(path.read_bytes()).digest():

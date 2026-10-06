@@ -32,18 +32,83 @@ alongside construction and routing; learning them requires public financial stat
 and confirmed outcomes at each decision.
 
 The October 2 first recording now has checkpoint-verified native replay and a
-working separate C++ imitation-to-PPO path. The immediate follow-up is to retain
-the learned decisions while improving live service and financing; collecting
-another 5–10 demonstrations was explicitly deferred by the owner. This changes
-the current work order, not the broader transport/economy objective. See
+working separate C++ imitation-to-PPO path. At that point, the owner prioritized
+retaining learned decisions while improving live service and financing, and
+deferred another 5–10 demonstrations. The October 5 direction below supersedes
+that collection deferral. See
 `docs/DEVELOPMENT.md` for the reproduced results and remaining limitations.
 
 The owner subsequently requested one fresh bus-only recording focused on route
 selection, one purchased bus per initial route, full load at both endpoints
 before departure, and viewing/managing the fleet. Collect that focused lesson
 with replayable checkpoints and human rationale notes before resuming the route
-interface extension and training. This does not authorize a broad recording
-campaign or change the longer-term transport scope.
+interface extension and training. That request covered one focused recording.
+
+### Owner direction (2026-10-05): ten human games
+
+The owner now wants to explore human data coverage as the first practical
+bottleneck, starting with ten independent games focused on passenger buses and
+money management. This supersedes the October 2 deferral of additional collection.
+The owner wants to play all ten consecutively in separate recorder sessions,
+then build and train from the resulting dataset.
+Each game will have two passenger routes, with additional buses when the owner
+judges them warranted. Game 01 now passes all 11 native checks and provides
+18 supported choices after hash preservation.
+The owner subsequently requested game 02 verification before game 03. That replay
+passes all 11 checks and supplies 24 supported examples.
+Game 03 is also captured and passes all 11 checks with 22 supported choices,
+including two repayments. The owner avoided the isolated largest town and built
+two separate routes, with two buses each. Preserve that map-selection rationale
+alongside the independently verified moves.
+Game 04 adds simple routes grouping nearby major towns, with three buses across
+two routes. It passes all 11 checks and the consumer accepts 15 choices. Four
+games are captured and all four qualify, supplying 79 exact examples.
+Game 05 selects the two largest cities, with two stops in the largest. It
+qualifies 39 supported choices, including ten repayments, and ends with three
+stops, six running buses and zero debt. Game 06 adds 39 choices, including a
+verified reassignment between the two routes and ten repayments. Its final fleet
+has two buses per route, cash 103,214 and zero debt. Game 07 delays further
+investment and fully repays the loan. It qualifies 29 choices, including ten
+repayments, and ends with three running buses, cash 103,852 and zero debt.
+Seven games qualify with 186 choices. The subsequent 256-update CUDA fit is
+128/186; it matches 41/64 held-out test choices, but only 21/44 after excluding
+repayments (versus 19/44 for the four-game model). Preserve waiting intent as a retrospective annotation
+until explicit WAIT decision boundaries can be captured.
+For game 08, the owner scaled buses per route using waiting passengers. Its
+completed capture and 34 development choices pass native and read-only input
+checks, with five running buses and zero debt. Game 09 adds 31 verified test
+choices and a scaled five-bus network across three stops. The owner describes
+a three-city loop; the saved bus orders are two two-stop routes. Nine games are
+verified at that stage, with no test data used for model selection or training;
+keep game 08 in development and the seven-game training set at 186 choices.
+Game 10 is now verified as test data with 33 choices. All ten games qualify:
+186 training, 34 development and 64 test choices. The owner requests a new CUDA
+fit, comparison with previous runs, a saved 50-game evaluation and a complete
+evidence presentation, with no further questions. Use the unchanged C++ imitation
+objective and frozen 256-update budget for the comparison; gameplay evaluation
+does not update weights. State the supplied-infrastructure boundary and preserve
+every native game save, decision trace, failure and comparison result.
+The owner additionally requests insertion diagnostics: audit all 43 targets for
+aliases, station/position/vehicle errors, native row alignment and shuffled-row
+invariance, and train only those 43 training insertions with unchanged C++ code.
+Keep diagnostic weights separate from the frozen 250-episode comparison. Report
+random guessing both over the complete mask and with a disclosed primitive hint.
+Those diagnostics now find no insertion aliases or label/permutation faults;
+isolated fitting reaches 21/43 after 1,000 CUDA updates. The saved comparison has
+250 verified outcomes, including three explicit interface failures, and 250 final
+native saves. The new policy delivers in 24/25 sampled episodes but none of the
+25 greedy episodes; sustained profitable service is 0/50 versus the script's 44/50.
+Its mean operating profit improves over the four-game policy but remains negative.
+Investigate station/vehicle binding and optimization before treating more
+demonstrations or longer PPO as the solution to current route-control failures.
+Preserve the owner's profitability reason separately from exact route-edit labels;
+the replay confirms the edit, without establishing causal profit improvement.
+Count exact usable decisions, preserve whole-game training/development/test
+splits. The owner requested an immediate four-game CUDA imitation pilot compared
+with the original one-game training. The campaign assembler validates each game's
+existing replay and provenance; explicit waiting remains unsupported and must
+not be inferred from command silence. The agreed scope and collection protocol are
+in [the ten-game plan](docs/HUMAN_DATASET_10_GAMES.md).
 
 ## Document status
 

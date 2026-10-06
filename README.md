@@ -82,15 +82,23 @@ These are different experiments, not interchangeable measures of playing strengt
 | --- | --- | --- |
 | V1 live PPO, 32×32 passenger-bus maps | Sampled service in **18/18 held-out episodes**; mean 2,017 passengers and 6,023 operating profit. Greedy service in 4/6. | Narrow fixed-map task. Mean cash after capital was −2,488; the one-bus script remains more cash-efficient. |
 | Human bus-order imitation, October 2 | **12/12 exact training decisions**, uniquely selected without input aliases or ties. Native replay matches the manual save. | One recording, only 12 usable decisions. This demonstrates memorization of the training examples, not generalization. |
+| Four-game human imitation pilot, October 5 | **53/79 exact training choices** after 256 CUDA updates. The equal-update one-game control transfers to 25/79. | Station insertions remain 4/23 and repayments 0/2; all four live continuations still drift and lose operating money. |
+| Seven-game human imitation, October 5 | **128/186 training choices; 41/64 held-out choices**, versus 19/64 for the four-game model. | Twenty of 22 additional correct test choices are repayments. Other actions improve only from 19/44 to 21/44; training insertions remain 6/43. Isolated insertion training reaches only 21/43 after 1,000 updates. |
+| Saved bus-control comparison, October 5 | **250 attempts and final saves** across four frozen neural models and one script; 247 reach the full budget. The new model delivers in 24/25 sampled and 0/25 greedy episodes. | Mean operating profit is −9,485 versus the script's +3,623; sustained profitable service is 0/50 versus 44/50. Three older-model attempts end at unsupported order states. Infrastructure is supplied; eight map seeds recur across dimensions. |
 | Four short live bus-order runs | Greedy and sampled policies reproduce both target route sequences, setting Full load any cargo before starting the target bus. | Infrastructure was supplied; one context also supplied both buses. Later actions overbuy and repeat edits. All four runs have negative operating profit. |
 | Shared-game MCP prototype | Local Gemma and neural agents execute through the same company-scoped interface. | Gemma chose WAIT on all 1,024 turns across four LLM matches; shared construction conflicts defeated both actors in eight scripted matches. Useful competition is not established. |
 
-The imitation dataset contains two buys, three station insertions, three full-load
+The October 2 imitation dataset contains two buys, three station insertions, three full-load
 changes, one independent order copy, one deletion and two starts. Another 27
 records are explicitly excluded. Unlogged waiting and human reasoning are not
 labels. The live contexts test route setup, not learned construction or sustained
 fleet management. Importing the weights into PPO preserves the fit before any
 updates; retention after further PPO learning is unmeasured for this model.
+
+The [ten-game human collection campaign](docs/HUMAN_DATASET_10_GAMES.md) now has
+seven qualified training games with **186 exact choices**, including 32 repayments.
+Game 08 is reserved for development, and games 09–10 for testing. Unsupported
+construction and unlogged waiting remain outside supervised labels.
 
 See the [V1 evaluation record](docs/PROGRESS.md),
 [exact bus-order results and reproduction commands](docs/DEVELOPMENT.md#exact-bus-order-imitation-october-2)
@@ -100,9 +108,9 @@ general neural mastery of rail, ships, aircraft or a multimodal economy.
 
 ## Next steps
 
-1. **More useful demonstrations.** Collect diverse, checkpoint-verified games or
-   exact native actions from a scripted teacher. One recording is too little to
-   learn when to wait, invest, manage debt or preserve an established route.
+1. **Targeted learning and demonstrations.** Diagnose underfitting in station and
+   bus targeting. Capture intentional waiting and human corrections in states
+   visited by the policy; additional games alone do not resolve the current fit.
 2. **Sustained fleet control.** Stop unnecessary purchases and destructive edits;
    measure imitation retention after bounded PPO updates, then evaluate on fresh
    scenarios against simple scripts.
