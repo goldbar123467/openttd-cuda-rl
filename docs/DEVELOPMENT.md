@@ -57,7 +57,115 @@ decoded public JSON and checks all legal candidates for exact aliases across
 the 186 training states. `--stage fit` reports unique exact fit per action type,
 duplicate predictions and row permutations on training and game 08 only.
 
-Results and final qualification are recorded below after the single fit.
+The trial is complete. Feature code is committed in `6aeb3c4`; its source was
+clean at fit and benchmark startup. One fresh CUDA fit ran for 2,899.5 seconds
+(48.3 minutes) on the RTX 2070 with LibTorch 2.9.1 / CUDA 12.8. NLL drops to
+0.908799; gradients are finite, masks exact, reload error zero, and maximum
+CPU/CUDA probability error is 5.96e-7. The final archive is
+`seven-game-256/inference-weights.pt`, SHA-256
+`227a2dc17513b4a986e7f28809546162ef40666b1751d1075eab48f99c196359`.
+There are no PPO updates or network/action changes.
+
+| Frozen measure | V2 | V3 |
+| --- | --- | --- |
+| Training insertions | 6/43 | 22/43 |
+| Adjacent-duplicate predictions on insertion states | 9/43 | 0/43 |
+| All training choices | 128/186 | 143/186 |
+| Insertion-only diagnostic, 256 updates | 12/43 | Not run: one-fit limit |
+| Development game 08 | 18/34 | 17/34 |
+| Training repayments | 32/32 | 32/32 |
+
+V3 actually predicts insertion on 42/43 insertion states; the zero-duplicate
+result is not obtained by avoiding insertion. It also predicts no already-used
+endpoint on these states. All 186 native input audits have zero aliases and
+match independently decoded public JSON within 3.27e-8. Training row permutation
+changes probabilities by at most 3.87e-7; development error is 2.38e-7. Neither
+corpus changes a chosen semantic action under permutation. The v2 re-audit
+reproduces 128/186, 6/43, nine duplicates and 18/34 exactly.
+
+| Training action | Examples | V2 exact | V3 exact |
+| --- | --- | --- | --- |
+| Purchase | 25 | 23 | 22 |
+| Insert | 43 | 6 | 22 |
+| Full Load Any | 43 | 42 | 40 |
+| Start | 29 | 25 | 25 |
+| Independent copy | 7 | 0 | 1 |
+| Delete | 5 | 0 | 1 |
+| Other loading mode | 2 | 0 | 0 |
+| Repay 10,000 | 32 | 32 | 32 |
+
+Development per-action counts are purchases 2/5 versus 2/5, insertions 0/6 versus
+1/6, Full Load Any 3/6 versus 1/6, starts 3/5 versus 3/5, copies 0/2 versus 0/2,
+and repayments 10/10 versus 10/10 (v2 then v3). No feature or fit is changed in
+response to this development regression.
+
+The duplicate gate passes, so the final v3 archive runs all 50 original cases
+from the unchanged October 5 protocol: 25 greedy and 25 sampled, 512 decisions
+and 128 ticks per decision, the same native initial saves, engine and action
+seeds. All 50 reach the full budget; there are zero interface failures. Native
+verification checks 25,600 decisions, 3,276,800 ticks and 50 final-save hashes.
+The first two final saves also pass native reloads. The saved v2 episodes are
+independently reverified against the same protocol. No policy updates occur.
+
+| Gameplay measure | V2 greedy | V3 greedy | V2 sampled | V3 sampled |
+| --- | --- | --- | --- | --- |
+| First bus starts | 23/25 | 24/25 | 25/25 | 25/25 |
+| First departure has two distinct stops | 0/25 | 24/25 | 7/25 | 24/25 |
+| First route also has Full Load Any at both stops | 0/25 | 21/25 | 2/25 | 7/25 |
+| Delivering episodes | 0/25 | 23/25 | 24/25 | 23/25 |
+| Mean delivered passengers | 0 | 1,609.16 | 1,389.56 | 1,407.16 |
+| Mean operating profit | -6,551.60 | -5,276.00 | -12,417.80 | -11,291.92 |
+| Positive operating-profit episodes | 0/25 | 7/25 | 1/25 | 1/25 |
+
+The earlier greedy first-route spot check covered 24 games; the full frozen
+protocol contains 25, and the verified v2 baseline remains zero. The strict
+first-route metric follows the existing two-distinct-stop / Full Load Any
+qualification. Normal loading can still deliver passengers, so endpoint
+structure is reported separately. Never starting counts as an invalid opening.
+
+Mean paired operating-profit improvement is +1,275.60 greedy and +1,125.88
+sampled. A 10,000-draw bootstrap clustered by the eight map seeds gives 95%
+intervals [-918.32, 4,005.00] and [59.15, 2,176.96], respectively. Seeds recur
+across dimensions; these are not 50 independent maps. Roads, a depot and two
+stops are supplied. Improved opening routes and deliveries do not establish
+profitable fleet management: both mode means remain negative, sampled delivering
+episodes fall by one, and game-08 exact fit falls by one. The v3 model is not
+qualified for longer PPO by these results. DAgger round 1 remains a separate
+future goal; no WAIT labels or DAgger tools are added here.
+
+Verification passes: four native CPU/CUDA order-feature tests, 354 development
+Python tests (four explicit skips), the fast verifier's 136 tests, and
+`git diff --check`. Initial implementation-audit failures and logs remain in
+the experiment root; the qualified audit is `input-audit-qualified/report.json`.
+
+Artifact paths relative to the experiment root:
+
+- `qualification.json`, `checks-final.json`, `native-tests-final.log`:
+  source, fresh build/runtime identities and verification logs.
+- `dataset.json`, `protocol.json`, `seven-game-256/run.json`:
+  training-only sources, frozen recipe and the single fit.
+- `input-audit-qualified/report.json`, `v2-fit-baseline/report.json`,
+  `v3-fit-audit/report.json`: native input and exact-choice evidence.
+- `fifty-game-benchmark/report.json`, `fifty-game-benchmark/game-*/`:
+  all 50 native episodes, decisions, tensors, transitions and final saves.
+- `fit-comparison.csv`, `benchmark-comparison.csv`, `results.json`, `report.md`:
+  portable comparison and evidence references.
+
+Reproduction uses a fresh output directory and the committed reader:
+
+```bash
+trial=/home/imsa/.local/share/openttd-rl/runs/human-orders-v3-20261006-01
+build=/home/imsa/.local/share/openttd-rl/build/human-orders-v3-20261006-01
+python scripts/dev/audit_orders_v3.py --stage fit \
+  --training /home/imsa/.local/share/openttd-rl/runs/human-ten-game-training-20261005-01/seven-game-256/run.json \
+  --development /home/imsa/.local/share/openttd-rl/runs/human-campaign-20261005/game-08/development-integrity/report.json \
+  --imitation-run "$trial/seven-game-256" --policy "$build/rl_dev_v2_infer" \
+  --output "$trial/reproduction-fit-audit"
+```
+
+The Windows summary is exported under
+`%LOCALAPPDATA%/OpenTTD-RL/analysis/human-orders-v3-20261006-01/`.
+Complete native episode evidence remains in WSL. Games 09–10 are untouched.
 
 ## Ten-game training and saved benchmark (October 5)
 

@@ -23,6 +23,27 @@ For v3, bind station column 5 to the same public snapshot's passenger count,
 because the old column sums all cargo. Preserve raw tensors, earlier modes,
 archive compatibility checks and native-only ONNX rejection. See the October 6
 section of docs/DEVELOPMENT.md for the slot meanings, tests and artifact paths.
+This trial completed with feature commit `6aeb3c4` and one 256-update CUDA fit.
+V3 fits 143/186 choices (v2 128), insertions 22/43 (v2 6), and repayments 32/32.
+Adjacent duplicates fall from 9/43 to 0/43 while 42/43 insertion states still
+predict insertion. Development game 08 falls from 18/34 to 17/34; do not tune
+using that result. All 186 native input audits have zero aliases; native CPU/CUDA,
+354 Python checks (four skips), fast verification and diff checks pass.
+The unchanged 50-case protocol completes all budgets with 50 native final saves,
+25,600 verified decisions, 3,276,800 ticks and zero interface failures. First-route
+two-distinct-stop structure improves from 0/25 to 24/25 greedy and 7/25 to 24/25
+sampled. Including Full Load Any at both stops, validity is 21/25 and 7/25 versus
+v2's 0/25 and 2/25. V3 delivers in 23/25 episodes in both modes, versus v2's
+0/25 greedy and 24/25 sampled. Mean operating profit remains negative:
+-5,276.00 greedy and -11,291.92 sampled, versus -6,551.60 and -12,417.80.
+Training Full Load Any falls from 42/43 to 40/43; purchases 23/25 to 22/25;
+starts stay 25/29; copies/deletions rise from zero to 1/7 and 1/5; other loading
+remains 0/2. One v3 insertion-only fit is not authorized or run. The station
+matching fix works, but profitable fleet control and PPO qualification remain
+unproved. DAgger round 1 is the owner's next separate goal, not work to start
+automatically here. Runtime evidence is
+`/home/imsa/.local/share/openttd-rl/runs/human-orders-v3-20261006-01/`; the Windows
+summary is under `%LOCALAPPDATA%/OpenTTD-RL/analysis/human-orders-v3-20261006-01/`.
 
 OpenTTD itself runs on the CPU. CUDA accelerates neural training and supported
 policy inference, not the simulation. Measure game-worker throughput separately
