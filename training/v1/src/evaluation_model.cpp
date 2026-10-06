@@ -343,6 +343,28 @@ EvaluationActionBatch ReadOnlyEvaluationPolicy::act(
     return {actions, selected, values, logits};
 }
 
+void ReadOnlyEvaluationPolicy::copy_parameters_to(MultiModalActorCritic &destination) const
+{
+    if (destination->kind() != architecture_) throw std::invalid_argument("evaluation import architecture mismatch");
+    const auto copy = [](const auto &source, const auto &target, bool apply) {
+        if (source.size() != target.size()) throw std::invalid_argument("evaluation import tensor count mismatch");
+        for (const auto &entry : source) {
+            if (!target.contains(entry.key()) || target[entry.key()].sizes() != entry.value().sizes() ||
+                target[entry.key()].scalar_type() != entry.value().scalar_type()) {
+                throw std::invalid_argument("evaluation import tensor mismatch: " + entry.key());
+            }
+            if (apply) target[entry.key()].copy_(entry.value().to(target[entry.key()].device()));
+        }
+    };
+    torch::NoGradGuard guard;
+    const auto parameters = destination->named_parameters();
+    const auto buffers = destination->named_buffers();
+    copy(model_->named_parameters(), parameters, false);
+    copy(model_->named_buffers(), buffers, false);
+    copy(model_->named_parameters(), parameters, true);
+    copy(model_->named_buffers(), buffers, true);
+}
+
 std::string ReadOnlyEvaluationPolicy::state_sha256() const
 {
     Sha256 digest;

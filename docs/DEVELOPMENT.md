@@ -1398,6 +1398,77 @@ passed locally in a container, including exact checkpoint resume. The selected
 Vast host still runs its own qualification before registration; no study learning
 result is claimed here.
 
+## V1 CPU/training-device agreement
+
+`scripts/dev/verify_device_agreement.py` replays all neural rows in a completed
+native development evaluation. It imports the content-addressed model into a fresh
+trainer for inference only, compares exact greedy choices and the actual ACT
+backend probabilities, and verifies normal ACT equals development INSPECT.
+It records source/build/runtime identities, hashes inputs before/after, and retains
+failures. A different `--candidate-package` is a negative-control diagnostic and
+can never pass even if its numerical outputs happen to match.
+
+From the checkout with the Torch venv active, build separate reference and fused
+trainers with `local.py build` (add `--fused-policy` for the latter), then run:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+python scripts/dev/verify_device_agreement.py \
+  --evaluation "$RL_ROOT/runs/policy-balanced-roll64-lambda095-64u-s20260923" \
+  --trainer "$RL_ROOT/build/refactor-v1-agreement-reference-01/m08_trainer" \
+  --device cuda:0 --expected-backend reference \
+  --output "$RL_ROOT/runs/device-agreement-reference-new"
+```
+
+Repeat with the fused binary, `--expected-backend fused-cuda`, and a new output
+path. Default batch size 1 reproduces the CPU evaluator's call shape. CUDA never
+falls back to CPU. `--device cpu --expected-backend reference` is explicit CPU
+operation. Reference/fused runs each passed 4,096 retained observations and rejected
+a deliberately perturbed valid package; see the refactor status for evidence.
+
+Historical MLP traces use an explicit unused zero spatial placeholder. CNN and
+combined policies require full `spatial_before`; collect it prospectively with
+`evaluate_live.py --retain-spatial-inputs`. This option adds storage and is off by
+default. Missing CNN inputs cause refusal, not a fabricated observation. Native
+fixtures check all three architectures, both devices, and inspection neutrality.
+`tests/dev/check_device_agreement_service.py --trainer ... --package ... --device
+cuda:0 --output ...` checks the real service boundaries against an existing package.
+The reviewed Vast image predates this isolated follow-up; it retains its separate
+qualification identity at `43b15fe`.
+
+## Full-game concurrency check
+
+`scripts/dev/check_concurrent_determinism.py` runs two full V1 greedy development
+episodes alone and under four-worker load, then one full V2 greedy game alone and
+two copies concurrently. It checks original action/economic bytes and complete
+prediction semantics, and requires observed progress from every concurrent worker.
+Timing and run-root paths are excluded explicitly; numerical differences fail.
+All games use 512 decisions and fresh output directories. CUDA never falls back.
+
+With the Torch venv active, reproduce the retained fixed-model check:
+
+```bash
+RL_ROOT="$HOME/.local/share/openttd-rl"
+python scripts/dev/check_concurrent_determinism.py \
+  --v1-engine "$RL_ROOT/engine/build/openttd" \
+  --v1-evaluator "$RL_ROOT/build/refactor-v1-agreement-reference-01/m09_evaluator" \
+  --v1-instance-dir "$RL_ROOT/engine/instances" \
+  --v1-package "$RL_ROOT/runs/live-cuda-balanced-roll64-lambda095-64u-s20260923/models/f6b886f5d3b8274b3bf9856f062b5d5a314fa77f4b66564a7fa0b6b2b963f5c5" \
+  --v2-engine "$RL_ROOT/v2-live-engine/build/openttd" \
+  --v2-policy "$RL_ROOT/build/refactor-v2-deterministic-infer-01/rl_dev_v2_infer" \
+  --v2-training-run "$RL_ROOT/runs/refactor-gradient-qualification-01/qualifications/attempt-001/recovery/cuda-0-plain" \
+  --device cuda:0 --map-seed 1630856436 --seed 20260925 \
+  --output "$RL_ROOT/runs/concurrency-new"
+```
+
+Use a current V2 inference binary: it now applies training's deterministic CUDA
+settings and provides `DETERMINISM_INFO` over its development service. Build it
+with `local.py build --v2-policy` in a separate build directory. The historical
+binary is retained for comparison; its exact CUDA prediction gate failed.
+The corrected check passed all 13 comparisons on RTX 2070/Torch 2.9.1. Its V2
+checkpoint only chooses WAIT, so this is not a learning or throughput benchmark.
+See [the complete evidence record](REFACTOR_2026-09-25_STATUS.md).
+
 ## What we are continuing
 
 Keep the existing C++ PPO and source-integrated OpenTTD environment. The immediate
@@ -1800,6 +1871,38 @@ implementation of the same checksum and canonical-response checks. The default
 `reference` preserves the original bitwise/scanner implementation. This option
 is also supported by `train_live.py`; it changes validation cost, not PPO or game
 semantics. Full-episode byte-equivalence evidence is recorded in the progress log.
+
+`--stage-timing` independently records per-episode host wall spans in
+`timing.jsonl`, separate from `actions.jsonl`. It covers environment startup,
+input preparation, policy request, step, observation, legal-mask requests, trace
+assembly/serialization/write/flush and cleanup. Disabled timing reads no clocks
+and creates no timing file. Failed spans remain visible. Logging overhead and
+other bookkeeping are outside these spans. Policy-request time includes its
+synchronous service/wait cost; none of these measurements is a CUDA kernel time.
+
+To qualify timing against a retained evaluation and measure its overhead, use a
+new output directory and the same actual engine/evaluator/package identities:
+
+```bash
+python scripts/dev/profile_evaluation.py \
+  --engine ~/.local/share/openttd-rl/engine/build/openttd \
+  --instance-dir ~/.local/share/openttd-rl/engine/instances \
+  --evaluator ~/.local/share/openttd-rl/build/refactor-v1-agreement-reference-01/m09_evaluator \
+  --package /absolute/path/to/retained/model-package \
+  --reference ~/.local/share/openttd-rl/runs/refactor-concurrency-02/v1-workers4 \
+  --output ~/.local/share/openttd-rl/runs/v1-stage-profile-new
+```
+
+The driver fixes both development maps, sampled seed 20260925, 512 decisions,
+CPU native inference, fast bridge and one process worker. It checks prior/default
+and enabled/default trace and summary equality before four balanced timing pairs.
+Run without competing work. It retains source/input hashes, stage distributions,
+episode/command medians and ranges, paired overhead and unmeasured wall time.
+The retained reference must contain both matching sampled games. For function
+attribution, add `--profile --stage-timing` to a separate `evaluate_live.py` run;
+cProfile overhead makes that run unsuitable for ordinary performance estimates.
+See [the verified measurements](REFACTOR_2026-09-25_STATUS.md). Native ACT/UPDATE and
+V2 phase timing remain separate unfinished work.
 
 To replay saved neural weights, supply `--evaluator`, `--package` using the
 `model.path` from a successful training `run.json`, and `--policies greedy sampled`:

@@ -9,6 +9,18 @@ and exercised inside the container. The launcher reruns its
 complete qualification on the target and refuses registration on failed or
 mismatched results.
 
+The exact source revision covered by the completed container qualification is
+`43b15fe5ea743778bdfea8f1e8e574b35f397089`, now preserved in the main history.
+That hash reproduces the older qualification. A subsequent strict concurrency
+check found low-bit CUDA inference differences; current main corrects inference
+to use the deterministic settings already used by training and passes the full
+concurrency check. **For a new study, select a reviewed full revision containing
+that correction.** The inference fix and V1 device-agreement additions have
+separate native/live evidence and are not retroactively covered by the older
+container run. Every selected revision receives complete qualification on the
+target before registration; the full container bundle has not been rerun here
+for this follow-up.
+
 This package builds the existing native OpenTTD engine and C++/LibTorch trainer,
 runs the minimum correctness gates, then registers and executes A0 through A3.
 It retains three training seeds per arm, 8,192 decisions per seed, eight training
@@ -46,8 +58,8 @@ with all artifacts preserved; it never deletes old attempts to manufacture space
 
 The historical mandatory runtime estimate is approximately 41-42 hours with
 control reuse, excluding builds, correctness gates, reporting/hash verification,
-and the conditional held-out run. It does not measure the new norm accumulation's
-overhead. GPU type alone does not predict this workload's
+and the conditional held-out run. It does not measure the newer norm accumulation
+or deterministic inference overheads. GPU type alone does not predict this workload's
 wall time. More interrupted attempts can require more space and time.
 
 [Vast volumes](https://docs.vast.ai/guides/instances/storage/volumes) survive

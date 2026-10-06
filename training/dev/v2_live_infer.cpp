@@ -2,6 +2,7 @@
 #include "openttd_rl/training/rng.h"
 #include "openttd_rl/v2/checkpoint.h"
 
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -27,6 +28,13 @@ int main(int argc, char **argv)
         const torch::Device device(args.at("--device"));
         if (device.is_cuda() && !torch::cuda::is_available()) throw std::runtime_error("CUDA requested but unavailable; no fallback");
         torch::set_num_threads(1);
+        // Match live training: CUDA graph scatter_add otherwise changes low bits
+        // between identical inference processes. Configure cuBLAS before handles.
+        if (::setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", 1) != 0)
+            throw std::runtime_error("cannot configure deterministic cuBLAS workspace");
+        at::globalContext().setDeterministicAlgorithms(true, false);
+        at::globalContext().setDeterministicCuDNN(true);
+        at::globalContext().setBenchmarkCuDNN(false);
         openttd_rl::training::RngStreams rng(std::stoull(args.at("--seed")));
         openttd_rl::v2::ScalablePolicy model(rng.initialization_seed());
         if (args.contains("--weights")) {
@@ -46,6 +54,16 @@ int main(int argc, char **argv)
         while (std::getline(std::cin, line)) {
             if (line == "CLOSE") { std::cout << "{\"status\":\"CLOSED\"}" << std::endl; break; }
             if (line == "RESET") { hidden.zero_(); std::cout << "{\"status\":\"RESET\"}" << std::endl; continue; }
+            if (line == "DETERMINISM_INFO") {
+                std::cout << "{\"deterministic_algorithms\":" << std::boolalpha
+                    << at::globalContext().deterministicAlgorithms()
+                    << ",\"warn_only\":" << at::globalContext().deterministicAlgorithmsWarnOnly()
+                    << ",\"cudnn_deterministic\":" << at::globalContext().deterministicCuDNN()
+                    << ",\"cudnn_benchmark\":" << at::globalContext().benchmarkCuDNN()
+                    << ",\"cublas_workspace_config\":\"" << std::getenv("CUBLAS_WORKSPACE_CONFIG")
+                    << "\",\"threads\":" << torch::get_num_threads() << "}" << std::endl;
+                continue;
+            }
             if (line == "FINANCIAL_FEATURES_INFO") {
                 std::cout << "{\"financial_features\":\"" << openttd_rl::development::financial_features_name(financial_features) << "\"}" << std::endl;
                 continue;

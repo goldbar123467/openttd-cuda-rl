@@ -53,6 +53,9 @@ public:
     [[nodiscard]] const std::string &package_id() const noexcept { return package_id_; }
     [[nodiscard]] const std::string &model_sha256() const noexcept { return model_sha256_; }
     [[nodiscard]] std::string state_sha256() const;
+    // Copies validated weights without replacing destination parameter storage.
+    // This is inference import, not an optimizer/training checkpoint restore.
+    void copy_parameters_to(MultiModalActorCritic &destination) const;
     [[nodiscard]] ArchitectureKind architecture() const noexcept { return architecture_; }
 
 private:

@@ -3,7 +3,7 @@
 Goal: [complete refactor and PPO recovery](REFACTOR_GOAL_2026-09-25.md).
 Review: `docs/internal/reviews/2026-09-25/`, fetched at `ec5a3f6`; reviewed source was `0595a72`.
 Execution starts from `8ffc5bd` on `codex/local-training-foundation`.
-The first implementation checkpoint is local commit `c8f585b`; nothing was pushed.
+The first implementation checkpoint was local commit `c8f585b`; it was not pushed then.
 All eleven original reports were read. This is an implementation record, not a
 replacement for their requirements or a claim that their static findings passed.
 
@@ -16,7 +16,193 @@ replacement for their requirements or a claim that their static findings passed.
   674 GiB free on Linux and 323 GiB on the Windows volume at initial inspection.
 - Historical Linux worktrees exist. Windows Git's `prunable` labels reflect Linux
   paths; these worktrees must not be pruned. No training process was found running.
-- No held-out games have been accessed, new tuning study launched, or source pushed.
+- No held-out games have been accessed or new tuning study launched.
+- The owner requested publication to `main`. This integration preserves the remote
+  review history and the verified implementation through `e30953c`. The follow-up
+  now verifies concurrency and corrects V2 inference determinism; no paid computation
+  is launched.
+
+## V1 evaluation stage timing (S3-0 partial / 04:B1-B3)
+
+**V1 evaluation slice verified; native ACT/UPDATE and V2 timing remain pending.**
+`evaluate_live.py --stage-timing` writes optional host wall spans to a separate
+`timing.jsonl`. Canonical action rows are unchanged. Disabled spans do not read a
+clock or create a timing file. Failed spans are retained, and the ordinary episode
+failure/cleanup behavior is preserved. These spans include synchronous work and
+waits; they are not CUDA-event or kernel measurements. Unmeasured bookkeeping and
+instrumentation overhead are reported separately rather than attributed to a stage.
+
+`profile_evaluation.py` first checks disabled timing against the retained prior
+source and enabled against disabled. Only then does it run four balanced pairs:
+off/on, on/off, on/off, off/on. The fixed workload uses the retained balanced-roll64
+MLP, native CPU evaluator, fast bridge, one process worker, both V1 development
+maps, sampled seed 20260925 and all 512 decisions. The 20 complete games total
+10,240 decisions. All 12 comparisons preserve byte-identical action traces and
+all summary fields except elapsed time; inputs and source remain unchanged.
+No native build or policy/training settings changed in this slice.
+
+All durations below are seconds, median [minimum, maximum] across the four pairs,
+excluding qualification. Host: Ubuntu 24.04/WSL2, Python 3.12.13, LibTorch 2.9.1;
+the host has an RTX 2070 but this evaluator uses CPU inference.
+
+| Map | Timing disabled | Timing enabled | Paired enabled minus disabled |
+| --- | --- | --- | --- |
+| 05 | 25.512 [25.445, 25.543] | 25.774 [25.473, 26.086] | 0.290 [-0.070, 0.586] |
+| 06 | 25.435 [25.318, 25.616] | 25.804 [25.593, 26.020] | 0.326 [0.254, 0.511] |
+
+Complete two-map command medians are 51.716 [51.666, 51.871] disabled and
+52.364 [51.864, 52.876] enabled. This measures instrumentation overhead, not an
+optimization speedup. Observation reads dominate the timed workload: medians
+20.827/20.840 seconds for maps 05/06, versus 2.140/2.148 for policy-input preparation,
+1.072/1.080 for the policy request and 1.025/1.024 for native game stepping.
+Trace serialization is 0.040/0.041 and flushing 0.015/0.014 seconds; unmeasured
+wall time is 0.090/0.103 seconds. Full ranges and per-call statistics are retained.
+
+A separate complete map-05 cProfile diagnostic also preserves actions and summary
+semantics. It records 11.279 seconds cumulative in regex substitution for canonical
+validation, 7.534 in table CRC, and 7.474 in the spatial-validation generator.
+Its 37.940-second profiled episode is affected by profiler overhead, so these are
+function-attribution leads, not estimates of ordinary wall-time savings. This
+supports measuring validation/vectorization and native CRC candidates; it does
+not yet justify adopting them or relaxing any integrity check.
+
+Evidence below is under `/home/imsa/.local/share/openttd-rl/runs/`:
+
+- `refactor-v1-stage-timing-01/profile.json`, SHA-256 `79eb032fb2f15bad9f8adebe00b04adef5dad9a71d00c1cd7d11c34e893f15a9`:
+  archived source, binary/package/input hashes, exact comparisons and four pairs.
+- `refactor-v1-call-profile-01/profile.json`, SHA-256 `c7c3d85ac3bfd978df55323a76bb790f2f64c9650f186a4cc776698a3f8d43f8`:
+  one full-game function profile, command, archived source and neutrality check.
+- `refactor-v1-timing-checks-01/`: **216 Python passes, four existing MCP-environment
+  skips, 136/136 portable checks**. Five focused timing tests cover disabled I/O,
+  units, action/economic neutrality, exception retention and incomplete/overlapping
+  timing evidence. Tests ran before the isolated timing workload.
+
+Reproduction commands are in [DEVELOPMENT.md](DEVELOPMENT.md). This slice does not
+qualify the latest source's full Vast bundle, launch learning, access held-out games
+or change bridge defaults. Next complete native ACT/UPDATE and V2 phase attribution,
+then gate any selected optimization on equality and counterbalanced measurements.
+
+## Concurrent execution and deterministic V2 inference (S2-7 / F33)
+
+**Verified on the retained workload after correcting V2 inference.** The first
+full run, `refactor-concurrency-01`, correctly failed its strict prediction gate:
+V1 action/economic traces and all V2 native actions/economics matched, but V2 CUDA
+probabilities, log probabilities, entropy and values differed in their low bits.
+The three V2 comparisons differed on 196, 191 and 203 of 512 prediction rows;
+maximum probability difference was 1.19e-7 and value difference 2.4e-7. The failed
+run and `failure-analysis.json` remain unchanged. No tolerance replaced equality.
+
+Live V2 inference now applies the same deterministic-algorithm, CuDNN and cuBLAS
+settings already used by live training, including fail-closed unsupported
+operations. The graph encoder uses CUDA scatter aggregation, a documented source
+of nondeterminism without those settings ([PyTorch 2.9](https://docs.pytorch.org/docs/2.9/generated/torch.use_deterministic_algorithms.html)).
+The experiment verifies the collective settings correction; it does not isolate a single operator. `DETERMINISM_INFO`
+reports actual runtime settings. Training code, weights and the prediction wire format are
+unchanged; the historical inference binary/source remain retained references.
+
+`refactor-concurrency-02` passes **all 13 strict comparisons** across nine full
+512-decision games (4,608 total decisions). V1 runs two development greedy games
+alone, then those games alongside two sampled games with four process workers.
+V2 runs the same greedy development game alone and twice concurrently on CUDA.
+Progress observations prove every concurrent worker advanced during a shared
+unfinished interval. Original native action/economic traces match byte-for-byte.
+V1 summaries exclude only elapsed duration. V2 prediction comparison excludes only
+inference timing and the run-specific directory prefix of the guided tensor path;
+all remaining fields, relative paths and content hashes match exactly.
+
+The V2 model is the fixed two-update recovery qualification checkpoint, on
+map 1630856436 with seed 20260925 and guide v4. It chooses WAIT for all 512
+steps: zero passengers, -4,834 operating profit, -5,559 cash excluding financing,
+zero invalid actions and no bankruptcy. This is finite-workload correctness,
+not evidence of learned service, universal hardware determinism or a speedup.
+
+Evidence below is under `/home/imsa/.local/share/openttd-rl/runs/`:
+
+- `refactor-concurrency-02/verification.json`, SHA-256 `772427538e0d3c9b3bcdf8e31bde760212f5c9f02949ad5825fa4e5bc9a05141`:
+  commands, seeds, binaries/models, unchanged input hashes, source archives,
+  actual progress overlap and all strict comparisons.
+- `refactor-v2-inference-fix-01/service-replay-02/verification.json`: all 512
+  retained inputs produce exactly unchanged old/new CPU outputs and identical
+  queried/unqueried CUDA outputs. CPU/CUDA maxima are 9e-8 for probabilities and
+  2.4e-7 for values, below the existing 1e-5/1e-4 bounds, with exact argmax.
+  RESET replays the first eight outputs exactly. The first replay attempt lacked
+  compressed-tensor resolution; its input failure is retained separately.
+- `refactor-v2-inference-fix-01/`: **211 Python passes, four existing skips;
+  136/136 portable checks; 4/4 focused native V2 policy/distribution CPU/CUDA
+  checks**. Eight new unit tests exercise overlap, byte differences, prediction
+  projection, held-out refusal and child-failure retention.
+
+The new native binary is
+`/home/imsa/.local/share/openttd-rl/build/refactor-v2-deterministic-infer-01/rl_dev_v2_infer`.
+This follow-up is separate from the older container qualification. New Vast work
+must select a reviewed revision containing this fix and pass the target's complete
+qualification before registration. No learning study or held-out game was launched.
+
+Two bounded read-only audits also clarify report 03's open questions.
+`refactor-development-map-rationale-01/audit.json` hashes three retained
+registrations and orchestrators: they specify the first two development seeds but
+provide no explicit cost/property rationale; that rationale stays unknown. The
+prospective protocol already requires all eight seeds.
+`refactor-v1-retained-backends-01/audit.json` binds all three selected rollout-64
+MLPs to the actual reference trainer binary and recorded fused-OFF configuration.
+Three older curriculum comparison records lack an explicit bound backend and stay
+unclassified; this does not characterize every historical model.
+
+## V1 training-device agreement (S2-5 / F28 / 03:N8)
+
+**Verified for the retained known-good MLP package, reference and fused CUDA.**
+This follow-up lives on `codex/refactor-v1-agreement`, based on `43b15fe`, in
+`/home/imsa/.local/share/openttd-rl/worktrees/refactor-v1-agreement-01`. The original
+checkout and its qualified Vast package remain at `43b15fe`. The verified V1
+follow-up is now included in the main integration at the owner's request; it has
+separate native/device evidence and is not part of the older container qualification.
+
+`verify_device_agreement.py` replays every retained development observation through
+both the unchanged deterministic ACT request and a new development-only INSPECT
+request. INSPECT exposes the actual backend's probabilities, including the fused
+CUDA kernel; it does not recompute them on CPU. A validated evaluation package is
+copied into a fresh trainer without replacing parameter storage. The imported
+service refuses UPDATE, export, checkpoint save/restore and subsequent imports.
+Frozen ACT/UPDATE layouts and ordinary training behavior remain unchanged.
+
+All eight complete episodes (two development maps, one greedy and three sampled
+seeds) from `policy-balanced-roll64-lambda095-64u-s20260923` passed: **4,096 rows per
+backend, zero argmax mismatches**, maximum probability error
+`1.7881393432617188e-7` and comparable selected-logp error `2.086162567138672e-7`.
+The fixed probability tolerance is `1e-6 + 1e-5 * abs(reference)`; illegal entries
+must equal zero exactly. Sampled actions are not confused with greedy argmax.
+
+A separately copied, valid content-addressed package with
+`policy_head.bias[0] += 10000` was numerically rejected on every row by both
+backends, including **171 argmax mismatches**. The source package and all retained
+inputs remained unchanged. Native fixtures cover all three architectures on CPU
+and CUDA, proving inspection preserves ACT outputs, weights, Adam state, counters,
+RNG streams and model mode (including exceptions). Each binary also passed eleven
+service boundary checks, including batch limits and forbidden mutations.
+
+Evidence under `/home/imsa/.local/share/openttd-rl/runs/refactor-v1-device-agreement-01`:
+
+- `verification.json`: aggregate, SHA-256
+  `13f5c696aa8e74a40f0b1b2829cf659313cf4f4b8b3cde2ae5b4044001bfa383`.
+- `reference-live-02/verification.json` and `fused-live-01/verification.json`:
+  complete positive replays with source/runtime/build identities and input hashes.
+- `reference-negative-01/` and `fused-negative-01/`: expected numerical failures;
+  `negative-control.json` and `make_negative_control.py` retain the perturbation.
+- `reference-service-01/`, `fused-service-01/`, native and Python logs: **203 Python
+  passes, four existing MCP skips; 136/136 portable checks; 17 reference native
+  checks and 18 fused checks passed after correcting the new spatial fixture**.
+
+The first fixture used negative spatial values and was correctly rejected; its
+failure log remains. The first portable invocation selected the training venv;
+rerunning with the documented `/usr/bin/python3` resolved missing tool dependencies.
+An early positive replay predates the corrected fixture build metadata; the final
+`reference-live-02` binds the retained final build record.
+
+Historical CNN traces omit spatial inputs and are explicitly refused. New CNN
+replays require `evaluate_live.py --retain-spatial-inputs`; a test verifies these
+are the pre-action observations. Zero spatial placeholders are used only for the
+MLP, which ignores them. This gate establishes finite-workload numerical agreement,
+not new gameplay competence, universal cross-device identity, or a speedup.
 
 ## Current numerical qualification
 
@@ -337,11 +523,13 @@ directory above. Failed attempts are retained.
   repository suite **136/136 passed** (`refactor-report-fast-01/fast.log`). No
   native PPO math changed in this reporting pass; prior native results stand.
 
-Next: finish container validation and retain its image/runtime identities.
-The portable package supplies capacity and sequential execution; paid provisioning,
-publication and study execution remain outstanding. The broader V1 agreement,
-concurrency, profiling and strategy work remains on the original goal checklist.
-Do not run A0-A3 until their prerequisite bundle passes.
+Current next work: complete native ACT/UPDATE and V2 stage timers (S3-0); the V1
+evaluation slice now passes as recorded above. Continue measured pipeline work
+and remaining audits/strategy dispositions. Container qualification
+and V1 device agreement have now passed as recorded above. The portable package
+supplies capacity and sequential execution; image publication, paid provisioning and the
+registered study remain outstanding. A Vast host must pass its own prerequisite
+bundle before running A0-A3.
 
 ## Mandatory coverage and dependencies
 
@@ -360,10 +548,10 @@ deliverable; no member is complete until its own evidence is recorded.
 | S2-2 statistics | F08; 03:N1/N2/N5/N12; 04:B12; 06:K5 | Verified in all three reports | Fixtures, retained V1/credit exact t intervals and V2 native summaries |
 | S2-3 eight development maps | F09/F29; X1; 03:N3/N6/N7 | Frozen matrix, modes, evidence reader/default split verified; study launch pending | Explicit split/map matrix, guide/control provenance; cost estimated |
 | S2-4 held-out protocol | F09; 03:N4 | Frozen protocol and registered access implemented; refusal/one-use tests verified | No held-out access; model registration after development eligibility |
-| S2-5 device agreement | F28; 03:N8 | Pending | Reference/fused CPU-CUDA replay; perturbed-model rejection |
+| S2-5 device agreement | F28; 03:N8 | Verified on retained MLP; all-architecture native fixtures | 4096 rows/backend, exact argmax, fixed tolerances; valid perturbed package rejected; old CNN spatial-data limit explicit |
 | S2-6 power/sample-size table | 03:section 7.9; 04:B11/B12 | Verified, scoped to retained V1 contrasts | Exact historical half-width; explicit extrapolation assumptions and V2 limit |
-| S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Pending | Solo/concurrent native action/economic trace identity |
-| S3-0 timers | 04:section 6; 05:section 11; 03:N14 | Pending | Separate timings, unchanged canonical traces, 3 paired runs |
+| S2-7 concurrent determinism | F33; 03:N3; 04:B6/B13 | Verified for retained full workload after V2 inference fix | 13 exact comparisons; actual overlap; first CUDA prediction failure preserved |
+| S3-0 timers | 04:section 6; 05:section 11; 03:N14 | V1 evaluation verified; native ACT/UPDATE and V2 pending | Separate timings, 12 exact comparisons, four balanced full-episode pairs; one diagnostic call profile |
 | S3-1 evaluation quick wins | F13; 04:B1/B2/B7 | Pending | Full replay equality and paired timing |
 | S3-2 MLP spatial transfers | F12/F32; X10; 05:K1; 06:O3 | Pending | Cross-binary exact mode; all architecture regressions |
 | S3-3 ACT copies/backend | F10; 05:K4/K12 | Pending | Exact consolidated copies; measured/toleranced backend |
@@ -376,7 +564,7 @@ deliverable; no member is complete until its own evidence is recorded.
 | Recovery 08:1 / S4-1 | F04; X3/X4/X9; 06:P2a | Mechanism verified; learning study pending | Float64 oracle, zero/one/mixed choices, CPU/CUDA and measured actor drift |
 | Recovery 08:2 | F05/F06 | Verified for the explicit bounded history ledger | Telescoping to 1e-9, terminal/truncation boundaries and native reset recovery |
 | Recovery 08:3b | F07; X5; 06:R4 | Guide mechanism verified; full matched controls pending study | No repayment before START; existing guide behavior/legality preserved |
-| Recovery A0-A3 | 08:section 3 | Packaged; local minimum bundle passed; container qualification and study pending | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
+| Recovery A0-A3 | 08:section 3 | Packaged; local and container minimum bundles passed; study pending | Three training seeds, 8192 decisions, 8-map evaluation, registered failure rule |
 | S4-2 / 08:4 / A4 | F16; 06:P1 | Pending, after A0-A3 | Sequence batching k=1 exact; registered k>1/KL study |
 | S4-3 / A5 | F17; 06:P4/A3 | Pending, conditional | Entropy decomposition before coefficient studies |
 | S4-4 | F20/F21; X6; 06:R1/R2/R3 | Pending, audit conditional | New reward objective explicitly separate; offline recomputation |
@@ -392,7 +580,9 @@ deliverable; no member is complete until its own evidence is recorded.
 All below are **pending assessment**, not silently omitted. Close optional options
 only with evidence for the reported condition, not with a generic "out of scope".
 
-- 04:B3 native CRC; B4 structured-only evaluator; B11 screening; B13 engine reuse.
+- 04:B3 native CRC: V1 call profiling establishes a measurable CRC cost; candidate
+  implementation and equality/end-to-end timing gates remain pending.
+- 04:B4 structured-only evaluator; B11 screening; B13 engine reuse.
 - 05:K6 pinned staging; K10 CUDA Graphs; K11 batch-bound relaxation. No new V2
   custom backward before the report's profiling prerequisites.
 - 06:P2b/A2 semi-MDP compression; P6 larger V1 rollouts; A1 compound selection;

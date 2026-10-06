@@ -1,0 +1,1569 @@
+{
+  "experiment_id": "human-ten-game-training-20261005-01",
+  "claim": "Frozen supplied-infrastructure bus-control evaluation and human imitation; no construction-learning or general OpenTTD mastery claim.",
+  "partitions": {
+    "training_games": 7,
+    "training_choices": 186,
+    "development_games": 1,
+    "development_choices": 34,
+    "test_games": 2,
+    "test_choices": 64
+  },
+  "verification": {
+    "episodes": 250,
+    "decisions": 127427,
+    "simulation_ticks": 16310656,
+    "final_saves": 250,
+    "immutable_inputs_unchanged": true,
+    "full_budget_episodes": 247,
+    "interface_terminations": 3,
+    "native_accounting_chains": "passed",
+    "training_updates_during_evaluation": 0
+  },
+  "independent_map_seed_clusters": 8,
+  "worlds": 25,
+  "decisions_per_episode": 512,
+  "ticks_per_decision": 128,
+  "supplied_infrastructure": "Two stops, roads and one depot; no buses.",
+  "offline": {
+    "one-game-1000": {
+      "development": {
+        "examples": 34,
+        "exact_rows": 8,
+        "accuracy": 0.23529411764705882,
+        "unique_exact_rows": 8,
+        "unique_exact_accuracy": 0.23529411764705882,
+        "all_unique_exact": false,
+        "tied_target_count": 0,
+        "minimum_target_margin": -0.999980510438097,
+        "mean_target_probability": 0.2338219994234365,
+        "zero_target_probabilities": 0,
+        "mean_negative_log_likelihood": 8.800836284310291
+      },
+      "test": {
+        "exact": 18,
+        "total": 64,
+        "accuracy": 0.28125
+      }
+    },
+    "one-game-256": {
+      "development": {
+        "examples": 34,
+        "exact_rows": 5,
+        "accuracy": 0.14705882352941177,
+        "unique_exact_rows": 5,
+        "unique_exact_accuracy": 0.14705882352941177,
+        "all_unique_exact": false,
+        "tied_target_count": 0,
+        "minimum_target_margin": -0.81588884317,
+        "mean_target_probability": 0.13026025538200295,
+        "zero_target_probabilities": 0,
+        "mean_negative_log_likelihood": 5.988175501738591
+      },
+      "test": {
+        "exact": 14,
+        "total": 64,
+        "accuracy": 0.21875
+      }
+    },
+    "four-game-256": {
+      "development": {
+        "examples": 34,
+        "exact_rows": 12,
+        "accuracy": 0.35294117647058826,
+        "unique_exact_rows": 12,
+        "unique_exact_accuracy": 0.35294117647058826,
+        "all_unique_exact": false,
+        "tied_target_count": 0,
+        "minimum_target_margin": -0.71210841909,
+        "mean_target_probability": 0.2743314247679412,
+        "zero_target_probabilities": 0,
+        "mean_negative_log_likelihood": 2.4185173588549733
+      },
+      "test": {
+        "exact": 19,
+        "total": 64,
+        "accuracy": 0.296875
+      }
+    },
+    "seven-game-256": {
+      "development": {
+        "examples": 34,
+        "exact_rows": 18,
+        "accuracy": 0.5294117647058824,
+        "unique_exact_rows": 18,
+        "unique_exact_accuracy": 0.5294117647058824,
+        "all_unique_exact": false,
+        "tied_target_count": 0,
+        "minimum_target_margin": -0.563874153896,
+        "mean_target_probability": 0.3482901971512941,
+        "zero_target_probabilities": 0,
+        "mean_negative_log_likelihood": 1.9502804236498739
+      },
+      "test": {
+        "exact": 41,
+        "total": 64,
+        "accuracy": 0.640625
+      }
+    }
+  },
+  "training_action_types": [
+    {
+      "model": "seven-game-256",
+      "corpus": "seven-games",
+      "operation": "buy-bus",
+      "examples": 25,
+      "unique_exact": 23,
+      "unique_exact_accuracy": 0.92,
+      "random_all_legal_accuracy": 0.0004211000216162267,
+      "random_given_primitive_accuracy": 0.96,
+      "mean_all_legal_candidates": 2375.32,
+      "mean_same_primitive_candidates": 1.08,
+      "min_same_primitive_candidates": 1,
+      "max_same_primitive_candidates": 2,
+      "selected_correct_primitive": 23,
+      "exact_given_primitive_hint": 25
+    },
+    {
+      "model": "seven-game-256",
+      "corpus": "seven-games",
+      "operation": "copy-orders",
+      "examples": 7,
+      "unique_exact": 0,
+      "unique_exact_accuracy": 0,
+      "random_all_legal_accuracy": 0.0004090013665191315,
+      "random_given_primitive_accuracy": 0.3296825396825397,
+      "mean_all_legal_candidates": 2446.1428571428573,
+      "mean_same_primitive_candidates": 13.714285714285714,
+      "min_same_primitive_candidates": 1,
+      "max_same_primitive_candidates": 25,
+      "selected_correct_primitive": 0,
+      "exact_given_primitive_hint": 3
+    },
+    {
+      "model": "seven-game-256",
+      "corpus": "seven-games",
+      "operation": "delete-order",
+      "examples": 5,
+      "unique_exact": 0,
+      "unique_exact_accuracy": 0,
+      "random_all_legal_accuracy": 0.0004008118858769726,
+      "random_given_primitive_accuracy": 0.10984848484848485,
+      "mean_all_legal_candidates": 2495.4,
+      "mean_same_primitive_candidates": 9.8,
+      "min_same_primitive_candidates": 6,
+      "max_same_primitive_candidates": 12,
+      "selected_correct_primitive": 1,
+      "exact_given_primitive_hint": 1
+    },
+    {
+      "model": "seven-game-256",
+      "corpus": "seven-games",
+      "operation": "full-load-any",
+      "examples": 43,
+      "unique_exact": 42,
+      "unique_exact_accuracy": 0.9767441860465116,
+      "random_all_legal_accuracy": 0.0004159857765112384,
+      "random_given_primitive_accuracy": 0.09445367294204503,
+      "mean_all_legal_candidates": 2404.6046511627906,
+      "mean_same_primitive_candidates": 14.162790697674419,
+      "min_same_primitive_candidates": 6,
+      "max_same_primitive_candidates": 36,
+      "selected_correct_primitive": 43,
+      "exact_given_primitive_hint": 42
+    },
+    {
+      "model": "seven-game-256",
+      "corpus": "seven-games",
+      "operation": "insert-order",
+      "examples": 43,
+      "unique_exact": 6,
+      "unique_exact_accuracy": 0.13953488372093023,
+      "random_all_legal_accuracy": 0.00041857147377945893,
+      "random_given_primitive_accuracy": 0.06388890122645252,
+      "mean_all_legal_candidates": 2389.7441860465115,
+      "mean_same_primitive_candidates": 34.23255813953488,
+      "min_same_primitive_candidates": 4,
+      "max_same_primitive_candidates": 102,
+      "selected_correct_primitive": 29,
+      "exact_given_primitive_hint": 8
+    },
+    {
+      "model": "seven-game-256",
+      "corpus": "seven-games",
+      "operation": "manage-loan:CmdDecreaseLoan",
+      "examples": 32,
+      "unique_exact": 32,
+      "unique_exact_accuracy": 1,
+      "random_all_legal_accuracy": 0.0004073517132941881,
+      "random_given_primitive_accuracy": 0.5,
+      "mean_all_legal_candidates": 2455.75,
+      "mean_same_primitive_candidates": 2,
+      "min_same_primitive_candidates": 2,
+      "max_same_primitive_candidates": 2,
+      "selected_correct_primitive": 32,
+      "exact_given_primitive_hint": 32
+    },
+    {
+      "model": "seven-game-256",
+      "corpus": "seven-games",
+      "operation": "set-load",
+      "examples": 2,
+      "unique_exact": 0,
+      "unique_exact_accuracy": 0,
+      "random_all_legal_accuracy": 0.00040185658063157843,
+      "random_given_primitive_accuracy": 0.037698412698412696,
+      "mean_all_legal_candidates": 2489,
+      "mean_same_primitive_candidates": 28.5,
+      "min_same_primitive_candidates": 21,
+      "max_same_primitive_candidates": 36,
+      "selected_correct_primitive": 0,
+      "exact_given_primitive_hint": 0
+    },
+    {
+      "model": "seven-game-256",
+      "corpus": "seven-games",
+      "operation": "start-vehicle",
+      "examples": 29,
+      "unique_exact": 25,
+      "unique_exact_accuracy": 0.8620689655172413,
+      "random_all_legal_accuracy": 0.00041487465970222647,
+      "random_given_primitive_accuracy": 0.9080459770114943,
+      "mean_all_legal_candidates": 2411.310344827586,
+      "mean_same_primitive_candidates": 1.206896551724138,
+      "min_same_primitive_candidates": 1,
+      "max_same_primitive_candidates": 3,
+      "selected_correct_primitive": 26,
+      "exact_given_primitive_hint": 25
+    }
+  ],
+  "insertion_only_fits": [
+    {
+      "updates": 256,
+      "examples": 43,
+      "unique_exact": 12,
+      "final_loss": 1.5095217103181884
+    },
+    {
+      "updates": 1000,
+      "examples": 43,
+      "unique_exact": 21,
+      "final_loss": 1.1433895417424136
+    }
+  ],
+  "gameplay": {
+    "one-game-1000": {
+      "greedy": {
+        "episodes": 25,
+        "completed_full_budget": 25,
+        "any_delivery": 1,
+        "mean_passengers": 31,
+        "mean_operating_profit": -18643.56,
+        "mean_cash_result_excluding_financing": -101649.68,
+        "mean_buses": 16.72,
+        "sustained_service": 0,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "sampled": {
+        "episodes": 25,
+        "completed_full_budget": 24,
+        "any_delivery": 4,
+        "mean_passengers": 126.48,
+        "mean_operating_profit": -18845.36,
+        "mean_cash_result_excluding_financing": -107519.12,
+        "mean_buses": 17.28,
+        "sustained_service": 0,
+        "interface_terminations": 1,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "all": {
+        "episodes": 50,
+        "completed_full_budget": 49,
+        "any_delivery": 5,
+        "mean_passengers": 78.74,
+        "mean_operating_profit": -18744.46,
+        "mean_cash_result_excluding_financing": -104584.4,
+        "mean_buses": 17,
+        "sustained_service": 0,
+        "interface_terminations": 1,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      }
+    },
+    "one-game-256": {
+      "greedy": {
+        "episodes": 25,
+        "completed_full_budget": 25,
+        "any_delivery": 0,
+        "mean_passengers": 0,
+        "mean_operating_profit": -8643.04,
+        "mean_cash_result_excluding_financing": -31219.28,
+        "mean_buses": 4.44,
+        "sustained_service": 0,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "sampled": {
+        "episodes": 25,
+        "completed_full_budget": 25,
+        "any_delivery": 22,
+        "mean_passengers": 615.2,
+        "mean_operating_profit": -11870.12,
+        "mean_cash_result_excluding_financing": -67746.72,
+        "mean_buses": 11.04,
+        "sustained_service": 0,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "all": {
+        "episodes": 50,
+        "completed_full_budget": 50,
+        "any_delivery": 22,
+        "mean_passengers": 307.6,
+        "mean_operating_profit": -10256.58,
+        "mean_cash_result_excluding_financing": -49483,
+        "mean_buses": 7.74,
+        "sustained_service": 0,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      }
+    },
+    "four-game-256": {
+      "greedy": {
+        "episodes": 25,
+        "completed_full_budget": 25,
+        "any_delivery": 3,
+        "mean_passengers": 7.44,
+        "mean_operating_profit": -29787.88,
+        "mean_cash_result_excluding_financing": -154917.76,
+        "mean_buses": 25.28,
+        "sustained_service": 0,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "sampled": {
+        "episodes": 25,
+        "completed_full_budget": 23,
+        "any_delivery": 22,
+        "mean_passengers": 896.68,
+        "mean_operating_profit": -22896.8,
+        "mean_cash_result_excluding_financing": -160070.32,
+        "mean_buses": 24.56,
+        "sustained_service": 0,
+        "interface_terminations": 2,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "all": {
+        "episodes": 50,
+        "completed_full_budget": 48,
+        "any_delivery": 25,
+        "mean_passengers": 452.06,
+        "mean_operating_profit": -26342.34,
+        "mean_cash_result_excluding_financing": -157494.04,
+        "mean_buses": 24.92,
+        "sustained_service": 0,
+        "interface_terminations": 2,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      }
+    },
+    "seven-game-256": {
+      "greedy": {
+        "episodes": 25,
+        "completed_full_budget": 25,
+        "any_delivery": 0,
+        "mean_passengers": 0,
+        "mean_operating_profit": -6551.6,
+        "mean_cash_result_excluding_financing": -36410.92,
+        "mean_buses": 5.92,
+        "sustained_service": 0,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "sampled": {
+        "episodes": 25,
+        "completed_full_budget": 25,
+        "any_delivery": 24,
+        "mean_passengers": 1389.56,
+        "mean_operating_profit": -12417.8,
+        "mean_cash_result_excluding_financing": -103863.84,
+        "mean_buses": 18.32,
+        "sustained_service": 0,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "all": {
+        "episodes": 50,
+        "completed_full_budget": 50,
+        "any_delivery": 24,
+        "mean_passengers": 694.78,
+        "mean_operating_profit": -9484.7,
+        "mean_cash_result_excluding_financing": -70137.38,
+        "mean_buses": 12.12,
+        "sustained_service": 0,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      }
+    },
+    "scripted-one-bus-repay": {
+      "greedy": {
+        "episodes": 25,
+        "completed_full_budget": 25,
+        "any_delivery": 24,
+        "mean_passengers": 1126.72,
+        "mean_operating_profit": 3623.16,
+        "mean_cash_result_excluding_financing": -2024.84,
+        "mean_buses": 1,
+        "sustained_service": 22,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "sampled": {
+        "episodes": 25,
+        "completed_full_budget": 25,
+        "any_delivery": 24,
+        "mean_passengers": 1126.72,
+        "mean_operating_profit": 3623.16,
+        "mean_cash_result_excluding_financing": -2024.84,
+        "mean_buses": 1,
+        "sustained_service": 22,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      },
+      "all": {
+        "episodes": 50,
+        "completed_full_budget": 50,
+        "any_delivery": 48,
+        "mean_passengers": 1126.72,
+        "mean_operating_profit": 3623.16,
+        "mean_cash_result_excluding_financing": -2024.84,
+        "mean_buses": 1,
+        "sustained_service": 44,
+        "interface_terminations": 0,
+        "invalid_actions": 0,
+        "bankruptcies": 0
+      }
+    }
+  },
+  "paired_new_vs_prior": {
+    "one-game-1000:greedy": {
+      "passengers": {
+        "paired_mean_difference": -31,
+        "cluster_bootstrap_95_percent_interval": [
+          -96.875,
+          0.0
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": 12091.96,
+        "cluster_bootstrap_95_percent_interval": [
+          10888.212820512821,
+          13271.791666666666
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": 65238.76,
+        "cluster_bootstrap_95_percent_interval": [
+          55095.845192307694,
+          75739.91583333332
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": 12091.96,
+        "cluster_bootstrap_95_percent_interval": [
+          10888.212820512821,
+          13271.791666666666
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-1000:sampled": {
+      "passengers": {
+        "paired_mean_difference": 1244,
+        "cluster_bootstrap_95_percent_interval": [
+          931.3854166666666,
+          1570.587666666666
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": 6614.2,
+        "cluster_bootstrap_95_percent_interval": [
+          4832.794230769231,
+          8321.414124999998
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": 4836.12,
+        "cluster_bootstrap_95_percent_interval": [
+          -6930.888888888889,
+          17467.939624999974
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": 6614.2,
+        "cluster_bootstrap_95_percent_interval": [
+          4832.794230769231,
+          8321.414124999998
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-1000:all": {
+      "passengers": {
+        "paired_mean_difference": 606.5,
+        "cluster_bootstrap_95_percent_interval": [
+          428.372125,
+          783.12
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": 9353.08,
+        "cluster_bootstrap_95_percent_interval": [
+          8403.8745,
+          10323.16975
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": 35037.44,
+        "cluster_bootstrap_95_percent_interval": [
+          26024.541319444445,
+          45289.3
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": 9353.08,
+        "cluster_bootstrap_95_percent_interval": [
+          8403.8745,
+          10323.16975
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-256:greedy": {
+      "passengers": {
+        "paired_mean_difference": 0,
+        "cluster_bootstrap_95_percent_interval": [
+          0.0,
+          0.0
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": 2091.44,
+        "cluster_bootstrap_95_percent_interval": [
+          -127.19374999999995,
+          4440.851851851852
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -5191.64,
+        "cluster_bootstrap_95_percent_interval": [
+          -19806.041666666668,
+          8119.692307692308
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": 2091.44,
+        "cluster_bootstrap_95_percent_interval": [
+          -127.19374999999995,
+          4440.851851851852
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-256:sampled": {
+      "passengers": {
+        "paired_mean_difference": 774.36,
+        "cluster_bootstrap_95_percent_interval": [
+          463.388,
+          1004.447
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -547.68,
+        "cluster_bootstrap_95_percent_interval": [
+          -2805.7916666666665,
+          1614.9166666666667
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -36117.12,
+        "cluster_bootstrap_95_percent_interval": [
+          -48101.1122962963,
+          -21102.592708333348
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -547.68,
+        "cluster_bootstrap_95_percent_interval": [
+          -2805.7916666666665,
+          1614.9166666666667
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-256:all": {
+      "passengers": {
+        "paired_mean_difference": 387.18,
+        "cluster_bootstrap_95_percent_interval": [
+          231.694,
+          502.2235
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": 771.88,
+        "cluster_bootstrap_95_percent_interval": [
+          -1004.3119791666667,
+          2455.366
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -20654.38,
+        "cluster_bootstrap_95_percent_interval": [
+          -29667.58175,
+          -11532.666185185199
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": 771.88,
+        "cluster_bootstrap_95_percent_interval": [
+          -1004.3119791666667,
+          2455.366
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "four-game-256:greedy": {
+      "passengers": {
+        "paired_mean_difference": -7.44,
+        "cluster_bootstrap_95_percent_interval": [
+          -20.666666666666668,
+          0.0
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": 23236.28,
+        "cluster_bootstrap_95_percent_interval": [
+          22457.955208333333,
+          23854.378125
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": 118506.84,
+        "cluster_bootstrap_95_percent_interval": [
+          108713.91725,
+          127925.61538461539
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": 23236.28,
+        "cluster_bootstrap_95_percent_interval": [
+          22457.955208333333,
+          23854.378125
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "four-game-256:sampled": {
+      "passengers": {
+        "paired_mean_difference": 476.76,
+        "cluster_bootstrap_95_percent_interval": [
+          313.8333333333333,
+          644.16
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": 11168.88,
+        "cluster_bootstrap_95_percent_interval": [
+          10045.615384615385,
+          12519.105208333334
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": 57312.04,
+        "cluster_bootstrap_95_percent_interval": [
+          49325.66298076923,
+          65227.90312499999
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": 11168.88,
+        "cluster_bootstrap_95_percent_interval": [
+          10045.615384615385,
+          12519.105208333334
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "four-game-256:all": {
+      "passengers": {
+        "paired_mean_difference": 234.66,
+        "cluster_bootstrap_95_percent_interval": [
+          152.957875,
+          320.2237592592592
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": 17202.58,
+        "cluster_bootstrap_95_percent_interval": [
+          16432.62,
+          17843.92
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": 87909.44,
+        "cluster_bootstrap_95_percent_interval": [
+          80899.295,
+          94669.10416666667
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": 17202.58,
+        "cluster_bootstrap_95_percent_interval": [
+          16432.62,
+          17843.92
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "scripted-one-bus-repay:greedy": {
+      "passengers": {
+        "paired_mean_difference": -1126.72,
+        "cluster_bootstrap_95_percent_interval": [
+          -1218.48,
+          -1033.2711481481483
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -10174.76,
+        "cluster_bootstrap_95_percent_interval": [
+          -11339.836458333333,
+          -9182.717625
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -34386.08,
+        "cluster_bootstrap_95_percent_interval": [
+          -44727.91388888889,
+          -24692.355500000005
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -10174.76,
+        "cluster_bootstrap_95_percent_interval": [
+          -11339.836458333333,
+          -9182.717625
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "scripted-one-bus-repay:sampled": {
+      "passengers": {
+        "paired_mean_difference": 262.84,
+        "cluster_bootstrap_95_percent_interval": [
+          -14.431999999999967,
+          501.76912499999986
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -16040.96,
+        "cluster_bootstrap_95_percent_interval": [
+          -17898.782583333334,
+          -14339.846153846154
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -101839,
+        "cluster_bootstrap_95_percent_interval": [
+          -107981.38333333333,
+          -95694.29479166667
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -16040.96,
+        "cluster_bootstrap_95_percent_interval": [
+          -17898.782583333334,
+          -14339.846153846154
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "scripted-one-bus-repay:all": {
+      "passengers": {
+        "paired_mean_difference": -431.94,
+        "cluster_bootstrap_95_percent_interval": [
+          -591.3114182692307,
+          -303.04
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -13107.86,
+        "cluster_bootstrap_95_percent_interval": [
+          -14258.035416666668,
+          -12069.786
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -68112.54,
+        "cluster_bootstrap_95_percent_interval": [
+          -74102.32195833333,
+          -61955.35312500001
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -13107.86,
+        "cluster_bootstrap_95_percent_interval": [
+          -14258.035416666668,
+          -12069.786
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    }
+  },
+  "paired_each_model_vs_script": {
+    "one-game-1000:greedy": {
+      "passengers": {
+        "paired_mean_difference": -1095.72,
+        "cluster_bootstrap_95_percent_interval": [
+          -1215.005,
+          -954.5416666666666
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -22266.72,
+        "cluster_bootstrap_95_percent_interval": [
+          -23401.037500000002,
+          -21200.923076923078
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -99624.84,
+        "cluster_bootstrap_95_percent_interval": [
+          -103931.73541666666,
+          -95754.34615384616
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -22266.72,
+        "cluster_bootstrap_95_percent_interval": [
+          -23401.037500000002,
+          -21200.923076923078
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-1000:sampled": {
+      "passengers": {
+        "paired_mean_difference": -989.08,
+        "cluster_bootstrap_95_percent_interval": [
+          -1153.4583333333333,
+          -803.8245000000002
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -22428.56,
+        "cluster_bootstrap_95_percent_interval": [
+          -23586.114583333336,
+          -21397.815125
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -105464.32,
+        "cluster_bootstrap_95_percent_interval": [
+          -113213.93125000001,
+          -98654.19355158732
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -22428.56,
+        "cluster_bootstrap_95_percent_interval": [
+          -23586.114583333336,
+          -21397.815125
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-1000:all": {
+      "passengers": {
+        "paired_mean_difference": -1042.4,
+        "cluster_bootstrap_95_percent_interval": [
+          -1176.2101249999998,
+          -887.5156250000001
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -22347.64,
+        "cluster_bootstrap_95_percent_interval": [
+          -23486.958333333332,
+          -21379.32644230769
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -102544.58,
+        "cluster_bootstrap_95_percent_interval": [
+          -108259.20364583333,
+          -97323.94797008547
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -22347.64,
+        "cluster_bootstrap_95_percent_interval": [
+          -23486.958333333332,
+          -21379.32644230769
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-256:greedy": {
+      "passengers": {
+        "paired_mean_difference": -1126.72,
+        "cluster_bootstrap_95_percent_interval": [
+          -1218.48,
+          -1033.2711481481483
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -12266.2,
+        "cluster_bootstrap_95_percent_interval": [
+          -14305.444444444445,
+          -10702.379166666666
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -29194.44,
+        "cluster_bootstrap_95_percent_interval": [
+          -40248.333333333336,
+          -20570.996875
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -12266.2,
+        "cluster_bootstrap_95_percent_interval": [
+          -14305.444444444445,
+          -10702.379166666666
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-256:sampled": {
+      "passengers": {
+        "paired_mean_difference": -511.52,
+        "cluster_bootstrap_95_percent_interval": [
+          -623.710625,
+          -372.25
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -15493.28,
+        "cluster_bootstrap_95_percent_interval": [
+          -17189.620541666667,
+          -14176.461538461539
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -65721.88,
+        "cluster_bootstrap_95_percent_interval": [
+          -77530.677125,
+          -56130.55100000001
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -15493.28,
+        "cluster_bootstrap_95_percent_interval": [
+          -17189.620541666667,
+          -14176.461538461539
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "one-game-256:all": {
+      "passengers": {
+        "paired_mean_difference": -819.12,
+        "cluster_bootstrap_95_percent_interval": [
+          -867.8,
+          -764.78
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -13879.74,
+        "cluster_bootstrap_95_percent_interval": [
+          -15117.709259259258,
+          -12670.055208333337
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -47458.16,
+        "cluster_bootstrap_95_percent_interval": [
+          -54493.87037037037,
+          -40789.979687500025
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -13879.74,
+        "cluster_bootstrap_95_percent_interval": [
+          -15117.709259259258,
+          -12670.055208333337
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "four-game-256:greedy": {
+      "passengers": {
+        "paired_mean_difference": -1119.28,
+        "cluster_bootstrap_95_percent_interval": [
+          -1212.4166666666667,
+          -1027.96
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -33411.04,
+        "cluster_bootstrap_95_percent_interval": [
+          -34174.92,
+          -32460.844458333333
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -152892.92,
+        "cluster_bootstrap_95_percent_interval": [
+          -153817.79166666666,
+          -151956.91551851854
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -33411.04,
+        "cluster_bootstrap_95_percent_interval": [
+          -34174.92,
+          -32460.844458333333
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "four-game-256:sampled": {
+      "passengers": {
+        "paired_mean_difference": -220.12,
+        "cluster_bootstrap_95_percent_interval": [
+          -353.28749999999997,
+          -103.47841666666669
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -26548.04,
+        "cluster_bootstrap_95_percent_interval": [
+          -28521.034375,
+          -24727.37037037037
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -158095.56,
+        "cluster_bootstrap_95_percent_interval": [
+          -164679.91666666666,
+          -151877.2183760684
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -26548.04,
+        "cluster_bootstrap_95_percent_interval": [
+          -28521.034375,
+          -24727.37037037037
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "four-game-256:all": {
+      "passengers": {
+        "paired_mean_difference": -669.7,
+        "cluster_bootstrap_95_percent_interval": [
+          -761.0815,
+          -590.2260000000001
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -29979.54,
+        "cluster_bootstrap_95_percent_interval": [
+          -31095.82,
+          -28898.41935096154
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -155494.24,
+        "cluster_bootstrap_95_percent_interval": [
+          -158913.86510416667,
+          -152300.32475
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -29979.54,
+        "cluster_bootstrap_95_percent_interval": [
+          -31095.82,
+          -28898.41935096154
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "seven-game-256:greedy": {
+      "passengers": {
+        "paired_mean_difference": -1126.72,
+        "cluster_bootstrap_95_percent_interval": [
+          -1218.48,
+          -1033.2711481481483
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -10174.76,
+        "cluster_bootstrap_95_percent_interval": [
+          -11339.836458333333,
+          -9182.717625
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -34386.08,
+        "cluster_bootstrap_95_percent_interval": [
+          -44727.91388888889,
+          -24692.355500000005
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -10174.76,
+        "cluster_bootstrap_95_percent_interval": [
+          -11339.836458333333,
+          -9182.717625
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "seven-game-256:sampled": {
+      "passengers": {
+        "paired_mean_difference": 262.84,
+        "cluster_bootstrap_95_percent_interval": [
+          -14.431999999999967,
+          501.76912499999986
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -16040.96,
+        "cluster_bootstrap_95_percent_interval": [
+          -17898.782583333334,
+          -14339.846153846154
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -101839,
+        "cluster_bootstrap_95_percent_interval": [
+          -107981.38333333333,
+          -95694.29479166667
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -16040.96,
+        "cluster_bootstrap_95_percent_interval": [
+          -17898.782583333334,
+          -14339.846153846154
+        ],
+        "paired_cases": 25,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    },
+    "seven-game-256:all": {
+      "passengers": {
+        "paired_mean_difference": -431.94,
+        "cluster_bootstrap_95_percent_interval": [
+          -591.3114182692307,
+          -303.04
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "operating_profit": {
+        "paired_mean_difference": -13107.86,
+        "cluster_bootstrap_95_percent_interval": [
+          -14258.035416666668,
+          -12069.786
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_excluding_financing": {
+        "paired_mean_difference": -68112.54,
+        "cluster_bootstrap_95_percent_interval": [
+          -74102.32195833333,
+          -61955.35312500001
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      },
+      "cash_result_before_capital": {
+        "paired_mean_difference": -13107.86,
+        "cluster_bootstrap_95_percent_interval": [
+          -14258.035416666668,
+          -12069.786
+        ],
+        "paired_cases": 50,
+        "independent_map_seed_clusters": 8,
+        "repeats": 5000,
+        "bootstrap_seed": 20261005
+      }
+    }
+  }
+}

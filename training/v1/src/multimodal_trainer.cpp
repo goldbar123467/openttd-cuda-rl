@@ -114,7 +114,8 @@ ActionBatch MultiModalPpoTrainer::act(
     const torch::Tensor &structured,
     const torch::Tensor &spatial,
     const torch::Tensor &legal_masks,
-    bool deterministic)
+    bool deterministic,
+    torch::Tensor *device_probabilities)
 {
     require_cpu_tensor(structured, "structured inference batch");
     require_cpu_tensor(spatial, "spatial inference batch");
@@ -142,6 +143,9 @@ ActionBatch MultiModalPpoTrainer::act(
     }
     auto selected = log_probabilities.gather(1, actions.unsqueeze(1)).squeeze(1);
     require_finite_tensor(selected, "selected multimodal log probabilities");
+    // Optional development inspection uses the actual ACT backend distribution.
+    // The normal ACT path performs no extra copy or computation.
+    if (device_probabilities != nullptr) *device_probabilities = device_policy.probabilities.cpu();
     return {actions, selected, values, logits};
 }
 

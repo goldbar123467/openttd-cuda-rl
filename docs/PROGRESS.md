@@ -1,5 +1,55 @@
 # Live OpenTTD development progress
 
+## 2026-09-25: neutral V1 evaluation timing
+
+Optional `--stage-timing` now records wall spans outside canonical action traces.
+Qualification plus four balanced on/off pairs passes all 12 exact comparisons
+across 20 complete games. The fixed sampled MLP/CPU workload takes median 51.716
+seconds per two-map command with timing disabled and 52.364 enabled. Observation
+reads dominate; a separate exact-trace cProfile run identifies canonical JSON,
+CRC and spatial validation as optimization candidates. This is instrumentation
+and attribution, not a demonstrated optimization or learning improvement.
+
+Checks pass: 216 Python tests with four existing environment skips and all 136
+portable checks. Native ACT/UPDATE and V2 timers still need implementation.
+See [the measurements and evidence](REFACTOR_2026-09-25_STATUS.md) and
+[the profiling command](DEVELOPMENT.md). The full registered study remains pending.
+
+## 2026-09-25: concurrent-game determinism and V2 inference fix
+
+The strict concurrency check found small V2 CUDA prediction differences despite
+identical native actions/economics. Live inference now uses the deterministic
+settings already required by training. A fresh run passes all 13 exact comparisons
+across nine complete games, including V1 four-worker and V2 two-game load. The
+original failure remains retained. CPU output is unchanged on all 512 replayed
+inputs, and CPU/CUDA agreement stays within existing tolerances. Checks pass:
+211 Python tests (four additional environment skips), 136 portable checks and four
+focused native CPU/CUDA tests. See [the evidence and limits](REFACTOR_2026-09-25_STATUS.md).
+
+This follows the requested publication to main. The V2 fixture only waits and
+proves no learning improvement. The older container qualification remains tied
+to `43b15fe`; new work must select the corrected source and qualify it on the
+Vast target. Stage timers and the broader registered study remain unfinished.
+
+## 2026-09-25: V1 training-device agreement follow-up
+
+S2-5 now passes on the retained balanced-roll64 MLP: all 4,096 development
+observations match exact greedy choices on reference and fused CUDA. Maximum
+probability error is 1.79e-7 within the unchanged kernel tolerance. A valid copied
+package with an altered policy bias fails numerically on all 4,096 rows in both
+builds. Native fixtures cover MLP, CNN and combined architectures on CPU/CUDA and
+prove inspection preserves model, optimizer, RNG and counters. Old CNN traces
+lack spatial inputs; the checker refuses them, and optional prospective retention
+is tested. Native suites and 203 Python/136 portable checks pass; four existing
+MCP-environment skips remain. Evidence is in `refactor-v1-device-agreement-01` and
+[the status record](REFACTOR_2026-09-25_STATUS.md).
+
+This work was verified on `codex/refactor-v1-agreement` and is included in the main
+integration at the owner's request. The qualified Vast source and original checkout
+remain at `43b15fe`; no paid compute, new learning study or held-out access occurred.
+Concurrency determinism was the next open Stage 2 item at that publication;
+the verified correction and remaining profiling/strategy work are recorded above.
+
 ## 2026-09-25: minimum recovery correctness and Vast packaging
 
 Added the opt-in existing-C++ PPO recovery mechanisms, guide v4, exact read-only
@@ -16,8 +66,9 @@ built locally and passed actual CUDA execution, launcher refusal and the complet
 native correctness bundle, including exact CPU/CUDA reset resume. Container checks
 passed 189 Python tests with four MCP-environment skips, 136 portable tests and all
 19 native tests. The temporary Docker daemon has been stopped. The selected Vast
-host still reruns qualification before registration. No paid instance or Git push exists
-from this work. See [the evidence record](REFACTOR_2026-09-25_STATUS.md) and
+host still reruns qualification before registration. This package was subsequently
+pushed to main at the owner's request; no paid instance has been launched. See
+[the evidence record](REFACTOR_2026-09-25_STATUS.md) and
 [launch instructions](../deployment/vast/README.md) for checks and remaining limits.
 
 

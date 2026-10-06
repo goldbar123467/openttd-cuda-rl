@@ -26,6 +26,17 @@ benchmark or a concurrency speedup. Storage and host I/O are practical constrain
 to resolve through S3 profiling and equality checks before the large study.
 Per-stage timing and three counterbalanced performance pairs remain outstanding.
 
+The V1 device-agreement follow-up now reads probabilities directly from the
+training ACT backend through a development-only inspection request. Reference
+and fused CUDA each passed all 4,096 retained MLP development observations with
+exact argmax agreement; maximum probability error was 1.78814e-7 against the CPU
+evaluation trace. Both rejected all rows from a valid package with a deliberately
+perturbed policy bias. Native fixtures cover all three architectures, preserve
+optimizer/RNG/model state, and retain exact zero probabilities on illegal actions.
+The documented `1e-6 + 1e-5 * abs(reference)` probability tolerance was unchanged.
+Artifacts: `refactor-v1-device-agreement-01`. This is finite-workload correctness
+evidence; no new performance claim or CNN live-replay result is implied.
+
 ## Why this operation
 
 The measured 128-update live MLP run spent 1,216.8 seconds collecting/updating,

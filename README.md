@@ -101,6 +101,7 @@ Game 08 is reserved for development, and games 09–10 for testing. Unsupported
 construction and unlogged waiting remain outside supervised labels.
 
 See the [V1 evaluation record](docs/PROGRESS.md),
+[the ten-game training and gameplay figure gallery](docs/assets/human-ten-game-benchmark-2026-10-05/README.md),
 [exact bus-order results and reproduction commands](docs/DEVELOPMENT.md#exact-bus-order-imitation-october-2)
 and [MCP experiments](docs/DEVELOPMENT.md#shared-company-games-and-mcp).
 Historical V2 corpus-training and scripted transport gates are not evidence of
