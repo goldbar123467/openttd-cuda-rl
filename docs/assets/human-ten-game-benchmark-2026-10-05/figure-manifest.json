@@ -1,0 +1,38 @@
+{
+  "schema": "openttd-human-benchmark-figure-manifest-1",
+  "experiment_id": "human-ten-game-training-20261005-01",
+  "source_results_sha256": "0e39279f296d8b11ff7a98da9a36b94cf8400438257cb801e246f6cb480086f5",
+  "renderer_sha256": "dce185b4a2ef0097b7897f66a6a85beec00bf33466846254d9cb1a6557c3de8e",
+  "matplotlib_version": "3.11.2",
+  "files": [
+    {
+      "file": "human-decision-comparison.png",
+      "sha256": "10380ee5d57c5933f52f85a68b659001730cc73beaf021e3d4b1c67ddcd28b98"
+    },
+    {
+      "file": "human-decision-comparison.pdf",
+      "sha256": "58a7e551cca0f821cc87770b50099aa5edab329f5907904a41aa2d750e7dd0a2"
+    },
+    {
+      "file": "live-game-comparison.png",
+      "sha256": "452a06a22708ea76b9edf1f18d25ccb2aa31f7c0ca87ac5b4f9fb0e18f05f58d"
+    },
+    {
+      "file": "live-game-comparison.pdf",
+      "sha256": "7ea87c6d59548dd14e52ebbab5fcdecb9fb50a842983d339ee3ed00a720cfd71"
+    },
+    {
+      "file": "action-type-diagnostics.png",
+      "sha256": "4c8fda3b1e60cf425890db283b220b56bd45c09baa2fbee940fd469b78d59046"
+    },
+    {
+      "file": "action-type-diagnostics.pdf",
+      "sha256": "3a1a5d59bb869507845447124c7384763f060f034aee45dc5ddbaea64aaae4a3"
+    },
+    {
+      "file": "figure-data.json",
+      "sha256": "ede52488d80bfbeb0a80ca3e30a407a10d8ca2e07573ce263f3e19d45b8f1631"
+    }
+  ],
+  "source_scope": "Figures and aggregate values are published here. Full native traces, saves and executable experiment provenance remain in the preserved local evidence package."
+}

@@ -82,10 +82,12 @@ These are different experiments, not interchangeable measures of playing strengt
 | --- | --- | --- |
 | V1 live PPO, 32×32 passenger-bus maps | Sampled service in **18/18 held-out episodes**; mean 2,017 passengers and 6,023 operating profit. Greedy service in 4/6. | Narrow fixed-map task. Mean cash after capital was −2,488; the one-bus script remains more cash-efficient. |
 | Human bus-order imitation, October 2 | **12/12 exact training decisions**, uniquely selected without input aliases or ties. Native replay matches the manual save. | One recording, only 12 usable decisions. This demonstrates memorization of the training examples, not generalization. |
+| Seven-game human imitation, October 5 | **128/186 training choices; 41/64 held-out choices**, versus 19/64 for the four-game model. | Twenty of 22 additional correct test choices are repayments. Other actions improve from 19/44 to 21/44; training insertions remain 6/43. |
+| Saved bus-control comparison, October 5 | **250 attempts**, with 247 full budgets and three interface failures. The new model delivers in 24/25 sampled and 0/25 greedy episodes. | Mean operating profit is −9,485 versus the script's +3,623; sustained profitable service is 0/50 versus 44/50. Infrastructure is supplied and eight map seeds recur across dimensions. |
 | Four short live bus-order runs | Greedy and sampled policies reproduce both target route sequences, setting Full load any cargo before starting the target bus. | Infrastructure was supplied; one context also supplied both buses. Later actions overbuy and repeat edits. All four runs have negative operating profit. |
 | Shared-game MCP prototype | Local Gemma and neural agents execute through the same company-scoped interface. | Gemma chose WAIT on all 1,024 turns across four LLM matches; shared construction conflicts defeated both actors in eight scripted matches. Useful competition is not established. |
 
-The imitation dataset contains two buys, three station insertions, three full-load
+The October 2 imitation dataset contains two buys, three station insertions, three full-load
 changes, one independent order copy, one deletion and two starts. Another 27
 records are explicitly excluded. Unlogged waiting and human reasoning are not
 labels. The live contexts test route setup, not learned construction or sustained
@@ -93,6 +95,7 @@ fleet management. Importing the weights into PPO preserves the fit before any
 updates; retention after further PPO learning is unmeasured for this model.
 
 See the [V1 evaluation record](docs/PROGRESS.md),
+[the ten-game training and gameplay figure gallery](docs/assets/human-ten-game-benchmark-2026-10-05/README.md),
 [exact bus-order results and reproduction commands](docs/DEVELOPMENT.md#exact-bus-order-imitation-october-2)
 and [MCP experiments](docs/DEVELOPMENT.md#shared-company-games-and-mcp).
 Historical V2 corpus-training and scripted transport gates are not evidence of
