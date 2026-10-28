@@ -23,6 +23,7 @@ scripted route on those maps.
 """
 import argparse
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
 import gzip
 import hashlib
 import json
@@ -71,18 +72,23 @@ def labelled(row, wait_stride):
     return row["family"] != "WAIT" or row["decision"] % wait_stride == 0
 
 
+def game_rows(game):
+    with gzip.open(Path(game["directory"]) / "decisions.jsonl.gz", "rt") as stream:
+        return [json.loads(line) for line in stream]
+
+
 def replay(engine, game, output, *, wait_stride, focus, features):
     """Reproduce one game natively and capture its labelled decisions."""
-    directory = Path(game["directory"])
-    result = json.loads((directory / "result.json").read_text())
-    with gzip.open(directory / "decisions.jsonl.gz", "rt") as stream:
-        rows = [json.loads(line) for line in stream]
+    result = json.loads((Path(game["directory"]) / "result.json").read_text())
+    rows = game_rows(game)
     last = max(index for index, row in enumerate(rows) if labelled(row, wait_stride))
     client = open_game(engine, output / "worker", result["world"], result["decisions_budget"], focus=focus)
     examples = []
     try:
+        # Unlabelled decisions only need the state token, not the candidates.
+        state_request = "OBSERVE_STATE" if client.request("OBSERVE_STATE")["status"] == "OK" else "OBSERVE"
         for row in rows[:last + 1]:
-            observation = client.request("OBSERVE")["observation"]
+            observation = client.request("OBSERVE" if labelled(row, wait_stride) else state_request)["observation"]
             if observation["token"] != row["token"]:
                 raise ValueError(f"Replay diverged before decision {row['decision']}; engine or map differs")
             if labelled(row, wait_stride):
@@ -137,16 +143,26 @@ def export(args):
     examples = []
     try:
         record["source_capture"] = capture_source(output / "source")
+        # Label counts are known from the decision logs, so the example budget
+        # is applied to whole games before any replay starts.
+        planned, total = [], 0
         for game in select_games(database, args.per_map):
-            replayed = replay(engine, game, output / "games" / game["game_id"], wait_stride=args.wait_stride,
-                              focus=identity.get("candidate_focus") == "town-pair-v1", features=args.financial_features)
-            if len(examples) + len(replayed) > args.max_examples:
-                record["skipped_games"].append({**game, "examples": len(replayed), "reason": "example budget"})
+            count = sum(labelled(row, args.wait_stride) for row in game_rows(game))
+            if total + count > args.max_examples:
+                record["skipped_games"].append({**game, "examples": count, "reason": "example budget"})
                 continue
-            examples.extend(replayed)
-            record["games"].append({**game, "examples": len(replayed)})
-            write_json(output / "dataset.json", record)
-            print(json.dumps({"game": game["game_id"], "map": game["map_id"], "examples": len(replayed), "total": len(examples)}), flush=True)
+            planned.append(game)
+            total += count
+        focus = identity.get("candidate_focus") == "town-pair-v1"
+        with ProcessPoolExecutor(max_workers=args.workers) as pool:
+            futures = [pool.submit(replay, engine, game, output / "games" / game["game_id"], wait_stride=args.wait_stride,
+                                   focus=focus, features=args.financial_features) for game in planned]
+            for game, future in zip(planned, futures):
+                replayed = future.result()
+                examples.extend(replayed)
+                record["games"].append({**game, "examples": len(replayed)})
+                write_json(output / "dataset.json", record)
+                print(json.dumps({"game": game["game_id"], "map": game["map_id"], "examples": len(replayed), "total": len(examples)}), flush=True)
         if not examples:
             raise ValueError("No qualifying games were found")
         lines = [NATIVE_SCHEMA] + ["\t".join([e["sample_id"], e["game_id"], e["observation_tensor"]["path"], e["candidate_tensor"]["path"],
@@ -321,6 +337,7 @@ if __name__ == "__main__":
     exporter.add_argument("--wait-stride", type=positive, default=32)
     exporter.add_argument("--max-examples", type=positive, default=512, help="up to 65536; above 512 the trainer streams")
     exporter.add_argument("--financial-features", choices=ORDER_FEATURES, default="signed-log-orders-v3")
+    exporter.add_argument("--workers", type=positive, default=1, help="games replayed in parallel")
     trainer = commands.add_parser("train")
     trainer.add_argument("--dataset", type=Path, required=True)
     trainer.add_argument("--trainer", type=Path, required=True, help="rl_dev_v2_imitation")

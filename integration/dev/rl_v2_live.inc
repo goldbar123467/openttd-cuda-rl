@@ -422,7 +422,19 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
                     // restores it after its OWNER_NONE simulation scope. The
                     // actor company is only the command/observation context.
                     _current_company = _local_company;
-                    for (uint32_t tick = 0; tick < ticks; ++tick) StateGameLoop();
+                    // A link-graph job that is late at its join date pauses the
+                    // game until the job thread finishes: wall-clock scheduling,
+                    // not game state. Step until the full budget has elapsed, as
+                    // native replay does; any other pause remains fatal.
+                    for (uint64_t calls = 0; TimerGameTick::counter < tick_before + ticks; ++calls) {
+                        Require(_pause_mode.None() || _pause_mode == PauseMode::LinkGraph ||
+                            _pause_mode.base() == PauseModes{PauseMode::LinkGraph, PauseMode::CommandDuringPause}.base(),
+                            fmt::format("development live step cannot advance a paused game: mode={}", _pause_mode.base()));
+                        Require(calls < 100000000, "development live step tick bound exceeded");
+                        const uint64_t before_call = TimerGameTick::counter;
+                        StateGameLoop();
+                        if (TimerGameTick::counter == before_call) ::usleep(1000);
+                    }
                     _current_company = identity;
                     ++decisions; pending = false;
                     json after = DevCompanyEconomy(identity, finance);

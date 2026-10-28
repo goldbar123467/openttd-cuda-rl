@@ -75,6 +75,18 @@ while taking 13.5 instead of 88 seconds; it needed 59 full observations.
 Engines without `OBSERVE_STATE` reject it without side effects and the player
 falls back to full observations.
 
+Under full CPU load a 128-tick STEP sometimes advanced fewer ticks (37 in one
+game) and the run failed. OpenTTD pauses the game when a link-graph job is still
+running at its join date; StateGameLoop does not advance time until the job
+thread finishes, and the adapter made exactly 128 calls. STEP now keeps calling
+StateGameLoop, sleeping a millisecond between paused calls, until the full tick
+budget has elapsed, allowing only the link-graph pause as native human replay
+does; any other pause is still fatal. Paused calls change no game state: a
+completed game replays identically and a game that had failed on this now
+completes with its first 456 decisions unchanged. Earlier development engines
+have the original behavior; under load, check run failures for
+`Native step budget differs`.
+
 ### The scripted player and its strategies
 
 `route_player_v2.py` plays one route: select the town pair when the route needs
@@ -113,7 +125,7 @@ is the comparison for evaluation.
 python3 scripts/dev/scripted_imitation_v2.py export \
   --database "$RL_ROOT/cloud/databases/training-64" \
   --openttd "$RL_ROOT/cloud/route-focus-engine/build/openttd" \
-  --output "$RL_ROOT/cloud/runs/scripted-export-new" --per-map 1 --wait-stride 32
+  --output "$RL_ROOT/cloud/runs/scripted-export-new" --per-map 1 --wait-stride 32 --workers 4
 python3 scripts/dev/scripted_imitation_v2.py train \
   --dataset "$RL_ROOT/cloud/runs/scripted-export-new" \
   --trainer "$RL_ROOT/cloud/build/v2-policy-cpu/rl_dev_v2_imitation" \
@@ -133,8 +145,10 @@ decision reproduces its recorded state token. At labelled decisions (every
 non-WAIT action and every `--wait-stride`th WAIT) it captures the public tensors,
 the full native legal mask and the chosen row, applies the v3 projection by
 default, and writes `native-imitation.tsv`. Scripted WAITs are explicit choices
-among legal candidates, unlike gaps in human command logs. Raw replay tensors are
-kept as verified gzip archives. `train` runs the unchanged C++ imitation
+among legal candidates, unlike gaps in human command logs. The example budget is
+applied to whole games from their decision logs before replay; games replay in
+parallel, using `OBSERVE_STATE` for the token check at unlabelled decisions.
+Raw replay tensors are kept as verified gzip archives. `train` runs the unchanged C++ imitation
 objective; `evaluate` lets the network choose every action in complete games
 from reset on development maps, greedy and sampled, with the scripted games'
 accounting.
