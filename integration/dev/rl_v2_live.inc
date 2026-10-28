@@ -183,7 +183,8 @@ static std::string DevWritePublicTensors(const std::filesystem::path &metadata_p
 }
 
 static json DevObservation(CandidateEnumeration &enumeration, uint32_t decisions, uint32_t maximum,
-    uint32_t step_ticks, bool pending, bool terminal, std::string_view schema = DEV_LIVE_SCHEMA, bool finance = false)
+    uint32_t step_ticks, bool pending, bool terminal, std::string_view schema = DEV_LIVE_SCHEMA, bool finance = false,
+    bool state_only = false)
 {
     const CompanyID identity = _current_company;
     if (terminal && Company::GetIfValid(identity) == nullptr) {
@@ -218,16 +219,19 @@ static json DevObservation(CandidateEnumeration &enumeration, uint32_t decisions
         if (_dev_bus_orders) DevAddVehicleOrderState(vehicles.back(), *vehicle);
 #endif
     }
-    for (TileIndex tile{}; tile < Map::Size(); ++tile) {
+    // OBSERVE_STATE omits the per-tile map and the candidate table: the same
+    // public company state and token for callers that only need to decide
+    // whether to look at their candidates. Enumeration dominates OBSERVE.
+    for (TileIndex tile{}; !state_only && tile < Map::Size(); ++tile) {
         RoadBits bits = GetAnyRoadBits(tile, RTT_ROAD);
         if (bits != ROAD_NONE) roads.push_back({tile.base(), static_cast<uint8_t>(bits)});
         if (IsTileType(tile, MP_CLEAR)) clear_tiles.push_back(tile.base());
         if (IsTileType(tile, MP_HOUSE)) houses.push_back(tile.base());
         if (GetTileSlope(tile) == SLOPE_FLAT) flat_tiles.push_back(tile.base());
     }
-    enumeration = EnumerateCandidates();
     json candidates = json::array();
-    if (!pending && !terminal && decisions < maximum) {
+    if (!state_only) enumeration = EnumerateCandidates();
+    if (!state_only && !pending && !terminal && decisions < maximum) {
         for (size_t family = 0; family < FAMILY_COUNT; ++family) for (const Candidate &candidate : enumeration.selected[family]) {
             json entry = {{"key", candidate.stable_key}, {"family", FAMILY_NAMES[family]},
                 {"family_index", family}, {"parameters", candidate.parameters}, {"features", candidate.features},
@@ -252,6 +256,10 @@ static json DevObservation(CandidateEnumeration &enumeration, uint32_t decisions
             {"roads", roads}, {"clear_tiles", clear_tiles}, {"houses", houses}, {"flat_tiles", flat_tiles},
             {"bus_stop_catchment_radius", catchment}}},
         {"towns", towns}, {"stations", stations}, {"depots", depots}, {"vehicles", vehicles}, {"candidates", candidates}};
+    if (state_only) {
+        observation["state_only"] = true;
+        observation["map"] = {{"width", Map::SizeX()}, {"height", Map::SizeY()}};
+    }
 #ifdef RL_DEV_BUS_ORDERS
     if (_dev_bus_orders) {
         observation["action_semantics"] = "orders-v1";
@@ -350,6 +358,8 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
             const CompanyID identity = _current_company;
             if (operation == "OBSERVE" && request.size() == 3) {
                 response["observation"] = DevObservation(enumeration, decisions, maximum, ticks, pending, terminal, schema, finance);
+            } else if (operation == "OBSERVE_STATE" && request.size() == 3) {
+                response["observation"] = DevObservation(enumeration, decisions, maximum, ticks, pending, terminal, schema, finance, true);
             } else if (operation == "TENSORS" && request.size() == 3) {
                 if (pending || terminal) {
                     response.update({{"status", "REJECTED"}, {"reason", "DECISION_BOUNDARY"}});

@@ -165,6 +165,24 @@ class RoutePlayerTests(unittest.TestCase):
         running["economy"] = {"balance": 25000, "loan": 100000}
         self.assertEqual(player.choose(running)[1], "wait")
 
+    def test_state_only_observations_are_used_only_when_the_player_must_wait(self):
+        player = RoutePlayer(self.route, STRATEGY)
+        player.remaining = []
+        loaded = [{"index": 0, "destination": 7, "load_mode": 3}, {"index": 1, "destination": 8, "load_mode": 3}]
+        full = self.operating(orders=loaded, stopped=False)
+        full["economy"] = {"balance": 25000, "loan": 100000}
+        self.assertEqual(player.choose(full)[1], "wait")
+        state = {**full, "candidates": [], "state_only": True}
+        self.assertFalse(player.may_act(state))
+        self.assertEqual(player.choose(state)[0]["family"], "WAIT")
+        for change in ({"economy": {"balance": 40000, "loan": 100000}}, {"vehicles": []},
+                       {"stations": [{**full["stations"][0], "waiting_passengers": 60}, full["stations"][1]]}):
+            changed = {**state, **change}
+            self.assertTrue(player.may_act(changed))
+            self.assertNotEqual(player.choose({**full, **change})[1], "wait")
+            with self.assertRaises(ValueError):
+                player.choose(changed)
+
     def test_adds_a_bus_when_passengers_queue(self):
         player = RoutePlayer(self.route, STRATEGY)
         player.remaining = []

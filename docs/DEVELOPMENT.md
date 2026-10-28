@@ -62,10 +62,18 @@ sites and a 37-tile inter-town route appears. The selection is in the observatio
 because saved games do not carry it. The tensors encode it only through which
 candidates are exposed. Without the opt-in the engine behaves as before.
 
-The live adapter now validates a WAIT action without re-enumerating every
-construction predicate (WAIT is always exposed within its own quota). OBSERVE
-still costs about 100 ms and a 128-tick STEP about 1.5 ms: candidate enumeration,
-not simulation, bounds throughput. A game takes 75–100 seconds of one core.
+Candidate enumeration, not simulation, bounds throughput: OBSERVE costs about
+100 ms on a 64×64 map and a 128-tick STEP about 1.5 ms. Two adapter changes keep
+every decision the same while skipping most of it. ACT validates a WAIT without
+re-enumerating construction predicates (WAIT is always exposed within its own
+quota), and the new `OBSERVE_STATE` request returns the same public company
+state and token without the per-tile map or the candidate table. The player
+uses it whenever its conservative `may_act` check says it can only wait, and
+fetches the full observation otherwise. A recorded 512-decision game replayed
+this way matched every decision, state token and summary of the original
+while taking 13.5 instead of 88 seconds; it needed 59 full observations.
+Engines without `OBSERVE_STATE` reject it without side effects and the player
+falls back to full observations.
 
 ### The scripted player and its strategies
 

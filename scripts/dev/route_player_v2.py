@@ -57,12 +57,43 @@ class RoutePlayer:
         self.remaining = sorted(route["actions"], key=lambda row: priority[row[0]])
         self.blocked, self.blocked_limit = 0, blocked_limit
         self.target_buses = strategy["buses"]
+        self.wait_candidate = None
 
     def _wait(self, observation):
-        return next(c for c in observation["candidates"] if c["family"] == "WAIT")
+        if not observation.get("state_only"):
+            self.wait_candidate = next(c for c in observation["candidates"] if c["family"] == "WAIT")
+        return self.wait_candidate
+
+    def _loads(self):
+        return {"none": [0, 0], "first": [3, 0], "both": [3, 3]}[self.strategy["load"]]
+
+    def may_act(self, observation):
+        """Whether `choose` could pick anything but WAIT in this state.
+
+        Conservative: when it is False, `choose` waits on the full observation
+        too, so a candidate-free OBSERVE_STATE is enough for that decision.
+        """
+        if self.remaining or self.wait_candidate is None or (
+                self.focus and (observation.get("candidate_focus") or {}).get("towns") != self.focus):
+            return True
+        stations = {station["tile"]: station for station in observation["stations"]}
+        ends = [stations.get(stop["tile"]) for stop in self.route["stops"]]
+        if None in ends:
+            return True
+        desired, loads, buses = [end["id"] for end in ends], self._loads(), observation["vehicles"]
+        if any(bus["stopped"] or [order["destination"] for order in bus["orders"]] != desired or
+               [order["load_mode"] for order in bus["orders"]] != loads for bus in buses):
+            return True
+        waiting = max(end["waiting_passengers"] for end in ends)
+        if len(buses) < self.target_buses or (len(buses) < self.strategy["max_buses"] and waiting >= self.strategy["queue_threshold"]):
+            return True
+        economy, reserve = observation["economy"], self.strategy["repay_reserve"]
+        return reserve is not None and economy["loan"] >= 10000 and economy["balance"] >= reserve + 10000
 
     def choose(self, observation):
         """Return (candidate, phase)."""
+        if observation.get("state_only") and self.may_act(observation):
+            raise ValueError("A state-only observation cannot choose an action other than WAIT")
         inventory = {(c["family"], tuple(c["parameters"][1:4])): c for c in observation["candidates"]}
         economy = observation["economy"]
         if self.focus and (observation.get("candidate_focus") or {}).get("towns") != self.focus:
@@ -92,7 +123,7 @@ class RoutePlayer:
             raise ConstructionBlocked("Built stop tiles are not own stations")
         buses = sorted(observation["vehicles"], key=lambda bus: bus["id"])
         desired = [end["id"] for end in ends]
-        loads = {"none": [0, 0], "first": [3, 0], "both": [3, 3]}[self.strategy["load"]]
+        loads = self._loads()
         # Configure the newest incomplete bus first so a purchase is never stranded.
         for bus in buses:
             orders = bus["orders"]
@@ -191,9 +222,15 @@ def play(engine, output, world, route, strategy, *, decisions=512, focus=False):
     try:
         client = open_game(engine, output / "worker", world, decisions, focus=focus)
         initial = client.request("OBSERVE")["observation"]
+        # Engines with OBSERVE_STATE skip candidate enumeration while the
+        # player can only wait; older engines reject it without side effects.
+        state_request = "OBSERVE_STATE" if client.request("OBSERVE_STATE")["status"] == "OK" else "OBSERVE"
+        result["state_observations"] = state_request == "OBSERVE_STATE"
         player = RoutePlayer(route, strategy)
         observation, transitions, verified = initial, [], False
         for _ in range(decisions):
+            if observation.get("state_only") and player.may_act(observation):
+                observation = client.request("OBSERVE")["observation"]
             candidate, phase = player.choose(observation)
             if phase == "build" and not verified:
                 # Determinism check: the plan must be rediscovered where building starts.
@@ -210,9 +247,10 @@ def play(engine, output, world, route, strategy, *, decisions=512, focus=False):
             transitions.append(transition)
             rows.append({"decision": transition["decision"], "token": observation["token"], "tick": observation["tick"],
                          "family": candidate["family"], "key": candidate["key"], "parameters": candidate["parameters"][:4],
-                         "cost": candidate["cost"], "legal_candidates": len(observation["candidates"]), "phase": phase,
+                         "cost": candidate["cost"], "phase": phase,
+                         "legal_candidates": None if observation.get("state_only") else len(observation["candidates"]),
                          "before": transition["before"], "after": transition["after"]})
-            observation = client.request("OBSERVE")["observation"]
+            observation = client.request(state_request)["observation"]
             if transition["terminal"] or transition["truncated"]:
                 break
         final = observation
