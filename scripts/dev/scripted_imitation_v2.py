@@ -210,9 +210,12 @@ def train(args):
         command += ["--evaluate-every", str(args.evaluate_every)]
     if args.threads != 1:
         command += ["--threads", str(args.threads)]
+    if args.cache_examples:
+        command += ["--cache-examples", str(args.cache_examples)]
     record = {"kind": "native-v2-scripted-imitation", "status": "running", "source": source_identity(),
               "device": args.device, "seed": args.seed, "epochs": args.epochs, "learning_rate": args.learning_rate,
               "minibatch": args.minibatch or "full-dataset", "evaluate_every": args.evaluate_every, "threads": args.threads,
+              "cache_examples": args.cache_examples,
               "financial_features": args.financial_features, "dataset": str(args.dataset.resolve()), "manifest": manifest,
               "trainer": artifact(args.trainer), "command": command,
               "objective": "mean negative log likelihood of the scripted player's exact native candidate",
@@ -382,6 +385,7 @@ if __name__ == "__main__":
     trainer.add_argument("--minibatch", type=int, default=0, help="examples per Adam step; 0 is one full-dataset step per epoch")
     trainer.add_argument("--evaluate-every", type=positive, default=1, help="epochs between full training-set measurements")
     trainer.add_argument("--threads", type=positive, default=1, help="CPU intra-op threads; 1 keeps results bitwise reproducible")
+    trainer.add_argument("--cache-examples", type=int, default=0, help="keep the first N streamed examples decoded (about 3 MB each)")
     evaluator = commands.add_parser("evaluate")
     evaluator.add_argument("--training-run", type=Path, required=True)
     evaluator.add_argument("--infer", type=Path, required=True, help="rl_dev_v2_infer from the same build")

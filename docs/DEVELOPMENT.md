@@ -163,9 +163,17 @@ weights byte for byte. Three opt-in flags serve larger datasets:
 `--max-examples N` (up to 65,536; above 512 examples are streamed from their
 tensor files, again reproducing the resident fit exactly), `--minibatch N`
 (Adam steps on N-example means) and `--evaluate-every N` (full training-set
-measurement interval). `export --max-examples` and `train --minibatch
---evaluate-every` pass them through. On one CPU thread an epoch costs about
-0.13 seconds per example including measurement.
+measurement interval). `--threads N` and `--cache-examples N` are described
+below. `export --max-examples` and the matching `train` options pass them
+through. On one CPU thread an epoch costs about 0.13 seconds per example
+including measurement.
+
+Streaming decodes each example's tensors on every use, which roughly doubles
+an epoch: the first 3,071-example run took 11–14 minutes per epoch on two
+threads. `--cache-examples N` keeps the first N decoded examples in memory
+(about 3 MB each) and streams the rest. On the 98-example check, four epochs
+took 236 s streamed and 89 s cached, and both matched the resident fit's
+metrics exactly.
 
 ### Scaling to a 24–48 core CPU server
 
@@ -227,7 +235,7 @@ example at a time, and on 98 examples four epochs took 74 s with one thread,
 53 s with two and 45 s with four. Repeated runs at a fixed thread count were
 identical, and one versus four threads differed by 3e-8 in loss. Batched or
 data-parallel updates, or the CUDA trainer, are the way to use a large machine
-for training. Because replay regenerates every tensor exactly, only the
+for training; give it enough memory to `--cache-examples` the whole manifest. Because replay regenerates every tensor exactly, only the
 database (hundreds of MB) and its engine build directory need to move to the
 training machine; export refuses an engine whose hash differs from the one that
 played the database.

@@ -14,6 +14,7 @@
 #include <map>
 #include <set>
 #include <numeric>
+#include <optional>
 #include <random>
 #include <stdexcept>
 #include <torch/cuda.h>
@@ -187,14 +188,14 @@ int64_t integer(const std::string &text, int64_t minimum, int64_t maximum)
 int main(int argc, char **argv)
 {
     try {
-        if (argc < 15 || argc % 2 == 0) throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER --epochs INTEGER --learning-rate NUMBER --financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3 --manifest PATH --output PATH [--max-examples INTEGER] [--minibatch INTEGER] [--evaluate-every INTEGER] [--threads INTEGER]");
+        if (argc < 15 || argc % 2 == 0) throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER --epochs INTEGER --learning-rate NUMBER --financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3 --manifest PATH --output PATH [--max-examples INTEGER] [--minibatch INTEGER] [--evaluate-every INTEGER] [--threads INTEGER] [--cache-examples INTEGER]");
         std::map<std::string, std::string> args;
         for (int index = 1; index < argc; index += 2)
             if (!args.emplace(argv[index], argv[index + 1]).second) throw std::invalid_argument("duplicate imitation option");
         for (const auto &[name, value] : args) {
             (void)value;
             static const std::set<std::string> known = {"--device", "--seed", "--epochs", "--learning-rate", "--financial-features",
-                "--manifest", "--output", "--max-examples", "--minibatch", "--evaluate-every", "--threads"};
+                "--manifest", "--output", "--max-examples", "--minibatch", "--evaluate-every", "--threads", "--cache-examples"};
             if (!known.contains(name)) throw std::invalid_argument("unknown imitation option " + name);
         }
         const auto device_name = args.at("--device");
@@ -225,8 +226,11 @@ int main(int argc, char **argv)
         // hosts. More threads use the cores of a large CPU server; results then
         // depend on the thread count and are recorded with it.
         const auto threads = option("--threads", 1, 1, 256);
+        // Streamed examples are decoded on every use; a large host can keep
+        // the first N decoded (about 3 MB each) to pay that cost only once.
+        const auto cache_limit = static_cast<size_t>(option("--cache-examples", 0, 0, static_cast<int64_t>(dev::kImitationStreamedExamples)));
         const bool scale_options = args.contains("--max-examples") || args.contains("--minibatch") ||
-            args.contains("--evaluate-every") || args.contains("--threads");
+            args.contains("--evaluate-every") || args.contains("--threads") || args.contains("--cache-examples");
         torch::set_num_threads(static_cast<int>(threads));
         if (::setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", 1) != 0) throw std::runtime_error("cuBLAS setup failed");
         at::globalContext().setDeterministicAlgorithms(true, false);
@@ -236,8 +240,12 @@ int main(int argc, char **argv)
         const bool streamed = max_examples > dev::kImitationResidentExamples;
         std::vector<dev::ImitationExample> resident;
         if (!streamed) for (const auto &record : records) resident.push_back(dev::load_imitation_example(record, features));
+        std::vector<std::optional<dev::ImitationExample>> cache(streamed ? std::min(cache_limit, records.size()) : 0);
         const ExampleSource examples = [&](size_t index) {
-            return streamed ? dev::load_imitation_example(records[index], features) : resident[index];
+            if (!streamed) return resident[index];
+            if (index >= cache.size()) return dev::load_imitation_example(records[index], features);
+            if (!cache[index]) cache[index] = dev::load_imitation_example(records[index], features);
+            return *cache[index];
         };
         const size_t count = records.size();
         std::vector<dev::ImitationInputAliases> aliases;
@@ -355,7 +363,7 @@ int main(int argc, char **argv)
             << ",\"cpu_cuda_compared\":" << (device.is_cuda() ? "true" : "false");
         if (scale_options)
             std::cout << ",\"max_examples\":" << max_examples << ",\"streamed\":" << (streamed ? "true" : "false")
-                << ",\"minibatch\":" << batch << ",\"evaluate_every\":" << evaluate_every << ",\"threads\":" << threads;
+                << ",\"minibatch\":" << batch << ",\"evaluate_every\":" << evaluate_every << ",\"threads\":" << threads << ",\"cached_examples\":" << cache.size();
         std::cout << ",\"finite_gradients\":true,\"exact_legal_masks\":true,\"context\":\"independent-reset\"}" << std::endl;
         return 0;
     } catch (const std::exception &error) { std::cerr << "V2 imitation failed: " << error.what() << '\n'; return 1; }
