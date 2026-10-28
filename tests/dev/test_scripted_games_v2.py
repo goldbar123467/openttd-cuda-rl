@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/dev"))
 from game_database_v2 import GRIDS, SCHEMA, game_id
 from route_atlas_v2 import enumerate_routes, nearest_town
 from route_player_v2 import ConstructionBlocked, RoutePlayer, check_strategy, strategy_id
-from scripted_imitation_v2 import labelled, select_games
+from scripted_imitation_v2 import labelled, scripted_reference, select_games
 
 WIDTH, HEIGHT = 24, 8
 
@@ -235,6 +235,23 @@ class StrategyAndDatabaseTests(unittest.TestCase):
             connection.close()
             self.assertEqual([g["game_id"] for g in select_games(database, 1)], ["b", "d"])
             self.assertEqual([g["game_id"] for g in select_games(database, 2)], ["b", "a", "d"])
+
+    def test_scripted_reference_requires_a_matching_development_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory)
+            (database / "database.json").write_text(json.dumps({"split": "development", "engine_sha256": "e"}))
+            connection = sqlite3.connect(database / "games.sqlite")
+            connection.executescript(SCHEMA)
+            for game, profit in (("a", -5), ("b", 30), ("c", 10)):
+                connection.execute("INSERT INTO games (game_id, map_id, status, operating_profit, passengers, sustained_service) "
+                                   "VALUES (?,?,?,?,?,?)", (game, "m", "completed", profit, 1, int(profit > 0)))
+            connection.commit()
+            connection.close()
+            self.assertEqual(scripted_reference(database, "e", ["m", "absent"]),
+                             {"m": {"games": 3, "best_operating_profit": 30, "best_passengers": 1,
+                                    "median_operating_profit": 10, "sustained_service_games": 2}})
+            with self.assertRaises(ValueError):
+                scripted_reference(database, "other", ["m"])
 
     def test_wait_labels_follow_the_stride(self):
         self.assertTrue(labelled({"family": "BUY_BUS", "decision": 3}, 32))

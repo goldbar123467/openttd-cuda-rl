@@ -289,6 +289,24 @@ def play_policy(engine, infer, model, output, world, mode, seed, *, decisions, f
     return report
 
 
+def scripted_reference(database, engine_sha256, map_ids):
+    """Best and median completed scripted games per map from a development database."""
+    identity = json.loads((database / "database.json").read_text())
+    if identity["split"] != "development" or identity["engine_sha256"] != engine_sha256:
+        raise ValueError("Comparison needs a development database played by the same engine")
+    connection = sqlite3.connect(database / "games.sqlite")
+    reference = {}
+    for map_id in map_ids:
+        rows = connection.execute("SELECT operating_profit, passengers, sustained_service FROM games "
+                                  "WHERE map_id = ? AND status = 'completed' ORDER BY operating_profit", (map_id,)).fetchall()
+        if rows:
+            reference[map_id] = {"games": len(rows), "best_operating_profit": rows[-1][0], "best_passengers": rows[-1][1],
+                                 "median_operating_profit": rows[len(rows) // 2][0],
+                                 "sustained_service_games": sum(row[2] for row in rows)}
+    connection.close()
+    return reference
+
+
 def evaluate(args):
     training = json.loads((args.training_run.resolve() / "run.json").read_text())
     if training.get("kind") != "native-v2-scripted-imitation" or training["status"] != "completed":
@@ -308,20 +326,27 @@ def evaluate(args):
     output.mkdir(parents=True, exist_ok=False)
     record = {"kind": "scripted-imitation-gameplay-evaluation", "status": "running", "source": source_identity(),
               "training_run": str(args.training_run.resolve()), "model": model, "split": "development",
-              "seeds": seeds, "size": args.size, "modes": args.modes, "decisions": args.decisions, "games": [],
+              "seeds": seeds, "sizes": args.sizes, "modes": args.modes, "decisions": args.decisions, "games": [],
               "claim": "Complete games from reset with the trained network choosing every action; no guide or mask filtering"}
     write_json(output / "evaluation.json", record)
-    for seed in seeds:
-        world = {"seed": seed, "split": "development", "width": args.size, "height": args.size}
-        for mode in args.modes:
-            report = play_policy(engine, args.infer.resolve(strict=True), model, output / f"{seed}-{mode}", world, mode,
-                                 args.action_seed, decisions=args.decisions, focus=focus, features=training["financial_features"])
+    cases = [(seed, size, mode) for size in args.sizes for seed in seeds for mode in args.modes]
+    with ProcessPoolExecutor(max_workers=args.workers) as pool:
+        futures = [pool.submit(play_policy, engine, args.infer.resolve(strict=True), model, output / f"{seed}-{size}-{mode}",
+                               {"seed": seed, "split": "development", "width": size, "height": size}, mode, args.action_seed,
+                               decisions=args.decisions, focus=focus, features=training["financial_features"])
+                   for seed, size, mode in cases]
+        for (seed, size, mode), future in zip(cases, futures):
+            report = future.result()
             summary = report.get("summary") or {}
-            record["games"].append({"seed": seed, "mode": mode, "status": report["status"], "error": report.get("error"),
-                                    **{key: summary.get(key) for key in ("passengers", "operating_profit", "buses", "stations",
-                                       "first_delivery_action", "service_in_all_final_three_windows", "action_counts")}})
+            record["games"].append({"map": f"development-{seed}-{size}x{size}", "mode": mode, "status": report["status"],
+                                    "error": report.get("error"), **{key: summary.get(key) for key in (
+                                        "passengers", "operating_profit", "buses", "stations", "first_delivery_action",
+                                        "service_in_all_final_three_windows", "action_counts")}})
             write_json(output / "evaluation.json", record)
             print(json.dumps(record["games"][-1]), flush=True)
+    if args.compare_database:
+        record["scripted_reference"] = scripted_reference(args.compare_database.resolve(), dataset["database_identity"]["engine_sha256"],
+                                                          sorted({game["map"] for game in record["games"]}))
     record["status"] = "completed"
     write_json(output / "evaluation.json", record)
 
@@ -356,7 +381,9 @@ if __name__ == "__main__":
     evaluator.add_argument("--output", type=Path, required=True)
     evaluator.add_argument("--seeds", type=int, nargs="*", help="development ledger seeds (default: the first --maps)")
     evaluator.add_argument("--maps", type=positive, default=4)
-    evaluator.add_argument("--size", type=int, choices=(64, 128), default=64)
+    evaluator.add_argument("--sizes", type=int, nargs="+", choices=(64, 128), default=[64])
+    evaluator.add_argument("--workers", type=positive, default=1, help="games played in parallel")
+    evaluator.add_argument("--compare-database", type=Path, help="development-split game database for the scripted reference")
     evaluator.add_argument("--modes", nargs="+", choices=("greedy", "sampled"), default=["greedy", "sampled"])
     evaluator.add_argument("--action-seed", type=int, default=20261028)
     evaluator.add_argument("--decisions", type=positive, default=512)

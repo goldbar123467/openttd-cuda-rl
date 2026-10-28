@@ -134,7 +134,8 @@ python3 scripts/dev/scripted_imitation_v2.py evaluate \
   --training-run "$RL_ROOT/cloud/runs/scripted-imitation-new" \
   --infer "$RL_ROOT/cloud/build/v2-policy-cpu/rl_dev_v2_infer" \
   --openttd "$RL_ROOT/cloud/route-focus-engine/build/openttd" \
-  --output "$RL_ROOT/cloud/runs/scripted-evaluation-new" --maps 4
+  --output "$RL_ROOT/cloud/runs/scripted-evaluation-new" --maps 4 --sizes 64 128 --workers 4 \
+  --compare-database "$RL_ROOT/cloud/databases/development"
 ```
 
 `export` accepts only a training-split database and the engine that played it.
@@ -151,7 +152,8 @@ parallel, using `OBSERVE_STATE` for the token check at unlabelled decisions.
 Raw replay tensors are kept as verified gzip archives. `train` runs the unchanged C++ imitation
 objective; `evaluate` lets the network choose every action in complete games
 from reset on development maps, greedy and sampled, with the scripted games'
-accounting.
+accounting; `--compare-database` adds the best and median scripted games on the
+same maps from a development database played by the same engine.
 
 `rl_dev_v2_imitation` keeps its historical behavior by default: at most 512
 resident examples and one full-dataset Adam step per epoch. A 16-epoch CPU fit
