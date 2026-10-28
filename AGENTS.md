@@ -172,6 +172,14 @@ purchases and route edits remain unresolved.
   human replay and a separate C++ imitation objective feeding a fresh PPO policy.
 - `scripts/dev/audit_bus_orders_v2.py` and `live_bus_orders_v2.py`: exact bus-order
   input/semantic audits and bounded unforced continuations of supplied contexts.
+- `scripts/dev/cloud_cpu_setup.py`: CPU-only hosts build the engine chain (with a
+  declared OpenGFX substitute when the official archive is unreachable) and the
+  C++ trainer against the Torch wheel's CPU library.
+- `scripts/dev/route_atlas_v2.py`, `route_player_v2.py`, `game_database_v2.py` and
+  `scripted_imitation_v2.py`: scripted games on every exposed route and strategy,
+  a resumable per-split game database, and token-verified imitation export,
+  training and development-map evaluation from it. `prepare_route_focus.py`
+  builds the opt-in town-pair candidate focus that inter-town routes need.
 - `scripts/dev/mcp_v2.py`: existing company-scoped MCP adapter, exercised in local
   Gemma matches. Packaging and meaningful competitive play remain unfinished.
 - `integration/openttd/patches/15.3`: source integration on pinned upstream.

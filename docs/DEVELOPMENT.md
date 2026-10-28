@@ -1,5 +1,147 @@
 # Local training and the path to agentic economies
 
+## Scripted all-route games and CPU cloud training (October 28)
+
+The owner asked whether training can run on a CPU-only cloud host, and for
+scripts that play every route, scale into a database of played games, and
+train from it. All of it runs on a 4-core, 15 GB cloud container with no GPU.
+The game is the same patched OpenTTD 15.3 bus-order engine used for the human
+games; scripts choose only exposed native legal candidates through the live
+OBSERVE/ACT/STEP boundary, 512 decisions of 128 ticks per game.
+
+### Build on a CPU-only host
+
+```bash
+RL_ROOT=$HOME/.local/share/openttd-rl
+sudo apt-get install -y ccache openttd-opengfx python3-jsonschema
+python3 scripts/dev/cloud_cpu_setup.py engines --root "$RL_ROOT/cloud" \
+  --substitute-opengfx /usr/share/games/openttd/baseset/opengfx
+python3 scripts/dev/cloud_cpu_setup.py trainer --root "$RL_ROOT/cloud"
+```
+
+`engines` runs the existing chain unchanged (V1 source, M15 build, live
+adapter, finance, bus orders) and adds the town-pair focus engine below. It
+took 22 minutes on four cores; ccache makes later rebuilds take under a minute
+(OpenTTD's precompiled headers need the sloppiness the script sets). Use
+`--official-opengfx opengfx-8.0.tar` wherever the official archive is
+available. The cloud host could not reach `cdn.openttd.org` or GitHub release
+downloads, so `--substitute-opengfx` packages Ubuntu's OpenGFX 7.1 into the
+engine's base-graphics slot with a `.substitute.json` sidecar naming its version
+and exact hash. `prepare_v2.py` and `prepare_finance_v2.py` accept a substitute
+only with that sidecar, and every `reset.json` records the real content hash.
+Base graphics do not enter game rules, but cloud games are not byte-comparable
+with games run on the official archive.
+
+`trainer` builds `training/dev` (with `RL_DEV_V2_POLICY`) for CPU. The PyPI
+Torch 2.9.1 wheel is CUDA-built and its CMake package refuses to configure
+without a CUDA toolkit; `download.pytorch.org` was also blocked. Its
+`libtorch_cpu.so` needs only `libcudart` and `libcupti`, which load without a
+GPU, so the stage downloads three SHA-256-pinned wheels from PyPI, extracts the
+C++ headers and libraries, and builds against a small CPU-only
+`TorchConfig.cmake`. All 18 CPU CTests pass; `--device cuda:0` still fails
+explicitly. Python Torch is not needed for any of the commands below.
+
+### Every route, including between towns
+
+`route_atlas_v2.py` lists every connectable two-stop route instead of the
+single best one from `route_v2.plan_network` (left unchanged because checkpoints
+bind its source). It applies the same native site checks, attributes each stop
+to its nearest town, keeps a few well-separated stop sites per town and up to
+`--routes-per-pair` routes per town pair.
+
+The native candidate table ranks construction sites by distance to the most
+populous town and keeps the nearest 1,024 road, 768 stop and 512 depot
+candidates. On the first training map the second town, 17 tiles away, has zero
+exposed stop sites, and `SELECT_TOWN_PAIR` is a native no-op, so no agent
+(script, network or LLM) could build an inter-town route. `prepare_route_focus.py`
+builds an opt-in engine: with `candidate_focus: town-pair-v1` in the live config,
+executing `SELECT_TOWN_PAIR` ranks construction sites by distance to the segment
+between the selected towns. On that map the second town then has 79 exposed stop
+sites and a 37-tile inter-town route appears. The selection is in the observation
+(`candidate_focus`) and the state token; `CHECKPOINT` is refused in this mode
+because saved games do not carry it. The tensors encode it only through which
+candidates are exposed. Without the opt-in the engine behaves as before.
+
+The live adapter now validates a WAIT action without re-enumerating every
+construction predicate (WAIT is always exposed within its own quota). OBSERVE
+still costs about 100 ms and a 128-tick STEP about 1.5 ms: candidate enumeration,
+not simulation, bounds throughput. A game takes 75–100 seconds of one core.
+
+### The scripted player and its strategies
+
+`route_player_v2.py` plays one route: select the town pair when the route needs
+the focus, build the depot, stops and roads (planned roads a town has meanwhile
+built count as done), buy buses, insert the two station orders, set loading,
+start, then wait, add a bus when either stop queues `queue_threshold`
+passengers (up to `max_buses`), and repay 10,000 whenever cash exceeds
+`repay_reserve` plus 10,000. Every decision, WAIT included, is recorded with its
+state token. A plan that stays unexposed for 16 decisions ends as `blocked`.
+
+`game_database_v2.py collect` enumerates routes once per map, then plays
+map × route × strategy in parallel game workers:
+
+```bash
+python3 scripts/dev/game_database_v2.py collect \
+  --openttd "$RL_ROOT/cloud/route-focus-engine/build/openttd" --town-pair-focus \
+  --database "$RL_ROOT/cloud/databases/training-64" --split training \
+  --sizes 64 --grid standard --workers 3
+python3 scripts/dev/game_database_v2.py report --database "$RL_ROOT/cloud/databases/training-64"
+```
+
+Grids: `smoke` (1 strategy), `standard` (8: one or two initial buses, loading
+both stops or none, repaying above 20,000 or never; all scale to four buses) and
+`full` (36). `--strategies FILE` takes any JSON list. The database holds one
+split, engine, base graphics and player version (`database.json`); `games.sqlite`
+indexes maps, routes and games, and each game directory keeps `result.json`,
+`decisions.jsonl.gz` and the compressed native transitions (about 240 KB per
+game). Reruns skip recorded games; `--retry-failed` replays failed and blocked
+ones. Maps come only from the contract's training or development ledgers, at
+64×64 or 128×128; final seeds are never used. A separate development database
+is the comparison for evaluation.
+
+### Training and evaluation from the database
+
+```bash
+python3 scripts/dev/scripted_imitation_v2.py export \
+  --database "$RL_ROOT/cloud/databases/training-64" \
+  --openttd "$RL_ROOT/cloud/route-focus-engine/build/openttd" \
+  --output "$RL_ROOT/cloud/runs/scripted-export-new" --per-map 1 --wait-stride 32
+python3 scripts/dev/scripted_imitation_v2.py train \
+  --dataset "$RL_ROOT/cloud/runs/scripted-export-new" \
+  --trainer "$RL_ROOT/cloud/build/v2-policy-cpu/rl_dev_v2_imitation" \
+  --output "$RL_ROOT/cloud/runs/scripted-imitation-new" --device cpu --epochs 256
+python3 scripts/dev/scripted_imitation_v2.py evaluate \
+  --training-run "$RL_ROOT/cloud/runs/scripted-imitation-new" \
+  --infer "$RL_ROOT/cloud/build/v2-policy-cpu/rl_dev_v2_infer" \
+  --openttd "$RL_ROOT/cloud/route-focus-engine/build/openttd" \
+  --output "$RL_ROOT/cloud/runs/scripted-evaluation-new" --maps 4
+```
+
+`export` accepts only a training-split database and the engine that played it.
+It picks the best completed games per map with profitable service in all three
+final windows (ranked by final cash minus loan, then operating profit), replays
+each from its seed with the recorded candidate keys, and fails unless every
+decision reproduces its recorded state token. At labelled decisions (every
+non-WAIT action and every `--wait-stride`th WAIT) it captures the public tensors,
+the full native legal mask and the chosen row, applies the v3 projection by
+default, and writes `native-imitation.tsv`. Scripted WAITs are explicit choices
+among legal candidates, unlike gaps in human command logs. Raw replay tensors are
+kept as verified gzip archives. `train` runs the unchanged C++ imitation
+objective; `evaluate` lets the network choose every action in complete games
+from reset on development maps, greedy and sampled, with the scripted games'
+accounting.
+
+`rl_dev_v2_imitation` keeps its historical behavior by default: at most 512
+resident examples and one full-dataset Adam step per epoch. A 16-epoch CPU fit
+with the new binary reproduces the previous binary's 18 metric events and saved
+weights byte for byte. Three opt-in flags serve larger datasets:
+`--max-examples N` (up to 65,536; above 512 examples are streamed from their
+tensor files, again reproducing the resident fit exactly), `--minibatch N`
+(Adam steps on N-example means) and `--evaluate-every N` (full training-set
+measurement interval). `export --max-examples` and `train --minibatch
+--evaluate-every` pass them through. On one CPU thread an epoch costs about
+0.13 seconds per example including measurement.
+
 ## One station/order feature trial (October 6)
 
 The owner authorized one `signed-log-orders-v3` feature version and one fresh
