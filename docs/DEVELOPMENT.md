@@ -221,6 +221,29 @@ fleet, but it chooses the construction family without choosing the planned
 tile among roughly a thousand candidates. This is a training-set fit, not
 gameplay evidence.
 
+In complete games from reset on the first four development seeds at 64×64 and
+128×128 (16 games, 30 minutes on four workers), the network does not play
+competently. Greedy, it selects a town pair on all 512 decisions of all eight
+maps: zero passengers, −4,834 operating profit each. The selection changes the
+exposed candidates but nothing else in the tensors, so the network cannot see
+that it has already chosen. Sampled, it builds a few pieces, buys 11–18 buses,
+edits orders 80–449 times and delivers no passengers (−7,606 to −17,199). On the
+same maps the scripted reference (`databases/development`, 160 games, the four
+repaying strategies) has profitable sustained service on every map, with best
+routes at +4,507 to +88,892 and medians at +226 to +64,844. The collection,
+export, replay verification, CPU training and evaluation pipeline works end to
+end; competent play does not yet follow from 30 demonstrations. The concrete
+next steps, before more data or longer training:
+
+1. Encode the selected town pair in the tensors (as v3 binds order context),
+   so the policy can tell the state before and after `SELECT_TOWN_PAIR`.
+2. Give construction candidates features relative to the company's own network
+   (adjacent to an own road end or stop, distance to the selected towns), so
+   the next planned tile is distinguishable from a thousand similar ones.
+3. Use the route player as the DAgger expert: let the network play, have the
+   planner relabel the states it visits from its current position, and add
+   those labels. The owner listed DAgger round 1 as the next separate goal.
+
 ### Scaling to a 24–48 core CPU server
 
 Measured on the 4-vCPU Xeon (2.8 GHz) host: one game worker uses about one
