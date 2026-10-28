@@ -69,10 +69,13 @@ def _reset_manifest_payload(executable, baseset, seed, split, width=64, height=6
 
 class LiveV2:
     def __init__(self, engine, output, *, seed=None, split="training", decisions=8, ticks=128, companies=1, first_company=0,
-                 visible=False, _reset_factory=None, observation_mode="legacy", initial_save=None):
+                 visible=False, _reset_factory=None, observation_mode="legacy", initial_save=None, candidate_focus=None):
         self.engine, self.output = Path(engine).resolve(), Path(output).resolve()
         if observation_mode not in OBSERVATION_SCHEMAS:
             raise ValueError("Unsupported live observation mode")
+        if candidate_focus is not None and (candidate_focus != "town-pair-v1" or observation_mode != "orders-v1" or
+                                            initial_save is not None or companies != 1):
+            raise ValueError("Town-pair candidate focus requires a fresh single-company orders-v1 game")
         if initial_save is not None:
             initial_save = Path(initial_save).resolve(strict=True)
             if observation_mode != "orders-v1" or companies != 1 or not initial_save.is_file() or initial_save.suffix.lower() != ".sav":
@@ -103,6 +106,8 @@ class LiveV2:
             config["observation_mode"] = observation_mode
         if initial_save is not None:
             config["initial_save"] = str(initial_save)
+        if candidate_focus is not None:
+            config["candidate_focus"] = candidate_focus
         (self.output / "live.json").write_bytes(canonical(config) + b"\n")
         self.request_id = 0
         self.events = (self.output / "requests.jsonl").open("x")

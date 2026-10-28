@@ -258,6 +258,9 @@ static json DevObservation(CandidateEnumeration &enumeration, uint32_t decisions
         observation["order_observation"] = DevOrderObservationDescription();
     }
 #endif
+#ifdef RL_DEV_ROUTE_FOCUS
+    if (_dev_route_focus) observation["candidate_focus"] = DevFocusObservation();
+#endif
     return observation;
 }
 
@@ -282,7 +285,15 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
 #else
     if (finance) Require(config.at("observation_mode") == "finance-v1", "unknown development observation mode");
 #endif
-    Require(config.size() == static_cast<size_t>((shared ? 7 : 6) + (finance ? 1 : 0) + (initial_save ? 1 : 0)) && config.at("schema_version") == schema &&
+    bool focus = false;
+#ifdef RL_DEV_ROUTE_FOCUS
+    focus = config.contains("candidate_focus");
+    if (focus) Require(config.at("candidate_focus") == "town-pair-v1" && _dev_bus_orders && !shared && !initial_save,
+        "town-pair focus requires a fresh single-company orders-v1 game");
+    _dev_route_focus = focus;
+    _dev_focus_towns.reset();
+#endif
+    Require(config.size() == static_cast<size_t>((shared ? 7 : 6) + (finance ? 1 : 0) + (initial_save ? 1 : 0) + (focus ? 1 : 0)) && config.at("schema_version") == schema &&
         (shared || config.at("company_id") == 0), "development live configuration fields differ");
     if (shared) Require(config.at("company_count").is_number_unsigned() && config.at("company_count") == 2,
         "shared development requires exactly two companies");
@@ -369,10 +380,17 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
                 } else {
                     // Re-enumerate native predicates before execution; callers
                     // cannot invent a command or use an unexposed candidate.
-                    enumeration = EnumerateCandidates();
+                    // WAIT is always enumerated first within its own quota, so
+                    // it needs no scan of every construction predicate.
+                    static const Candidate wait = MakeCandidate(Family::Wait, {}, std::numeric_limits<uint32_t>::max());
                     std::optional<Candidate> selected;
-                    for (const auto &family : enumeration.selected) for (const Candidate &candidate : family) {
-                        if (request.at("candidate") == candidate.stable_key) selected = candidate;
+                    if (request.at("candidate") == wait.stable_key) {
+                        selected = wait;
+                    } else {
+                        enumeration = EnumerateCandidates();
+                        for (const auto &family : enumeration.selected) for (const Candidate &candidate : family) {
+                            if (request.at("candidate") == candidate.stable_key) selected = candidate;
+                        }
                     }
                     if (!selected) {
                         response.update({{"status", "REJECTED"}, {"reason", "ILLEGAL_CANDIDATE"}});
@@ -419,7 +437,10 @@ static void RunDevelopmentV2Live(const json &config, const std::string &trace_pa
                     response["transition"] = transition;
                 }
             } else if (operation == "CHECKPOINT" && request.size() == 3) {
-                if (pending) {
+                if (focus) {
+                    // Saved games do not carry the adapter's focus selection.
+                    response.update({{"status", "REJECTED"}, {"reason", "FOCUS_NOT_SAVED"}});
+                } else if (pending) {
                     response.update({{"status", "REJECTED"}, {"reason", "DECISION_BOUNDARY"}});
                 } else {
                     const auto path = std::filesystem::path(artifact_directory) /
