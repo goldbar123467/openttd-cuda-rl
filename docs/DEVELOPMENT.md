@@ -175,6 +175,52 @@ threads. `--cache-examples N` keeps the first N decoded examples in memory
 took 236 s streamed and 89 s cached, and both matched the resident fit's
 metrics exactly.
 
+### First database and CPU fit (October 28)
+
+Artifacts are under `/root/.local/share/openttd-rl/cloud/` on the cloud host
+(not retained after the session): `databases/training` (engine
+`route-focus-engine-04`), `databases/development`, and
+`runs/scripted-export-01`, `runs/scripted-imitation-02`,
+`runs/scripted-evaluation-02`. Two partial databases from engines replaced
+during the run (`training-64-engine02-partial`, `training-engine03-partial`)
+and the interrupted streamed fit `runs/scripted-imitation-01` are kept as
+records.
+
+The training database covers all 16 training seeds at 64×64 and 128×128: 238
+routes (168 inter-town, 70 intra-town) and 1,904 games, all completed with no
+failed or blocked game. Inter-town routes average +16,977 operating profit on
+64×64 maps and +11,281 on 128×128, against +705 and −494 for intra-town routes;
+an inter-town route is the most profitable route on 29 of the 31 maps that have
+any service. Every strategy that repays debt above a 20,000 reserve earns more
+on average than its never-repaying counterpart, and the repaying four win 228
+of 238 routes. 1,281 games keep profitable service in all three final
+128-decision windows, on 30 maps.
+
+`export` replayed the best sustained game of each of those 30 maps, reproduced
+every recorded state token and produced 3,071 examples in 11 minutes on four
+workers (9.3 GB of v3 tensors): 1,337 road, 60 stop and 30 depot builds, 29
+town-pair selections, 115 purchases, 342 order and loading edits, 115 starts,
+214 loan actions and 829 explicit WAITs. The trainer found no input aliases.
+The fit used `--minibatch 64 --epochs 24 --evaluate-every 8 --threads 4
+--cache-examples 2600` (1,152 Adam steps, learning rate 0.0003, seed 20261002)
+and took 1.9 hours. Loss fell from 5.82 to 3.24 and exact training accuracy rose
+from 3.6% to 46.0% (90.2% for the action family):
+
+| Action | Labels | Exact |
+| --- | --- | --- |
+| WAIT | 829 | 97.9% |
+| SET_ROUTE (orders, loading) | 342 | 100% |
+| START_VEHICLE | 115 | 98.3% |
+| MANAGE_LOAN | 214 | 46.3% |
+| BUY_BUS | 115 | 37.4% |
+| SELECT_TOWN_PAIR | 29 | 13.8% |
+| BUILD_ROAD_PATH / BUS_STOP / DEPOT | 1,337 / 60 / 30 | 0% |
+
+The network learns when to wait and how to configure, start and finance a
+fleet, but it chooses the construction family without choosing the planned
+tile among roughly a thousand candidates. This is a training-set fit, not
+gameplay evidence.
+
 ### Scaling to a 24–48 core CPU server
 
 Measured on the 4-vCPU Xeon (2.8 GHz) host: one game worker uses about one
