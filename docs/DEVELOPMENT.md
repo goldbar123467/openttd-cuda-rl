@@ -167,6 +167,71 @@ measurement interval). `export --max-examples` and `train --minibatch
 --evaluate-every` pass them through. On one CPU thread an epoch costs about
 0.13 seconds per example including measurement.
 
+### Scaling to a 24–48 core CPU server
+
+Measured on the 4-vCPU Xeon (2.8 GHz) host: one game worker uses about one
+core (OpenTTD about 87%, its Python client about 15%) and 100 MB of memory. A
+game costs 12 seconds on a 64×64 map and 40 seconds on 128×128. The first full
+database (32 maps, 238 routes, 8 strategies, 1,904 games) took 18 worker-hours,
+4.6 hours on four workers, and 723 MB (about 380 KB per game). Games are
+independent and only the parent process writes the index, so collection scales
+with workers:
+
+| Workers | This 1,904-game round | Games per hour, 64×64 / 128×128 |
+| --- | --- | --- |
+| 4 | 4.6 h (measured) | 1,200 / 360 |
+| 24 | about 45 min | 7,200 / 2,200 |
+| 48 | about 23 min | 14,000 / 4,300 |
+
+The projections assume cores as fast as the measuring host; `plan --speed`
+scales them, and the per-game seconds a server records in its first minutes
+replace the estimate. Count physical cores: SMT threads add roughly a third,
+not double. Leave two cores for the link-graph threads and the parent.
+
+```bash
+sudo apt-get install -y git cmake ninja-build g++ ccache pkg-config libssl-dev \
+  zlib1g-dev liblzma-dev libpng-dev python3-jsonschema openttd-opengfx
+git clone --branch claude/beautiful-cerf-rng2ia https://github.com/goldbar123467/openttd-cuda-rl.git
+cd openttd-cuda-rl && git submodule update --init --recursive
+RL_ROOT=$HOME/.local/share/openttd-rl
+python3 scripts/dev/cloud_cpu_setup.py engines --root "$RL_ROOT/cloud" --official-opengfx opengfx-8.0.tar
+python3 scripts/dev/cloud_cpu_setup.py trainer --root "$RL_ROOT/cloud"
+ENGINE="$RL_ROOT/cloud/route-focus-engine/build/openttd"
+python3 scripts/dev/game_database_v2.py collect --openttd "$ENGINE" --town-pair-focus \
+  --database "$RL_ROOT/cloud/databases/training" --split training \
+  --sizes 64 128 --shapes 64x128 128x64 --grid standard --workers $(( $(nproc) - 2 ))
+python3 scripts/dev/game_database_v2.py plan --database "$RL_ROOT/cloud/databases/training" \
+  --output "$RL_ROOT/cloud/runs/round2-plan.json" --workers $(( $(nproc) - 2 ))
+python3 scripts/dev/game_database_v2.py collect --openttd "$ENGINE" --town-pair-focus \
+  --database "$RL_ROOT/cloud/databases/training-round2" --split training \
+  --sizes 64 128 --shapes 64x128 128x64 --strategies "$RL_ROOT/cloud/runs/round2-plan.json" \
+  --workers $(( $(nproc) - 2 ))
+```
+
+Use `--substitute-opengfx /usr/share/games/openttd/baseset/opengfx` where the
+official archive cannot be downloaded. A database must be played by one engine,
+so a second round on the same maps goes into its own directory (or `--limit`
+and reruns extend one). On the first database, `plan` kept the four strategies
+that repay debt above a 20,000 reserve (together 228 of 238 route wins), dropped
+the four that never repay, and added twelve one-knob variations of the two best;
+inter-town routes were the best route on 29 of 31 maps with service. That
+16-strategy round is 3,808 games, 36 worker-hours, about 47 minutes on 46
+workers.
+
+Two limits remain at this scale. The contract's training ledger has 16 seeds,
+and the live adapter stops at 128×128, so with the rectangles there are 64
+training maps; a 48-core server exhausts every route and strategy on them in
+about an hour per round. More maps need an explicit, separately labelled seed
+ledger. Training does not scale with cores: `rl_dev_v2_imitation` processes one
+example at a time, and on 98 examples four epochs took 74 s with one thread,
+53 s with two and 45 s with four. Repeated runs at a fixed thread count were
+identical, and one versus four threads differed by 3e-8 in loss. Batched or
+data-parallel updates, or the CUDA trainer, are the way to use a large machine
+for training. Because replay regenerates every tensor exactly, only the
+database (hundreds of MB) and its engine build directory need to move to the
+training machine; export refuses an engine whose hash differs from the one that
+played the database.
+
 ## One station/order feature trial (October 6)
 
 The owner authorized one `signed-log-orders-v3` feature version and one fresh
