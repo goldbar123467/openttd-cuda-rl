@@ -235,8 +235,13 @@ class StrategyAndDatabaseTests(unittest.TestCase):
                                    (game, map_id, "completed", net_cash, 0, 0, sustained, bankrupt, f"/{game}"))
             connection.commit()
             connection.close()
-            self.assertEqual([g["game_id"] for g in select_games(database, 1)], ["b", "d"])
-            self.assertEqual([g["game_id"] for g in select_games(database, 2)], ["b", "a", "d"])
+            connection = sqlite3.connect(database / "games.sqlite")
+            connection.execute("UPDATE games SET operating_profit = 100 WHERE game_id = 'a'")
+            connection.commit()
+            connection.close()
+            self.assertEqual([g["game_id"] for g in select_games(database, 1, "net-cash")], ["b", "d"])
+            self.assertEqual([g["game_id"] for g in select_games(database, 2, "net-cash")], ["b", "a", "d"])
+            self.assertEqual([g["game_id"] for g in select_games(database, 1)], ["a", "d"])
 
     def test_scripted_reference_requires_a_matching_development_database(self):
         with tempfile.TemporaryDirectory() as directory:

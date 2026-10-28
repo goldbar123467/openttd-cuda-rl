@@ -51,13 +51,17 @@ def artifact(path):
     return {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
 
 
-def select_games(database, per_map):
-    """Rank by final cash minus loan, then operating profit; sustained service only."""
+RANKS = {"operating-profit": "operating_profit DESC, net_cash DESC", "net-cash": "net_cash DESC, operating_profit DESC"}
+
+
+def select_games(database, per_map, rank="operating-profit"):
+    """Best sustained games per map. Operating profit values the network a game
+    built; final cash minus loan instead favours games that barely invest."""
     connection = sqlite3.connect(database / "games.sqlite")
     rows = connection.execute(
         "SELECT map_id, game_id, directory, net_cash, operating_profit, passengers FROM games "
         "WHERE status = 'completed' AND bankrupt = 0 AND sustained_service = 1 "
-        "ORDER BY map_id, net_cash DESC, operating_profit DESC, game_id").fetchall()
+        f"ORDER BY map_id, {RANKS[rank]}, game_id").fetchall()
     connection.close()
     chosen, counts = [], {}
     for map_id, game_id, directory, net_cash, profit, passengers in rows:
@@ -134,7 +138,7 @@ def export(args):
     if hashlib.sha256(engine.read_bytes()).hexdigest() != identity["engine_sha256"]:
         raise ValueError("Replay engine differs from the engine that played the database")
     record = {"schema_version": SCHEMA, "status": "running", "source": source_identity(), "database": str(database),
-              "database_identity": identity, "selection": {"per_map": args.per_map, "rank": "net_cash, operating_profit",
+              "database_identity": identity, "selection": {"per_map": args.per_map, "rank": args.rank,
               "requires": "completed, not bankrupt, service with profit in all final three 128-decision windows"},
               "wait_stride": args.wait_stride, "max_examples": args.max_examples, "financial_features": args.financial_features,
               "games": [], "skipped_games": []}
@@ -146,7 +150,7 @@ def export(args):
         # Label counts are known from the decision logs, so the example budget
         # is applied to whole games before any replay starts.
         planned, total = [], 0
-        for game in select_games(database, args.per_map):
+        for game in select_games(database, args.per_map, args.rank):
             count = sum(labelled(row, args.wait_stride) for row in game_rows(game))
             if total + count > args.max_examples:
                 record["skipped_games"].append({**game, "examples": count, "reason": "example budget"})
@@ -361,6 +365,7 @@ if __name__ == "__main__":
     exporter.add_argument("--openttd", type=Path, required=True)
     exporter.add_argument("--output", type=Path, required=True)
     exporter.add_argument("--per-map", type=positive, default=1)
+    exporter.add_argument("--rank", choices=sorted(RANKS), default="operating-profit")
     exporter.add_argument("--wait-stride", type=positive, default=32)
     exporter.add_argument("--max-examples", type=positive, default=512, help="up to 65536; above 512 the trainer streams")
     exporter.add_argument("--financial-features", choices=ORDER_FEATURES, default="signed-log-orders-v3")

@@ -140,7 +140,8 @@ python3 scripts/dev/scripted_imitation_v2.py evaluate \
 
 `export` accepts only a training-split database and the engine that played it.
 It picks the best completed games per map with profitable service in all three
-final windows (ranked by final cash minus loan, then operating profit), replays
+final windows (ranked by operating profit; `--rank net-cash` ranks by final cash
+minus loan, which favours games that barely invest), replays
 each from its seed with the recorded candidate keys, and fails unless every
 decision reproduces its recorded state token. At labelled decisions (every
 non-WAIT action and every `--wait-stride`th WAIT) it captures the public tensors,
