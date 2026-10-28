@@ -187,14 +187,14 @@ int64_t integer(const std::string &text, int64_t minimum, int64_t maximum)
 int main(int argc, char **argv)
 {
     try {
-        if (argc < 15 || argc % 2 == 0) throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER --epochs INTEGER --learning-rate NUMBER --financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3 --manifest PATH --output PATH [--max-examples INTEGER] [--minibatch INTEGER] [--evaluate-every INTEGER]");
+        if (argc < 15 || argc % 2 == 0) throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER --epochs INTEGER --learning-rate NUMBER --financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3 --manifest PATH --output PATH [--max-examples INTEGER] [--minibatch INTEGER] [--evaluate-every INTEGER] [--threads INTEGER]");
         std::map<std::string, std::string> args;
         for (int index = 1; index < argc; index += 2)
             if (!args.emplace(argv[index], argv[index + 1]).second) throw std::invalid_argument("duplicate imitation option");
         for (const auto &[name, value] : args) {
             (void)value;
             static const std::set<std::string> known = {"--device", "--seed", "--epochs", "--learning-rate", "--financial-features",
-                "--manifest", "--output", "--max-examples", "--minibatch", "--evaluate-every"};
+                "--manifest", "--output", "--max-examples", "--minibatch", "--evaluate-every", "--threads"};
             if (!known.contains(name)) throw std::invalid_argument("unknown imitation option " + name);
         }
         const auto device_name = args.at("--device");
@@ -221,8 +221,13 @@ int main(int argc, char **argv)
             1, static_cast<int64_t>(dev::kImitationStreamedExamples)));
         const auto minibatch = static_cast<size_t>(option("--minibatch", 0, 0, static_cast<int64_t>(dev::kImitationStreamedExamples)));
         const auto evaluate_every = option("--evaluate-every", 1, 1, 1000);
-        const bool scale_options = args.contains("--max-examples") || args.contains("--minibatch") || args.contains("--evaluate-every");
-        torch::set_num_threads(1);
+        // One intra-op thread keeps CPU results bitwise reproducible across
+        // hosts. More threads use the cores of a large CPU server; results then
+        // depend on the thread count and are recorded with it.
+        const auto threads = option("--threads", 1, 1, 256);
+        const bool scale_options = args.contains("--max-examples") || args.contains("--minibatch") ||
+            args.contains("--evaluate-every") || args.contains("--threads");
+        torch::set_num_threads(static_cast<int>(threads));
         if (::setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", 1) != 0) throw std::runtime_error("cuBLAS setup failed");
         at::globalContext().setDeterministicAlgorithms(true, false);
         at::globalContext().setDeterministicCuDNN(true);
@@ -350,7 +355,7 @@ int main(int argc, char **argv)
             << ",\"cpu_cuda_compared\":" << (device.is_cuda() ? "true" : "false");
         if (scale_options)
             std::cout << ",\"max_examples\":" << max_examples << ",\"streamed\":" << (streamed ? "true" : "false")
-                << ",\"minibatch\":" << batch << ",\"evaluate_every\":" << evaluate_every;
+                << ",\"minibatch\":" << batch << ",\"evaluate_every\":" << evaluate_every << ",\"threads\":" << threads;
         std::cout << ",\"finite_gradients\":true,\"exact_legal_masks\":true,\"context\":\"independent-reset\"}" << std::endl;
         return 0;
     } catch (const std::exception &error) { std::cerr << "V2 imitation failed: " << error.what() << '\n'; return 1; }

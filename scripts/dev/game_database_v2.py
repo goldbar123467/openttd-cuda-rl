@@ -13,6 +13,12 @@ database holds one split. Keep them apart: train on a training database, select
 on a development one; final seeds are never used.
 
 `report` prints per-strategy and per-map summaries from the index.
+
+`plan` turns a finished database into the next round: it keeps strategies that
+win some routes, adds neighbours of the best ones (bus counts, fleet limits,
+queue thresholds, cash reserves), counts which route kinds win, and estimates
+the next run's wall time for a given number of workers from the measured
+seconds per game. Its JSON output is accepted by `collect --strategies`.
 """
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -53,6 +59,19 @@ GRIDS = {
     "full": [{"buses": buses, "max_buses": 4 if scale else buses, "queue_threshold": 60, "load": load, "repay_reserve": reserve}
              for buses, scale, load, reserve in itertools.product((1, 2), (False, True), ("both", "first", "none"), (20000, 50000, None))],
 }
+
+
+def parse_shape(text):
+    width, _, height = text.partition("x")
+    shape = (int(width), int(height))
+    if shape not in ((64, 64), (64, 128), (128, 64), (128, 128)):
+        raise argparse.ArgumentTypeError("live maps are 64 or 128 tiles per side")
+    return shape
+
+
+def load_strategies(path):
+    value = json.loads(path.read_text())
+    return value["strategies"] if isinstance(value, dict) else value
 
 
 def connect(database):
@@ -96,17 +115,19 @@ def collect(args):
             raise ValueError("Database was collected with another split, engine, base graphics, player or budget; use a new directory")
     else:
         write_json(identity_path, identity)
-    strategies = json.loads(args.strategies.read_text()) if args.strategies else GRIDS[args.grid]
+    strategies = load_strategies(args.strategies) if args.strategies else GRIDS[args.grid]
     for strategy in strategies:
         strategy_id(strategy)
     seeds = args.seeds or contract_seeds(args.split)
     if args.max_maps:
         seeds = seeds[:args.max_maps]
-    worlds = [{"seed": seed, "split": args.split, "width": size, "height": size} for size in args.sizes for seed in seeds]
+    shapes = list(dict.fromkeys([(size, size) for size in args.sizes] + list(args.shapes)))
+    worlds = [{"seed": seed, "split": args.split, "width": width, "height": height} for width, height in shapes for seed in seeds]
     parameters = {"minimum_length": args.minimum_length, "maximum_tiles": args.maximum_tiles,
                   "stops_per_town": args.stops_per_town, "routes_per_pair": args.routes_per_pair}
     connection = connect(database)
     record = {"source": source_identity(), "argv": sys.argv, "engine": str(engine), "strategies": strategies,
+              "route_kinds": args.route_kinds,
               "worlds": len(worlds), "atlas_parameters": parameters, "workers": args.workers}
     collection = connection.execute("INSERT INTO collections (started, record) VALUES (?, ?)",
                                     (time.time(), json.dumps(record))).lastrowid
@@ -143,7 +164,8 @@ def collect(args):
             connection.commit()
         jobs = []
         for world in worlds:
-            routes = connection.execute("SELECT route FROM routes WHERE map_id = ? ORDER BY rank", (map_id(world),)).fetchall()
+            routes = connection.execute("SELECT route FROM routes WHERE map_id = ? AND kind IN (%s) ORDER BY rank" %
+                                        ",".join("?" * len(args.route_kinds)), (map_id(world), *args.route_kinds)).fetchall()
             for (text,), strategy in itertools.product(routes, strategies):
                 route = {**json.loads(text), "atlas_parameters": parameters}
                 identity = game_id(engine_sha256, world, route["route_id"], strategy, args.decisions)
@@ -217,6 +239,87 @@ def report(args):
     connection.close()
 
 
+def neighbours(strategy):
+    """One-knob variations of a strategy, inside the player's supported range."""
+    result = []
+    for buses in (strategy["buses"] - 1, strategy["buses"] + 1):
+        if 1 <= buses <= strategy["max_buses"]:
+            result.append({**strategy, "buses": buses})
+    for maximum in (3, 4, 6):
+        if maximum >= strategy["buses"] and maximum != strategy["max_buses"]:
+            result.append({**strategy, "max_buses": maximum})
+    for threshold in (30, 60, 120):
+        if threshold != strategy["queue_threshold"]:
+            result.append({**strategy, "queue_threshold": threshold})
+    if strategy["repay_reserve"] is not None:
+        for reserve in (10000, 20000, 50000):
+            if reserve != strategy["repay_reserve"]:
+                result.append({**strategy, "repay_reserve": reserve})
+    return result
+
+
+def plan(args):
+    connection = connect(args.database.resolve())
+    rows = connection.execute(
+        "SELECT g.map_id, g.route_id, g.strategy, g.operating_profit, g.wall_seconds, r.kind, m.width, m.height "
+        "FROM games g JOIN routes r ON r.map_id = g.map_id AND r.route_id = g.route_id JOIN maps m ON m.map_id = g.map_id "
+        "WHERE g.status = 'completed'").fetchall()
+    routes = connection.execute("SELECT r.map_id, r.kind, m.width, m.height FROM routes r JOIN maps m ON m.map_id = r.map_id").fetchall()
+    connection.close()
+    if not rows:
+        raise ValueError("The database has no completed games to plan from")
+    played, seconds, best_kind = {}, {}, {}
+    for map_id, route_id, strategy, profit, wall, kind, width, height in rows:
+        played.setdefault((map_id, route_id), []).append((profit, strategy))
+        seconds.setdefault((width, height), []).append(wall)
+        if map_id not in best_kind or profit > best_kind[map_id][0]:
+            best_kind[map_id] = (profit, kind)
+    # A strategy wins a route when it earns the most operating profit there;
+    # regret is how far it falls behind that route's winner on average.
+    wins, regret, counts = {}, {}, {}
+    for results in played.values():
+        top = max(results)
+        wins[top[1]] = wins.get(top[1], 0) + 1
+        for profit, strategy in results:
+            regret[strategy] = regret.get(strategy, 0) + top[0] - profit
+            counts[strategy] = counts.get(strategy, 0) + 1
+    ranked = sorted(counts, key=lambda strategy: (-wins.get(strategy, 0), regret[strategy] / counts[strategy]))
+    kept = [strategy for strategy in ranked if wins.get(strategy, 0) >= args.min_win_share * len(played)]
+    chosen = [json.loads(strategy) for strategy in kept]
+    for strategy in chosen[:args.refine]:
+        for candidate in neighbours(strategy):
+            if candidate not in chosen:
+                chosen.append(candidate)
+    chosen = chosen[:args.max_strategies]
+    for strategy in chosen:
+        strategy_id(strategy)
+    per_game = {shape: sum(values) / len(values) for shape, values in seconds.items()}
+    kinds = args.route_kinds
+    jobs = {}
+    for _, kind, width, height in routes:
+        if kind in kinds:
+            jobs[(width, height)] = jobs.get((width, height), 0) + len(chosen)
+    worker_seconds = sum(per_game.get(shape, max(per_game.values())) * count for shape, count in jobs.items())
+    result = {"schema_version": "openttd-rl-scripted-round-plan-1", "source_database": str(args.database.resolve()),
+              "games_analysed": len(rows), "routes_analysed": len(played),
+              "best_route_kind_per_map": {kind: sum(value[1] == kind for value in best_kind.values()) for kind in ("inter-town", "intra-town")},
+              "strategy_results": [{"strategy": json.loads(strategy), "route_wins": wins.get(strategy, 0),
+                                    "mean_profit_regret": round(regret[strategy] / counts[strategy], 1), "games": counts[strategy]}
+                                   for strategy in ranked],
+              "dropped": [json.loads(strategy) for strategy in ranked if strategy not in kept],
+              "strategies": chosen, "route_kinds": kinds,
+              "seconds_per_game": {f"{w}x{h}": round(value, 1) for (w, h), value in sorted(per_game.items())},
+              "estimate": {"games": sum(jobs.values()), "worker_hours": round(worker_seconds / 3600, 2),
+                           "workers": args.workers, "speed_per_core": args.speed,
+                           "wall_hours": round(worker_seconds / 3600 / args.workers / args.speed, 2),
+                           "games_per_hour": {f"{w}x{h}": round(3600 * args.workers * args.speed / value)
+                                              for (w, h), value in sorted(per_game.items())},
+                           "basis": "same maps and routes as the source database; seconds per game measured there"}}
+    write_json(args.output, result)
+    print(json.dumps({key: result[key] for key in ("games_analysed", "best_route_kind_per_map", "seconds_per_game", "estimate")}, indent=1))
+    print(f"{len(chosen)} strategies ({len(kept)} kept, {len(result['dropped'])} dropped) -> {args.output}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -226,7 +329,9 @@ if __name__ == "__main__":
     collector.add_argument("--split", choices=("training", "development"), default="training")
     collector.add_argument("--seeds", type=int, nargs="*", help="subset of the split's ledger seeds (default: all)")
     collector.add_argument("--max-maps", type=positive, help="use the first N ledger seeds")
-    collector.add_argument("--sizes", type=int, nargs="+", choices=(64, 128), default=[64])
+    collector.add_argument("--sizes", type=int, nargs="+", choices=(64, 128), default=[64], help="square maps")
+    collector.add_argument("--shapes", type=parse_shape, nargs="*", default=[], help="also WIDTHxHEIGHT, e.g. 64x128 128x64")
+    collector.add_argument("--route-kinds", nargs="+", choices=("inter-town", "intra-town"), default=["inter-town", "intra-town"])
     collector.add_argument("--grid", choices=sorted(GRIDS), default="standard")
     collector.add_argument("--strategies", type=Path, help="JSON list of strategies instead of a named grid")
     collector.add_argument("--decisions", type=positive, default=512)
@@ -241,6 +346,15 @@ if __name__ == "__main__":
                            help="engine from prepare_route_focus.py: also play routes exposed after SELECT_TOWN_PAIR")
     reporter = commands.add_parser("report")
     reporter.add_argument("--database", type=Path, required=True)
+    planner = commands.add_parser("plan")
+    planner.add_argument("--database", type=Path, required=True)
+    planner.add_argument("--output", type=Path, required=True, help="plan JSON; pass it to collect --strategies")
+    planner.add_argument("--workers", type=positive, default=os.cpu_count() or 1)
+    planner.add_argument("--speed", type=float, default=1.0, help="per-core speed relative to the measuring host")
+    planner.add_argument("--min-win-share", type=float, default=0.02, help="drop strategies winning a smaller share of routes")
+    planner.add_argument("--refine", type=int, default=2, help="add one-knob neighbours of the N best strategies")
+    planner.add_argument("--max-strategies", type=positive, default=16)
+    planner.add_argument("--route-kinds", nargs="+", choices=("inter-town", "intra-town"), default=["inter-town", "intra-town"])
     arguments = parser.parse_args()
     if arguments.command == "collect":
         seeds = set(contract_seeds(arguments.split))
@@ -248,4 +362,4 @@ if __name__ == "__main__":
             parser.error("--seeds must come from the selected split's ledger")
         collect(arguments)
     else:
-        report(arguments)
+        {"report": report, "plan": plan}[arguments.command](arguments)

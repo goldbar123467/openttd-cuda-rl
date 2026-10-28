@@ -204,9 +204,11 @@ def train(args):
         command += ["--minibatch", str(args.minibatch)]
     if args.evaluate_every != 1:
         command += ["--evaluate-every", str(args.evaluate_every)]
+    if args.threads != 1:
+        command += ["--threads", str(args.threads)]
     record = {"kind": "native-v2-scripted-imitation", "status": "running", "source": source_identity(),
               "device": args.device, "seed": args.seed, "epochs": args.epochs, "learning_rate": args.learning_rate,
-              "minibatch": args.minibatch or "full-dataset", "evaluate_every": args.evaluate_every,
+              "minibatch": args.minibatch or "full-dataset", "evaluate_every": args.evaluate_every, "threads": args.threads,
               "financial_features": args.financial_features, "dataset": str(args.dataset.resolve()), "manifest": manifest,
               "trainer": artifact(args.trainer), "command": command,
               "objective": "mean negative log likelihood of the scripted player's exact native candidate",
@@ -374,6 +376,7 @@ if __name__ == "__main__":
     trainer.add_argument("--financial-features", choices=ORDER_FEATURES, default="signed-log-orders-v3")
     trainer.add_argument("--minibatch", type=int, default=0, help="examples per Adam step; 0 is one full-dataset step per epoch")
     trainer.add_argument("--evaluate-every", type=positive, default=1, help="epochs between full training-set measurements")
+    trainer.add_argument("--threads", type=positive, default=1, help="CPU intra-op threads; 1 keeps results bitwise reproducible")
     evaluator = commands.add_parser("evaluate")
     evaluator.add_argument("--training-run", type=Path, required=True)
     evaluator.add_argument("--infer", type=Path, required=True, help="rl_dev_v2_infer from the same build")

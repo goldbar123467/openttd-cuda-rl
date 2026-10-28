@@ -7,7 +7,9 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/dev"))
-from game_database_v2 import GRIDS, SCHEMA, game_id
+from types import SimpleNamespace
+
+from game_database_v2 import GRIDS, SCHEMA, game_id, neighbours, parse_shape, plan
 from route_atlas_v2 import enumerate_routes, nearest_town
 from route_player_v2 import ConstructionBlocked, RoutePlayer, check_strategy, strategy_id
 from scripted_imitation_v2 import labelled, scripted_reference, select_games
@@ -252,6 +254,45 @@ class StrategyAndDatabaseTests(unittest.TestCase):
                                     "median_operating_profit": 10, "sustained_service_games": 2}})
             with self.assertRaises(ValueError):
                 scripted_reference(database, "other", ["m"])
+
+    def test_neighbours_vary_one_knob_inside_the_supported_range(self):
+        for strategy in GRIDS["full"]:
+            for candidate in neighbours(strategy):
+                check_strategy(candidate)
+                self.assertEqual(sum(candidate[key] != strategy[key] for key in strategy), 1)
+        self.assertNotIn(None, [c["repay_reserve"] for c in neighbours({**STRATEGY, "repay_reserve": 20000})])
+        self.assertTrue(all(c["repay_reserve"] is None for c in neighbours({**STRATEGY, "repay_reserve": None})))
+
+    def test_shapes_follow_the_live_map_bounds(self):
+        self.assertEqual(parse_shape("64x128"), (64, 128))
+        for text in ("256x256", "64x32"):
+            with self.assertRaises(Exception):
+                parse_shape(text)
+
+    def test_plan_drops_strategies_that_rarely_win_and_estimates_wall_time(self):
+        repay, keep_debt = dict(STRATEGY), {**STRATEGY, "repay_reserve": None}
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory)
+            connection = sqlite3.connect(database / "games.sqlite")
+            connection.executescript(SCHEMA)
+            connection.execute("INSERT INTO maps (map_id, width, height, status) VALUES ('m', 64, 64, 'ok')")
+            for route in range(4):
+                connection.execute("INSERT INTO routes (map_id, route_id, kind) VALUES ('m', ?, 'inter-town')", (str(route),))
+                for name, strategy, profit in (("a", repay, 10), ("b", keep_debt, 5)):
+                    connection.execute("INSERT INTO games (game_id, map_id, route_id, strategy, status, operating_profit, wall_seconds) "
+                                       "VALUES (?,?,?,?,?,?,?)", (f"{name}{route}", "m", str(route), json.dumps(repay if name == "a" else keep_debt),
+                                                                 "completed", profit, 10.0))
+            connection.commit()
+            connection.close()
+            output = database / "plan.json"
+            plan(SimpleNamespace(database=database, output=output, workers=2, speed=1.0, min_win_share=0.02, refine=1,
+                                 max_strategies=4, route_kinds=["inter-town"]))
+            result = json.loads(output.read_text())
+        self.assertEqual(result["dropped"], [keep_debt])
+        self.assertEqual(result["strategies"][0], repay)
+        self.assertEqual(len(result["strategies"]), 4)
+        self.assertEqual(result["estimate"]["games"], 16)
+        self.assertAlmostEqual(result["estimate"]["wall_hours"], round(16 * 10 / 3600 / 2, 2))
 
     def test_wait_labels_follow_the_stride(self):
         self.assertTrue(labelled({"family": "BUY_BUS", "decision": 3}, 32))
