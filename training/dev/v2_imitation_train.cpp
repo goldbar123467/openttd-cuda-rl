@@ -7,10 +7,12 @@
 #include <charconv>
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <map>
+#include <set>
 #include <numeric>
 #include <random>
 #include <stdexcept>
@@ -59,14 +61,18 @@ void normalize(FamilyMetrics &metrics)
     metrics.family_accuracy /= count; metrics.unique_exact_accuracy /= count;
 }
 
-Metrics measure(v2::ScalablePolicy &model, const std::vector<dev::ImitationExample> &examples,
+// Resident datasets keep every input in memory as before; larger manifests
+// stream each example from its tensor files whenever it is used.
+using ExampleSource = std::function<dev::ImitationExample(size_t)>;
+
+Metrics measure(v2::ScalablePolicy &model, size_t count, const ExampleSource &examples,
     const std::vector<dev::ImitationInputAliases> &aliases, const torch::Device &device)
 {
     torch::NoGradGuard guard;
     model->eval();
     Metrics result;
-    for (size_t index = 0; index < examples.size(); ++index) {
-        const auto &example = examples[index];
+    for (size_t index = 0; index < count; ++index) {
+        const auto example = examples(index);
         auto input = dev::live_v2_to(example.input, device);
         const auto output = model->forward(input);
         const auto policy = dev::live_v2_distribution(output, input);
@@ -181,10 +187,16 @@ int64_t integer(const std::string &text, int64_t minimum, int64_t maximum)
 int main(int argc, char **argv)
 {
     try {
-        if (argc != 15) throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER --epochs INTEGER --learning-rate NUMBER --financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3 --manifest PATH --output PATH");
+        if (argc < 15 || argc % 2 == 0) throw std::invalid_argument("usage: --device cpu|cuda:0 --seed INTEGER --epochs INTEGER --learning-rate NUMBER --financial-features raw|signed-log-v1|signed-log-loan-v1|signed-log-actions-v1|signed-log-orders-v1|signed-log-orders-v2|signed-log-orders-v3 --manifest PATH --output PATH [--max-examples INTEGER] [--minibatch INTEGER] [--evaluate-every INTEGER]");
         std::map<std::string, std::string> args;
         for (int index = 1; index < argc; index += 2)
             if (!args.emplace(argv[index], argv[index + 1]).second) throw std::invalid_argument("duplicate imitation option");
+        for (const auto &[name, value] : args) {
+            (void)value;
+            static const std::set<std::string> known = {"--device", "--seed", "--epochs", "--learning-rate", "--financial-features",
+                "--manifest", "--output", "--max-examples", "--minibatch", "--evaluate-every"};
+            if (!known.contains(name)) throw std::invalid_argument("unknown imitation option " + name);
+        }
         const auto device_name = args.at("--device");
         if (device_name != "cpu" && device_name != "cuda:0") throw std::invalid_argument("unsupported imitation device");
         torch::Device device(device_name);
@@ -200,60 +212,89 @@ int main(int argc, char **argv)
         const std::filesystem::path output_path(args.at("--output"));
         if (!output_path.is_absolute() || std::filesystem::exists(output_path) || !std::filesystem::is_directory(output_path.parent_path()))
             throw std::invalid_argument("imitation output requires a fresh absolute path");
+        // Optional scale settings. Their defaults reproduce the historical fit:
+        // at most 512 resident examples and one full-dataset step per epoch.
+        const auto option = [&args](const char *name, int64_t fallback, int64_t minimum, int64_t maximum) {
+            return args.contains(name) ? integer(args.at(name), minimum, maximum) : fallback;
+        };
+        const auto max_examples = static_cast<size_t>(option("--max-examples", static_cast<int64_t>(dev::kImitationResidentExamples),
+            1, static_cast<int64_t>(dev::kImitationStreamedExamples)));
+        const auto minibatch = static_cast<size_t>(option("--minibatch", 0, 0, static_cast<int64_t>(dev::kImitationStreamedExamples)));
+        const auto evaluate_every = option("--evaluate-every", 1, 1, 1000);
+        const bool scale_options = args.contains("--max-examples") || args.contains("--minibatch") || args.contains("--evaluate-every");
         torch::set_num_threads(1);
         if (::setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", 1) != 0) throw std::runtime_error("cuBLAS setup failed");
         at::globalContext().setDeterministicAlgorithms(true, false);
         at::globalContext().setDeterministicCuDNN(true);
         at::globalContext().setBenchmarkCuDNN(false);
-        const auto examples = dev::read_imitation_examples(args.at("--manifest"), features);
+        const auto records = dev::read_imitation_manifest(args.at("--manifest"), max_examples);
+        const bool streamed = max_examples > dev::kImitationResidentExamples;
+        std::vector<dev::ImitationExample> resident;
+        if (!streamed) for (const auto &record : records) resident.push_back(dev::load_imitation_example(record, features));
+        const ExampleSource examples = [&](size_t index) {
+            return streamed ? dev::load_imitation_example(records[index], features) : resident[index];
+        };
+        const size_t count = records.size();
         std::vector<dev::ImitationInputAliases> aliases;
-        for (const auto &example : examples) aliases.push_back(dev::audit_imitation_inputs(example.input, example.action));
         size_t choices = 0;
-        for (const auto &example : examples) choices += example.input.candidate_mask.sum().item<int64_t>() > 1 ? 1U : 0U;
+        for (size_t index = 0; index < count; ++index) {
+            const auto example = examples(index);
+            aliases.push_back(dev::audit_imitation_inputs(example.input, example.action));
+            choices += example.input.candidate_mask.sum().item<int64_t>() > 1 ? 1U : 0U;
+        }
         if (choices == 0) throw std::invalid_argument("imitation needs at least one genuine supported choice");
         v2::ScalablePolicy model(seed);
         model->to(device);
         torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(learning_rate).eps(1e-5));
         std::mt19937_64 shuffle(seed);
-        std::vector<size_t> indices(examples.size());
+        std::vector<size_t> indices(count);
         std::iota(indices.begin(), indices.end(), 0U);
-        const auto initial = measure(model, examples, aliases, device);
-        std::cout << std::setprecision(17) << "{\"event\":\"initial\",\"examples\":" << examples.size()
+        const auto initial = measure(model, count, examples, aliases, device);
+        std::cout << std::setprecision(17) << "{\"event\":\"initial\",\"examples\":" << count
             << ",\"choice_examples\":" << choices << ",\"metrics\":";
         print_metrics(initial); std::cout << "}" << std::endl;
         // New action-aware training must not try to fit an impossible exact
         // row label. Keep the initial audit and historical modes available for
         // reproducing and diagnosing earlier indistinguishable inputs.
         if (features == dev::FinancialFeatures::SignedLogActionsV1 || dev::uses_order_features(features)) {
-            for (size_t index = 0; index < examples.size(); ++index) {
+            for (size_t index = 0; index < count; ++index) {
                 if (aliases[index].target_rows.empty()) continue;
-                throw std::invalid_argument("action-aware imitation target input alias: sample " + examples[index].sample_id +
-                    " target row " + std::to_string(examples[index].action) + " aliases legal row " +
+                throw std::invalid_argument("action-aware imitation target input alias: sample " + records[index].sample_id +
+                    " target row " + std::to_string(records[index].action) + " aliases legal row " +
                     std::to_string(aliases[index].target_rows.front()));
             }
         }
+        const size_t batch = minibatch == 0 ? count : std::min(minibatch, count);
         double max_gradient = 0;
         for (int64_t epoch = 0; epoch < epochs; ++epoch) {
             model->train();
             std::shuffle(indices.begin(), indices.end(), shuffle);
-            // Accumulate one full-dataset mean, releasing each input graph
-            // immediately. This keeps GPU memory bounded independently of N.
-            optimizer.zero_grad();
-            for (const auto index : indices) {
-                const auto &example = examples[index];
-                const auto input = dev::live_v2_to(example.input, device);
-                auto loss = dev::imitation_loss(model->forward(input), input, example.action) / static_cast<double>(examples.size());
-                loss.backward();
+            // Accumulate each minibatch mean (by default the full dataset),
+            // releasing each input graph immediately. This keeps memory
+            // bounded independently of N.
+            for (size_t begin = 0; begin < count; begin += batch) {
+                const auto end = std::min(count, begin + batch);
+                optimizer.zero_grad();
+                for (size_t position = begin; position < end; ++position) {
+                    const auto example = examples(indices[position]);
+                    const auto input = dev::live_v2_to(example.input, device);
+                    auto loss = dev::imitation_loss(model->forward(input), input, example.action) / static_cast<double>(end - begin);
+                    loss.backward();
+                }
+                check_gradients(model);
+                max_gradient = std::max(max_gradient, dev::clip_grad_norm_fp64_(model->parameters(), 0.5));
+                optimizer.step();
+                v2::require_finite_policy(model, "imitation update");
             }
-            check_gradients(model);
-            max_gradient = std::max(max_gradient, dev::clip_grad_norm_fp64_(model->parameters(), 0.5));
-            optimizer.step();
-            v2::require_finite_policy(model, "imitation update");
-            const auto metrics = measure(model, examples, aliases, device);
+            if ((epoch + 1) % evaluate_every != 0) {
+                std::cout << "{\"event\":\"epoch\",\"epoch\":" << epoch + 1 << ",\"evaluated\":false}" << std::endl;
+                continue;
+            }
+            const auto metrics = measure(model, count, examples, aliases, device);
             std::cout << "{\"event\":\"epoch\",\"epoch\":" << epoch + 1 << ",\"metrics\":";
             print_metrics(metrics, false); std::cout << "}" << std::endl;
         }
-        const auto final = measure(model, examples, aliases, device);
+        const auto final = measure(model, count, examples, aliases, device);
         if (!(final.loss < initial.loss)) throw std::runtime_error("small imitation fit did not lower supervised loss");
         torch::serialize::OutputArchive saved;
         dev::write_live_v2_weights(saved, model, features);
@@ -270,23 +311,25 @@ int main(int argc, char **argv)
         double reload_error = 0, probability_error = 0, value_error = 0;
         {
             torch::NoGradGuard guard;
-            for (size_t index = 0; index < std::min<size_t>(8, examples.size()); ++index) {
-                const auto input = dev::live_v2_to(examples[index].input, device);
+            for (size_t index = 0; index < std::min<size_t>(8, count); ++index) {
+                const auto example = examples(index);
+                const auto input = dev::live_v2_to(example.input, device);
                 const auto expected = model->forward(input), actual = reloaded->forward(input);
                 reload_error = std::max({reload_error, (expected.family_logits - actual.family_logits).abs().max().item<double>(),
                     (expected.candidate_logits - actual.candidate_logits).abs().max().item<double>(),
                     (expected.value - actual.value).abs().max().item<double>(),
                     (expected.next_hidden - actual.next_hidden).abs().max().item<double>()});
-                const auto cpu = reference->forward(examples[index].input);
+                const auto cpu = reference->forward(example.input);
                 probability_error = std::max(probability_error, (dev::live_v2_distribution(actual, input).probabilities.cpu() -
-                    dev::live_v2_distribution(cpu, examples[index].input).probabilities).abs().max().item<double>());
+                    dev::live_v2_distribution(cpu, example.input).probabilities).abs().max().item<double>());
                 value_error = std::max(value_error, (actual.value.cpu() - cpu.value).abs().max().item<double>());
             }
         }
         model->zero_grad(); reference->zero_grad();
-        const auto input = dev::live_v2_to(examples.front().input, device);
-        const auto cuda_loss = dev::imitation_loss(model->forward(input), input, examples.front().action);
-        const auto cpu_loss = dev::imitation_loss(reference->forward(examples.front().input), examples.front().input, examples.front().action);
+        const auto front = examples(0);
+        const auto input = dev::live_v2_to(front.input, device);
+        const auto cuda_loss = dev::imitation_loss(model->forward(input), input, front.action);
+        const auto cpu_loss = dev::imitation_loss(reference->forward(front.input), front.input, front.action);
         cuda_loss.backward(); cpu_loss.backward();
         check_gradients(model); check_gradients(reference);
         double gradient_error = 0;
@@ -299,13 +342,16 @@ int main(int argc, char **argv)
         if (reload_error > 1e-6 || probability_error > 1e-5 || value_error > 1e-4 || loss_error > 1e-4 || gradient_error > 1e-4)
             throw std::runtime_error("imitation checkpoint/CPU-device agreement exceeded tolerance");
         std::cout << "{\"event\":\"completed\",\"device\":\"" << device_name << "\",\"torch\":\"" << TORCH_VERSION
-            << "\",\"epochs\":" << epochs << ",\"examples\":" << examples.size() << ",\"initial\":";
+            << "\",\"epochs\":" << epochs << ",\"examples\":" << count << ",\"initial\":";
         print_metrics(initial); std::cout << ",\"final\":"; print_metrics(final);
         std::cout << ",\"max_unclipped_gradient_norm\":" << max_gradient << ",\"checkpoint_reload_max_error\":" << reload_error
             << ",\"cpu_device_probability_max_error\":" << probability_error << ",\"cpu_device_value_max_error\":" << value_error
             << ",\"cpu_device_loss_error\":" << loss_error << ",\"cpu_device_gradient_max_error\":" << gradient_error
-            << ",\"cpu_cuda_compared\":" << (device.is_cuda() ? "true" : "false")
-            << ",\"finite_gradients\":true,\"exact_legal_masks\":true,\"context\":\"independent-reset\"}" << std::endl;
+            << ",\"cpu_cuda_compared\":" << (device.is_cuda() ? "true" : "false");
+        if (scale_options)
+            std::cout << ",\"max_examples\":" << max_examples << ",\"streamed\":" << (streamed ? "true" : "false")
+                << ",\"minibatch\":" << batch << ",\"evaluate_every\":" << evaluate_every;
+        std::cout << ",\"finite_gradients\":true,\"exact_legal_masks\":true,\"context\":\"independent-reset\"}" << std::endl;
         return 0;
     } catch (const std::exception &error) { std::cerr << "V2 imitation failed: " << error.what() << '\n'; return 1; }
 }

@@ -12,6 +12,14 @@ struct ImitationExample {
     openttd_rl::v2::ScalablePolicyInput input;
     int64_t action{}, family{};
 };
+// One manifest row before its tensors are read; large datasets keep only these.
+struct ImitationRecord {
+    std::string sample_id, game_id, observation, candidates;
+    int64_t action{}, family{};
+    std::vector<int64_t> legal_rows;
+};
+inline constexpr size_t kImitationResidentExamples = 512;
+inline constexpr size_t kImitationStreamedExamples = 65536;
 
 inline constexpr double kImitationProbabilityMargin = 1e-6;
 struct ImitationInputAliases {
@@ -34,6 +42,9 @@ ImitationPrediction measure_imitation_prediction(const openttd_rl::v2::ScalableP
 // commands and elapsed simulation time are never relabelled as WAIT samples.
 std::vector<ImitationExample> read_imitation_examples(const std::filesystem::path &manifest,
     FinancialFeatures financial_features);
+std::vector<ImitationRecord> read_imitation_manifest(const std::filesystem::path &manifest,
+    size_t maximum_examples = kImitationResidentExamples);
+ImitationExample load_imitation_example(const ImitationRecord &record, FinancialFeatures financial_features);
 torch::Tensor imitation_loss(const openttd_rl::v2::ScalablePolicyOutput &output,
     const openttd_rl::v2::ScalablePolicyInput &input, int64_t action);
 } // namespace openttd_rl::development

@@ -103,44 +103,60 @@ ImitationPrediction measure_imitation_prediction(const openttd_rl::v2::ScalableP
     return result;
 }
 
-std::vector<ImitationExample> read_imitation_examples(const std::filesystem::path &manifest,
-    FinancialFeatures financial_features)
+std::vector<ImitationRecord> read_imitation_manifest(const std::filesystem::path &manifest, size_t maximum_examples)
 {
     using namespace openttd_rl::v2;
+    if (maximum_examples == 0 || maximum_examples > kImitationStreamedExamples)
+        throw std::invalid_argument("imitation example bound outside development limits");
     if (!manifest.is_absolute() || !std::filesystem::is_regular_file(manifest) ||
-        std::filesystem::file_size(manifest) > 16U * 1024U * 1024U)
+        std::filesystem::file_size(manifest) > 16U * 1024U * 1024U * (maximum_examples > kImitationResidentExamples ? 64U : 1U))
         throw std::invalid_argument("imitation manifest must be a bounded absolute file");
     std::ifstream stream(manifest);
     std::string line;
     if (!std::getline(stream, line) || line != kImitationManifest)
         throw std::invalid_argument("imitation manifest schema differs");
-    std::vector<ImitationExample> result;
+    std::vector<ImitationRecord> result;
     std::set<std::pair<std::string, std::string>> identities;
     while (std::getline(stream, line)) {
-        if (line.size() > 65536 || result.size() >= 512)
+        if (line.size() > 65536 || result.size() >= maximum_examples)
             throw std::invalid_argument("imitation manifest exceeds development bounds");
         const auto parts = split(line, '\t');
         if (parts.size() != 7 || !identities.emplace(parts[1], parts[0]).second)
             throw std::invalid_argument("imitation columns or unique game/sample identity differ");
-        auto input = read_live_v2_input(parts[2], parts[3], financial_features);
-        const auto action = integer(parts[4], kCandidateCapacity), family = integer(parts[5], kFamilyCount);
-        // Compare every legal row, not merely the label. A filtered or stale
-        // mask changes the supervised likelihood and must fail closed.
-        auto expected = torch::zeros_like(input.candidate_mask);
+        ImitationRecord record{parts[0], parts[1], parts[2], parts[3],
+            integer(parts[4], kCandidateCapacity), integer(parts[5], kFamilyCount), {}};
         int64_t previous = -1;
         for (const auto &value : split(parts[6], ',')) {
             const auto row = integer(value, kCandidateCapacity);
             if (row <= previous) throw std::invalid_argument("imitation legal rows must be sorted and unique");
-            expected[0][row] = true;
+            record.legal_rows.push_back(row);
             previous = row;
         }
-        if (!torch::equal(expected, input.candidate_mask) || !input.candidate_mask[0][action].item<bool>() ||
-            input.candidate_family[0][action].item<int64_t>() != family)
-            throw std::invalid_argument("imitation label/family or exact native legal mask differs");
-        input.recurrent_reset.fill_(true);
-        result.push_back({parts[0], parts[1], std::move(input), action, family});
+        result.push_back(std::move(record));
     }
     if (!stream.eof() || result.empty()) throw std::invalid_argument("imitation manifest is empty or unreadable");
+    return result;
+}
+
+ImitationExample load_imitation_example(const ImitationRecord &record, FinancialFeatures financial_features)
+{
+    auto input = read_live_v2_input(record.observation, record.candidates, financial_features);
+    // Compare every legal row, not merely the label. A filtered or stale
+    // mask changes the supervised likelihood and must fail closed.
+    auto expected = torch::zeros_like(input.candidate_mask);
+    for (const auto row : record.legal_rows) expected[0][row] = true;
+    if (!torch::equal(expected, input.candidate_mask) || !input.candidate_mask[0][record.action].item<bool>() ||
+        input.candidate_family[0][record.action].item<int64_t>() != record.family)
+        throw std::invalid_argument("imitation label/family or exact native legal mask differs");
+    input.recurrent_reset.fill_(true);
+    return {record.sample_id, record.game_id, std::move(input), record.action, record.family};
+}
+
+std::vector<ImitationExample> read_imitation_examples(const std::filesystem::path &manifest,
+    FinancialFeatures financial_features)
+{
+    std::vector<ImitationExample> result;
+    for (const auto &record : read_imitation_manifest(manifest)) result.push_back(load_imitation_example(record, financial_features));
     return result;
 }
 
