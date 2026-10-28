@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 from pathlib import Path
-from local import ROOT, capture_source, source_identity, write_json
+from local import ROOT, capture_source, copy_baseset, source_identity, write_json
 from prepare_human_replay import source_hashes
 
 
@@ -74,7 +74,7 @@ def main():
             with (root / (name + '.log')).open('w') as log:
                 subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=1800)
         (root / 'build/baseset').mkdir(exist_ok=True)
-        shutil.copyfile(base / 'build/baseset/opengfx-8.0.tar', root / 'build/baseset/opengfx-8.0.tar')
+        copy_baseset(base / 'build/baseset/opengfx-8.0.tar', root / 'build/baseset/opengfx-8.0.tar')
         record.update(status='built', executable_sha256=hashlib.sha256((root / 'build/openttd').read_bytes()).hexdigest(),
                       composed_source_hashes=source_hashes(source))
         record['base_unchanged'] = source_hashes(base / 'source') == before and hashlib.sha256((base / 'build/openttd').read_bytes()).hexdigest() == base_binary

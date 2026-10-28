@@ -15,7 +15,7 @@ import sys
 import time
 
 from enable_v2_live import development_headers
-from local import ROOT, capture_source, positive, source_identity, write_json
+from local import ROOT, baseset_identity, capture_source, copy_baseset, positive, source_identity, write_json
 
 BASESET_SHA256 = "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c"
 
@@ -77,9 +77,10 @@ def run(args):
             raise ValueError("Base has unexpected untracked source; inspect it before preparation")
         record["base_adapter_sha256"] = digest(base_source / "src/rl_v2_live.inc")
         baseset = original / "build/baseset/opengfx-8.0.tar"
-        if digest(baseset) != BASESET_SHA256:
-            raise ValueError("Base engine OpenGFX 8.0 archive differs")
-        record["baseset_sha256"] = BASESET_SHA256
+        identity = baseset_identity(baseset, BASESET_SHA256)
+        record["baseset_sha256"] = identity["sha256"]
+        if not identity["official_opengfx_8_0"]:
+            record["baseset_substitute"] = identity["substitute"]
         source = root / "source"
         execute("clone", ["git", "clone", "--no-hardlinks", "--no-checkout", "--dissociate", str(base_source), str(source)])
         execute("checkout", ["git", "-C", str(source), "checkout", "--detach", record["base_commit"]])
@@ -105,7 +106,7 @@ def run(args):
             execute("build", ["cmake", "--build", str(build), "--target", "openttd", "--parallel", str(args.jobs)],
                     timeout=args.build_timeout)
             (build / "baseset").mkdir(exist_ok=True)
-            shutil.copyfile(baseset, build / "baseset/opengfx-8.0.tar")
+            copy_baseset(baseset, build / "baseset/opengfx-8.0.tar")
             record.update(status="built", executable=str(build / "openttd"), executable_sha256=digest(build / "openttd"))
         if (digest(original / "build/openttd") != record["base_engine_sha256"] or
                 git(base_source, "diff", "--binary", "HEAD") != patch or

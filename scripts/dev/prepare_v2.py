@@ -8,10 +8,9 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import shutil
 import subprocess
 
-from local import ROOT, capture_source, positive, source_identity, write_json
+from local import ROOT, baseset_identity, capture_source, copy_baseset, positive, source_identity, write_json
 
 
 STAGES = ("m15-native", "m15-observation", "m15-action", "m15-episode", "m15-competence")
@@ -72,10 +71,9 @@ def run(args):
             subprocess.run(command, check=True)
             subprocess.run(["cmake", "--build", str(build), "--parallel", str(args.jobs)], check=True)
             baseset = args.baseset.resolve()
-            if hashlib.sha256(baseset.read_bytes()).hexdigest() != "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c":
-                raise ValueError("OpenGFX 8.0 archive differs")
+            record["baseset"] = baseset_identity(baseset)
             (build / "baseset").mkdir(exist_ok=True)
-            shutil.copyfile(baseset, build / "baseset/opengfx-8.0.tar")
+            copy_baseset(baseset, build / "baseset/opengfx-8.0.tar")
             record.update(status="built", executable_sha256=hashlib.sha256((build / "openttd").read_bytes()).hexdigest())
     except BaseException as exc:
         record.update(status="failed", error=str(exc))

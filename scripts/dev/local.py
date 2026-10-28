@@ -20,6 +20,35 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_HOME = Path.home() / ".local/share/openttd-rl"
+OPENGFX_SHA256 = "9389bcb0807058c80bd95121e978f05d9ef86b4b1bc3ac2da8da8bb02456043c"
+
+
+def baseset_identity(path: Path, expected: str = OPENGFX_SHA256) -> dict:
+    """Accept the pinned OpenGFX 8.0 archive or an explicitly declared substitute.
+
+    Hosts that cannot download the official archive (for example a cloud CPU
+    container) may supply other base graphics at the same slot only with a
+    `.substitute.json` sidecar naming its exact hash and origin. Base graphics
+    do not enter game rules, but every record keeps the substitution visible.
+    """
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest == expected:
+        return {"sha256": digest, "official_opengfx_8_0": True}
+    sidecar = path.with_name(path.name + ".substitute.json")
+    if not sidecar.is_file():
+        raise ValueError("OpenGFX 8.0 archive differs and no substitute is declared")
+    declaration = json.loads(sidecar.read_text())
+    if declaration.get("sha256") != digest or not declaration.get("content"):
+        raise ValueError("Declared base graphics substitute does not match the archive")
+    return {"sha256": digest, "official_opengfx_8_0": False, "substitute": declaration}
+
+
+def copy_baseset(source: Path, target: Path) -> None:
+    """Copy a base graphics archive together with any substitute declaration."""
+    shutil.copyfile(source, target)
+    sidecar = source.with_name(source.name + ".substitute.json")
+    if sidecar.is_file():
+        shutil.copyfile(sidecar, target.with_name(target.name + ".substitute.json"))
 
 
 def positive(value: str) -> int:
