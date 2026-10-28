@@ -204,6 +204,12 @@ def report(args):
             "SELECT strategy, COUNT(*), SUM(passengers > 0), SUM(sustained_service), AVG(operating_profit), AVG(net_cash), AVG(wall_seconds) "
             "FROM games WHERE status = 'completed' GROUP BY strategy_id ORDER BY AVG(net_cash) DESC"):
         print(f"{strategy:65s} {games:5d}  {delivered:7d}  {sustained:9d}  {profit:11.0f}  {net:13.0f}  {seconds:8.1f}")
+    print("route kind   map size   games  deliver  sustained  mean_profit  best_profit")
+    for kind, size, games, delivered, sustained, profit, best in query(
+            "SELECT r.kind, m.width, COUNT(*), SUM(g.passengers > 0), SUM(g.sustained_service), AVG(g.operating_profit), "
+            "MAX(g.operating_profit) FROM games g JOIN routes r ON r.map_id = g.map_id AND r.route_id = g.route_id "
+            "JOIN maps m ON m.map_id = g.map_id WHERE g.status = 'completed' GROUP BY r.kind, m.width ORDER BY r.kind, m.width"):
+        print(f"{kind:12s} {size:4d}x{size:<4d} {games:6d}  {delivered:7d}  {sustained:9d}  {profit:11.0f}  {best:11d}")
     print("best game per map (by final cash minus loan):")
     for row in query("SELECT map_id, game_id, route_id, strategy, passengers, operating_profit, MAX(net_cash) FROM games "
                      "WHERE status = 'completed' GROUP BY map_id ORDER BY map_id"):
